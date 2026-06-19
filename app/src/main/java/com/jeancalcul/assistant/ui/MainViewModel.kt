@@ -3,8 +3,9 @@ package com.jeancalcul.assistant.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jeancalcul.assistant.data.HermesSettings
-import com.jeancalcul.assistant.data.SettingsStore
+import com.jeancalcul.assistant.data.SettingsRepository
 import com.jeancalcul.assistant.network.ClientInfo
+import com.jeancalcul.assistant.network.HermesApi
 import com.jeancalcul.assistant.network.HermesClient
 import com.jeancalcul.assistant.network.MobileRequest
 import com.jeancalcul.assistant.network.UserInput
@@ -29,8 +30,8 @@ data class MainUiState(
 )
 
 class MainViewModel(
-    private val settingsStore: SettingsStore,
-    private val hermesClient: HermesClient = HermesClient()
+    private val settingsStore: SettingsRepository,
+    private val hermesClient: HermesApi = HermesClient()
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()

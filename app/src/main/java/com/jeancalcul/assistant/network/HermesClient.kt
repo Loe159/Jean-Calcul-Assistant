@@ -12,11 +12,18 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
-class HermesClient {
+interface HermesApi {
+    suspend fun health(baseUrl: String, token: String): HermesHealth
+    suspend fun sendRequest(baseUrl: String, token: String, request: MobileRequest): HermesResponse
+}
+
+@OptIn(ExperimentalSerializationApi::class)
+class HermesClient : HermesApi {
     private val json = Json { ignoreUnknownKeys = true; explicitNulls = false }
     private val http = HttpClient(Android) {
         install(ContentNegotiation) { json(json) }
@@ -27,11 +34,11 @@ class HermesClient {
         }
     }
 
-    suspend fun health(baseUrl: String, token: String): HermesHealth = http.get("${baseUrl.clean()}/api/mobile/health") {
+    override suspend fun health(baseUrl: String, token: String): HermesHealth = http.get("${baseUrl.clean()}/api/mobile/health") {
         if (token.isNotBlank()) bearerAuth(token)
     }.body()
 
-    suspend fun sendRequest(baseUrl: String, token: String, request: MobileRequest): HermesResponse {
+    override suspend fun sendRequest(baseUrl: String, token: String, request: MobileRequest): HermesResponse {
         val raw: JsonObject = http.post("${baseUrl.clean()}/api/mobile/request") {
             if (token.isNotBlank()) bearerAuth(token)
             contentType(ContentType.Application.Json)
