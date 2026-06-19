@@ -14,20 +14,25 @@ data class HermesSettings(
     val token: String = ""
 )
 
-class SettingsStore(private val context: Context) {
+interface SettingsRepository {
+    val settings: Flow<HermesSettings>
+    suspend fun save(baseUrl: String, token: String)
+}
+
+class SettingsStore(private val context: Context) : SettingsRepository {
     private object Keys {
         val BaseUrl = stringPreferencesKey("base_url")
         val Token = stringPreferencesKey("token")
     }
 
-    val settings: Flow<HermesSettings> = context.settingsDataStore.data.map { preferences ->
+    override val settings: Flow<HermesSettings> = context.settingsDataStore.data.map { preferences ->
         HermesSettings(
             baseUrl = preferences[Keys.BaseUrl] ?: HermesSettings().baseUrl,
             token = preferences[Keys.Token].orEmpty()
         )
     }
 
-    suspend fun save(baseUrl: String, token: String) {
+    override suspend fun save(baseUrl: String, token: String) {
         context.settingsDataStore.edit { preferences ->
             preferences[Keys.BaseUrl] = baseUrl.trim().trimEnd('/')
             preferences[Keys.Token] = token.trim()
