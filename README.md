@@ -36,3 +36,18 @@ Utilisateur
 Le principe de sécurité central est : **Hermes propose, Android dispose**.
 
 Hermes ne reçoit jamais un accès brut au téléphone. Il demande l'exécution d'un outil, et l'application Android décide localement si cette action est autorisée.
+## Compilation Android
+
+Ce dépôt contient un module Android minimal compilable dans `app/`. Pour générer un APK de test :
+
+```bash
+ANDROID_HOME=/opt/android-sdk gradle assembleDebug
+```
+
+L'APK debug est généré dans `app/build/outputs/apk/debug/app-debug.apk`.
+Pour l'installer sur un téléphone connecté en USB avec le débogage Android activé :
+
+```bash
+/opt/android-sdk/platform-tools/adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
