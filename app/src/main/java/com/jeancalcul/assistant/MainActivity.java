@@ -60,6 +60,8 @@ public class MainActivity extends Activity {
     private static final int GLASS_SURFACE = Color.rgb(255, 255, 255);
     private static final int GLASS_TEXT = Color.rgb(246, 248, 255);
     private static final int GLASS_MUTED_TEXT = Color.rgb(190, 201, 218);
+    private static final int GLASS_CARD_TEXT = Color.rgb(18, 24, 38);
+    private static final int GLASS_CARD_MUTED_TEXT = Color.rgb(65, 77, 96);
     private static final int GLASS_PRIMARY = Color.rgb(108, 99, 255);
     private static final int GLASS_SECONDARY = Color.rgb(0, 229, 255);
     private static final int GLASS_ERROR = Color.rgb(255, 82, 82);
@@ -139,9 +141,9 @@ public class MainActivity extends Activity {
         sendButton.setOnClickListener(v -> runAsync(this::sendMessage));
         conversationCard.addView(sendButton, matchWrap());
 
-        statusView = text("Prêt", 14, Color.rgb(195, 255, 207), false);
+        statusView = text("Prêt", 14, Color.rgb(30, 92, 54), false);
         statusView.setPadding(0, 24, 0, 12);
-        conversationView = text("Les capacités exposées : get_volume, set_volume, open_app, toggle_flashlight, send_notification.", 15, GLASS_TEXT, false);
+        conversationView = text("Les capacités exposées : get_volume, set_volume, open_app, toggle_flashlight, send_notification.", 15, GLASS_CARD_TEXT, false);
         conversationView.setLineSpacing(4f, 1.05f);
         conversationCard.addView(statusView, matchWrap());
         conversationCard.addView(conversationView, matchWrap());
@@ -332,7 +334,7 @@ public class MainActivity extends Activity {
     private void appendConversation(String text) { runOnUiThread(() -> conversationView.append("\n\n" + text)); }
 
     private TextView label(String text) {
-        TextView label = text(text, 16, GLASS_TEXT, true);
+        TextView label = text(text, 16, GLASS_CARD_TEXT, true);
         label.setPadding(0, 4, 0, 12);
         return label;
     }
@@ -352,22 +354,22 @@ public class MainActivity extends Activity {
         editText.setText(value);
         editText.setSingleLine(!multiLine);
         editText.setMinLines(multiLine ? 3 : 1);
-        editText.setTextColor(GLASS_TEXT);
-        editText.setHintTextColor(GLASS_MUTED_TEXT);
+        editText.setTextColor(GLASS_CARD_TEXT);
+        editText.setHintTextColor(GLASS_CARD_MUTED_TEXT);
         editText.setTextSize(15);
         editText.setPadding(30, 20, 30, 20);
-        editText.setBackground(glassDrawable(34, 0.16f, 0.42f));
+        editText.setBackground(glassDrawable(34, 0.72f, 0.96f));
         return editText;
     }
 
     private Button button(String text) {
         Button button = new Button(this);
         button.setText(text);
-        button.setTextColor(GLASS_TEXT);
+        button.setTextColor(GLASS_CARD_TEXT);
         button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         button.setAllCaps(false);
         button.setPadding(18, 16, 18, 16);
-        button.setBackground(glassDrawable(42, 0.30f, 0.80f));
+        button.setBackground(glassDrawable(42, 0.62f, 0.92f));
         return button;
     }
 
@@ -375,7 +377,7 @@ public class MainActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(30, 30, 30, 30);
-        card.setBackground(glassDrawable(38, 0.22f, 0.55f));
+        card.setBackground(glassDrawable(38, 0.70f, 0.92f));
         card.setElevation(18f);
         return card;
     }
