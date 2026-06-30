@@ -57,11 +57,11 @@ public class MainActivity extends Activity {
     private static final String NOTIFICATION_CHANNEL = "hermes_tools";
     private static final int REQUEST_POST_NOTIFICATIONS = 42;
     private static final int GLASS_BACKGROUND = Color.rgb(10, 12, 20);
-    private static final int GLASS_SURFACE = Color.rgb(255, 255, 255);
+    private static final int GLASS_SURFACE = Color.rgb(18, 22, 34);
     private static final int GLASS_TEXT = Color.rgb(246, 248, 255);
     private static final int GLASS_MUTED_TEXT = Color.rgb(190, 201, 218);
-    private static final int GLASS_CARD_TEXT = Color.rgb(18, 24, 38);
-    private static final int GLASS_CARD_MUTED_TEXT = Color.rgb(65, 77, 96);
+    private static final int GLASS_CARD_TEXT = Color.rgb(246, 248, 255);
+    private static final int GLASS_CARD_MUTED_TEXT = Color.rgb(190, 201, 218);
     private static final int GLASS_PRIMARY = Color.rgb(108, 99, 255);
     private static final int GLASS_SECONDARY = Color.rgb(0, 229, 255);
     private static final int GLASS_ERROR = Color.rgb(255, 82, 82);
@@ -141,7 +141,7 @@ public class MainActivity extends Activity {
         sendButton.setOnClickListener(v -> runAsync(this::sendMessage));
         conversationCard.addView(sendButton, matchWrap());
 
-        statusView = text("Prêt", 14, Color.rgb(30, 92, 54), false);
+        statusView = text("Prêt", 14, Color.rgb(195, 255, 207), false);
         statusView.setPadding(0, 24, 0, 12);
         conversationView = text("Les capacités exposées : get_volume, set_volume, open_app, toggle_flashlight, send_notification.", 15, GLASS_CARD_TEXT, false);
         conversationView.setLineSpacing(4f, 1.05f);
@@ -358,7 +358,7 @@ public class MainActivity extends Activity {
         editText.setHintTextColor(GLASS_CARD_MUTED_TEXT);
         editText.setTextSize(15);
         editText.setPadding(30, 20, 30, 20);
-        editText.setBackground(glassDrawable(34, 0.72f, 0.96f));
+        editText.setBackground(glassDrawable(34, 0.78f, 0.96f));
         return editText;
     }
 
@@ -369,7 +369,7 @@ public class MainActivity extends Activity {
         button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         button.setAllCaps(false);
         button.setPadding(18, 16, 18, 16);
-        button.setBackground(glassDrawable(42, 0.62f, 0.92f));
+        button.setBackground(glassDrawable(42, 0.74f, 0.96f));
         return button;
     }
 
@@ -377,7 +377,7 @@ public class MainActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(30, 30, 30, 30);
-        card.setBackground(glassDrawable(38, 0.70f, 0.92f));
+        card.setBackground(glassDrawable(38, 0.82f, 0.96f));
         card.setElevation(18f);
         return card;
     }
