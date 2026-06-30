@@ -74,6 +74,8 @@ public class MainActivity extends Activity {
     private EditText messageInput;
     private TextView statusView;
     private LinearLayout messagesList;
+    private LinearLayout chatPage;
+    private ScrollView settingsPage;
     private SharedPreferences preferences;
     private String lastTorchCameraId;
     private boolean torchEnabled;
@@ -90,65 +92,57 @@ public class MainActivity extends Activity {
         FrameLayout liquidBackground = new FrameLayout(this);
         liquidBackground.setBackground(new LiquidGlassBackgroundDrawable());
 
-        LinearLayout shell = new LinearLayout(this);
-        shell.setOrientation(LinearLayout.HORIZONTAL);
-        shell.setPadding(dp(16), dp(16), dp(16), dp(16));
-        liquidBackground.addView(shell, new FrameLayout.LayoutParams(
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dp(14), dp(14), dp(14), dp(14));
+        liquidBackground.addView(root, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT));
 
-        // --- Sidebar ---
-        LinearLayout sidebar = glassCard();
-        sidebar.setPadding(dp(20), dp(20), dp(20), dp(20));
-        TextView sidebarTitle = text("Jean Calcul", 20, GLASS_CARD_TEXT, true);
-        sidebar.addView(sidebarTitle, matchWrap());
+        LinearLayout header = glassCard();
+        header.setPadding(dp(16), dp(14), dp(16), dp(14));
+        TextView title = text("Jean Calcul", 22, GLASS_CARD_TEXT, true);
+        TextView subtitle = text("Assistant Hermes mobile", 13, GLASS_CARD_MUTED_TEXT, false);
+        header.addView(title, matchWrap());
+        header.addView(subtitle, matchWrap());
 
-        TextView modelLabel = text("Hermes", 13, GLASS_CARD_MUTED_TEXT, true);
-        modelLabel.setPadding(0, dp(16), 0, 0);
-        sidebar.addView(modelLabel, matchWrap());
+        LinearLayout tabs = new LinearLayout(this);
+        tabs.setOrientation(LinearLayout.HORIZONTAL);
+        Button chatTab = button("Chat");
+        Button settingsTab = button("Paramètres");
+        tabs.addView(chatTab, weightWrap());
+        tabs.addView(settingsTab, weightWrap());
+        header.addView(tabs, matchWrap());
+        root.addView(header, matchWrap());
 
-        TextView modelSelector = text("Assistant mobile ▾", 15, GLASS_CARD_TEXT, false);
-        modelSelector.setPadding(dp(14), dp(12), dp(14), dp(12));
-        modelSelector.setBackground(glassDrawable(dp(18), 0.78f, 0.96f));
-        sidebar.addView(modelSelector, matchWrap());
+        FrameLayout pages = new FrameLayout(this);
+        root.addView(pages, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
 
-        baseUrlInput = input("URL Hermes", preferences.getString(KEY_BASE_URL, DEFAULT_BASE_URL), false);
-        tokenInput = input("Token optionnel", preferences.getString(KEY_TOKEN, ""), false);
-        sidebar.addView(baseUrlInput, matchWrap());
-        sidebar.addView(tokenInput, matchWrap());
+        chatPage = buildChatPage();
+        settingsPage = buildSettingsPage();
+        pages.addView(chatPage, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
+        pages.addView(settingsPage, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
 
-        LinearLayout configButtons = new LinearLayout(this);
-        configButtons.setOrientation(LinearLayout.HORIZONTAL);
-        configButtons.setGravity(Gravity.CENTER);
-        Button saveButton = button("Enregistrer");
-        saveButton.setOnClickListener(v -> saveConfig());
-        Button healthButton = button("Tester");
-        healthButton.setOnClickListener(v -> runAsync(this::healthCheck));
-        configButtons.addView(saveButton, weightWrap());
-        configButtons.addView(healthButton, weightWrap());
-        sidebar.addView(configButtons, matchWrap());
+        chatTab.setOnClickListener(v -> showPage(true));
+        settingsTab.setOnClickListener(v -> showPage(false));
+        showPage(true);
+        return liquidBackground;
+    }
 
-        addDivider(sidebar);
-        sidebar.addView(sidebarItem("Accueil"), matchWrap());
-        sidebar.addView(sidebarItem("Paramètres"), matchWrap());
-
-        addSpaceFill(sidebar);
-        TextView indexed = text("5 outils Android exposés", 12, GLASS_CARD_MUTED_TEXT, false);
-        sidebar.addView(indexed, matchWrap());
-
-        LinearLayout.LayoutParams sidebarParams = new LinearLayout.LayoutParams(dp(260), LinearLayout.LayoutParams.MATCH_PARENT);
-        sidebarParams.setMargins(0, 0, dp(16), 0);
-        shell.addView(sidebar, sidebarParams);
-
-        // --- Chat Area ---
-        LinearLayout chatArea = new LinearLayout(this);
-        chatArea.setOrientation(LinearLayout.VERTICAL);
-        shell.addView(chatArea, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f));
+    private LinearLayout buildChatPage() {
+        LinearLayout page = new LinearLayout(this);
+        page.setOrientation(LinearLayout.VERTICAL);
+        page.setPadding(0, dp(8), 0, 0);
 
         ScrollView messagesScroll = new ScrollView(this);
         messagesScroll.setFillViewport(true);
         LinearLayout messagesCard = glassCard();
-        messagesCard.setPadding(dp(24), dp(24), dp(24), dp(24));
+        messagesCard.setPadding(dp(18), dp(18), dp(18), dp(18));
         statusView = text("Prêt", 14, Color.rgb(195, 255, 207), false);
         messagesList = new LinearLayout(this);
         messagesList.setOrientation(LinearLayout.VERTICAL);
@@ -160,26 +154,69 @@ public class MainActivity extends Activity {
         messagesScroll.addView(messagesCard, new ScrollView.LayoutParams(
                 ScrollView.LayoutParams.MATCH_PARENT,
                 ScrollView.LayoutParams.WRAP_CONTENT));
-        chatArea.addView(messagesScroll, new LinearLayout.LayoutParams(
+        page.addView(messagesScroll, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
 
-        // --- Input Bar ---
         LinearLayout inputBar = new LinearLayout(this);
         inputBar.setOrientation(LinearLayout.HORIZONTAL);
         inputBar.setGravity(Gravity.CENTER_VERTICAL);
-        inputBar.setPadding(dp(12), dp(12), dp(12), 0);
-        messageInput = input("Message à envoyer à Hermes", "Ouvre les paramètres", true);
+        inputBar.setPadding(0, dp(10), 0, 0);
+        messageInput = input("Message à envoyer", "Ouvre les paramètres", true);
         Button sendButton = button("Envoyer");
         sendButton.setOnClickListener(v -> runAsync(this::sendMessage));
         inputBar.addView(messageInput, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         LinearLayout.LayoutParams sendParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         sendParams.setMargins(dp(8), 0, 0, 0);
         inputBar.addView(sendButton, sendParams);
-        chatArea.addView(inputBar, new LinearLayout.LayoutParams(
+        page.addView(inputBar, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
+        return page;
+    }
 
-        return liquidBackground;
+    private ScrollView buildSettingsPage() {
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.setFillViewport(true);
+        scrollView.setPadding(0, dp(8), 0, 0);
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        scrollView.addView(content, new ScrollView.LayoutParams(
+                ScrollView.LayoutParams.MATCH_PARENT,
+                ScrollView.LayoutParams.WRAP_CONTENT));
+
+        LinearLayout configCard = glassCard();
+        configCard.addView(label("Configuration Hermes"));
+        TextView helper = text("Renseigne l'URL et le token, puis teste la connexion avant de revenir au chat.", 14, GLASS_CARD_MUTED_TEXT, false);
+        configCard.addView(helper, matchWrap());
+        baseUrlInput = input("URL Hermes", preferences.getString(KEY_BASE_URL, DEFAULT_BASE_URL), false);
+        tokenInput = input("Token optionnel", preferences.getString(KEY_TOKEN, ""), false);
+        configCard.addView(baseUrlInput, matchWrap());
+        configCard.addView(tokenInput, matchWrap());
+
+        LinearLayout configButtons = new LinearLayout(this);
+        configButtons.setOrientation(LinearLayout.HORIZONTAL);
+        Button saveButton = button("Enregistrer");
+        saveButton.setOnClickListener(v -> saveConfig());
+        Button healthButton = button("Tester");
+        healthButton.setOnClickListener(v -> runAsync(this::healthCheck));
+        configButtons.addView(saveButton, weightWrap());
+        configButtons.addView(healthButton, weightWrap());
+        configCard.addView(configButtons, matchWrap());
+        content.addView(configCard, cardLayout());
+
+        LinearLayout toolsCard = glassCard();
+        toolsCard.addView(label("Outils Android"));
+        toolsCard.addView(sidebarItem("Volume : get_volume, set_volume"), matchWrap());
+        toolsCard.addView(sidebarItem("Applications : open_app"), matchWrap());
+        toolsCard.addView(sidebarItem("Lampe torche : toggle_flashlight"), matchWrap());
+        toolsCard.addView(sidebarItem("Notifications : send_notification"), matchWrap());
+        content.addView(toolsCard, cardLayout());
+        return scrollView;
+    }
+
+    private void showPage(boolean showChat) {
+        chatPage.setVisibility(showChat ? View.VISIBLE : View.GONE);
+        settingsPage.setVisibility(showChat ? View.GONE : View.VISIBLE);
     }
 
     private void saveConfig() {
