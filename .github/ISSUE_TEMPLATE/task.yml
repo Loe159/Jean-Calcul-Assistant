@@ -1,0 +1,26 @@
+name: Tâche d’implémentation
+description: Tâche du backlog Jean-Calcul Assistant
+title: "[Phase X][PX] "
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objectif
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dépendances
+  - type: textarea
+    id: work
+    attributes:
+      label: Travaux à réaliser
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Critères d’acceptation
+    validations:
+      required: true
