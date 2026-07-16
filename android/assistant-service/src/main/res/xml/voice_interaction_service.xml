@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:recognitionService="fr.loevan.jeancalcul.assistant.service.UnavailableRecognitionService"
+    android:sessionService="fr.loevan.jeancalcul.assistant.session.JeanCalculVoiceInteractionSessionService"
+    android:settingsActivity="fr.loevan.jeancalcul.app.MainActivity"
+    android:supportsAssist="false"
+    android:supportsLocalInteraction="false" />

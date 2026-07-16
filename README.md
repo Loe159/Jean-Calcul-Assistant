@@ -26,16 +26,18 @@ une frontière de distribution à ce stade : aucune accessibilité ni automatisa
 | Module | Responsabilité actuelle | Dépendances autorisées |
 | --- | --- | --- |
 | `app` | Point d’entrée Compose et assemblage des variantes | Tous les modules initiaux, jamais l’inverse |
-| `assistant-service` | Future intégration `VoiceInteractionService` | `core-domain` uniquement |
-| `assistant-session` | Future session assistant et UI de session | `core-domain`, `core-ui` |
+| `assistant-service` | Service assistant Android léger et métadonnées système | `core-domain` uniquement |
+| `assistant-session` | Endpoint de session isolé ; UI de session à venir | `core-domain`, `core-ui` |
 | `core-domain` | Contrats Kotlin indépendants d’Android | Aucune dépendance Android |
 | `core-data` | Future persistance et repositories | `core-domain` |
 | `core-ui` | Fondations Compose partagées | Aucune couche métier ou data |
 | `tool-bridge` | Future registre et exécution déterministe d’outils | `core-domain` |
 
-Les services Android et la session ne sont volontairement pas déclarés à ce stade : leur implémentation
-appartient aux issues suivantes. Les décisions d’architecture de la fondation sont consignées dans
-[`docs/architecture/0001-android-foundation.md`](docs/architecture/0001-android-foundation.md).
+Le rôle assistant est configuré par l’onboarding : il propose la demande système puis un accès de secours
+aux paramètres de saisie vocale. Le service reste minimal ; la session transparente et la reconnaissance
+vocale seront ajoutées dans les issues dédiées. Les décisions sont consignées dans
+[`docs/architecture/0001-android-foundation.md`](docs/architecture/0001-android-foundation.md) et
+[`docs/architecture/0002-android-assistant-role.md`](docs/architecture/0002-android-assistant-role.md).
 
 ## Commencer ici
 
