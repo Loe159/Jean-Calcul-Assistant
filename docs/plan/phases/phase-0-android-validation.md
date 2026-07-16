@@ -129,6 +129,11 @@ Critique : le projet doit être reproductible sur un environnement neuf.
 - résultat vérifié ;
 - audit minimal.
 
+Implementation note: the phase-0 tools expose only `MUSIC`, `ALARM` and `NOTIFICATION`.
+They reject unknown JSON properties and percentages outside 0-100 before calling Android,
+then return the volume reread from `AudioManager`. The general versioned registry remains
+the responsibility of phase-1 issue #27.
+
 ### 8. Parcours de bout en bout — #16
 
 Créer un interpréteur déterministe limité aux commandes de volume. Aucun LLM n’est nécessaire dans cette phase.
