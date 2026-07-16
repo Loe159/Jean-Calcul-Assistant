@@ -3,5 +3,5 @@
     android:recognitionService="fr.loevan.jeancalcul.assistant.service.UnavailableRecognitionService"
     android:sessionService="fr.loevan.jeancalcul.assistant.session.JeanCalculVoiceInteractionSessionService"
     android:settingsActivity="fr.loevan.jeancalcul.app.MainActivity"
-    android:supportsAssist="false"
+    android:supportsAssist="true"
     android:supportsLocalInteraction="false" />

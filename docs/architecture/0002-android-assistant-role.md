@@ -8,8 +8,9 @@ chaque reprise de `MainActivity`; le parcours propose aussi les paramètres syst
 
 Les métadonnées Android exigent un service de session et un service de reconnaissance. Ils sont donc
 déclarés dans une forme minimale : la session est isolée dans le processus `:assistant_session` et le
-reconnaisseur renvoie explicitement une erreur sans ouvrir le microphone. Leur implémentation réelle
-reste strictement réservée aux issues #11 et #13.
+reconnaisseur renvoie explicitement une erreur sans ouvrir le microphone. `supportsAssist` reste activé :
+Android ne retient sinon pas le `VoiceInteractionService` pour activer le rôle Assistant. Leur
+implémentation réelle reste strictement réservée aux issues #11 et #13.
 
 ## Conséquences
 
