@@ -30,5 +30,10 @@ kotlin {
 dependencies {
     implementation(project(":core-domain"))
     implementation(project(":core-ui"))
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.ui)
     implementation(libs.kotlinx.coroutines.core)
+    testImplementation(libs.junit)
 }

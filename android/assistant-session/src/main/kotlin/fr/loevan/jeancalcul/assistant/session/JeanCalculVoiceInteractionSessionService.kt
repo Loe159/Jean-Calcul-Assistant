@@ -5,10 +5,8 @@ import android.service.voice.VoiceInteractionSession
 import android.service.voice.VoiceInteractionSessionService
 
 /**
- * Minimal session endpoint required by Android's voice-interaction metadata.
- *
- * Its transparent Compose surface and interaction lifecycle are intentionally deferred to issue #11.
+ * Android endpoint that creates the isolated transparent assistant session.
  */
 class JeanCalculVoiceInteractionSessionService : VoiceInteractionSessionService() {
-    override fun onNewSession(args: Bundle?): VoiceInteractionSession = VoiceInteractionSession(this)
+    override fun onNewSession(args: Bundle?): VoiceInteractionSession = JeanCalculVoiceInteractionSession(this)
 }

@@ -27,17 +27,18 @@ une frontière de distribution à ce stade : aucune accessibilité ni automatisa
 | --- | --- | --- |
 | `app` | Point d’entrée Compose et assemblage des variantes | Tous les modules initiaux, jamais l’inverse |
 | `assistant-service` | Service assistant Android léger et métadonnées système | `core-domain` uniquement |
-| `assistant-session` | Endpoint de session isolé ; UI de session à venir | `core-domain`, `core-ui` |
+| `assistant-session` | Session Compose transparente isolée ; cycle de fermeture et fallback visuel | `core-domain`, `core-ui` |
 | `core-domain` | Contrats Kotlin indépendants d’Android | Aucune dépendance Android |
 | `core-data` | Future persistance et repositories | `core-domain` |
 | `core-ui` | Fondations Compose partagées | Aucune couche métier ou data |
 | `tool-bridge` | Future registre et exécution déterministe d’outils | `core-domain` |
 
 Le rôle assistant est configuré par l’onboarding : il propose la demande système puis un accès de secours
-aux paramètres de saisie vocale. Le service reste minimal ; la session transparente et la reconnaissance
-vocale seront ajoutées dans les issues dédiées. Les décisions sont consignées dans
+aux paramètres de saisie vocale. Le service reste minimal ; la session transparente est isolée et la
+reconnaissance vocale sera ajoutée dans son issue dédiée. Les décisions sont consignées dans
 [`docs/architecture/0001-android-foundation.md`](docs/architecture/0001-android-foundation.md) et
-[`docs/architecture/0002-android-assistant-role.md`](docs/architecture/0002-android-assistant-role.md).
+[`docs/architecture/0002-android-assistant-role.md`](docs/architecture/0002-android-assistant-role.md),
+ainsi que [`docs/architecture/0003-transparent-assistant-session.md`](docs/architecture/0003-transparent-assistant-session.md).
 
 ## Commencer ici
 
