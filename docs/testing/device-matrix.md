@@ -95,6 +95,20 @@ personnelle complète ne doit être visible et aucune action importante ne doit
 - [x] Build, correctif de sécurité et version One UI actuellement installée relevés sur l'appareil.
 - [ ] Appareil Android non-Samsung physique ajouté si disponible.
 
+### Essai #11 — session transparente
+
+| Date | Variante | Scénario | Résultat | Trace |
+| --- | --- | --- | --- | --- |
+| 2026-07-16 | `coreDebug` | DM-02, invocation par `KEYCODE_ASSIST` sur une application tierce | La session isolée démarre et reste active sans crash Compose. Une fermeture Retour suivie d'une nouvelle invocation ne produit pas de crash. | `logcat` local expurgé ; issue #11 |
+
+### Essai #12 — invocation Samsung
+
+La procédure de configuration, les traces expurgées et l'état détaillé des
+scénarios DM-01 à DM-06 sont consignés dans
+[`samsung-power-invocation.md`](samsung-power-invocation.md). L'émulation
+`KEYCODE_ASSIST` valide le parcours Android sélectionné par One UI, mais ne se
+substitue pas à l'appui physique long sur le bouton latéral.
+
 La configuration individuelle de batterie ne peut être relevée qu'après
 l'installation de Jean-Calcul Assistant ; elle est documentée dans les essais
 des issues qui introduisent le service et son invocation.
