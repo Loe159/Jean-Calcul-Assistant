@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.media.AudioManager
 import android.os.Bundle
 import android.service.voice.VoiceInteractionSession
 import android.util.Log
@@ -14,6 +15,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import fr.loevan.jeancalcul.domain.DeterministicVolumeCommandInterpreter
+import fr.loevan.jeancalcul.toolbridge.AudioManagerVolumeController
+import fr.loevan.jeancalcul.toolbridge.VolumeToolBridge
 
 /**
  * Full-screen voice session that preserves sight of the underlying activity while it owns input.
@@ -37,6 +41,16 @@ class JeanCalculVoiceInteractionSession(
             VoiceSessionController(
                 speechToTextProvider = AndroidSpeechToTextProvider(context),
                 textToSpeechProvider = AndroidTextToSpeechProvider(context),
+                voiceCommandProcessor =
+                    VolumeCommandProcessor(
+                        interpreter = DeterministicVolumeCommandInterpreter(),
+                        volumeToolBridge =
+                            VolumeToolBridge(
+                                AudioManagerVolumeController(
+                                    requireNotNull(context.getSystemService(AudioManager::class.java)),
+                                ),
+                            ),
+                    ),
             )
     }
 
@@ -64,6 +78,8 @@ class JeanCalculVoiceInteractionSession(
                             }
 
                             override fun cancelVoice() = voiceSessionController.cancelActiveWork()
+
+                            override fun confirmVoiceCommand() = voiceSessionController.confirmPendingCommand()
 
                             override fun speakTestResponse() = voiceSessionController.speakTestResponse()
 

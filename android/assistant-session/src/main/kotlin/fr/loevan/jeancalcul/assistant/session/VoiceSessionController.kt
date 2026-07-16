@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 internal class VoiceSessionController(
     private val speechToTextProvider: SpeechToTextProvider,
     private val textToSpeechProvider: TextToSpeechProvider,
+    private val voiceCommandProcessor: VoiceCommandProcessor = NoOpVoiceCommandProcessor,
     dispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
@@ -83,6 +84,11 @@ internal class VoiceSessionController(
         textToSpeechProvider.speak(TEST_RESPONSE)
     }
 
+    fun confirmPendingCommand() {
+        if (mutableState.value.status != VoiceSessionStatus.CONFIRMATION_REQUIRED) return
+        handleCommandOutcome(voiceCommandProcessor.confirm())
+    }
+
     fun updateTextFallback(text: String) {
         mutableState.value = mutableState.value.copy(partialTranscript = text)
     }
@@ -105,6 +111,7 @@ internal class VoiceSessionController(
         clearTimeout()
         speechToTextProvider.cancel()
         textToSpeechProvider.stop()
+        voiceCommandProcessor.cancelPending()
         mutableState.value =
             VoiceSessionState(
                 status = VoiceSessionStatus.INVOKED,
@@ -137,11 +144,10 @@ internal class VoiceSessionController(
                 clearTimeout()
                 mutableState.value =
                     mutableState.value.copy(
-                        status = VoiceSessionStatus.INVOKED,
                         partialTranscript = event.result.text,
                         finalResult = event.result,
-                        message = "Transcription terminee.",
                     )
+                handleCommandOutcome(voiceCommandProcessor.process(event.result.text))
             }
 
             is SpeechToTextEvent.Error -> showSpeechError(event.error)
@@ -186,6 +192,47 @@ internal class VoiceSessionController(
             delayMillis = FINAL_RESULT_TIMEOUT_MILLIS,
             message = "La transcription a expire. Reessayez.",
         )
+    }
+
+    private fun handleCommandOutcome(outcome: VoiceCommandOutcome) {
+        when (outcome) {
+            is VoiceCommandOutcome.Completed -> {
+                mutableState.value =
+                    mutableState.value.copy(
+                        status = VoiceSessionStatus.SPEAKING,
+                        confirmationPrompt = null,
+                        message = outcome.response,
+                    )
+                textToSpeechProvider.speak(outcome.response)
+            }
+
+            is VoiceCommandOutcome.ConfirmationRequired -> {
+                mutableState.value =
+                    mutableState.value.copy(
+                        status = VoiceSessionStatus.CONFIRMATION_REQUIRED,
+                        confirmationPrompt = outcome.prompt,
+                        message = outcome.prompt,
+                    )
+            }
+
+            is VoiceCommandOutcome.Invalid -> {
+                mutableState.value =
+                    mutableState.value.copy(
+                        status = VoiceSessionStatus.INVOKED,
+                        confirmationPrompt = null,
+                        message = outcome.message,
+                    )
+            }
+
+            is VoiceCommandOutcome.Failure -> {
+                mutableState.value =
+                    mutableState.value.copy(
+                        status = VoiceSessionStatus.ERROR,
+                        confirmationPrompt = null,
+                        message = outcome.message,
+                    )
+            }
+        }
     }
 
     private fun showSpeechError(error: SpeechToTextError) {
@@ -239,4 +286,14 @@ internal class VoiceSessionController(
         const val FINAL_RESULT_TIMEOUT_MILLIS = 5_000L
         const val TEST_RESPONSE = "La reponse vocale de test fonctionne."
     }
+}
+
+private object NoOpVoiceCommandProcessor : VoiceCommandProcessor {
+    override fun process(transcript: String): VoiceCommandOutcome =
+        VoiceCommandOutcome.Invalid("Aucune commande locale n'est configuree.")
+
+    override fun confirm(): VoiceCommandOutcome =
+        VoiceCommandOutcome.Invalid("Aucune action n'est en attente de confirmation.")
+
+    override fun cancelPending() = Unit
 }

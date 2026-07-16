@@ -138,6 +138,11 @@ the responsibility of phase-1 issue #27.
 
 Créer un interpréteur déterministe limité aux commandes de volume. Aucun LLM n’est nécessaire dans cette phase.
 
+Implementation note: the proof of concept maps an explicit "Mets le volume a N %" command to
+`audio.set_volume` on the `MUSIC` stream. "Baisse le volume" means a 10 percentage-point
+decrease only after an explicit confirmation; cancelling the confirmation does not write volume.
+Any other command is rejected locally without invoking a tool.
+
 Scénarios :
 
 - « Mets le volume à 30 % » ;

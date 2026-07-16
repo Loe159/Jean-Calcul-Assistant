@@ -7,6 +7,8 @@ internal interface VoiceSessionActions {
 
     fun cancelVoice()
 
+    fun confirmVoiceCommand()
+
     fun speakTestResponse()
 
     fun textChanged(text: String)

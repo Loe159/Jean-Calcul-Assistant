@@ -133,6 +133,14 @@ private fun voiceSessionControls(
     ) {
         Text("Lire la reponse de test")
     }
+    if (voiceState.status == VoiceSessionStatus.CONFIRMATION_REQUIRED) {
+        Button(
+            modifier = Modifier.padding(top = 8.dp),
+            onClick = actions::confirmVoiceCommand,
+        ) {
+            Text("Confirmer")
+        }
+    }
     Button(
         modifier = Modifier.padding(top = 8.dp),
         onClick = actions::cancelVoice,
@@ -153,6 +161,7 @@ private fun VoiceSessionState.title(visualState: AssistantSessionVisualState): S
         VoiceSessionStatus.PERMISSION_REQUIRED -> "Microphone requis"
         VoiceSessionStatus.LISTENING -> "A l'ecoute"
         VoiceSessionStatus.PROCESSING -> "Transcription en cours"
+        VoiceSessionStatus.CONFIRMATION_REQUIRED -> "Confirmation requise"
         VoiceSessionStatus.SPEAKING -> "Reponse vocale"
         VoiceSessionStatus.ERROR -> "Assistant indisponible"
     }
