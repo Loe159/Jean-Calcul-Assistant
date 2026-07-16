@@ -1,3 +1,0 @@
-<resources>
-    <style name="Theme.JeanCalcul" parent="android:style/Theme.DeviceDefault.DayNight.NoActionBar" />
-</resources>

@@ -3,8 +3,7 @@
         android:name=".JeanCalculApplication"
         android:allowBackup="false"
         android:label="Jean-Calcul Assistant"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.JeanCalcul">
+        android:supportsRtl="true">
         <activity
             android:name=".MainActivity"
             android:exported="true">
