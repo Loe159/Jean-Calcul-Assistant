@@ -16,6 +16,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import fr.loevan.jeancalcul.domain.DeterministicVolumeCommandInterpreter
+import fr.loevan.jeancalcul.observability.AndroidPerformanceTrace
+import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
 import fr.loevan.jeancalcul.toolbridge.AudioManagerVolumeController
 import fr.loevan.jeancalcul.toolbridge.VolumeToolBridge
 
@@ -29,6 +31,7 @@ class JeanCalculVoiceInteractionSession(
     private val visualState = mutableStateOf(AssistantSessionVisualState.INVOKED)
     private val lifecycleOwner = SessionLifecycleOwner()
     private val windowController = SessionWindowController(::closeSession)
+    private val performanceTrace = AndroidPerformanceTrace(context)
     private lateinit var voiceSessionController: VoiceSessionController
     private var isClosing = false
 
@@ -50,13 +53,16 @@ class JeanCalculVoiceInteractionSession(
                                     requireNotNull(context.getSystemService(AudioManager::class.java)),
                                 ),
                             ),
+                        performanceTrace = performanceTrace,
                     ),
+                performanceTrace = performanceTrace,
             )
     }
 
     override fun onCreateContentView(): View {
         getWindow()?.window?.decorView?.installSessionViewTreeOwners(lifecycleOwner)
         return ComposeView(context).apply {
+            markFirstFrame(this)
             installSessionViewTreeOwners(lifecycleOwner)
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
@@ -97,6 +103,8 @@ class JeanCalculVoiceInteractionSession(
         showFlags: Int,
     ) {
         super.onPrepareShow(args, showFlags)
+        performanceTrace.startInvocation()
+        performanceTrace.captureMemory("session_invocation")
         visualState.value = AssistantSessionStateReducer.reduce(AssistantSessionEvent.PREPARED)
     }
 
@@ -131,6 +139,8 @@ class JeanCalculVoiceInteractionSession(
         }
         lifecycleOwner.destroy()
         windowController.release()
+        performanceTrace.captureMemory("session_destroy")
+        performanceTrace.finishInvocation("session_destroy")
         super.onDestroy()
     }
 
@@ -150,6 +160,21 @@ class JeanCalculVoiceInteractionSession(
         } else {
             voiceSessionController.requireMicrophonePermission()
         }
+    }
+
+    private fun markFirstFrame(view: View) {
+        view.viewTreeObserver.addOnPreDrawListener(
+            object : android.view.ViewTreeObserver.OnPreDrawListener {
+                override fun onPreDraw(): Boolean {
+                    if (view.viewTreeObserver.isAlive) {
+                        view.viewTreeObserver.removeOnPreDrawListener(this)
+                    }
+                    performanceTrace.mark(PerformanceTraceEvent.FIRST_FRAME)
+                    performanceTrace.captureMemory("session_first_frame")
+                    return true
+                }
+            },
+        )
     }
 
     private companion object {

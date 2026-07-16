@@ -6,6 +6,8 @@ import fr.loevan.jeancalcul.domain.SpeechToTextEvent
 import fr.loevan.jeancalcul.domain.SpeechToTextProvider
 import fr.loevan.jeancalcul.domain.TextToSpeechEvent
 import fr.loevan.jeancalcul.domain.TextToSpeechProvider
+import fr.loevan.jeancalcul.observability.PerformanceTrace
+import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +26,7 @@ internal class VoiceSessionController(
     private val speechToTextProvider: SpeechToTextProvider,
     private val textToSpeechProvider: TextToSpeechProvider,
     private val voiceCommandProcessor: VoiceCommandProcessor = NoOpVoiceCommandProcessor,
+    private val performanceTrace: PerformanceTrace = NoOpPerformanceTrace,
     dispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
@@ -133,8 +136,11 @@ internal class VoiceSessionController(
 
     private fun handleSpeechEvent(event: SpeechToTextEvent) {
         when (event) {
+            SpeechToTextEvent.Ready -> performanceTrace.mark(PerformanceTraceEvent.MICROPHONE_READY)
+            SpeechToTextEvent.SpeechStarted -> performanceTrace.mark(PerformanceTraceEvent.SPEECH_STARTED)
             is SpeechToTextEvent.Partial -> {
                 if (mutableState.value.status == VoiceSessionStatus.LISTENING) {
+                    performanceTrace.mark(PerformanceTraceEvent.FIRST_TRANSCRIPTION)
                     mutableState.value = mutableState.value.copy(partialTranscript = event.text)
                 }
             }
@@ -142,6 +148,7 @@ internal class VoiceSessionController(
             SpeechToTextEvent.EndOfSpeech -> waitForFinalResult()
             is SpeechToTextEvent.Final -> {
                 clearTimeout()
+                performanceTrace.mark(PerformanceTraceEvent.FINAL_RESULT)
                 mutableState.value =
                     mutableState.value.copy(
                         partialTranscript = event.result.text,
@@ -296,4 +303,14 @@ private object NoOpVoiceCommandProcessor : VoiceCommandProcessor {
         VoiceCommandOutcome.Invalid("Aucune action n'est en attente de confirmation.")
 
     override fun cancelPending() = Unit
+}
+
+internal object NoOpPerformanceTrace : PerformanceTrace {
+    override fun startInvocation() = Unit
+
+    override fun mark(event: PerformanceTraceEvent) = Unit
+
+    override fun captureMemory(checkpoint: String) = Unit
+
+    override fun finishInvocation(reason: String) = Unit
 }

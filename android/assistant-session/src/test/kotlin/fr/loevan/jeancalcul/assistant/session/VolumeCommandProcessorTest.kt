@@ -3,6 +3,7 @@ package fr.loevan.jeancalcul.assistant.session
 import fr.loevan.jeancalcul.domain.DeterministicVolumeCommandInterpreter
 import fr.loevan.jeancalcul.domain.ToolAuditLogger
 import fr.loevan.jeancalcul.domain.VolumeStream
+import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
 import fr.loevan.jeancalcul.toolbridge.PlatformVolume
 import fr.loevan.jeancalcul.toolbridge.VolumeController
 import fr.loevan.jeancalcul.toolbridge.VolumeToolBridge
@@ -60,6 +61,25 @@ class VolumeCommandProcessorTest {
         assertEquals(
             VoiceCommandOutcome.Completed("Le volume de musique est maintenant a 60 %."),
             outcome,
+        )
+    }
+
+    @Test
+    fun `volume write reports the request and observed application`() {
+        val controller = FakeVolumeController(current = 4)
+        val performanceTrace = RecordingPerformanceTrace()
+        val processor =
+            VolumeCommandProcessor(
+                interpreter = DeterministicVolumeCommandInterpreter(actionIdFactory = { "action" }),
+                volumeToolBridge = VolumeToolBridge(controller, ToolAuditLogger { }),
+                performanceTrace = performanceTrace,
+            )
+
+        processor.process("Mets le volume a 30 %")
+
+        assertEquals(
+            listOf(PerformanceTraceEvent.VOLUME_REQUESTED, PerformanceTraceEvent.VOLUME_APPLIED),
+            performanceTrace.events,
         )
     }
 

@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "fr.loevan.jeancalcul.assistant.service"
+    namespace = "fr.loevan.jeancalcul.observability"
     compileSdk = 35
 
     defaultConfig {
@@ -23,7 +23,5 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":core-domain"))
-    implementation(project(":core-observability"))
-    implementation(libs.kotlinx.coroutines.core)
+    testImplementation(libs.junit)
 }

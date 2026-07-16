@@ -55,6 +55,39 @@ class VoiceVolumeEndToEndInstrumentedTest {
             session.close()
         }
 
+    @Test
+    fun thirty_successive_voice_command_sessions_do_not_crash() =
+        runTest {
+            repeat(INVOCATION_COUNT) { invocation ->
+                val speechToText = InstrumentedSpeechToTextProvider()
+                val textToSpeech = InstrumentedTextToSpeechProvider()
+                val volumeController = InstrumentedVolumeController()
+                val session =
+                    VoiceSessionController(
+                        speechToTextProvider = speechToText,
+                        textToSpeechProvider = textToSpeech,
+                        voiceCommandProcessor =
+                            VolumeCommandProcessor(
+                                DeterministicVolumeCommandInterpreter { "instrumented-action-$invocation" },
+                                VolumeToolBridge(volumeController, ToolAuditLogger { }),
+                            ),
+                        dispatcher = StandardTestDispatcher(testScheduler),
+                    )
+                runCurrent()
+
+                session.startListening()
+                speechToText.emit(
+                    SpeechToTextEvent.Final(
+                        SpeechRecognitionResult("Mets le volume a 30 %", confidence = 1f),
+                    ),
+                )
+                runCurrent()
+
+                assertEquals(3, volumeController.volume.current)
+                session.close()
+            }
+        }
+
     private class InstrumentedSpeechToTextProvider : SpeechToTextProvider {
         private val mutableEvents = MutableSharedFlow<SpeechToTextEvent>()
         override val events: Flow<SpeechToTextEvent> = mutableEvents.asSharedFlow()
@@ -96,5 +129,9 @@ class VoiceVolumeEndToEndInstrumentedTest {
         ) {
             this.volume = this.volume.copy(current = volume)
         }
+    }
+
+    private companion object {
+        const val INVOCATION_COUNT = 30
     }
 }

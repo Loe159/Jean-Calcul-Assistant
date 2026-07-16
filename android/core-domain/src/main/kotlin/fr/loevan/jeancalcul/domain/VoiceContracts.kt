@@ -21,6 +21,10 @@ interface SpeechToTextProvider {
 }
 
 sealed interface SpeechToTextEvent {
+    data object Ready : SpeechToTextEvent
+
+    data object SpeechStarted : SpeechToTextEvent
+
     data class Partial(val text: String) : SpeechToTextEvent
 
     data object EndOfSpeech : SpeechToTextEvent

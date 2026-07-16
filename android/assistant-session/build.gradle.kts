@@ -29,6 +29,7 @@ kotlin {
 
 dependencies {
     implementation(project(":core-domain"))
+    implementation(project(":core-observability"))
     implementation(project(":core-ui"))
     implementation(project(":tool-bridge"))
     implementation(platform(libs.androidx.compose.bom))

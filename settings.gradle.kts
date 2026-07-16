@@ -22,6 +22,7 @@ include(
     ":assistant-session",
     ":core-domain",
     ":core-data",
+    ":core-observability",
     ":core-ui",
     ":tool-bridge",
 )
@@ -31,5 +32,6 @@ project(":assistant-service").projectDir = file("android/assistant-service")
 project(":assistant-session").projectDir = file("android/assistant-session")
 project(":core-domain").projectDir = file("android/core-domain")
 project(":core-data").projectDir = file("android/core-data")
+project(":core-observability").projectDir = file("android/core-observability")
 project(":core-ui").projectDir = file("android/core-ui")
 project(":tool-bridge").projectDir = file("android/tool-bridge")

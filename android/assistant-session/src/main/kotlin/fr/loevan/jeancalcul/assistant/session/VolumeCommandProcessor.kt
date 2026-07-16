@@ -3,6 +3,8 @@ package fr.loevan.jeancalcul.assistant.session
 import fr.loevan.jeancalcul.domain.DeterministicVolumeCommandInterpreter
 import fr.loevan.jeancalcul.domain.RelativeVolumeAdjustment
 import fr.loevan.jeancalcul.domain.VolumeCommandInterpretation
+import fr.loevan.jeancalcul.observability.PerformanceTrace
+import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
 import fr.loevan.jeancalcul.toolbridge.VolumeToolBridge
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -11,6 +13,7 @@ import kotlinx.serialization.json.jsonPrimitive
 internal class VolumeCommandProcessor(
     private val interpreter: DeterministicVolumeCommandInterpreter,
     private val volumeToolBridge: VolumeToolBridge,
+    private val performanceTrace: PerformanceTrace = NoOpPerformanceTrace,
 ) : VoiceCommandProcessor {
     private var pendingAdjustment: RelativeVolumeAdjustment? = null
 
@@ -49,7 +52,10 @@ internal class VolumeCommandProcessor(
             ?: VoiceCommandOutcome.Failure("Je n'ai pas pu lire le volume actuel.")
 
     private fun execute(proposal: fr.loevan.jeancalcul.domain.ActionProposal): VoiceCommandOutcome {
+        val isVolumeWrite = proposal.toolName == "audio.set_volume"
+        if (isVolumeWrite) performanceTrace.mark(PerformanceTraceEvent.VOLUME_REQUESTED)
         val result = volumeToolBridge.execute(proposal)
+        if (isVolumeWrite && result.isSuccess) performanceTrace.mark(PerformanceTraceEvent.VOLUME_APPLIED)
         val observedPercent = result.output?.get("volumePercent")?.jsonPrimitive?.intOrNull
         return if (result.isSuccess && observedPercent != null) {
             VoiceCommandOutcome.Completed("Le volume de musique est maintenant a $observedPercent %.")

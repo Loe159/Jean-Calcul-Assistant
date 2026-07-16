@@ -57,9 +57,13 @@ internal class AndroidSpeechToTextProvider(
         recognizer ?: SpeechRecognizer.createSpeechRecognizer(context).also { createdRecognizer ->
             createdRecognizer.setRecognitionListener(
                 object : RecognitionListener {
-                    override fun onReadyForSpeech(params: Bundle?) = Unit
+                    override fun onReadyForSpeech(params: Bundle?) {
+                        emit(SpeechToTextEvent.Ready)
+                    }
 
-                    override fun onBeginningOfSpeech() = Unit
+                    override fun onBeginningOfSpeech() {
+                        emit(SpeechToTextEvent.SpeechStarted)
+                    }
 
                     override fun onRmsChanged(rmsdB: Float) = Unit
 

@@ -5,6 +5,8 @@ import fr.loevan.jeancalcul.domain.SpeechToTextEvent
 import fr.loevan.jeancalcul.domain.SpeechToTextProvider
 import fr.loevan.jeancalcul.domain.TextToSpeechEvent
 import fr.loevan.jeancalcul.domain.TextToSpeechProvider
+import fr.loevan.jeancalcul.observability.PerformanceTrace
+import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -116,6 +118,43 @@ class VoiceSessionControllerTest {
             assertEquals("Bonjour Jean", controller.state.value.finalResult?.text)
             controller.close()
         }
+
+    @Test
+    fun `speech callbacks emit the required performance milestones`() =
+        runTest {
+            val speechToText = FakeSpeechToTextProvider()
+            val performanceTrace = RecordingPerformanceTrace()
+            val controller =
+                VoiceSessionController(
+                    speechToTextProvider = speechToText,
+                    textToSpeechProvider = FakeTextToSpeechProvider(),
+                    performanceTrace = performanceTrace,
+                    dispatcher = StandardTestDispatcher(testScheduler),
+                )
+            runCurrent()
+
+            controller.startListening()
+            speechToText.emit(SpeechToTextEvent.Ready)
+            speechToText.emit(SpeechToTextEvent.SpeechStarted)
+            speechToText.emit(SpeechToTextEvent.Partial("Mets le volume"))
+            speechToText.emit(
+                SpeechToTextEvent.Final(
+                    SpeechRecognitionResult(text = "Mets le volume a 30", confidence = 0.9f),
+                ),
+            )
+            runCurrent()
+
+            assertEquals(
+                listOf(
+                    PerformanceTraceEvent.MICROPHONE_READY,
+                    PerformanceTraceEvent.SPEECH_STARTED,
+                    PerformanceTraceEvent.FIRST_TRANSCRIPTION,
+                    PerformanceTraceEvent.FINAL_RESULT,
+                ),
+                performanceTrace.events,
+            )
+            controller.close()
+        }
 }
 
 private class FakeSpeechToTextProvider : SpeechToTextProvider {
@@ -161,4 +200,18 @@ private class FakeTextToSpeechProvider : TextToSpeechProvider {
     override fun release() {
         released = true
     }
+}
+
+internal class RecordingPerformanceTrace : PerformanceTrace {
+    val events = mutableListOf<PerformanceTraceEvent>()
+
+    override fun startInvocation() = Unit
+
+    override fun mark(event: PerformanceTraceEvent) {
+        events += event
+    }
+
+    override fun captureMemory(checkpoint: String) = Unit
+
+    override fun finishInvocation(reason: String) = Unit
 }
