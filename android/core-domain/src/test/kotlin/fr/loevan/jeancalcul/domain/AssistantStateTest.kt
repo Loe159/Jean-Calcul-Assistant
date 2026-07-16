@@ -1,5 +1,6 @@
 package fr.loevan.jeancalcul.domain
 
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Test
