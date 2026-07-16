@@ -9,7 +9,7 @@ et un lien vers sa trace dans l'issue qui l'utilise.
 
 | Environnement | Statut | Matériel et système | Écran / mémoire | Utilisation |
 | --- | --- | --- | --- | --- |
-| Samsung principal | Partiellement relevé | Samsung Galaxy S26 ; Android, niveau de correctif et One UI : à relever | Résolution, densité et RAM : à relever | Référence obligatoire pour le rôle assistant et l'invocation Power |
+| Samsung principal | Caractéristiques matérielles relevées | Samsung Galaxy S26 5G Dual SIM (`SM-S942B/DS`), Android 16 / One UI 8.5 au lancement | 2340 × 1080 px, 120 Hz, 12 Go RAM | Référence obligatoire pour le rôle assistant et l'invocation Power |
 | Émulateur AOSP | Défini | Android Studio : image `Google APIs`, API 35, ABI `x86_64`, AVD `Pixel 8` | 1080 × 2400 px, 420 dpi, 8 Go RAM, stockage 8 Go | Régressions fonctionnelles ne dépendant pas de One UI |
 | Appareil Android non-Samsung | Non disponible | Aucun appareil physique supplémentaire n'est actuellement disponible | S/O | À ajouter dès qu'un Pixel ou un autre appareil est disponible ; l'émulateur AOSP ne remplace pas cette validation matérielle |
 
@@ -37,17 +37,20 @@ adb shell cat /proc/meminfo | head -n 1
 Relever aussi dans **Paramètres > À propos du téléphone > Informations sur le
 logiciel** la version One UI exacte. La version One UI n'est pas exposée de
 façon stable par une propriété Android publique et doit donc être relevée dans
-l'interface Samsung. Consigner le résultat ci-dessous :
+l'interface Samsung. Les valeurs publiées ci-dessous identifient le matériel et
+le logiciel livré ; le build, le correctif de sécurité et la version installée
+doivent toujours être confirmés sur l'appareil avant un essai reproductible.
+Consigner le résultat ci-dessous :
 
 | Champ | Valeur relevée | Date | Preuve / lien issue |
 | --- | --- | --- | --- |
-| Modèle Samsung | Samsung Galaxy S26 | 2026-07-16 | Déclaration du propriétaire |
-| Android / niveau API | À renseigner | — | — |
+| Modèle Samsung | Galaxy S26 5G Dual SIM (`SM-S942B/DS`) | 2026-07-16 | [Support Samsung](https://www.samsung.com/nz/support/model/SM-S942BZVCXNZ/) |
+| Android / niveau API | Android 16 / API 36 (version livrée) | 2026-07-16 | [Fiche Samsung Galaxy S26](https://www.samsung.com/africa_en/business/smartphones/galaxy-s/galaxy-s26-sm-s942bzkoafb/) |
 | Correctif de sécurité | À renseigner | — | — |
-| One UI | À renseigner | — | — |
+| One UI | One UI 8.5 (version livrée ; installation à confirmer) | 2026-07-16 | [Fiche Samsung Galaxy S26](https://www.samsung.com/uk/smartphones/galaxy-s26/) |
 | Build | À renseigner | — | — |
-| Résolution / densité | À renseigner | — | — |
-| RAM totale | À renseigner | — | — |
+| Résolution / densité | 2340 × 1080 px ; densité à relever | 2026-07-16 | [Fiche Samsung Galaxy S26](https://www.samsung.com/africa_en/business/smartphones/galaxy-s/galaxy-s26-sm-s942bzkoafb/) |
+| RAM totale | 12 Go | 2026-07-16 | [Fiche Samsung Galaxy S26](https://www.samsung.com/uk/smartphones/galaxy-s26/) |
 
 ## Configuration Samsung à relever
 
@@ -85,8 +88,10 @@ personnelle complète ne doit être visible et aucune action importante ne doit
 
 - [x] Environnement AOSP de référence défini.
 - [x] Scénarios critiques définis.
-- [ ] Samsung principal identifié avec ses valeurs exactes.
+- [x] Samsung principal identifié : Galaxy S26 5G Dual SIM (`SM-S942B/DS`).
+- [ ] Build, correctif de sécurité et version One UI actuellement installée relevés sur l'appareil.
 - [ ] Appareil Android non-Samsung physique ajouté si disponible.
 
-L'issue #8 ne peut être fermée qu'après le relevé du Samsung principal ; cette
-information dépend du téléphone physique et n'est pas disponible dans le dépôt.
+L'issue #8 ne peut être fermée qu'après le relevé du build, du correctif de
+sécurité et de la version One UI actuellement installée ; ces informations
+dépendent du téléphone physique et de ses mises à jour.
