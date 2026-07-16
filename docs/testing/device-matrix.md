@@ -9,7 +9,7 @@ et un lien vers sa trace dans l'issue qui l'utilise.
 
 | Environnement | Statut | Matériel et système | Écran / mémoire | Utilisation |
 | --- | --- | --- | --- | --- |
-| Samsung principal | Caractéristiques matérielles relevées | Samsung Galaxy S26 5G Dual SIM (`SM-S942B/DS`), Android 16 / One UI 8.5 au lancement | 2340 × 1080 px, 120 Hz, 12 Go RAM | Référence obligatoire pour le rôle assistant et l'invocation Power |
+| Samsung principal | Relevé le 2026-07-16 | Samsung Galaxy S26 5G Dual SIM (`SM-S942B/DS`), Android 16 / One UI 8.5, build `BP4A.251205.006.S942BXXS3AZF1` | 2340 × 1080 px, 120 Hz, 12 Go RAM | Référence obligatoire pour le rôle assistant et l'invocation Power |
 | Émulateur AOSP | Défini | Android Studio : image `Google APIs`, API 35, ABI `x86_64`, AVD `Pixel 8` | 1080 × 2400 px, 420 dpi, 8 Go RAM, stockage 8 Go | Régressions fonctionnelles ne dépendant pas de One UI |
 | Appareil Android non-Samsung | Non disponible | Aucun appareil physique supplémentaire n'est actuellement disponible | S/O | À ajouter dès qu'un Pixel ou un autre appareil est disponible ; l'émulateur AOSP ne remplace pas cette validation matérielle |
 
@@ -45,10 +45,11 @@ Consigner le résultat ci-dessous :
 | Champ | Valeur relevée | Date | Preuve / lien issue |
 | --- | --- | --- | --- |
 | Modèle Samsung | Galaxy S26 5G Dual SIM (`SM-S942B/DS`) | 2026-07-16 | [Support Samsung](https://www.samsung.com/nz/support/model/SM-S942BZVCXNZ/) |
-| Android / niveau API | Android 16 / API 36 (version livrée) | 2026-07-16 | [Fiche Samsung Galaxy S26](https://www.samsung.com/africa_en/business/smartphones/galaxy-s/galaxy-s26-sm-s942bzkoafb/) |
-| Correctif de sécurité | À renseigner | — | — |
-| One UI | One UI 8.5 (version livrée ; installation à confirmer) | 2026-07-16 | [Fiche Samsung Galaxy S26](https://www.samsung.com/uk/smartphones/galaxy-s26/) |
-| Build | À renseigner | — | — |
+| Android / niveau API | Android 16 / API 36 | 2026-07-16 | Relevé sur l'appareil |
+| Correctif de sécurité | 5 juin 2026 | 2026-07-16 | Relevé sur l'appareil |
+| One UI | One UI 8.5 | 2026-07-16 | Relevé sur l'appareil |
+| Build | `BP4A.251205.006.S942BXXS3AZF1` | 2026-07-16 | Relevé sur l'appareil |
+| Mise à jour système Google Play | 1 juin 2026 | 2026-07-16 | Relevé sur l'appareil |
 | Résolution / densité | 2340 × 1080 px ; densité à relever | 2026-07-16 | [Fiche Samsung Galaxy S26](https://www.samsung.com/africa_en/business/smartphones/galaxy-s/galaxy-s26-sm-s942bzkoafb/) |
 | RAM totale | 12 Go | 2026-07-16 | [Fiche Samsung Galaxy S26](https://www.samsung.com/uk/smartphones/galaxy-s26/) |
 
@@ -56,11 +57,13 @@ Consigner le résultat ci-dessous :
 
 | Paramètre | Valeur à documenter | Effet à vérifier |
 | --- | --- | --- |
-| Bouton latéral — appui long | Assistant sélectionné et chemin exact dans One UI | L'assistant Android par défaut est invoqué sans ouvrir un écran Samsung concurrent |
-| Bouton latéral — double appui | Action configurée | Absence de conflit avec les essais d'invocation |
-| Assistant numérique par défaut | Application sélectionnée | Persistance après arrêt forcé et redémarrage |
-| Batterie de l'application | `Sans restriction`, `Optimisée` ou `Restreinte` | Impact sur le service, la session et la reprise après veille |
-| Batterie adaptative / économie d'énergie | Activée ou désactivée | Comportement quand l'économie d'énergie est active |
+| Bouton latéral — appui long | Assistant numérique (Google) | L'assistant Android par défaut est invoqué sans ouvrir un écran Samsung concurrent |
+| Bouton latéral — double appui | Appareil photo ; option activée | Absence de conflit avec les essais d'invocation |
+| Assistant numérique par défaut | Google | À remplacer par Jean-Calcul Assistant lors des essais #10 et #12 |
+| Batterie de l'application | À relever après installation de l'application | Impact sur le service, la session et la reprise après veille |
+| Économie d'énergie | Désactivée | État de référence pour les premiers essais |
+| Protection de la batterie | Activée, mode Basique | Consigner si ce réglage influence les essais prolongés |
+| Batterie adaptative | Non relevée | À contrôler dans les limites d'utilisation en arrière-plan avant les essais de veille |
 | Autorisations microphone et notifications | État exact | L'état ne doit pas être confondu avec le rôle assistant |
 
 Les essais ne doivent ni désactiver les protections Android ni contourner
@@ -89,9 +92,9 @@ personnelle complète ne doit être visible et aucune action importante ne doit
 - [x] Environnement AOSP de référence défini.
 - [x] Scénarios critiques définis.
 - [x] Samsung principal identifié : Galaxy S26 5G Dual SIM (`SM-S942B/DS`).
-- [ ] Build, correctif de sécurité et version One UI actuellement installée relevés sur l'appareil.
+- [x] Build, correctif de sécurité et version One UI actuellement installée relevés sur l'appareil.
 - [ ] Appareil Android non-Samsung physique ajouté si disponible.
 
-L'issue #8 ne peut être fermée qu'après le relevé du build, du correctif de
-sécurité et de la version One UI actuellement installée ; ces informations
-dépendent du téléphone physique et de ses mises à jour.
+La configuration individuelle de batterie ne peut être relevée qu'après
+l'installation de Jean-Calcul Assistant ; elle est documentée dans les essais
+des issues qui introduisent le service et son invocation.
