@@ -1,0 +1,49 @@
+name: Android CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Build, test and analyse Android foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK platform
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Build project and verify Core and Power User variants
+        run: ./gradlew --no-daemon build assembleCoreDebug assemblePowerUserDebug
+
+      - name: Run unit tests
+        run: ./gradlew --no-daemon test
+
+      - name: Run ktlint, Detekt and Android Lint
+        run: ./gradlew --no-daemon ktlintCheck detekt lintCoreDebug lintPowerUserDebug
+
+      - name: Upload verification reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-verification-reports
+          path: |
+            **/build/reports/**
+            **/build/test-results/**
+          if-no-files-found: ignore
