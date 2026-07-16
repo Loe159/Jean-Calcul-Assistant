@@ -5,6 +5,6 @@ import androidx.compose.runtime.Composable
 
 /** Shared Compose entry point. Product-specific visual design is added in later issues. */
 @Composable
-fun JeanCalculTheme(content: @Composable () -> Unit) {
+fun jeanCalculTheme(content: @Composable () -> Unit) {
     MaterialTheme(content = content)
 }
