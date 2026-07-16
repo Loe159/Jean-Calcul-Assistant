@@ -9,7 +9,7 @@ et un lien vers sa trace dans l'issue qui l'utilise.
 
 | Environnement | Statut | Matériel et système | Écran / mémoire | Utilisation |
 | --- | --- | --- | --- | --- |
-| Samsung principal | À relever avant les essais #10 à #16 | Modèle, Android, niveau de correctif et One UI : à relever | Résolution, densité et RAM : à relever | Référence obligatoire pour le rôle assistant et l'invocation Power |
+| Samsung principal | Partiellement relevé | Samsung Galaxy S26 ; Android, niveau de correctif et One UI : à relever | Résolution, densité et RAM : à relever | Référence obligatoire pour le rôle assistant et l'invocation Power |
 | Émulateur AOSP | Défini | Android Studio : image `Google APIs`, API 35, ABI `x86_64`, AVD `Pixel 8` | 1080 × 2400 px, 420 dpi, 8 Go RAM, stockage 8 Go | Régressions fonctionnelles ne dépendant pas de One UI |
 | Appareil Android non-Samsung | Non disponible | Aucun appareil physique supplémentaire n'est actuellement disponible | S/O | À ajouter dès qu'un Pixel ou un autre appareil est disponible ; l'émulateur AOSP ne remplace pas cette validation matérielle |
 
@@ -41,7 +41,7 @@ l'interface Samsung. Consigner le résultat ci-dessous :
 
 | Champ | Valeur relevée | Date | Preuve / lien issue |
 | --- | --- | --- | --- |
-| Modèle Samsung | À renseigner | — | — |
+| Modèle Samsung | Samsung Galaxy S26 | 2026-07-16 | Déclaration du propriétaire |
 | Android / niveau API | À renseigner | — | — |
 | Correctif de sécurité | À renseigner | — | — |
 | One UI | À renseigner | — | — |
