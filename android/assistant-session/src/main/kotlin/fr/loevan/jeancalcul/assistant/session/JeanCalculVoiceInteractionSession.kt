@@ -8,6 +8,7 @@ import android.util.Log
 import android.view.View
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 
 /**
  * Full-screen voice session that preserves sight of the underlying activity while it owns input.
@@ -16,16 +17,22 @@ class JeanCalculVoiceInteractionSession(
     context: Context,
 ) : VoiceInteractionSession(context) {
     private val visualState = mutableStateOf(AssistantSessionVisualState.INVOKED)
+    private val lifecycleOwner = SessionLifecycleOwner()
     private val windowController = SessionWindowController(::closeSession)
     private var isClosing = false
 
     override fun onCreate() {
         super.onCreate()
+        lifecycleOwner.create()
+        getWindow()?.window?.decorView?.installSessionViewTreeOwners(lifecycleOwner)
         windowController.prepare(getWindow())
     }
 
-    override fun onCreateContentView(): View =
-        ComposeView(context).apply {
+    override fun onCreateContentView(): View {
+        getWindow()?.window?.decorView?.installSessionViewTreeOwners(lifecycleOwner)
+        return ComposeView(context).apply {
+            installSessionViewTreeOwners(lifecycleOwner)
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 transparentAssistantSessionContent(
                     visualState = visualState.value,
@@ -33,6 +40,7 @@ class JeanCalculVoiceInteractionSession(
                 )
             }
         }
+    }
 
     override fun onPrepareShow(
         args: Bundle?,
@@ -47,6 +55,7 @@ class JeanCalculVoiceInteractionSession(
         showFlags: Int,
     ) {
         super.onShow(args, showFlags)
+        lifecycleOwner.show()
         visualState.value = AssistantSessionStateReducer.reduce(AssistantSessionEvent.SHOWN)
     }
 
@@ -66,6 +75,7 @@ class JeanCalculVoiceInteractionSession(
     }
 
     override fun onDestroy() {
+        lifecycleOwner.destroy()
         windowController.release()
         super.onDestroy()
     }

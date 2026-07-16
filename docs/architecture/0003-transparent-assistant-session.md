@@ -7,6 +7,12 @@
 plein écran. La fenêtre est transparente, non atténuée et tactile afin de conserver l’application
 courante visible tout en empêchant que ses interactions reçoivent les gestes de la session.
 
+Comme une `VoiceInteractionSession` n’est ni une activité ni un fragment, elle fournit les
+propriétaires stables de cycle de vie, d’état sauvegardé et de `ViewModelStore` à sa vue Compose.
+Le cycle passe à l’état créé au démarrage de la session, à l’état repris lors de son affichage puis
+détruit lors de sa fermeture. Compose peut ainsi créer et libérer son recomposer sans dépendre du
+cycle de vie de l’application principale.
+
 Un scrim translucide Compose est systématiquement rendu : il est la solution de repli lorsque le flou
 système n’est pas disponible. Sur Android 12 et versions ultérieures, la session demande aussi un blur
 d’arrière-plan ; son absence ne modifie pas la lisibilité ni le comportement de fermeture.
