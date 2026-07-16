@@ -42,7 +42,7 @@ internal fun transparentAssistantSessionContent(
                 modifier =
                     Modifier
                         .padding(24.dp)
-                        .size(width = 320.dp, height = 440.dp),
+                        .size(width = 320.dp, height = 384.dp),
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
                 contentColor = MaterialTheme.colorScheme.onSurface,
                 shape = MaterialTheme.shapes.extraLarge,
@@ -138,10 +138,6 @@ private fun voiceSessionControls(
         onClick = actions::cancelVoice,
     ) {
         Text("Interrompre")
-    }
-    Spacer(Modifier.height(8.dp))
-    Button(onClick = actions::close) {
-        Text("Fermer")
     }
 }
 

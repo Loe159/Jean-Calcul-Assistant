@@ -70,8 +70,6 @@ class JeanCalculVoiceInteractionSession(
                             override fun textChanged(text: String) = voiceSessionController.updateTextFallback(text)
 
                             override fun submitText() = voiceSessionController.submitTextFallback()
-
-                            override fun close() = closeSession()
                         },
                 )
             }

@@ -12,6 +12,4 @@ internal interface VoiceSessionActions {
     fun textChanged(text: String)
 
     fun submitText()
-
-    fun close()
 }
