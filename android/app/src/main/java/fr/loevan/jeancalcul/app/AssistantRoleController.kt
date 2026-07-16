@@ -49,8 +49,7 @@ internal class AndroidAssistantRoleGateway(context: Context) : AssistantRoleGate
 
     override fun isHeld(): Boolean = roleManager.isRoleHeld(RoleManager.ROLE_ASSISTANT)
 
-    override fun createRequestIntent(): Intent =
-        roleManager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT)
+    override fun createRequestIntent(): Intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT)
 }
 
 private data object UnsupportedAssistantRoleGateway : AssistantRoleGateway {
@@ -58,6 +57,5 @@ private data object UnsupportedAssistantRoleGateway : AssistantRoleGateway {
 
     override fun isHeld(): Boolean = false
 
-    override fun createRequestIntent(): Intent =
-        error("The assistant role requires Android 10 or newer.")
+    override fun createRequestIntent(): Intent = error("The assistant role requires Android 10 or newer.")
 }

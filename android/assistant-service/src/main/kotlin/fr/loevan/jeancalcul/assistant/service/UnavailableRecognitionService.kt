@@ -11,7 +11,10 @@ import android.speech.SpeechRecognizer
  * client error keeps this placeholder deterministic and avoids acquiring audio resources.
  */
 class UnavailableRecognitionService : RecognitionService() {
-    override fun onStartListening(intent: Intent?, callback: Callback) {
+    override fun onStartListening(
+        intent: Intent?,
+        callback: Callback,
+    ) {
         callback.error(SpeechRecognizer.ERROR_CLIENT)
     }
 

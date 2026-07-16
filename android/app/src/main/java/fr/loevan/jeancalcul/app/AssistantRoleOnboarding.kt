@@ -14,9 +14,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 @Composable
-internal fun AssistantRoleOnboarding(
+internal fun assistantRoleOnboarding(
     status: AssistantRoleStatus,
+    microphonePermissionGranted: Boolean,
     onRequestRole: () -> Unit,
+    onRequestMicrophonePermission: () -> Unit,
     onOpenSystemSettings: () -> Unit,
 ) {
     Surface {
@@ -35,6 +37,18 @@ internal fun AssistantRoleOnboarding(
                     Text("Choisir comme assistant")
                 }
             }
+            Text(
+                text = microphonePermissionDescription(microphonePermissionGranted),
+                modifier = Modifier.padding(top = 24.dp),
+            )
+            if (!microphonePermissionGranted) {
+                Button(
+                    modifier = Modifier.padding(top = 12.dp),
+                    onClick = onRequestMicrophonePermission,
+                ) {
+                    Text("Autoriser le microphone")
+                }
+            }
             Button(
                 modifier = Modifier.padding(top = 12.dp),
                 onClick = onOpenSystemSettings,
@@ -44,6 +58,13 @@ internal fun AssistantRoleOnboarding(
         }
     }
 }
+
+private fun microphonePermissionDescription(granted: Boolean): String =
+    if (granted) {
+        "Le microphone est autorise pour la session vocale."
+    } else {
+        "Le microphone est necessaire pour la transcription vocale."
+    }
 
 private fun AssistantRoleStatus.description(): String =
     when (this) {

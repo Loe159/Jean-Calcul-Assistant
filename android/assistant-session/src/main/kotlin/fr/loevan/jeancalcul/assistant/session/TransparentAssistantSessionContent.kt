@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,7 +27,8 @@ import fr.loevan.jeancalcul.ui.jeanCalculTheme
 @Composable
 internal fun transparentAssistantSessionContent(
     visualState: AssistantSessionVisualState,
-    onClose: () -> Unit,
+    voiceState: VoiceSessionState,
+    actions: VoiceSessionActions,
 ) {
     jeanCalculTheme {
         Box(
@@ -40,7 +42,7 @@ internal fun transparentAssistantSessionContent(
                 modifier =
                     Modifier
                         .padding(24.dp)
-                        .size(width = 280.dp, height = 208.dp),
+                        .size(width = 320.dp, height = 440.dp),
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
                 contentColor = MaterialTheme.colorScheme.onSurface,
                 shape = MaterialTheme.shapes.extraLarge,
@@ -51,37 +53,112 @@ internal fun transparentAssistantSessionContent(
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(
-                        text = visualState.title(),
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = visualState.message(),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Spacer(Modifier.height(24.dp))
-                    Button(onClick = onClose) {
-                        Text("Fermer")
-                    }
+                    voiceSessionStatusContent(visualState = visualState, voiceState = voiceState)
+                    voiceSessionTextFallback(voiceState = voiceState, actions = actions)
+                    voiceSessionControls(voiceState = voiceState, actions = actions)
                 }
             }
         }
     }
 }
 
-private fun AssistantSessionVisualState.title(): String =
-    when (this) {
-        AssistantSessionVisualState.INVOKED -> "Assistant invoqué"
-        AssistantSessionVisualState.LISTENING -> "À l’écoute"
-        AssistantSessionVisualState.ERROR -> "Assistant indisponible"
+@Composable
+private fun voiceSessionStatusContent(
+    visualState: AssistantSessionVisualState,
+    voiceState: VoiceSessionState,
+) {
+    Text(
+        text = voiceState.title(visualState),
+        style = MaterialTheme.typography.titleLarge,
+    )
+    Spacer(Modifier.height(12.dp))
+    Text(
+        text = voiceState.message,
+        style = MaterialTheme.typography.bodyMedium,
+    )
+    if (voiceState.partialTranscript.isNotBlank()) {
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = voiceState.partialTranscript,
+            style = MaterialTheme.typography.bodyLarge,
+        )
     }
+    voiceState.finalResult?.let { result ->
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "Resultat final : ${result.text}",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
 
-private fun AssistantSessionVisualState.message(): String =
-    when (this) {
-        AssistantSessionVisualState.INVOKED -> "Préparation de la session"
-        AssistantSessionVisualState.LISTENING -> "La reconnaissance vocale sera disponible prochainement."
-        AssistantSessionVisualState.ERROR -> "Le contexte de l’application n’a pas pu être chargé."
+@Composable
+private fun voiceSessionTextFallback(
+    voiceState: VoiceSessionState,
+    actions: VoiceSessionActions,
+) {
+    Spacer(Modifier.height(12.dp))
+    OutlinedTextField(
+        value = voiceState.partialTranscript,
+        onValueChange = actions::textChanged,
+        label = { Text("Saisie texte de secours") },
+        singleLine = true,
+    )
+    Button(
+        modifier = Modifier.padding(top = 8.dp),
+        onClick = actions::submitText,
+    ) {
+        Text("Utiliser le texte")
+    }
+}
+
+@Composable
+private fun voiceSessionControls(
+    voiceState: VoiceSessionState,
+    actions: VoiceSessionActions,
+) {
+    Spacer(Modifier.height(8.dp))
+    if (voiceState.status == VoiceSessionStatus.PERMISSION_REQUIRED) {
+        Button(onClick = actions::requestMicrophonePermission) {
+            Text("Autoriser le microphone")
+        }
+    } else {
+        Button(onClick = actions::startListening) {
+            Text("Ecouter")
+        }
+    }
+    Button(
+        modifier = Modifier.padding(top = 8.dp),
+        onClick = actions::speakTestResponse,
+    ) {
+        Text("Lire la reponse de test")
+    }
+    Button(
+        modifier = Modifier.padding(top = 8.dp),
+        onClick = actions::cancelVoice,
+    ) {
+        Text("Interrompre")
+    }
+    Spacer(Modifier.height(8.dp))
+    Button(onClick = actions::close) {
+        Text("Fermer")
+    }
+}
+
+private fun VoiceSessionState.title(visualState: AssistantSessionVisualState): String =
+    when (status) {
+        VoiceSessionStatus.INVOKED ->
+            if (visualState == AssistantSessionVisualState.ERROR) {
+                "Assistant indisponible"
+            } else {
+                "Assistant invoque"
+            }
+
+        VoiceSessionStatus.PERMISSION_REQUIRED -> "Microphone requis"
+        VoiceSessionStatus.LISTENING -> "A l'ecoute"
+        VoiceSessionStatus.PROCESSING -> "Transcription en cours"
+        VoiceSessionStatus.SPEAKING -> "Reponse vocale"
+        VoiceSessionStatus.ERROR -> "Assistant indisponible"
     }
 
 private val TransparentSessionScrim = Color(0x33050B16)
