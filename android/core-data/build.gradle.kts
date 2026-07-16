@@ -3,10 +3,19 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
-apply(from = rootProject.file("gradle/android-library.gradle.kts"))
-
 android {
     namespace = "fr.loevan.jeancalcul.data"
+    compileSdk = 35
+
+    defaultConfig {
+        minSdk = 26
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
 }
 
 kotlin {

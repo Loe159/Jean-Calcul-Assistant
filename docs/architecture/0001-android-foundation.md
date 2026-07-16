@@ -31,4 +31,6 @@ dans le binaire Core.
 - La compilation de chaque variante est vérifiée par Gradle et GitHub Actions.
 - Aucun ancien prototype ni aucune fonctionnalité d’assistant n’est repris.
 - Les versions et plugins sont centralisés dans `gradle/libs.versions.toml`.
-- Les règles partagées de SDK, Java 17 et qualité sont centralisées dans les scripts Gradle racine.
+- Les versions et les règles de qualité sont centralisées à la racine. Les paramètres Android communs sont
+  volontairement explicites dans chaque bibliothèque pour que la synchronisation Android Studio ne dépende
+  pas du classpath d’un script Kotlin externe.

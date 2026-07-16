@@ -4,13 +4,22 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-apply(from = rootProject.file("gradle/android-library.gradle.kts"))
-
 android {
     namespace = "fr.loevan.jeancalcul.ui"
+    compileSdk = 35
+
+    defaultConfig {
+        minSdk = 26
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
 
     buildFeatures {
         compose = true
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 }
 
