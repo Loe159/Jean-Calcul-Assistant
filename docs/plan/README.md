@@ -11,6 +11,8 @@ Pour une issue de phase 0 ou 1 :
 3. lire le document de phase ;
 4. lire uniquement les documents transverses référencés par cette phase.
 
+Pour la phase 1, lire également `phases/phase-1-execution-plan.md` afin de respecter le graphe de dépendances, l’ownership des modules et les travaux parallélisables.
+
 ## Documents transverses
 
 - [`00-product-and-principles.md`](00-product-and-principles.md) — vision, objectifs, périmètre et principes.
@@ -23,6 +25,7 @@ Pour une issue de phase 0 ou 1 :
 
 - [`phases/phase-0-android-validation.md`](phases/phase-0-android-validation.md) — validation technique Android/Samsung. Epic GitHub : #7.
 - [`phases/phase-1-assistant-mvp.md`](phases/phase-1-assistant-mvp.md) — assistant vocal minimal et configurable. Epic GitHub : #17.
+- [`phases/phase-1-execution-plan.md`](phases/phase-1-execution-plan.md) — ordre d’exécution, parallélisation, chemin critique et ownership de la phase 1.
 - [`phases/phase-2-notifications-tasks-calendar.md`](phases/phase-2-notifications-tasks-calendar.md) — inbox de notifications, tâches et calendrier.
 - [`phases/phase-3-gateway-hermes.md`](phases/phase-3-gateway-hermes.md) — Gateway auto-hébergé et intégration Hermes.
 - [`phases/phase-4-skills-lifeos.md`](phases/phase-4-skills-lifeos.md) — skills, mémoire, TELOS et compatibilité LifeOS.
