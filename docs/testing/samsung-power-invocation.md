@@ -31,16 +31,24 @@ Sur l'appareil cible, le premier renvoie
 `JeanCalculVoiceInteractionService` à
 `JeanCalculVoiceInteractionSessionService`.
 
-## Résultats relevés le 2026-07-16
+## Résultats relevés les 2026-07-16 et 2026-07-17
 
 | Scénario | Méthode | Résultat | Preuve expurgée |
 | --- | --- | --- | --- |
 | DM-01 — accueil déverrouillé | `KEYCODE_ASSIST`, puis Retour et nouvelle invocation | Validé : Jean-Calcul est l'assistant ciblé et la session isolée apparaît deux fois sans crash. | One UI : `DigitalAssistantApp=fr.loevan.jeancalcul.debug`, `LockState=Unlocked`; processus `:assistant_session` présent. |
 | DM-02 — Chrome au premier plan | Même séquence depuis `com.android.chrome` | Validé : la session apparaît sans faire tomber Chrome ni le processus assistant. | One UI : `ForegroundApp=com.android.chrome`, `ASSIST_VISIBLE`; aucune `FATAL EXCEPTION` ni `AndroidRuntime`. |
-| DM-03 — écran verrouillé | Écran verrouillé, puis `KEYCODE_ASSIST` | Validé pour l'ouverture : One UI affiche l'assistant sélectionné avec l'état verrouillé. La session actuelle ne présente aucune donnée personnelle ni action. | One UI : `DigitalAssistantApp=fr.loevan.jeancalcul.debug`, `LockState=Locked`, `ASSIST_VISIBLE`. |
+| DM-03 — écran verrouillé | `KEYCODE_ASSIST` le 2026-07-16, puis appui long Power physique le 2026-07-17 | Validé pour l'ouverture : One UI affiche l'assistant sélectionné avec l'état verrouillé. L'appui physique réveille l'écran et autorise aussi la commande locale de volume; aucune donnée personnelle n'est affichée. | One UI : `DigitalAssistantApp=fr.loevan.jeancalcul.debug`, `LockState=Locked`, `ASSIST_VISIBLE`; comportement documenté ci-dessous. |
 | Retour / réinvocation | Retour, puis nouvelle invocation dans DM-01 et DM-02 | Validé : la session est recréée ou réutilisée sans crash Compose. | Aucune exception `AndroidRuntime` ou `FATAL EXCEPTION` dans les traces filtrées. |
-| DM-04 — après redémarrage | Redémarrage ADB demandé alors que le rôle était détenu | À compléter : le Galaxy coupe la session de débogage Wi-Fi au redémarrage ; il faut le déverrouiller puis reconnecter ADB pour relire le rôle et refaire DM-01. | Avant redémarrage : `fr.loevan.jeancalcul.debug` détenait `ROLE_ASSISTANT`. |
-| DM-05 / DM-06 — économie d'énergie et optimisation | Non exécuté | À compléter après retour de la connexion ADB. Aucun réglage batterie n'a été désactivé pour les essais ci-dessus. | S/O |
+| DM-04 — après redémarrage | `adb reboot`, déverrouillage puis reconnexion du débogage Wi-Fi ; nouvel appui long physique et commande vocale | Validé : `ROLE_ASSISTANT` est conservé, le service est de nouveau lié et la session répond après le boot. | Rôle `fr.loevan.jeancalcul.debug`, service et session déclarés par `dumpsys voiceinteraction`; aucune `AndroidRuntime`. |
+| DM-05 — économie d'énergie | Mode économie d'énergie One UI activé temporairement, puis appui long physique et commande vocale | Validé : première frame, microphone, STT, résultat final et volume sont observés ; le mode a été restauré à désactivé. | Trace `JeanCalculPerf` expurgée : 39 ms vers frame, 757 ms frame-micro, 1 ms vers volume observé. |
+| DM-06 — optimisation batterie | App en mode Optimisée, puis temporairement Sans restriction ; appui long physique et commande vocale dans chaque mode | Validé dans les deux modes. Le mode Optimisée a été rétabli à la fin. | Sans restriction confirmée par la liste `deviceidle`; aucune exception `AndroidRuntime`. |
+
+### Validation physique complémentaire du 2026-07-17
+
+- DM-01 : l'appui long physique depuis l'accueil ouvre Jean-Calcul, la transcription progresse, la réponse TTS est audible et le geste Retour ferme la session.
+- DM-02 : depuis Chrome, l'appui long physique conserve Chrome visible sous la session. Le geste Retour prédictif ferme la session sans artefact observé.
+- DM-03 : depuis l'écran verrouillé, One UI réveille l'écran et accepte la commande vocale locale de volume; la réponse vocale est jouée puis l'écran s'éteint selon son délai normal. Aucune donnée personnelle n'est affichée. Ce comportement est une limitation One UI à conserver : la phase 1 devra appliquer sa politique explicite d'actions disponibles écran verrouillé.
+- Une veille continue de 15 minutes en mode Dozing, écran éteint, a conservé le rôle. L'invocation physique et le parcours vocal ont réussi après déverrouillage.
 
 ## Limites et protocole de clôture
 
