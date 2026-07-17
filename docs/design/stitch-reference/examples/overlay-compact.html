@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Jean Calcule - Assistant Overlay</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@500&amp;family=Hanken+Grotesk:wght@600;700&amp;family=Inter:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Config -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#e0e3e5",
+                        "on-primary-container": "#797a7f",
+                        "on-primary-fixed": "#1a1c20",
+                        "secondary-fixed-dim": "#a4c9ff",
+                        "on-tertiary-fixed": "#23005c",
+                        "inverse-surface": "#e0e3e5",
+                        "outline-variant": "#45474b",
+                        "primary-fixed": "#e2e2e8",
+                        "surface-container-low": "#191c1e",
+                        "primary": "#c6c6cc",
+                        "surface-dim": "#101415",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed-variant": "#004883",
+                        "on-primary": "#2f3035",
+                        "secondary-container": "#0164b4",
+                        "on-error": "#690005",
+                        "surface-variant": "#323537",
+                        "surface-bright": "#363a3b",
+                        "outline": "#909095",
+                        "secondary": "#a4c9ff",
+                        "on-tertiary": "#3c0091",
+                        "background": "#101415",
+                        "on-secondary": "#00315d",
+                        "on-tertiary-container": "#8a5bf5",
+                        "primary-container": "#0a0c10",
+                        "tertiary": "#d0bcff",
+                        "surface-tint": "#c6c6cc",
+                        "on-surface": "#e0e3e5",
+                        "surface-container-lowest": "#0b0f10",
+                        "primary-fixed-dim": "#c6c6cc",
+                        "on-secondary-fixed": "#001c39",
+                        "on-surface-variant": "#c6c6cb",
+                        "secondary-fixed": "#d4e3ff",
+                        "tertiary-container": "#110034",
+                        "on-secondary-container": "#d0e1ff",
+                        "surface": "#101415",
+                        "inverse-on-surface": "#2d3133",
+                        "error-container": "#93000a",
+                        "surface-container-highest": "#323537",
+                        "tertiary-fixed": "#e9ddff",
+                        "tertiary-fixed-dim": "#d0bcff",
+                        "inverse-primary": "#5d5e63",
+                        "on-tertiary-fixed-variant": "#5516be",
+                        "surface-container": "#1d2022",
+                        "surface-container-high": "#272a2c",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#45474b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "8px",
+                        "container-padding": "24px",
+                        "gutter": "16px",
+                        "glass-margin": "12px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Geist"],
+                        "display-lg-mobile": ["Hanken Grotesk"],
+                        "display-lg": ["Hanken Grotesk"],
+                        "headline-md": ["Hanken Grotesk"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "display-lg-mobile": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    },
+                    "animation": {
+                        'wave-1': 'wave 1.2s ease-in-out infinite',
+                        'wave-2': 'wave 1.2s ease-in-out 0.2s infinite',
+                        'wave-3': 'wave 1.2s ease-in-out 0.4s infinite',
+                        'wave-4': 'wave 1.2s ease-in-out 0.1s infinite',
+                        'wave-5': 'wave 1.2s ease-in-out 0.5s infinite',
+                        'shimmer-text': 'shimmer 2s linear infinite',
+                    },
+                    "keyframes": {
+                        wave: {
+                            '0%, 100%': { height: '8px' },
+                            '50%': { height: '24px' },
+                        },
+                        shimmer: {
+                            '0%': { backgroundPosition: '200% 0' },
+                            '100%': { backgroundPosition: '-200% 0' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+            backdrop-filter: blur(48px);
+            -webkit-backdrop-filter: blur(48px);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+            box-shadow: 0 32px 80px -16px rgba(138, 91, 245, 0.15), inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+        
+        .glow-cloud {
+            background: radial-gradient(circle at 50% 100%, rgba(138, 91, 245, 0.25) 0%, rgba(0, 100, 180, 0.15) 30%, transparent 70%);
+            filter: blur(60px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-container-lowest h-screen w-full overflow-hidden text-on-surface antialiased selection:bg-tertiary/30 selection:text-tertiary-fixed">
+<!-- Simulated Underlying Application Background -->
+<div class="fixed inset-0 z-0 scale-105 pointer-events-none">
+<img class="w-full h-full object-cover opacity-60 filter blur-md" data-alt="A highly complex and detailed professional dashboard interface displayed in a dark mode aesthetic. The screen is filled with intricate data visualizations, glowing neon blue and subtle violet charts, and dense numerical grids against a deep charcoal background. The mood is highly technical and analytical, capturing a modern high-end software environment before being heavily blurred." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_I7kVdd7j_1ONUnUAkCindpDE4XWZqEfsdtdz3gc3Qw5FJh_QwPGLLJ6vsgPUPyb1vmx01bv0ene2KinmQVJePoA7OetYiUyYWCIoFhmvJrSmT9skEUtIwMfD6Hmo8PqXtqYbZb4okyamZP7hd7ECt6E7Vp0F_dw6_lxnVfjVAf6kNVQ0_V6bducs741l3IC07ungSsBScfKQj_b5uDtIuz7yVMP8qsSVLhD0oomTyMhwwrxio_McsLqgY7086Mw-Wdu-KxVLFa0D"/>
+<!-- Vignette -->
+<div class="absolute inset-0 bg-gradient-to-b from-surface-container-lowest/80 via-transparent to-surface-container-lowest/90"></div>
+</div>
+<!-- Contextual Assistant Glow (Ambient Intelligence) -->
+<div class="fixed bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] glow-cloud z-10 pointer-events-none"></div>
+<!-- Floating Assistant Panel -->
+<main class="fixed bottom-12 left-1/2 -translate-x-1/2 w-[92%] max-w-[560px] z-50">
+<div class="glass-panel rounded-full p-2 pl-4 pr-3 flex items-center justify-between gap-4 transition-all duration-300 ease-out transform hover:scale-[1.01]">
+<!-- Expand Button (Tertiary/Ghost) -->
+<button aria-label="Étendre le chat" class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-white/5 transition-all duration-200 shrink-0">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 0;">open_in_full</span>
+</button>
+<!-- Center Content: Listening State & Transcription -->
+<div class="flex-1 flex items-center gap-5 overflow-hidden">
+<!-- Elegant Voice Wave -->
+<div class="flex items-center justify-center gap-[3px] h-8 shrink-0">
+<div class="w-[3px] bg-tertiary-fixed rounded-full h-[12px] animate-wave-1"></div>
+<div class="w-[3px] bg-secondary-fixed rounded-full h-[24px] animate-wave-2"></div>
+<div class="w-[3px] bg-tertiary rounded-full h-[8px] animate-wave-3"></div>
+<div class="w-[3px] bg-secondary rounded-full h-[18px] animate-wave-4"></div>
+<div class="w-[3px] bg-tertiary-fixed-dim rounded-full h-[14px] animate-wave-5"></div>
+</div>
+<!-- Live Transcription -->
+<div class="flex-1 overflow-hidden relative mask-image-gradient-right">
+<p class="font-body-lg text-body-lg whitespace-nowrap truncate bg-clip-text text-transparent bg-gradient-to-r from-on-surface via-tertiary-fixed to-on-surface bg-[length:200%_auto] animate-shimmer-text">
+<span class="opacity-40 text-on-surface-variant font-light">...</span>envoie un message à<span class="opacity-40 text-on-surface-variant font-light">...</span>
+</p>
+</div>
+</div>
+<!-- Close Button (Secondary/Frosted) -->
+<button aria-label="Fermer l'assistant" class="w-10 h-10 rounded-full bg-white/[0.08] flex items-center justify-center text-on-surface hover:bg-white/[0.15] border border-white/10 transition-all duration-200 shadow-lg shadow-black/20 shrink-0">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</main>
+<style>
+        .mask-image-gradient-right {
+            mask-image: linear-gradient(to right, black 80%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
+        }
+    </style>
+</body></html>
