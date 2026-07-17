@@ -112,3 +112,7 @@ substitue pas à l'appui physique long sur le bouton latéral.
 La configuration individuelle de batterie ne peut être relevée qu'après
 l'installation de Jean-Calcul Assistant ; elle est documentée dans les essais
 des issues qui introduisent le service et son invocation.
+
+### Revalidation de clôture — 2026-07-17
+
+Le rôle assistant a été revalidé après un redémarrage ADB, suivi d'un déverrouillage et d'une reconnexion du débogage Wi-Fi. L'invocation physique Power et la commande vocale de volume ont ensuite réussi. Les essais DM-05 et DM-06 ont réussi avec l'économie d'énergie active, puis avec Jean-Calcul en mode Optimisée et temporairement Sans restriction; les réglages initiaux ont été restaurés. La veille de 15 minutes en Dozing a conservé le rôle et la reprise a réussi. Le comportement écran verrouillé est documenté dans `samsung-power-invocation.md`.

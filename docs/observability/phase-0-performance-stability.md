@@ -60,6 +60,7 @@ traces, sans substituer l'emulateur AOSP au Samsung.
 | Serie et build | Power -> frame (P50/P95) | Frame -> micro (P50/P95) | Parole -> transcription (P50/P95) | Parole -> final (P50/P95) | Volume applique (P50/P95) | PSS service / session | Crashes / 30 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-07-16, `coreDebug`, 30 `KEYCODE_ASSIST` consecutifs | 51 / 66 ms, 29 traces frame | 78 / 134 ms, 24 paires frame-micro | Non mesure : aucune parole injectee | Non mesure : aucune parole injectee | Non mesure : aucune commande volume injectee | 43.1 MiB / 50.5 MiB (PSS) | 0 crash Jean-Calcul ; 30 invocations recues |
+| 2026-07-17, `coreDebug`, 6 commandes vocales physiques completes | 36 / 159 ms | 619 / 1 038 ms | 1 177 / 1 251 ms | 2 354 / 2 502 ms | 1 / 6 ms | 15.0 MiB / 31.9 MiB apres reboot (PSS) | 0 crash; accueil, reprise apres 15 min de veille, economie d'energie, Optimisee, Sans restriction et reboot couverts |
 
 La premiere invocation apres installation a aussi produit 322 ms jusqu'a la
 premiere frame et 192 ms entre la frame et le microphone pret. La serie de 30
@@ -69,6 +70,10 @@ reelle. Une frame et cinq disponibilites microphone n'ont pas ete observees
 avant la fermeture automatisee de leur session ; elles restent a analyser lors
 d'une serie manuelle avec parole, sans les comptabiliser comme des succes de
 latence.
+
+Les P50 de la seconde ligne sont les medianes de six mesures completes. Avec six echantillons, les P95 sont le maximum observe; ils ne constituent pas une estimation statistique de production. Une invocation ecran verrouille a aussi mesure le microphone, la transcription, le resultat et le volume, mais sans evenement de premiere frame, et n'est donc pas incluse dans ces calculs.
+
+La stabilite a ete reexecutee le 2026-07-17 apres le reboot : 30 ouvertures et fermetures automatisees via `KEYCODE_ASSIST` ont produit 30 `invocation_received`, 30 `invocation_finished` et zero ligne `AndroidRuntime`. Le test instrumente `:assistant-session:connectedDebugAndroidTest` a egalement reussi (2 tests, dont 30 sessions deterministes). Ces essais ne remplacent pas les six mesures vocales reelles rapportees ci-dessus.
 
 ## Budgets initiaux de la phase 1
 
@@ -94,7 +99,5 @@ budget ne justifie de conserver de l'audio ou une transcription dans les logs.
 
 - Instrumentation, rapport et tests automatises : fournis par l'issue #15.
 - Premiere frame, microphone et PSS : releves sur le Samsung le 2026-07-16.
-- Parole, resultat final et volume observe : a relever avec une commande vocale
-  reelle ; aucune valeur n'est inventee a partir de la saisie texte.
-- Appui long Power physique et reprise apres veille prolongee : a executer et
-  joindre a l'issue avant cloture.
+- Parole, resultat final et volume observe : mesures avec commande vocale reelle le 2026-07-17.
+- Appui long Power physique, reprise apres 15 minutes de veille, economie d'energie et les modes Optimisee/Sans restriction : mesures le 2026-07-17.
