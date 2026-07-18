@@ -9,6 +9,7 @@
 
 package fr.loevan.jeancalcul.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -20,10 +21,13 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 
@@ -51,16 +56,40 @@ fun JeanCalculButton(
     onClick: () -> Unit,
 ) {
     val targetModifier = modifier.defaultMinSize(minHeight = JeanCalculDesign.tokens.spacing.touchTarget)
+    val pill = RoundedCornerShape(percent = 50)
     when (variant) {
         JeanCalculButtonVariant.Primary ->
-            Button(modifier = targetModifier, enabled = enabled, onClick = onClick) {
+            Button(
+                modifier = targetModifier,
+                enabled = enabled,
+                onClick = onClick,
+                shape = pill,
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        contentColor = MaterialTheme.colorScheme.onSecondary,
+                    ),
+            ) {
                 Text(label)
             }
         JeanCalculButtonVariant.Secondary ->
-            OutlinedButton(modifier = targetModifier, enabled = enabled, onClick = onClick) { Text(label) }
+            OutlinedButton(
+                modifier = targetModifier,
+                enabled = enabled,
+                onClick = onClick,
+                shape = pill,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.54f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.secondary),
+            ) { Text(label) }
 
         JeanCalculButtonVariant.Ghost ->
-            TextButton(modifier = targetModifier, enabled = enabled, onClick = onClick) {
+            TextButton(
+                modifier = targetModifier,
+                enabled = enabled,
+                onClick = onClick,
+                shape = pill,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
+            ) {
                 Text(label)
             }
         JeanCalculButtonVariant.Destructive ->
@@ -68,6 +97,7 @@ fun JeanCalculButton(
                 modifier = targetModifier,
                 enabled = enabled,
                 onClick = onClick,
+                shape = pill,
                 colors =
                     ButtonDefaults.buttonColors(
                         containerColor = androidx.compose.material3.MaterialTheme.colorScheme.error,
@@ -81,16 +111,26 @@ fun CircularIconButton(
     label: String,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    symbol: String = compactSymbol(label),
     onClick: () -> Unit,
 ) {
     GlassSurface(
-        modifier = modifier.size(JeanCalculDesign.tokens.spacing.touchTarget),
-        variant = GlassSurfaceVariant.Overlay,
+        modifier =
+            modifier
+                .size(JeanCalculDesign.tokens.spacing.touchTarget)
+                .semantics { contentDescription = label },
+        variant = GlassSurfaceVariant.Interactive,
         state = if (enabled) GlassSurfaceState.Normal else GlassSurfaceState.Disabled,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
         onClick = if (enabled) onClick else null,
     ) {
-        Text(text = label, modifier = Modifier.align(Alignment.Center), maxLines = 1)
+        Text(
+            text = symbol,
+            modifier = Modifier.align(Alignment.Center),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Normal,
+            maxLines = 1,
+        )
     }
 }
 
@@ -106,14 +146,44 @@ fun FloatingBottomNavigation(
     modifier: Modifier = Modifier,
     onSelect: (String) -> Unit,
 ) {
-    GlassSurface(modifier = modifier.fillMaxWidth(), variant = GlassSurfaceVariant.Navigation) {
-        Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
+    GlassSurface(
+        modifier = modifier.fillMaxWidth(),
+        variant = GlassSurfaceVariant.Navigation,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
             items.forEach { item ->
-                TextButton(
-                    modifier = Modifier.defaultMinSize(minHeight = JeanCalculDesign.tokens.spacing.touchTarget),
+                GlassSurface(
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .defaultMinSize(minHeight = JeanCalculDesign.tokens.spacing.touchTarget),
+                    variant =
+                        if (item.id == selectedId) {
+                            GlassSurfaceVariant.Selected
+                        } else {
+                            GlassSurfaceVariant.Interactive
+                        },
+                    contentPadding =
+                        androidx.compose.foundation.layout.PaddingValues(
+                            horizontal = 8.dp,
+                            vertical = 6.dp,
+                        ),
                     onClick = { onSelect(item.id) },
                 ) {
-                    Text(if (item.id == selectedId) "• ${item.label}" else item.label)
+                    Text(
+                        text = item.label,
+                        modifier = Modifier.align(Alignment.Center),
+                        color =
+                            if (item.id == selectedId) {
+                                MaterialTheme.colorScheme.tertiary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (item.id == selectedId) FontWeight.Bold else FontWeight.Medium,
+                        maxLines = 1,
+                    )
                 }
             }
         }
@@ -129,7 +199,11 @@ fun AssistantInputBar(
     onSend: (() -> Unit)? = null,
     onVoice: (() -> Unit)? = null,
 ) {
-    GlassSurface(modifier = modifier.fillMaxWidth(), variant = GlassSurfaceVariant.Overlay) {
+    GlassSurface(
+        modifier = modifier.fillMaxWidth(),
+        variant = GlassSurfaceVariant.Overlay,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = value,
@@ -138,6 +212,15 @@ fun AssistantInputBar(
                 placeholder = { Text(placeholder) },
                 singleLine = false,
                 maxLines = 3,
+                shape = RoundedCornerShape(percent = 50),
+                colors =
+                    OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                        unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                        disabledBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                        focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                        unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                    ),
             )
             onVoice?.let { CircularIconButton(label = "Voix", onClick = it) }
             onSend?.let { CircularIconButton(label = "Envoyer", onClick = it) }
@@ -313,3 +396,12 @@ fun ContentStateMessage(
         }
     }
 }
+
+private fun compactSymbol(label: String): String =
+    when {
+        label.contains("fermer", ignoreCase = true) -> "×"
+        label.contains("ouvrir", ignoreCase = true) -> "↗"
+        label.contains("envoyer", ignoreCase = true) -> "↑"
+        label.contains("voix", ignoreCase = true) -> "●"
+        else -> label.take(1).uppercase()
+    }

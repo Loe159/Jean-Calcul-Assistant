@@ -53,10 +53,27 @@ fun ActionCard(
     modifier: Modifier = Modifier,
     onDetails: (() -> Unit)? = null,
 ) {
-    val surfaceState = if (data.state == ActionCardState.Failed) GlassSurfaceState.Error else GlassSurfaceState.Normal
+    val surfaceState =
+        when (data.state) {
+            ActionCardState.Failed -> GlassSurfaceState.Error
+            ActionCardState.Executing -> GlassSurfaceState.Loading
+            else -> GlassSurfaceState.Normal
+        }
+    val surfaceVariant =
+        when (data.state) {
+            ActionCardState.Proposed,
+            ActionCardState.ConfirmationRequired,
+            ActionCardState.BiometricRequired,
+            -> GlassSurfaceVariant.Selected
+
+            ActionCardState.Executing -> GlassSurfaceVariant.Interactive
+            ActionCardState.Succeeded -> GlassSurfaceVariant.Card
+            ActionCardState.Failed -> GlassSurfaceVariant.FallbackOpaque
+            else -> GlassSurfaceVariant.Panel
+        }
     GlassSurface(
         modifier = modifier.fillMaxWidth().semantics { contentDescription = actionDescription(data) },
-        variant = GlassSurfaceVariant.Card,
+        variant = surfaceVariant,
         state = surfaceState,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -108,7 +125,16 @@ fun ApprovalSheet(
     GlassSurface(
         modifier = modifier.fillMaxWidth().semantics { contentDescription = "Approbation : ${action.title}" },
         variant = GlassSurfaceVariant.Modal,
-        state = if (state == ApprovalSheetState.Denied) GlassSurfaceState.Error else GlassSurfaceState.Normal,
+        state =
+            when (state) {
+                ApprovalSheetState.Denied -> GlassSurfaceState.Error
+                ApprovalSheetState.SimpleConfirmation,
+                ApprovalSheetState.DetailedConfirmation,
+                ApprovalSheetState.Biometric,
+                -> GlassSurfaceState.Focused
+
+                else -> GlassSurfaceState.Normal
+            },
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(text = approvalTitle(state), style = MaterialTheme.typography.headlineMedium)
@@ -124,17 +150,22 @@ fun ApprovalSheet(
             if (state == ApprovalSheetState.Biometric) {
                 PrivacyIndicator(state = PrivacyIndicatorState.BiometricRequired)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 onReject?.let { callback ->
                     JeanCalculButton(
                         label = "Refuser",
-                        variant = JeanCalculButtonVariant.Destructive,
+                        modifier = Modifier.fillMaxWidth(),
+                        variant = JeanCalculButtonVariant.Ghost,
                         onClick = callback,
                     )
                 }
                 onApprove?.let { callback ->
                     JeanCalculButton(
                         label = if (state == ApprovalSheetState.OpenSystemPanel) "Ouvrir Android" else "Continuer",
+                        modifier = Modifier.fillMaxWidth(),
                         onClick = callback,
                     )
                 }
