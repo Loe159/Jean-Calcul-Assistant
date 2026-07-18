@@ -1,5 +1,5 @@
 ---
-name: Jean Calcule Lumina
+name: Jean Calcul Lumina
 colors:
   surface: '#101415'
   surface-dim: '#101415'
@@ -104,7 +104,7 @@ spacing:
 
 ## Brand & Style
 
-The brand identity of "Jean Calcule" is rooted in the "Futuristic Executive" aesthetic—a sophisticated blend of high-tech artificial intelligence and premium, calm productivity. It aims to evoke a sense of advanced intelligence that is both powerful and approachable.
+The brand identity of "Jean Calcul" is rooted in the "Futuristic Executive" aesthetic—a sophisticated blend of high-tech artificial intelligence and premium, calm productivity. It aims to evoke a sense of advanced intelligence that is both powerful and approachable.
 
 The design style is **Glassmorphism**, characterized by translucent surfaces, deep backdrop blurs, and vibrant ambient light leaks. The interface feels like a high-end command center floating in a digital void. It utilizes subtle animations (pulsing dots, shimmering text) to imply "life" within the AI system, while maintaining a strict, clean layout to ensure professional utility.
 
