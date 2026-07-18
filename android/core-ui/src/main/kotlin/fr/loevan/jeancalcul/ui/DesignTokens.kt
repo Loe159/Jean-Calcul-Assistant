@@ -83,6 +83,9 @@ data class JeanCalculOpacity(
     val topHighlight: Float = 0.15f,
     val ambientViolet: Float = 0.15f,
     val ambientBlue: Float = 0.10f,
+    val sideHighlight: Float = 0.08f,
+    val bottomBorder: Float = 0.03f,
+    val diffuseShadow: Float = 0.32f,
 )
 
 @Immutable
@@ -91,6 +94,23 @@ data class JeanCalculElevation(
     val card: Dp = 6.dp,
     val overlay: Dp = 12.dp,
     val modal: Dp = 16.dp,
+    val interactive: Dp = 8.dp,
+    val selected: Dp = 10.dp,
+    val navigation: Dp = 14.dp,
+)
+
+/** Tonal layers used to preserve depth when translucency is unavailable. */
+@Immutable
+data class JeanCalculMaterialColors(
+    val surfaceLowest: Color = Color(0xFF0B0F10),
+    val surfaceLow: Color = Color(0xFF181C1D),
+    val surface: Color = Color(0xFF1C2021),
+    val surfaceHigh: Color = Color(0xFF272B2C),
+    val surfaceHighest: Color = Color(0xFF313536),
+    val ambientBlue: Color = Color(0xFF0164B4),
+    val ambientViolet: Color = Color(0xFF8A5BF5),
+    val topReflection: Color = Color.White,
+    val diffuseShadow: Color = Color.Black,
 )
 
 @Immutable
@@ -110,6 +130,7 @@ data class JeanCalculDesignTokens(
     val opacity: JeanCalculOpacity = JeanCalculOpacity(),
     val elevation: JeanCalculElevation = JeanCalculElevation(),
     val motion: JeanCalculMotion = JeanCalculMotion(),
+    val materials: JeanCalculMaterialColors = JeanCalculMaterialColors(),
 )
 
 val JeanCalculDarkColorScheme: ColorScheme =
@@ -134,8 +155,16 @@ val JeanCalculDarkColorScheme: ColorScheme =
         onBackground = Color(0xFFE0E3E4),
         surface = Color(0xFF181C1D),
         onSurface = Color(0xFFE0E3E4),
+        surfaceDim = Color(0xFF101415),
+        surfaceBright = Color(0xFF363A3B),
+        surfaceContainerLowest = Color(0xFF0B0F10),
+        surfaceContainerLow = Color(0xFF181C1D),
+        surfaceContainer = Color(0xFF1C2021),
+        surfaceContainerHigh = Color(0xFF272B2C),
+        surfaceContainerHighest = Color(0xFF313536),
         surfaceVariant = Color(0xFF313536),
         onSurfaceVariant = Color(0xFFC6C6CB),
+        surfaceTint = Color(0xFFC6C6CC),
         outline = Color(0xFF909095),
         outlineVariant = Color(0xFF46474B),
         inverseSurface = Color(0xFFE0E3E4),
@@ -164,8 +193,16 @@ val JeanCalculLightColorScheme: ColorScheme =
         onBackground = Color(0xFF181C1D),
         surface = Color(0xFFF7F9FA),
         onSurface = Color(0xFF181C1D),
+        surfaceDim = Color(0xFFDCE1E3),
+        surfaceBright = Color(0xFFFFFFFF),
+        surfaceContainerLowest = Color(0xFFFFFFFF),
+        surfaceContainerLow = Color(0xFFF1F4F5),
+        surfaceContainer = Color(0xFFEBEFF1),
+        surfaceContainerHigh = Color(0xFFE4E9EB),
+        surfaceContainerHighest = Color(0xFFDDE3E5),
         surfaceVariant = Color(0xFFE1E4E5),
         onSurfaceVariant = Color(0xFF44474A),
+        surfaceTint = Color(0xFF45474C),
         outline = Color(0xFF74777A),
         outlineVariant = Color(0xFFC4C7C9),
         inverseSurface = Color(0xFF2D3132),
@@ -212,12 +249,41 @@ val JeanCalculTypography =
                 lineHeight = 56.sp,
                 letterSpacing = (-0.96).sp,
             ),
+        displayMedium =
+            TextStyle(
+                fontFamily = FontFamily.SansSerif,
+                fontWeight = FontWeight.Bold,
+                fontSize = 32.sp,
+                lineHeight = 40.sp,
+                letterSpacing = (-0.32).sp,
+            ),
         headlineMedium =
             TextStyle(
                 fontFamily = FontFamily.SansSerif,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 24.sp,
                 lineHeight = 32.sp,
+            ),
+        headlineSmall =
+            TextStyle(
+                fontFamily = FontFamily.SansSerif,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 20.sp,
+                lineHeight = 28.sp,
+            ),
+        titleLarge =
+            TextStyle(
+                fontFamily = FontFamily.SansSerif,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 20.sp,
+                lineHeight = 28.sp,
+            ),
+        titleMedium =
+            TextStyle(
+                fontFamily = FontFamily.SansSerif,
+                fontWeight = FontWeight.Medium,
+                fontSize = 18.sp,
+                lineHeight = 24.sp,
             ),
         bodyLarge =
             TextStyle(
@@ -232,6 +298,20 @@ val JeanCalculTypography =
                 fontWeight = FontWeight.Normal,
                 fontSize = 16.sp,
                 lineHeight = 24.sp,
+            ),
+        bodySmall =
+            TextStyle(
+                fontFamily = FontFamily.SansSerif,
+                fontWeight = FontWeight.Normal,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+            ),
+        labelLarge =
+            TextStyle(
+                fontFamily = FontFamily.SansSerif,
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
             ),
         labelSmall =
             TextStyle(
@@ -252,8 +332,24 @@ val JeanCalculShapes =
         extraLarge = RoundedCornerShape(24.dp),
     )
 
+private val JeanCalculLightMaterialColors =
+    JeanCalculMaterialColors(
+        surfaceLowest = Color(0xFFFFFFFF),
+        surfaceLow = Color(0xFFF1F4F5),
+        surface = Color(0xFFEBEFF1),
+        surfaceHigh = Color(0xFFE4E9EB),
+        surfaceHighest = Color(0xFFDDE3E5),
+        ambientBlue = Color(0xFF185EA8),
+        ambientViolet = Color(0xFF6F45B7),
+        topReflection = Color.White,
+        diffuseShadow = Color(0xFF172126),
+    )
+
 internal fun designTokens(isDark: Boolean): JeanCalculDesignTokens =
-    JeanCalculDesignTokens(semantic = if (isDark) JeanCalculDarkSemanticColors else JeanCalculLightSemanticColors)
+    JeanCalculDesignTokens(
+        semantic = if (isDark) JeanCalculDarkSemanticColors else JeanCalculLightSemanticColors,
+        materials = if (isDark) JeanCalculMaterialColors() else JeanCalculLightMaterialColors,
+    )
 
 val LocalJeanCalculDesignTokens = staticCompositionLocalOf { designTokens(isDark = true) }
 val LocalVisualEffects = staticCompositionLocalOf { VisualEffects() }
