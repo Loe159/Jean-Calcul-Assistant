@@ -2,9 +2,9 @@
 
 ## Export d’origine
 
-- Fichier reçu : `stitch_jean_calcule_assistant_os (1).zip`
+- Fichier reçu : `stitch_jean_calcul_assistant_os (1).zip`
 - SHA-256 : `f5b221487bdd8e66e3a2e90659d87367456d4d6f2fe915e9c44de6fd50e9c1e5`
-- Source canonique sélectionnée dans l’export : `jean_calcule_lumina/DESIGN.md`
+- Source canonique sélectionnée dans l’export : `jean_calcul_lumina/DESIGN.md`
 
 ## Ressources versionnées
 
