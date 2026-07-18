@@ -1,4 +1,4 @@
-# Références Stitch — Jean Calcule Lumina
+# Références Stitch — Jean Calcul Lumina
 
 Ce dossier versionne la direction artistique retenue pour l’issue [#18](https://github.com/Loe159/Jean-Calcul-Assistant/issues/18).
 
@@ -9,7 +9,7 @@ Ce dossier versionne la direction artistique retenue pour l’issue [#18](https:
 - [`IMPLEMENTATION-NOTES.md`](IMPLEMENTATION-NOTES.md) traduit les effets du prototype Web en contraintes Android/Jetpack Compose.
 - [`examples/`](examples/) contient deux prototypes interactifs particulièrement importants : le mode vocal ambiant et l’overlay compact.
 
-La direction retenue est **Jean Calcule Lumina / Ambient Intelligence / Refined Dark Glass**.
+La direction retenue est **Jean Calcul Lumina / Ambient Intelligence / Refined Dark Glass**.
 
 ## Règle d’utilisation
 
@@ -55,7 +55,7 @@ Les deux prototypes dont le mouvement et le matériau sont difficiles à retrans
 
 ## Provenance
 
-- Export source : `stitch_jean_calcule_assistant_os (1).zip`
+- Export source : `stitch_jean_calcul_assistant_os (1).zip`
 - SHA-256 : `f5b221487bdd8e66e3a2e90659d87367456d4d6f2fe915e9c44de6fd50e9c1e5`
 - Les variantes historiques du ZIP ne sont pas retenues comme sources canoniques afin d’éviter les contradictions.
 - Les informations utiles des autres écrans ont été retranscrites dans `SCREEN-REFERENCES.md` afin que l’implémentation ne dépende pas de prototypes Web contenant des ressources distantes.
