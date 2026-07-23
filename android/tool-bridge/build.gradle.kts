@@ -25,9 +25,13 @@ kotlin {
 
 dependencies {
     implementation(project(":core-domain"))
+    implementation(project(":feature-tasks"))
+    implementation(libs.androidx.media3.session)
+    implementation(libs.json.schema.validator)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.junit)
+    testImplementation(libs.mockk)
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)

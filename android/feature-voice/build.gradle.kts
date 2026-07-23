@@ -2,12 +2,11 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
 }
 
 android {
-    namespace = "fr.loevan.jeancalcul.data"
+    namespace = "fr.loevan.jeancalcul.feature.voice"
     compileSdk = 35
 
     defaultConfig {
@@ -27,15 +26,11 @@ kotlin {
 
 dependencies {
     implementation(project(":core-domain"))
-    implementation(libs.androidx.datastore.preferences)
-    implementation(libs.androidx.room.ktx)
-    implementation(libs.androidx.room.runtime)
+    implementation(project(":core-observability"))
+    implementation(libs.androidx.media3.common)
     implementation(libs.hilt.android)
     implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.kotlinx.serialization.json)
-    ksp(libs.androidx.room.compiler)
     ksp(libs.hilt.compiler)
-    testImplementation(libs.androidx.room.testing)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk)

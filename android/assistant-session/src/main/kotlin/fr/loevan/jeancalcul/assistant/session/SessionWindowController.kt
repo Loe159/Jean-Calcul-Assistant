@@ -24,8 +24,10 @@ internal class SessionWindowController(
     fun reconfigure(dialog: Dialog?) = configure(dialog)
 
     fun release() {
-        predictiveBackCallback?.let { callback ->
-            predictiveBackDispatcher?.unregisterOnBackInvokedCallback(callback)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            predictiveBackCallback?.let { callback ->
+                predictiveBackDispatcher?.unregisterOnBackInvokedCallback(callback)
+            }
         }
         predictiveBackDispatcher = null
         predictiveBackCallback = null

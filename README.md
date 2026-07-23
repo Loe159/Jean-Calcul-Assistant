@@ -21,24 +21,32 @@ Ouvre ensuite le dossier racine dans Android Studio. Le projet utilise le wrappe
 Les variantes `core` et `powerUser` sont deux binaires distincts. La variante Power User est uniquement
 une frontière de distribution à ce stade : aucune accessibilité ni automatisation n’est encore implémentée.
 
-### Modules initiaux
+### Modules Android
 
 | Module | Responsabilité actuelle | Dépendances autorisées |
 | --- | --- | --- |
-| `app` | Point d’entrée Compose et assemblage des variantes | Tous les modules initiaux, jamais l’inverse |
-| `assistant-service` | Service assistant Android léger et métadonnées système | `core-domain` uniquement |
-| `assistant-session` | Session Compose transparente isolée ; cycle de fermeture et fallback visuel | `core-domain`, `core-ui` |
+| `app` | Point d’entrée Compose et assemblage des variantes | Tous les modules nécessaires à l’application, jamais l’inverse |
+| `assistant-service` | Service assistant Android léger et métadonnées système | `core-domain`, `core-observability` ; jamais Room ni réseau |
+| `assistant-session` | Session Compose transparente isolée ; cycle de fermeture et fallback visuel | Domaine, UI, voix, conversation et pont d’outils |
 | `core-domain` | Contrats Kotlin indépendants d’Android | Aucune dépendance Android |
-| `core-data` | Future persistance et repositories | `core-domain` |
+| `core-data` | Fondation Room/DataStore et futurs repositories | `core-domain` |
+| `core-network` | Fondation HTTP/streaming des futurs fournisseurs | `core-domain`, `core-security` |
+| `core-observability` | Traces et budgets de performance partagés | Aucune couche fonctionnelle |
+| `core-security` | Fondation Keystore, biométrie et expurgation | `core-domain` |
 | `core-ui` | Fondations Compose partagées | Aucune couche métier ou data |
-| `tool-bridge` | Future registre et exécution déterministe d’outils | `core-domain` |
+| `feature-conversation` | Frontière des conversations persistées et de leur UI | Domaine, data et UI |
+| `feature-settings` | Frontière des écrans et profils de configuration | Domaine, data, réseau, sécurité et UI |
+| `feature-tasks` | Frontière des tâches locales | Domaine et data |
+| `feature-voice` | Frontière du pipeline vocal Android | Domaine et observabilité |
+| `tool-bridge` | Registre et exécution déterministe d’outils | Domaine et fonctionnalités locales explicitement exposées |
 
 Le rôle assistant est configuré par l’onboarding : il propose la demande système puis un accès de secours
 aux paramètres de saisie vocale. Le service reste minimal ; la session transparente est isolée et la
 reconnaissance vocale sera ajoutée dans son issue dédiée. Les décisions sont consignées dans
 [`docs/architecture/0001-android-foundation.md`](docs/architecture/0001-android-foundation.md) et
 [`docs/architecture/0002-android-assistant-role.md`](docs/architecture/0002-android-assistant-role.md),
-ainsi que [`docs/architecture/0003-transparent-assistant-session.md`](docs/architecture/0003-transparent-assistant-session.md).
+[`docs/architecture/0003-transparent-assistant-session.md`](docs/architecture/0003-transparent-assistant-session.md)
+et [`docs/architecture/0006-phase-1-module-foundation.md`](docs/architecture/0006-phase-1-module-foundation.md).
 
 ## Commencer ici
 

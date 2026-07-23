@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "fr.loevan.jeancalcul.data"
+    namespace = "fr.loevan.jeancalcul.network"
     compileSdk = 35
 
     defaultConfig {
@@ -27,17 +27,16 @@ kotlin {
 
 dependencies {
     implementation(project(":core-domain"))
-    implementation(libs.androidx.datastore.preferences)
-    implementation(libs.androidx.room.ktx)
-    implementation(libs.androidx.room.runtime)
+    implementation(project(":core-security"))
     implementation(libs.hilt.android)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
-    ksp(libs.androidx.room.compiler)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging.interceptor)
     ksp(libs.hilt.compiler)
-    testImplementation(libs.androidx.room.testing)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk)
+    testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.turbine)
 }

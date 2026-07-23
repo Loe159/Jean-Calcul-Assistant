@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "fr.loevan.jeancalcul.data"
+    namespace = "fr.loevan.jeancalcul.feature.tasks"
     compileSdk = 35
 
     defaultConfig {
@@ -26,16 +26,12 @@ kotlin {
 }
 
 dependencies {
+    implementation(project(":core-data"))
     implementation(project(":core-domain"))
-    implementation(libs.androidx.datastore.preferences)
-    implementation(libs.androidx.room.ktx)
-    implementation(libs.androidx.room.runtime)
     implementation(libs.hilt.android)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
-    ksp(libs.androidx.room.compiler)
     ksp(libs.hilt.compiler)
-    testImplementation(libs.androidx.room.testing)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk)

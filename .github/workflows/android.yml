@@ -2,16 +2,16 @@ name: Android CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 permissions:
   contents: read
 
 jobs:
   verify:
-    name: Build, test and analyse Android foundation
+    name: Build, test and analyse Android modules
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -36,7 +36,7 @@ jobs:
         run: ./gradlew --no-daemon test
 
       - name: Run ktlint, Detekt and Android Lint
-        run: ./gradlew --no-daemon ktlintCheck detekt lintCoreDebug lintPowerUserDebug
+        run: ./gradlew --no-daemon ktlintCheck detekt lint lintCoreDebug lintPowerUserDebug
 
       - name: Upload verification reports
         if: always()
