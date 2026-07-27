@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import fr.loevan.jeancalcul.domain.DeterministicVolumeCommandInterpreter
 import fr.loevan.jeancalcul.domain.PolicyAuditLogger
 import fr.loevan.jeancalcul.domain.PolicyEngine
+import fr.loevan.jeancalcul.feature.conversation.VoiceConversationRecorder
 import fr.loevan.jeancalcul.observability.AndroidPerformanceTrace
 import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
 import fr.loevan.jeancalcul.toolbridge.AudioManagerVolumeController
@@ -37,6 +38,7 @@ import fr.loevan.jeancalcul.voice.VoicePipelineFactory
 class JeanCalculVoiceInteractionSession(
     context: Context,
     private val voicePipelineFactory: VoicePipelineFactory = AndroidVoicePipelineFactory(context),
+    private val conversationRecorder: VoiceConversationRecorder,
 ) : VoiceInteractionSession(context) {
     private val lifecycleOwner = SessionLifecycleOwner()
     private val windowController = SessionWindowController(::closeSession)
@@ -87,6 +89,7 @@ class JeanCalculVoiceInteractionSession(
                         performanceTrace = performanceTrace,
                     ),
                 performanceTrace = performanceTrace,
+                conversationRecorder = conversationRecorder,
                 initialLocaleTag = context.resources.configuration.locales[0].toLanguageTag(),
             )
     }

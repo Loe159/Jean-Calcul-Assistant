@@ -11,14 +11,19 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dagger.hilt.android.AndroidEntryPoint
+import fr.loevan.jeancalcul.feature.conversation.ConversationScreenActions
+import fr.loevan.jeancalcul.feature.conversation.ConversationViewModel
 import fr.loevan.jeancalcul.ui.jeanCalculTheme
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private val conversationViewModel: ConversationViewModel by viewModels()
     private lateinit var assistantRoleController: AssistantRoleController
     private lateinit var assistantRoleGateway: AssistantRoleGateway
     private var assistantRoleStatus by mutableStateOf<AssistantRoleStatus>(AssistantRoleStatus.Unavailable)
@@ -45,12 +50,26 @@ class MainActivity : ComponentActivity() {
         microphonePermissionGranted = hasMicrophonePermission()
         setContent {
             jeanCalculTheme {
-                assistantRoleOnboarding(
-                    status = assistantRoleStatus,
+                val conversationState by conversationViewModel.uiState.collectAsState()
+                mainAppContent(
+                    assistantRoleStatus = assistantRoleStatus,
                     microphonePermissionGranted = microphonePermissionGranted,
-                    onRequestRole = ::requestAssistantRole,
-                    onRequestMicrophonePermission = ::requestMicrophonePermission,
-                    onOpenSystemSettings = ::openVoiceInputSettings,
+                    conversationState = conversationState,
+                    onboardingActions =
+                        OnboardingActions(
+                            requestRole = ::requestAssistantRole,
+                            requestMicrophonePermission = ::requestMicrophonePermission,
+                            openSystemSettings = ::openVoiceInputSettings,
+                        ),
+                    conversationActions =
+                        ConversationScreenActions(
+                            selectConversation = conversationViewModel::selectConversation,
+                            newConversation = conversationViewModel::newConversation,
+                            deleteConversation = conversationViewModel::deleteSelected,
+                            draftChanged = conversationViewModel::updateDraft,
+                            send = conversationViewModel::saveDraft,
+                            export = { conversationViewModel.exportSelected(::shareConversation) },
+                        ),
                 )
             }
         }
@@ -107,6 +126,19 @@ class MainActivity : ComponentActivity() {
             Log.w(LOG_TAG, "Voice input settings are unavailable; opening general settings", error)
             startActivity(Intent(Settings.ACTION_SETTINGS))
         }
+    }
+
+    private fun shareConversation(
+        title: String,
+        json: String,
+    ) {
+        val shareIntent =
+            Intent(Intent.ACTION_SEND).apply {
+                type = "application/json"
+                putExtra(Intent.EXTRA_SUBJECT, title)
+                putExtra(Intent.EXTRA_TEXT, json)
+            }
+        startActivity(Intent.createChooser(shareIntent, "Exporter la conversation"))
     }
 
     private companion object {

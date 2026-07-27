@@ -23,6 +23,7 @@ import fr.loevan.jeancalcul.domain.VoiceAudioRoute
 import fr.loevan.jeancalcul.domain.VoiceAudioRouteSource
 import fr.loevan.jeancalcul.domain.VoiceAudioUse
 import fr.loevan.jeancalcul.domain.VoiceLocale
+import fr.loevan.jeancalcul.feature.conversation.VoiceConversationRecorder
 import fr.loevan.jeancalcul.observability.PerformanceTrace
 import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
 import kotlinx.coroutines.CoroutineDispatcher
@@ -53,6 +54,7 @@ internal class VoiceSessionController(
     private val audioRouteSource: VoiceAudioRouteSource = NoOpVoiceAudioRouteSource,
     private val voiceCommandProcessor: VoiceCommandProcessor = NoOpVoiceCommandProcessor,
     private val performanceTrace: PerformanceTrace = NoOpPerformanceTrace,
+    private val conversationRecorder: VoiceConversationRecorder = NoOpVoiceConversationRecorder,
     private val stateMachine: AssistantStateMachine = AssistantStateMachine(),
     initialLocaleTag: String = Locale.getDefault().toLanguageTag(),
     dispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
@@ -89,6 +91,7 @@ internal class VoiceSessionController(
 
     fun invoke() {
         prepareStableState()
+        scope.launch { conversationRecorder.beginSession() }
         dispatch(AssistantEvent.Invoke)
     }
 
@@ -255,17 +258,26 @@ internal class VoiceSessionController(
         when (effect) {
             AssistantEffect.StartSpeechRecognition -> startSpeechRecognition()
             AssistantEffect.StopSpeechRecognition -> stopSpeechRecognition()
-            is AssistantEffect.RequestResponse -> handleCommandOutcome(voiceCommandProcessor.process(effect.input))
+            is AssistantEffect.RequestResponse -> {
+                scope.launch { conversationRecorder.recordUserMessage(effect.input) }
+                handleCommandOutcome(voiceCommandProcessor.process(effect.input))
+            }
             is AssistantEffect.PresentAction -> Unit
             is AssistantEffect.RequestApproval -> {
                 mutableState.value = mutableState.value.copy(confirmationPrompt = effect.summary)
             }
 
             is AssistantEffect.ExecuteAction -> handleCommandOutcome(voiceCommandProcessor.confirm())
-            is AssistantEffect.Speak -> speak(effect.text)
+            is AssistantEffect.Speak -> {
+                scope.launch { conversationRecorder.recordAssistantMessage(effect.text) }
+                speak(effect.text)
+            }
             AssistantEffect.CancelActiveWork,
             AssistantEffect.InterruptActiveWork,
-            -> cancelProvidersAndPending()
+            -> {
+                scope.launch { conversationRecorder.recordInterruption() }
+                cancelProvidersAndPending()
+            }
 
             is AssistantEffect.ScheduleTimeout -> scheduleTimeout(effect.timeout)
             AssistantEffect.CancelTimeout -> clearTimeout()
@@ -515,6 +527,16 @@ private object NoOpVoiceCommandProcessor : VoiceCommandProcessor {
         VoiceCommandOutcome.Invalid("Aucune action n'est en attente de confirmation.")
 
     override fun cancelPending() = Unit
+}
+
+private object NoOpVoiceConversationRecorder : VoiceConversationRecorder {
+    override suspend fun beginSession() = Unit
+
+    override suspend fun recordUserMessage(text: String) = Unit
+
+    override suspend fun recordAssistantMessage(text: String) = Unit
+
+    override suspend fun recordInterruption() = Unit
 }
 
 private fun fr.loevan.jeancalcul.domain.PolicyDecision.exactSummary(): String =
