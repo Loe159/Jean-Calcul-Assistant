@@ -18,12 +18,13 @@ class VolumeToolBridgeTest {
     @Test
     fun `reads music alarm and notification volume`() {
         val controller = FakeVolumeController()
-        val bridge = VolumeToolBridge(controller, ToolAuditLogger { })
+        val registry = createVolumeToolRegistry(controller, ToolAuditLogger { })
 
         VolumeStream.entries.forEach { stream ->
-            val result = bridge.execute(getProposal(stream))
+            val result = registry.execute(getProposal(stream), volumeToolAvailabilityContext(isDeviceLocked = false))
 
             assertTrue(result.isSuccess)
+            assertEquals(VolumeToolSchemas.VERSION, result.toolVersion)
             assertEquals(
                 controller.volumes.getValue(stream).current,
                 result.output!!.getValue("platformVolume").jsonPrimitive.content.toInt(),
@@ -34,9 +35,9 @@ class VolumeToolBridgeTest {
     @Test
     fun `writes a validated target and returns the observed native value`() {
         val controller = FakeVolumeController()
-        val bridge = VolumeToolBridge(controller, ToolAuditLogger { })
+        val registry = createVolumeToolRegistry(controller, ToolAuditLogger { })
 
-        val result = bridge.execute(setProposal(VolumeStream.MUSIC, 30))
+        val result = registry.execute(setProposal(VolumeStream.MUSIC, 30), volumeToolAvailabilityContext(false))
 
         assertTrue(result.isSuccess)
         assertEquals(5, controller.volumes.getValue(VolumeStream.MUSIC).current)
@@ -48,14 +49,15 @@ class VolumeToolBridgeTest {
     fun `does not call android volume APIs with invalid percentages`() {
         val controller = FakeVolumeController()
         val events = mutableListOf<ToolAuditEvent>()
-        val bridge = VolumeToolBridge(controller, ToolAuditLogger(events::add))
+        val registry = createVolumeToolRegistry(controller, ToolAuditLogger(events::add))
 
-        val result = bridge.execute(setProposal(VolumeStream.ALARM, 101))
+        val result = registry.execute(setProposal(VolumeStream.ALARM, 101), volumeToolAvailabilityContext(false))
 
         assertFalse(result.isSuccess)
-        assertEquals("INVALID_VOLUME", result.error!!.code)
+        assertEquals("INPUT_SCHEMA_INVALID", result.error!!.code)
         assertEquals(0, controller.writeCount)
         assertEquals(listOf(ToolAuditStage.REQUESTED, ToolAuditStage.ERROR), events.map(ToolAuditEvent::stage))
+        assertTrue(events.all { it.toolVersion == VolumeToolSchemas.VERSION })
     }
 
     @Test
@@ -64,9 +66,9 @@ class VolumeToolBridgeTest {
             FakeVolumeController().apply {
                 volumes[VolumeStream.NOTIFICATION] = PlatformVolume(3, 5)
             }
-        val bridge = VolumeToolBridge(controller, ToolAuditLogger { })
+        val registry = createVolumeToolRegistry(controller, ToolAuditLogger { })
 
-        val result = bridge.execute(setProposal(VolumeStream.NOTIFICATION, 60))
+        val result = registry.execute(setProposal(VolumeStream.NOTIFICATION, 60), volumeToolAvailabilityContext(false))
 
         assertTrue(result.isSuccess)
         assertEquals(0, controller.writeCount)
@@ -76,6 +78,7 @@ class VolumeToolBridgeTest {
         ActionProposal(
             actionId = "get-${stream.name}",
             toolName = VolumeToolSchemas.GET_VOLUME_TOOL_NAME,
+            toolVersion = VolumeToolSchemas.VERSION,
             arguments = JsonObject(mapOf("stream" to JsonPrimitive(stream.name))),
         )
 
@@ -85,6 +88,7 @@ class VolumeToolBridgeTest {
     ) = ActionProposal(
         actionId = "set-${stream.name}",
         toolName = VolumeToolSchemas.SET_VOLUME_TOOL_NAME,
+        toolVersion = VolumeToolSchemas.VERSION,
         arguments =
             JsonObject(
                 mapOf(

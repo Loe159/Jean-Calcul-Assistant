@@ -30,6 +30,7 @@ class DeterministicVolumeCommandInterpreter(
         return ActionProposal(
             actionId = actionIdFactory(),
             toolName = VolumeToolSchemas.SET_VOLUME_TOOL_NAME,
+            toolVersion = VolumeToolSchemas.VERSION,
             arguments =
                 JsonObject(
                     mapOf(
@@ -44,6 +45,7 @@ class DeterministicVolumeCommandInterpreter(
         ActionProposal(
             actionId = actionIdFactory(),
             toolName = VolumeToolSchemas.GET_VOLUME_TOOL_NAME,
+            toolVersion = VolumeToolSchemas.VERSION,
             arguments = JsonObject(mapOf("stream" to JsonPrimitive(stream.name))),
         )
 

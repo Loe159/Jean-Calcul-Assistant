@@ -11,7 +11,8 @@ import fr.loevan.jeancalcul.domain.ToolAuditLogger
 import fr.loevan.jeancalcul.domain.VolumeStream
 import fr.loevan.jeancalcul.toolbridge.PlatformVolume
 import fr.loevan.jeancalcul.toolbridge.VolumeController
-import fr.loevan.jeancalcul.toolbridge.VolumeToolBridge
+import fr.loevan.jeancalcul.toolbridge.createVolumeToolRegistry
+import fr.loevan.jeancalcul.toolbridge.volumeToolAvailabilityContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -37,7 +38,8 @@ class VoiceVolumeEndToEndScenarioTest {
                     voiceCommandProcessor =
                         VolumeCommandProcessor(
                             interpreter = DeterministicVolumeCommandInterpreter { "scenario-action" },
-                            volumeToolBridge = VolumeToolBridge(volumeController, ToolAuditLogger { }),
+                            toolRegistry = createVolumeToolRegistry(volumeController, ToolAuditLogger { }),
+                            availabilityContext = { volumeToolAvailabilityContext(isDeviceLocked = false) },
                         ),
                     dispatcher = StandardTestDispatcher(testScheduler),
                 )

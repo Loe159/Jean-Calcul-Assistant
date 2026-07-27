@@ -3,7 +3,6 @@ package fr.loevan.jeancalcul.domain
 import fr.loevan.jeancalcul.domain.testing.FakeModelProvider
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.JsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -31,12 +30,7 @@ class ModelProviderContractsTest {
                     ),
                 tools =
                     listOf(
-                        ToolDefinition(
-                            "device.status",
-                            "1.0.0",
-                            JsonObject(emptyMap()),
-                            JsonObject(emptyMap()),
-                        ),
+                        VolumeToolSchemas.definitions.first(),
                     ),
             )
 
