@@ -1,6 +1,7 @@
 package fr.loevan.jeancalcul.assistant.session
 
 import android.Manifest
+import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -18,7 +19,8 @@ import fr.loevan.jeancalcul.domain.DeterministicVolumeCommandInterpreter
 import fr.loevan.jeancalcul.observability.AndroidPerformanceTrace
 import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
 import fr.loevan.jeancalcul.toolbridge.AudioManagerVolumeController
-import fr.loevan.jeancalcul.toolbridge.VolumeToolBridge
+import fr.loevan.jeancalcul.toolbridge.createVolumeToolRegistry
+import fr.loevan.jeancalcul.toolbridge.volumeToolAvailabilityContext
 import fr.loevan.jeancalcul.voice.AndroidVoicePipelineFactory
 import fr.loevan.jeancalcul.voice.VoiceEngineSelection
 import fr.loevan.jeancalcul.voice.VoicePipeline
@@ -56,12 +58,18 @@ class JeanCalculVoiceInteractionSession(
                 voiceCommandProcessor =
                     VolumeCommandProcessor(
                         interpreter = DeterministicVolumeCommandInterpreter(),
-                        volumeToolBridge =
-                            VolumeToolBridge(
+                        toolRegistry =
+                            createVolumeToolRegistry(
                                 AudioManagerVolumeController(
                                     requireNotNull(context.getSystemService(AudioManager::class.java)),
                                 ),
                             ),
+                        availabilityContext = {
+                            volumeToolAvailabilityContext(
+                                isDeviceLocked =
+                                    context.getSystemService(KeyguardManager::class.java)?.isDeviceLocked == true,
+                            )
+                        },
                         performanceTrace = performanceTrace,
                     ),
                 performanceTrace = performanceTrace,

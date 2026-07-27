@@ -13,7 +13,8 @@ import fr.loevan.jeancalcul.domain.VoiceProviderDescriptor
 import fr.loevan.jeancalcul.domain.VolumeStream
 import fr.loevan.jeancalcul.toolbridge.PlatformVolume
 import fr.loevan.jeancalcul.toolbridge.VolumeController
-import fr.loevan.jeancalcul.toolbridge.VolumeToolBridge
+import fr.loevan.jeancalcul.toolbridge.createVolumeToolRegistry
+import fr.loevan.jeancalcul.toolbridge.volumeToolAvailabilityContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -38,8 +39,9 @@ class VoiceVolumeEndToEndInstrumentedTest {
                     textToSpeechProvider = textToSpeech,
                     voiceCommandProcessor =
                         VolumeCommandProcessor(
-                            DeterministicVolumeCommandInterpreter { "instrumented-action" },
-                            VolumeToolBridge(volumeController, ToolAuditLogger { }),
+                            interpreter = DeterministicVolumeCommandInterpreter { "instrumented-action" },
+                            toolRegistry = createVolumeToolRegistry(volumeController, ToolAuditLogger { }),
+                            availabilityContext = { volumeToolAvailabilityContext(isDeviceLocked = false) },
                         ),
                     dispatcher = StandardTestDispatcher(testScheduler),
                 )
@@ -71,8 +73,10 @@ class VoiceVolumeEndToEndInstrumentedTest {
                         textToSpeechProvider = textToSpeech,
                         voiceCommandProcessor =
                             VolumeCommandProcessor(
-                                DeterministicVolumeCommandInterpreter { "instrumented-action-$invocation" },
-                                VolumeToolBridge(volumeController, ToolAuditLogger { }),
+                                interpreter =
+                                    DeterministicVolumeCommandInterpreter { "instrumented-action-$invocation" },
+                                toolRegistry = createVolumeToolRegistry(volumeController, ToolAuditLogger { }),
+                                availabilityContext = { volumeToolAvailabilityContext(isDeviceLocked = false) },
                             ),
                         dispatcher = StandardTestDispatcher(testScheduler),
                     )

@@ -1,19 +1,18 @@
 package fr.loevan.jeancalcul.toolbridge
 
 import android.media.AudioManager
-import android.util.Log
 import fr.loevan.jeancalcul.domain.ActionProposal
-import fr.loevan.jeancalcul.domain.ToolAuditEvent
 import fr.loevan.jeancalcul.domain.ToolAuditLogger
-import fr.loevan.jeancalcul.domain.ToolAuditStage
+import fr.loevan.jeancalcul.domain.ToolAvailabilityContext
+import fr.loevan.jeancalcul.domain.ToolDeviceCapabilities
 import fr.loevan.jeancalcul.domain.ToolError
-import fr.loevan.jeancalcul.domain.ToolResult
 import fr.loevan.jeancalcul.domain.VolumeStream
 import fr.loevan.jeancalcul.domain.VolumeToolRequest
 import fr.loevan.jeancalcul.domain.VolumeToolSchemas
-import fr.loevan.jeancalcul.domain.VolumeToolValidation
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.math.roundToInt
 
 data class PlatformVolume(
@@ -57,95 +56,80 @@ class AudioManagerVolumeController(
         }
 }
 
-/** Executes only the two phase-0 volume tool definitions. */
-class VolumeToolBridge(
+/** Deterministic Android executor used only after the registry has validated a volume request. */
+private class VolumeToolExecutor(
     private val volumeController: VolumeController,
-    private val auditLogger: ToolAuditLogger = LogcatToolAuditLogger,
-) {
-    fun execute(proposal: ActionProposal): ToolResult {
-        audit(proposal, ToolAuditStage.REQUESTED, "Volume tool request received.")
-        return when (val validation = VolumeToolSchemas.validate(proposal)) {
-            is VolumeToolValidation.Invalid -> failure(proposal, validation.code, validation.message)
-            is VolumeToolValidation.Valid -> executeValidated(proposal, validation.request)
-        }
-    }
-
-    private fun executeValidated(
-        proposal: ActionProposal,
-        request: VolumeToolRequest,
-    ): ToolResult {
-        audit(proposal, ToolAuditStage.VALIDATED, "Volume tool request validated.")
+) : ToolExecutor {
+    override fun execute(proposal: ActionProposal): ToolExecutionOutcome {
+        val request =
+            proposal.toVolumeRequest()
+                ?: return ToolExecutionOutcome.Failure(ToolError("INVALID_ARGUMENTS", "Invalid volume arguments."))
         return try {
-            executeRequest(proposal, request)
+            executeRequest(request)
         } catch (_: SecurityException) {
-            failure(proposal, "AUDIO_ACCESS_DENIED", "L'acces au volume Android a ete refuse.")
+            failure("AUDIO_ACCESS_DENIED", "L'acces au volume Android a ete refuse.")
         } catch (_: IllegalArgumentException) {
-            failure(proposal, "STREAM_UNAVAILABLE", "Le flux audio n'est pas disponible sur cet appareil.")
+            failure("STREAM_UNAVAILABLE", "Le flux audio n'est pas disponible sur cet appareil.")
         } catch (_: RuntimeException) {
-            failure(proposal, "AUDIO_FAILURE", "La lecture ou la modification du volume a echoue.")
+            failure("AUDIO_FAILURE", "La lecture ou la modification du volume a echoue.")
         }
     }
 
-    private fun executeRequest(
-        proposal: ActionProposal,
-        request: VolumeToolRequest,
-    ): ToolResult {
+    private fun executeRequest(request: VolumeToolRequest): ToolExecutionOutcome {
         val before = volumeController.read(request.stream)
-        if (before.maximum <= 0) return streamUnavailable(proposal)
+        if (before.maximum <= 0) return streamUnavailable()
         if (request is VolumeToolRequest.Set) {
             val target = request.volumePercent.toPlatformVolume(before.maximum)
             if (before.current != target) volumeController.write(request.stream, target)
         }
         val observed = volumeController.read(request.stream)
         return if (observed.maximum > 0) {
-            success(proposal, request.stream, observed)
+            success(request.stream, observed)
         } else {
-            streamUnavailable(proposal)
+            streamUnavailable()
         }
     }
 
-    private fun streamUnavailable(proposal: ActionProposal) =
-        failure(proposal, "STREAM_UNAVAILABLE", "Le flux audio n'est pas disponible sur cet appareil.")
+    private fun streamUnavailable() =
+        failure("STREAM_UNAVAILABLE", "Le flux audio n'est pas disponible sur cet appareil.")
 
     private fun success(
-        proposal: ActionProposal,
         stream: VolumeStream,
         volume: PlatformVolume,
-    ): ToolResult {
-        val result =
-            ToolResult(
-                actionId = proposal.actionId,
-                toolName = proposal.toolName,
-                output =
-                    JsonObject(
-                        mapOf(
-                            "stream" to JsonPrimitive(stream.name),
-                            "volumePercent" to JsonPrimitive(volume.current.toPercent(volume.maximum)),
-                            "platformVolume" to JsonPrimitive(volume.current),
-                            "platformMaxVolume" to JsonPrimitive(volume.maximum),
-                        ),
+    ): ToolExecutionOutcome =
+        ToolExecutionOutcome.Success(
+            output =
+                JsonObject(
+                    mapOf(
+                        "stream" to JsonPrimitive(stream.name),
+                        "volumePercent" to JsonPrimitive(volume.current.toPercent(volume.maximum)),
+                        "platformVolume" to JsonPrimitive(volume.current),
+                        "platformMaxVolume" to JsonPrimitive(volume.maximum),
                     ),
-            )
-        audit(proposal, ToolAuditStage.RESULT, "Volume tool completed.")
-        return result
-    }
+                ),
+        )
 
     private fun failure(
-        proposal: ActionProposal,
         code: String,
         message: String,
-    ): ToolResult {
-        val result = ToolResult(proposal.actionId, proposal.toolName, error = ToolError(code, message))
-        audit(proposal, ToolAuditStage.ERROR, code)
-        return result
-    }
+    ) = ToolExecutionOutcome.Failure(ToolError(code, message))
 
-    private fun audit(
-        proposal: ActionProposal,
-        stage: ToolAuditStage,
-        message: String,
-    ) {
-        auditLogger.log(ToolAuditEvent(proposal.actionId, proposal.toolName, stage, message))
+    private fun ActionProposal.toVolumeRequest(): VolumeToolRequest? {
+        val stream =
+            arguments["stream"]
+                ?.jsonPrimitive
+                ?.content
+                ?.let { runCatching { VolumeStream.valueOf(it) }.getOrNull() }
+                ?: return null
+        return when (toolName) {
+            VolumeToolSchemas.GET_VOLUME_TOOL_NAME -> VolumeToolRequest.Get(stream)
+            VolumeToolSchemas.SET_VOLUME_TOOL_NAME ->
+                VolumeToolRequest.Set(
+                    stream = stream,
+                    volumePercent = arguments.getValue("volumePercent").jsonPrimitive.int,
+                )
+            else -> null
+        }
     }
 
     private fun Int.toPlatformVolume(maximum: Int): Int = (maximum * this / 100.0).roundToInt().coerceIn(0, maximum)
@@ -153,8 +137,21 @@ class VolumeToolBridge(
     private fun Int.toPercent(maximum: Int): Int = (this * 100.0 / maximum).roundToInt().coerceIn(0, 100)
 }
 
-private object LogcatToolAuditLogger : ToolAuditLogger {
-    override fun log(event: ToolAuditEvent) {
-        Log.i("VolumeToolAudit", "${event.stage}:${event.toolName}:${event.actionId}:${event.message}")
-    }
+fun createVolumeToolRegistry(
+    volumeController: VolumeController,
+    auditLogger: ToolAuditLogger? = null,
+): ToolRegistry {
+    val executor = VolumeToolExecutor(volumeController)
+    val registrations = VolumeToolSchemas.definitions.map { ToolRegistration(it, executor) }
+    return auditLogger?.let { ToolRegistry(registrations, it) } ?: ToolRegistry(registrations)
 }
+
+fun volumeToolAvailabilityContext(isDeviceLocked: Boolean): ToolAvailabilityContext =
+    ToolAvailabilityContext(
+        deviceCapabilities =
+            setOf(
+                ToolDeviceCapabilities.VOLUME_READ,
+                ToolDeviceCapabilities.VOLUME_WRITE,
+            ),
+        isDeviceLocked = isDeviceLocked,
+    )

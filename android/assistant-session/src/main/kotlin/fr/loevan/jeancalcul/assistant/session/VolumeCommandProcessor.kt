@@ -2,17 +2,19 @@ package fr.loevan.jeancalcul.assistant.session
 
 import fr.loevan.jeancalcul.domain.DeterministicVolumeCommandInterpreter
 import fr.loevan.jeancalcul.domain.RelativeVolumeAdjustment
+import fr.loevan.jeancalcul.domain.ToolAvailabilityContext
 import fr.loevan.jeancalcul.domain.VolumeCommandInterpretation
 import fr.loevan.jeancalcul.observability.PerformanceTrace
 import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
-import fr.loevan.jeancalcul.toolbridge.VolumeToolBridge
+import fr.loevan.jeancalcul.toolbridge.ToolRegistry
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
-/** Bridges the phase-0 command interpreter to the already validated volume tool bridge. */
+/** Routes the phase-0 command interpreter through the versioned tool registry. */
 internal class VolumeCommandProcessor(
     private val interpreter: DeterministicVolumeCommandInterpreter,
-    private val volumeToolBridge: VolumeToolBridge,
+    private val toolRegistry: ToolRegistry,
+    private val availabilityContext: () -> ToolAvailabilityContext,
     private val performanceTrace: PerformanceTrace = NoOpPerformanceTrace,
 ) : VoiceCommandProcessor {
     private var pendingAdjustment: RelativeVolumeAdjustment? = null
@@ -39,8 +41,8 @@ internal class VolumeCommandProcessor(
     }
 
     private fun confirmAdjustment(adjustment: RelativeVolumeAdjustment): VoiceCommandOutcome =
-        volumeToolBridge
-            .execute(interpreter.getVolumeProposal(adjustment.stream))
+        toolRegistry
+            .execute(interpreter.getVolumeProposal(adjustment.stream), availabilityContext())
             .output
             ?.get("volumePercent")
             ?.jsonPrimitive
@@ -54,7 +56,7 @@ internal class VolumeCommandProcessor(
     private fun execute(proposal: fr.loevan.jeancalcul.domain.ActionProposal): VoiceCommandOutcome {
         val isVolumeWrite = proposal.toolName == "audio.set_volume"
         if (isVolumeWrite) performanceTrace.mark(PerformanceTraceEvent.VOLUME_REQUESTED)
-        val result = volumeToolBridge.execute(proposal)
+        val result = toolRegistry.execute(proposal, availabilityContext())
         if (isVolumeWrite && result.isSuccess) performanceTrace.mark(PerformanceTraceEvent.VOLUME_APPLIED)
         val observedPercent = result.output?.get("volumePercent")?.jsonPrimitive?.intOrNull
         return if (result.isSuccess && observedPercent != null) {

@@ -6,7 +6,8 @@ import fr.loevan.jeancalcul.domain.VolumeStream
 import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
 import fr.loevan.jeancalcul.toolbridge.PlatformVolume
 import fr.loevan.jeancalcul.toolbridge.VolumeController
-import fr.loevan.jeancalcul.toolbridge.VolumeToolBridge
+import fr.loevan.jeancalcul.toolbridge.createVolumeToolRegistry
+import fr.loevan.jeancalcul.toolbridge.volumeToolAvailabilityContext
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -71,7 +72,8 @@ class VolumeCommandProcessorTest {
         val processor =
             VolumeCommandProcessor(
                 interpreter = DeterministicVolumeCommandInterpreter(actionIdFactory = { "action" }),
-                volumeToolBridge = VolumeToolBridge(controller, ToolAuditLogger { }),
+                toolRegistry = createVolumeToolRegistry(controller, ToolAuditLogger { }),
+                availabilityContext = { volumeToolAvailabilityContext(isDeviceLocked = false) },
                 performanceTrace = performanceTrace,
             )
 
@@ -83,11 +85,14 @@ class VolumeCommandProcessorTest {
         )
     }
 
-    private fun processorFor(controller: FakeVolumeController) =
-        VolumeCommandProcessor(
-            interpreter = DeterministicVolumeCommandInterpreter(actionIdFactory = { "action" }),
-            volumeToolBridge = VolumeToolBridge(controller, ToolAuditLogger { }),
+    private fun processorFor(controller: FakeVolumeController): VolumeCommandProcessor {
+        var actionSequence = 0
+        return VolumeCommandProcessor(
+            interpreter = DeterministicVolumeCommandInterpreter(actionIdFactory = { "action-${++actionSequence}" }),
+            toolRegistry = createVolumeToolRegistry(controller, ToolAuditLogger { }),
+            availabilityContext = { volumeToolAvailabilityContext(isDeviceLocked = false) },
         )
+    }
 
     private class FakeVolumeController(current: Int) : VolumeController {
         var volume = PlatformVolume(current = current, maximum = 10)
