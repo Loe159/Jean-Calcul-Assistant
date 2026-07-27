@@ -5,9 +5,12 @@ import fr.loevan.jeancalcul.domain.DeterministicVolumeCommandInterpreter
 import fr.loevan.jeancalcul.domain.SpeechRecognitionResult
 import fr.loevan.jeancalcul.domain.SpeechToTextEvent
 import fr.loevan.jeancalcul.domain.SpeechToTextProvider
+import fr.loevan.jeancalcul.domain.SpeechToTextRequest
 import fr.loevan.jeancalcul.domain.TextToSpeechEvent
 import fr.loevan.jeancalcul.domain.TextToSpeechProvider
+import fr.loevan.jeancalcul.domain.TextToSpeechRequest
 import fr.loevan.jeancalcul.domain.ToolAuditLogger
+import fr.loevan.jeancalcul.domain.VoiceProviderDescriptor
 import fr.loevan.jeancalcul.domain.VolumeStream
 import fr.loevan.jeancalcul.toolbridge.PlatformVolume
 import fr.loevan.jeancalcul.toolbridge.VolumeController
@@ -65,8 +68,11 @@ class VoiceVolumeEndToEndScenarioTest {
         private val mutableEvents = MutableSharedFlow<SpeechToTextEvent>()
 
         override val events: Flow<SpeechToTextEvent> = mutableEvents.asSharedFlow()
+        override val descriptor = VoiceProviderDescriptor("scenario.stt", "Scenario STT", true, true)
 
-        override fun startListening() = Unit
+        override fun isAvailable() = true
+
+        override fun startListening(request: SpeechToTextRequest) = Unit
 
         override fun stopListening() = Unit
 
@@ -81,10 +87,13 @@ class VoiceVolumeEndToEndScenarioTest {
 
     private class ScenarioTextToSpeechProvider : TextToSpeechProvider {
         override val events: Flow<TextToSpeechEvent> = MutableSharedFlow<TextToSpeechEvent>().asSharedFlow()
+        override val descriptor = VoiceProviderDescriptor("scenario.tts", "Scenario TTS", false, true)
         var lastSpokenText: String? = null
 
-        override fun speak(text: String) {
-            lastSpokenText = text
+        override fun isAvailable() = true
+
+        override fun speak(request: TextToSpeechRequest) {
+            lastSpokenText = request.text
         }
 
         override fun stop() = Unit

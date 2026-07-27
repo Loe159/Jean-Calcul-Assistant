@@ -26,6 +26,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.loevan.jeancalcul.domain.AssistantState
+import fr.loevan.jeancalcul.domain.VoiceActivity
+import fr.loevan.jeancalcul.domain.VoiceAudioRoute
 import fr.loevan.jeancalcul.ui.ActionCard
 import fr.loevan.jeancalcul.ui.ActionCardData
 import fr.loevan.jeancalcul.ui.ActionRisk
@@ -48,7 +50,7 @@ internal fun transparentAssistantSessionContent(
     voiceState: VoiceSessionState,
     actions: VoiceSessionActions,
 ) {
-    val presentation = voiceState.presentation()
+    val presentation = voiceState.presentation().withVoiceSignals(voiceState)
     jeanCalculTheme {
         Box(
             modifier =
@@ -99,13 +101,13 @@ private fun voiceSessionStatusContent(
 ) {
     GradientOrb(
         state = presentation.orbState,
-        amplitude = presentation.visualAmplitude(),
+        amplitude = voiceState.visualAmplitude(presentation),
         progress = 0.42f,
         orbSize = 112.dp,
     )
     VoiceWave(
         state = presentation.waveState,
-        amplitude = presentation.visualAmplitude(),
+        amplitude = voiceState.visualAmplitude(presentation),
         progress = 0.42f,
         modifier = Modifier.size(width = 184.dp, height = 40.dp),
     )
@@ -195,7 +197,7 @@ private fun voiceSessionTextFallback(
                 label = "Utiliser le texte",
                 modifier = Modifier.fillMaxWidth(),
                 variant = JeanCalculButtonVariant.Secondary,
-                enabled = voiceState.assistantState == AssistantState.Invoked,
+                enabled = !voiceState.assistantState.isInterruptible(),
                 onClick = actions::submitText,
             )
         }
@@ -254,13 +256,28 @@ private fun voiceSessionControls(
     }
 }
 
-private fun AssistantStatePresentation.visualAmplitude(): Float =
-    when (waveState) {
-        fr.loevan.jeancalcul.ui.VoiceWaveState.Listening -> 0.64f
-        fr.loevan.jeancalcul.ui.VoiceWaveState.Speaking -> 0.54f
-        fr.loevan.jeancalcul.ui.VoiceWaveState.Static -> 0.34f
-        else -> 0.16f
+private fun VoiceSessionState.visualAmplitude(presentation: AssistantStatePresentation): Float =
+    if (assistantState == AssistantState.Listening) {
+        microphoneAmplitude
+    } else {
+        when (presentation.waveState) {
+            fr.loevan.jeancalcul.ui.VoiceWaveState.Listening -> 0.64f
+            fr.loevan.jeancalcul.ui.VoiceWaveState.Speaking -> 0.54f
+            fr.loevan.jeancalcul.ui.VoiceWaveState.Static -> 0.34f
+            else -> 0.16f
+        }
     }
+
+private fun AssistantStatePresentation.withVoiceSignals(state: VoiceSessionState): AssistantStatePresentation {
+    if (state.assistantState != AssistantState.Listening) return this
+    val routedWave =
+        when {
+            state.audioRoute == VoiceAudioRoute.BLUETOOTH -> fr.loevan.jeancalcul.ui.VoiceWaveState.Bluetooth
+            state.voiceActivity == VoiceActivity.SILENCE -> fr.loevan.jeancalcul.ui.VoiceWaveState.Silence
+            else -> fr.loevan.jeancalcul.ui.VoiceWaveState.Listening
+        }
+    return copy(waveState = routedWave)
+}
 
 private val TransparentSessionScrimTop = Color(0x66050A0E)
 private val TransparentSessionScrimBottom = Color(0xD90B0F10)

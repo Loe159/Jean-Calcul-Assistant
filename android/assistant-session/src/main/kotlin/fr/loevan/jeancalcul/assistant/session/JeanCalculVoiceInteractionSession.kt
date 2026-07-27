@@ -19,6 +19,10 @@ import fr.loevan.jeancalcul.observability.AndroidPerformanceTrace
 import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
 import fr.loevan.jeancalcul.toolbridge.AudioManagerVolumeController
 import fr.loevan.jeancalcul.toolbridge.VolumeToolBridge
+import fr.loevan.jeancalcul.voice.AndroidVoicePipelineFactory
+import fr.loevan.jeancalcul.voice.VoiceEngineSelection
+import fr.loevan.jeancalcul.voice.VoicePipeline
+import fr.loevan.jeancalcul.voice.VoicePipelineFactory
 
 /**
  * Full-screen voice session that preserves sight of the underlying activity while it owns input.
@@ -26,10 +30,12 @@ import fr.loevan.jeancalcul.toolbridge.VolumeToolBridge
 @Suppress("TooManyFunctions")
 class JeanCalculVoiceInteractionSession(
     context: Context,
+    private val voicePipelineFactory: VoicePipelineFactory = AndroidVoicePipelineFactory(context),
 ) : VoiceInteractionSession(context) {
     private val lifecycleOwner = SessionLifecycleOwner()
     private val windowController = SessionWindowController(::closeSession)
     private val performanceTrace = AndroidPerformanceTrace(context)
+    private lateinit var voicePipeline: VoicePipeline
     private lateinit var voiceSessionController: VoiceSessionController
     private var isClosing = false
 
@@ -38,10 +44,15 @@ class JeanCalculVoiceInteractionSession(
         lifecycleOwner.create()
         getWindow()?.window?.decorView?.installSessionViewTreeOwners(lifecycleOwner)
         windowController.prepare(getWindow())
+        voicePipeline = voicePipelineFactory.create(VoiceEngineSelection())
         voiceSessionController =
             VoiceSessionController(
-                speechToTextProvider = AndroidSpeechToTextProvider(context),
-                textToSpeechProvider = AndroidTextToSpeechProvider(context),
+                speechToTextProvider = voicePipeline.speechToTextProvider,
+                textToSpeechProvider = voicePipeline.textToSpeechProvider,
+                amplitudeSource = voicePipeline.amplitudeSource,
+                activityDetector = voicePipeline.activityDetector,
+                audioFocusController = voicePipeline.audioFocusController,
+                audioRouteSource = voicePipeline.audioRouteSource,
                 voiceCommandProcessor =
                     VolumeCommandProcessor(
                         interpreter = DeterministicVolumeCommandInterpreter(),
@@ -54,6 +65,7 @@ class JeanCalculVoiceInteractionSession(
                         performanceTrace = performanceTrace,
                     ),
                 performanceTrace = performanceTrace,
+                initialLocaleTag = context.resources.configuration.locales[0].toLanguageTag(),
             )
     }
 
@@ -127,6 +139,7 @@ class JeanCalculVoiceInteractionSession(
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         windowController.reconfigure(getWindow())
+        voiceSessionController.updateLocale(newConfig.locales[0].toLanguageTag())
     }
 
     override fun onDestroy() {
