@@ -1,5 +1,6 @@
 package fr.loevan.jeancalcul.assistant.session
 
+import fr.loevan.jeancalcul.domain.AssistantState
 import fr.loevan.jeancalcul.domain.DeterministicVolumeCommandInterpreter
 import fr.loevan.jeancalcul.domain.SpeechRecognitionResult
 import fr.loevan.jeancalcul.domain.SpeechToTextEvent
@@ -51,7 +52,10 @@ class VoiceVolumeEndToEndScenarioTest {
             runCurrent()
 
             assertEquals(3, volumeController.volume.current)
-            assertEquals(VoiceSessionStatus.SPEAKING, controller.state.value.status)
+            assertEquals(
+                AssistantState.Speaking("Le volume de musique est maintenant a 30 %."),
+                controller.state.value.assistantState,
+            )
             assertEquals("Le volume de musique est maintenant a 30 %.", controller.state.value.message)
             assertEquals("Le volume de musique est maintenant a 30 %.", textToSpeech.lastSpokenText)
             controller.close()

@@ -1,5 +1,10 @@
 package fr.loevan.jeancalcul.assistant.session
 
+import fr.loevan.jeancalcul.domain.AssistantEffect
+import fr.loevan.jeancalcul.domain.AssistantEvent
+import fr.loevan.jeancalcul.domain.AssistantState
+import fr.loevan.jeancalcul.domain.AssistantStateMachine
+import fr.loevan.jeancalcul.domain.AssistantTimeout
 import fr.loevan.jeancalcul.domain.SpeechRecognitionResult
 import fr.loevan.jeancalcul.domain.SpeechToTextError
 import fr.loevan.jeancalcul.domain.SpeechToTextEvent
@@ -20,13 +25,17 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/** Coordinates recognition, synthesis, cancellation and timeouts for one assistant session. */
+/**
+ * Adapts voice, local command and synthesis work to the platform-neutral assistant state machine.
+ * All external work is started from reducer effects, never from transition logic.
+ */
 @Suppress("TooManyFunctions")
 internal class VoiceSessionController(
     private val speechToTextProvider: SpeechToTextProvider,
     private val textToSpeechProvider: TextToSpeechProvider,
     private val voiceCommandProcessor: VoiceCommandProcessor = NoOpVoiceCommandProcessor,
     private val performanceTrace: PerformanceTrace = NoOpPerformanceTrace,
+    private val stateMachine: AssistantStateMachine = AssistantStateMachine(),
     dispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
@@ -35,61 +44,55 @@ internal class VoiceSessionController(
     private var isClosed = false
 
     val state: StateFlow<VoiceSessionState> = mutableState.asStateFlow()
+    val assistantState: StateFlow<AssistantState> = stateMachine.state
 
     init {
         scope.launch { speechToTextProvider.events.collect(::handleSpeechEvent) }
         scope.launch { textToSpeechProvider.events.collect(::handleSynthesisEvent) }
     }
 
+    fun invoke() {
+        prepareStableState()
+        dispatch(AssistantEvent.Invoke)
+    }
+
     fun requireMicrophonePermission() {
-        clearTimeout()
+        dispatch(
+            AssistantEvent.Fail(
+                message = "Autorisez le microphone dans l'application pour utiliser la voix.",
+                recoverable = true,
+            ),
+        )
         mutableState.value =
-            VoiceSessionState(
-                status = VoiceSessionStatus.PERMISSION_REQUIRED,
+            mutableState.value.copy(
+                microphonePermissionRequired = true,
                 message = "Autorisez le microphone dans l'application pour utiliser la voix.",
             )
     }
 
     fun startListening() {
-        clearTimeout()
-        if (
-            mutableState.value.status == VoiceSessionStatus.LISTENING ||
-            mutableState.value.status == VoiceSessionStatus.PROCESSING
-        ) {
-            speechToTextProvider.cancel()
-        }
+        prepareForInteraction()
         mutableState.value =
-            VoiceSessionState(
-                status = VoiceSessionStatus.LISTENING,
-                message = "Parlez maintenant.",
+            mutableState.value.copy(
+                partialTranscript = "",
+                finalResult = null,
+                confirmationPrompt = null,
+                microphonePermissionRequired = false,
             )
-        speechToTextProvider.startListening()
-        scheduleTimeout(
-            delayMillis = LISTENING_TIMEOUT_MILLIS,
-            message = "Aucune parole detectee. Reessayez.",
-        )
+        dispatch(AssistantEvent.StartListening)
     }
 
     fun stopListening() {
-        if (mutableState.value.status != VoiceSessionStatus.LISTENING) return
-
-        speechToTextProvider.stopListening()
-        waitForFinalResult()
+        dispatch(AssistantEvent.SpeechEnded)
     }
 
     fun speakTestResponse() {
-        clearTimeout()
-        mutableState.value =
-            mutableState.value.copy(
-                status = VoiceSessionStatus.SPEAKING,
-                message = TEST_RESPONSE,
-            )
-        textToSpeechProvider.speak(TEST_RESPONSE)
+        prepareForInteraction()
+        dispatch(AssistantEvent.SpeakRequested(TEST_RESPONSE))
     }
 
     fun confirmPendingCommand() {
-        if (mutableState.value.status != VoiceSessionStatus.CONFIRMATION_REQUIRED) return
-        handleCommandOutcome(voiceCommandProcessor.confirm())
+        dispatch(AssistantEvent.ApprovalGranted)
     }
 
     fun updateTextFallback(text: String) {
@@ -100,26 +103,26 @@ internal class VoiceSessionController(
         val text = mutableState.value.partialTranscript.trim()
         if (text.isEmpty()) return
 
-        clearTimeout()
-        speechToTextProvider.cancel()
+        prepareForInteraction()
         mutableState.value =
             mutableState.value.copy(
-                status = VoiceSessionStatus.INVOKED,
                 finalResult = SpeechRecognitionResult(text = text, confidence = null),
-                message = "Texte utilise comme transcription.",
+                confirmationPrompt = null,
+                microphonePermissionRequired = false,
             )
+        dispatch(AssistantEvent.TextSubmitted(text))
     }
 
     fun cancelActiveWork() {
-        clearTimeout()
-        speechToTextProvider.cancel()
-        textToSpeechProvider.stop()
-        voiceCommandProcessor.cancelPending()
-        mutableState.value =
-            VoiceSessionState(
-                status = VoiceSessionStatus.INVOKED,
-                message = "Interaction vocale annulee.",
-            )
+        dispatch(AssistantEvent.Cancel("Interaction annulee par l'utilisateur."))
+    }
+
+    fun interruptActiveWork() {
+        dispatch(AssistantEvent.Interrupt("Interaction interrompue par l'utilisateur."))
+    }
+
+    fun reportRecoverableError(message: String) {
+        dispatch(AssistantEvent.Fail(message, recoverable = true))
     }
 
     fun close() {
@@ -127,8 +130,7 @@ internal class VoiceSessionController(
 
         isClosed = true
         clearTimeout()
-        speechToTextProvider.cancel()
-        textToSpeechProvider.stop()
+        cancelProvidersAndPending()
         speechToTextProvider.release()
         textToSpeechProvider.release()
         scope.cancel()
@@ -139,142 +141,147 @@ internal class VoiceSessionController(
             SpeechToTextEvent.Ready -> performanceTrace.mark(PerformanceTraceEvent.MICROPHONE_READY)
             SpeechToTextEvent.SpeechStarted -> performanceTrace.mark(PerformanceTraceEvent.SPEECH_STARTED)
             is SpeechToTextEvent.Partial -> {
-                if (mutableState.value.status == VoiceSessionStatus.LISTENING) {
+                if (assistantState.value == AssistantState.Listening) {
                     performanceTrace.mark(PerformanceTraceEvent.FIRST_TRANSCRIPTION)
                     mutableState.value = mutableState.value.copy(partialTranscript = event.text)
                 }
             }
 
-            SpeechToTextEvent.EndOfSpeech -> waitForFinalResult()
-            is SpeechToTextEvent.Final -> {
-                clearTimeout()
-                performanceTrace.mark(PerformanceTraceEvent.FINAL_RESULT)
-                mutableState.value =
-                    mutableState.value.copy(
-                        partialTranscript = event.result.text,
-                        finalResult = event.result,
-                    )
-                handleCommandOutcome(voiceCommandProcessor.process(event.result.text))
-            }
-
+            SpeechToTextEvent.EndOfSpeech -> dispatch(AssistantEvent.SpeechEnded)
+            is SpeechToTextEvent.Final -> handleFinalTranscription(event.result)
             is SpeechToTextEvent.Error -> showSpeechError(event.error)
         }
     }
 
+    private fun handleFinalTranscription(result: SpeechRecognitionResult) {
+        if (assistantState.value == AssistantState.Listening) {
+            dispatch(AssistantEvent.SpeechEnded)
+        }
+        if (assistantState.value != AssistantState.Transcribing) return
+
+        performanceTrace.mark(PerformanceTraceEvent.FINAL_RESULT)
+        mutableState.value =
+            mutableState.value.copy(
+                partialTranscript = result.text,
+                finalResult = result,
+            )
+        dispatch(AssistantEvent.TranscriptionCompleted(result.text))
+    }
+
     private fun handleSynthesisEvent(event: TextToSpeechEvent) {
         when (event) {
-            TextToSpeechEvent.Ready -> Unit
-            TextToSpeechEvent.Started -> {
-                mutableState.value = mutableState.value.copy(status = VoiceSessionStatus.SPEAKING)
-            }
+            TextToSpeechEvent.Ready,
+            TextToSpeechEvent.Started,
+            -> Unit
 
-            TextToSpeechEvent.Completed,
-            TextToSpeechEvent.Stopped,
-            -> {
-                if (mutableState.value.status == VoiceSessionStatus.SPEAKING) {
-                    mutableState.value = mutableState.value.copy(status = VoiceSessionStatus.INVOKED)
-                }
-            }
-
-            is TextToSpeechEvent.Error -> {
-                mutableState.value =
-                    mutableState.value.copy(
-                        status = VoiceSessionStatus.ERROR,
-                        message = event.message,
-                    )
-            }
+            TextToSpeechEvent.Completed -> dispatch(AssistantEvent.SpeechCompleted)
+            TextToSpeechEvent.Stopped -> Unit
+            is TextToSpeechEvent.Error -> dispatch(AssistantEvent.Fail(event.message))
         }
     }
 
-    private fun waitForFinalResult() {
-        if (mutableState.value.status != VoiceSessionStatus.LISTENING) return
+    private fun dispatch(event: AssistantEvent) {
+        val transition = stateMachine.dispatch(event)
+        if (!transition.accepted) return
 
-        clearTimeout()
         mutableState.value =
             mutableState.value.copy(
-                status = VoiceSessionStatus.PROCESSING,
-                message = "Traitement de la transcription.",
+                assistantState = transition.to,
+                message = transition.to.defaultMessage(),
             )
-        scheduleTimeout(
-            delayMillis = FINAL_RESULT_TIMEOUT_MILLIS,
-            message = "La transcription a expire. Reessayez.",
-        )
+        transition.effects.forEach(::handleEffect)
+    }
+
+    private fun handleEffect(effect: AssistantEffect) {
+        when (effect) {
+            AssistantEffect.StartSpeechRecognition -> speechToTextProvider.startListening()
+            AssistantEffect.StopSpeechRecognition -> speechToTextProvider.stopListening()
+            is AssistantEffect.RequestResponse -> handleCommandOutcome(voiceCommandProcessor.process(effect.input))
+            is AssistantEffect.PresentAction -> Unit
+            is AssistantEffect.RequestApproval -> {
+                mutableState.value = mutableState.value.copy(confirmationPrompt = effect.summary)
+            }
+
+            is AssistantEffect.ExecuteAction -> handleCommandOutcome(voiceCommandProcessor.confirm())
+            is AssistantEffect.Speak -> textToSpeechProvider.speak(effect.text)
+            AssistantEffect.CancelActiveWork,
+            AssistantEffect.InterruptActiveWork,
+            -> cancelProvidersAndPending()
+
+            is AssistantEffect.ScheduleTimeout -> scheduleTimeout(effect.timeout)
+            AssistantEffect.CancelTimeout -> clearTimeout()
+        }
     }
 
     private fun handleCommandOutcome(outcome: VoiceCommandOutcome) {
         when (outcome) {
             is VoiceCommandOutcome.Completed -> {
-                mutableState.value =
-                    mutableState.value.copy(
-                        status = VoiceSessionStatus.SPEAKING,
-                        confirmationPrompt = null,
-                        message = outcome.response,
-                    )
-                textToSpeechProvider.speak(outcome.response)
+                val event =
+                    if (assistantState.value is AssistantState.Executing) {
+                        AssistantEvent.ActionCompleted(outcome.response)
+                    } else {
+                        AssistantEvent.ResponseReady(outcome.response)
+                    }
+                mutableState.value = mutableState.value.copy(confirmationPrompt = null)
+                dispatch(event)
             }
 
             is VoiceCommandOutcome.ConfirmationRequired -> {
-                mutableState.value =
-                    mutableState.value.copy(
-                        status = VoiceSessionStatus.CONFIRMATION_REQUIRED,
-                        confirmationPrompt = outcome.prompt,
-                        message = outcome.prompt,
-                    )
+                dispatch(AssistantEvent.ActionProposed(outcome.prompt))
+                dispatch(AssistantEvent.ApprovalRequired)
             }
 
-            is VoiceCommandOutcome.Invalid -> {
-                mutableState.value =
-                    mutableState.value.copy(
-                        status = VoiceSessionStatus.INVOKED,
-                        confirmationPrompt = null,
-                        message = outcome.message,
-                    )
-            }
-
-            is VoiceCommandOutcome.Failure -> {
-                mutableState.value =
-                    mutableState.value.copy(
-                        status = VoiceSessionStatus.ERROR,
-                        confirmationPrompt = null,
-                        message = outcome.message,
-                    )
-            }
+            is VoiceCommandOutcome.Invalid -> dispatch(AssistantEvent.ResponseReady(outcome.message))
+            is VoiceCommandOutcome.Failure -> dispatch(AssistantEvent.Fail(outcome.message))
         }
     }
 
     private fun showSpeechError(error: SpeechToTextError) {
-        clearTimeout()
-        mutableState.value =
-            mutableState.value.copy(
-                status = VoiceSessionStatus.ERROR,
-                message = error.message(),
-            )
+        dispatch(AssistantEvent.Fail(error.message()))
     }
 
-    private fun scheduleTimeout(
-        delayMillis: Long,
-        message: String,
-    ) {
+    private fun scheduleTimeout(timeout: AssistantTimeout) {
+        clearTimeout()
         timeoutJob =
             scope.launch {
-                delay(delayMillis)
-                if (
-                    mutableState.value.status == VoiceSessionStatus.LISTENING ||
-                    mutableState.value.status == VoiceSessionStatus.PROCESSING
-                ) {
-                    speechToTextProvider.cancel()
-                    mutableState.value =
-                        mutableState.value.copy(
-                            status = VoiceSessionStatus.ERROR,
-                            message = message,
-                        )
-                }
+                delay(timeout.durationMillis)
+                dispatch(AssistantEvent.Timeout(timeout))
             }
     }
 
     private fun clearTimeout() {
         timeoutJob?.cancel()
         timeoutJob = null
+    }
+
+    private fun cancelProvidersAndPending() {
+        speechToTextProvider.cancel()
+        textToSpeechProvider.stop()
+        voiceCommandProcessor.cancelPending()
+    }
+
+    private fun prepareForInteraction() {
+        when (assistantState.value) {
+            AssistantState.Idle,
+            AssistantState.Completed,
+            -> dispatch(AssistantEvent.Invoke)
+
+            is AssistantState.Cancelled,
+            is AssistantState.Error,
+            -> {
+                dispatch(AssistantEvent.Recover)
+                dispatch(AssistantEvent.Invoke)
+            }
+
+            AssistantState.Invoked -> Unit
+            else -> dispatch(AssistantEvent.Interrupt())
+        }
+    }
+
+    private fun prepareStableState() {
+        if (assistantState.value is AssistantState.Cancelled || assistantState.value is AssistantState.Error) {
+            dispatch(AssistantEvent.Recover)
+        }
     }
 
     private fun SpeechToTextError.message(): String =
@@ -288,9 +295,23 @@ internal class VoiceSessionController(
             SpeechToTextError.UNKNOWN -> "La reconnaissance vocale a echoue."
         }
 
+    private fun AssistantState.defaultMessage(): String =
+        when (this) {
+            AssistantState.Idle -> "Assistant pret."
+            AssistantState.Invoked -> "Preparation de l'interaction."
+            AssistantState.Listening -> "Parlez maintenant."
+            AssistantState.Transcribing -> "Traitement de la transcription."
+            AssistantState.Thinking -> "Preparation de la reponse."
+            is AssistantState.ProposingAction -> summary
+            is AssistantState.WaitingApproval -> summary
+            is AssistantState.Executing -> "Execution de l'action : $summary"
+            is AssistantState.Speaking -> text
+            AssistantState.Completed -> "Interaction terminee."
+            is AssistantState.Cancelled -> reason
+            is AssistantState.Error -> message
+        }
+
     private companion object {
-        const val LISTENING_TIMEOUT_MILLIS = 15_000L
-        const val FINAL_RESULT_TIMEOUT_MILLIS = 5_000L
         const val TEST_RESPONSE = "La reponse vocale de test fonctionne."
     }
 }

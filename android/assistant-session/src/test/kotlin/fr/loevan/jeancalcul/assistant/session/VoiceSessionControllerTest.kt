@@ -1,5 +1,6 @@
 package fr.loevan.jeancalcul.assistant.session
 
+import fr.loevan.jeancalcul.domain.AssistantState
 import fr.loevan.jeancalcul.domain.SpeechRecognitionResult
 import fr.loevan.jeancalcul.domain.SpeechToTextEvent
 import fr.loevan.jeancalcul.domain.SpeechToTextProvider
@@ -38,7 +39,7 @@ class VoiceSessionControllerTest {
             speechToText.emit(SpeechToTextEvent.Partial("Mets le volume"))
             runCurrent()
 
-            assertEquals(VoiceSessionStatus.LISTENING, controller.state.value.status)
+            assertEquals(AssistantState.Listening, controller.state.value.assistantState)
             assertEquals("Mets le volume", controller.state.value.partialTranscript)
 
             speechToText.emit(
@@ -48,7 +49,7 @@ class VoiceSessionControllerTest {
             )
             runCurrent()
 
-            assertEquals(VoiceSessionStatus.INVOKED, controller.state.value.status)
+            assertTrue(controller.state.value.assistantState is AssistantState.Speaking)
             assertEquals("Mets le volume a 30", controller.state.value.finalResult?.text)
             controller.close()
         }
@@ -70,7 +71,7 @@ class VoiceSessionControllerTest {
             runCurrent()
 
             assertTrue(speechToText.cancelled)
-            assertEquals(VoiceSessionStatus.ERROR, controller.state.value.status)
+            assertTrue(controller.state.value.assistantState is AssistantState.Error)
             controller.close()
         }
 
@@ -90,9 +91,10 @@ class VoiceSessionControllerTest {
             controller.speakTestResponse()
 
             assertEquals("La reponse vocale de test fonctionne.", textToSpeech.spokenText)
-            assertEquals(VoiceSessionStatus.SPEAKING, controller.state.value.status)
+            assertTrue(controller.state.value.assistantState is AssistantState.Speaking)
 
             controller.cancelActiveWork()
+            assertTrue(controller.state.value.assistantState is AssistantState.Cancelled)
             controller.close()
 
             assertTrue(speechToText.cancelled)
@@ -116,6 +118,29 @@ class VoiceSessionControllerTest {
             controller.submitTextFallback()
 
             assertEquals("Bonjour Jean", controller.state.value.finalResult?.text)
+            assertTrue(controller.state.value.assistantState is AssistantState.Speaking)
+            controller.close()
+        }
+
+    @Test
+    fun `interrupting active work returns to invoked and stops providers`() =
+        runTest {
+            val speechToText = FakeSpeechToTextProvider()
+            val textToSpeech = FakeTextToSpeechProvider()
+            val controller =
+                VoiceSessionController(
+                    speechToTextProvider = speechToText,
+                    textToSpeechProvider = textToSpeech,
+                    dispatcher = StandardTestDispatcher(testScheduler),
+                )
+            runCurrent()
+
+            controller.startListening()
+            controller.interruptActiveWork()
+
+            assertEquals(AssistantState.Invoked, controller.assistantState.value)
+            assertTrue(speechToText.cancelled)
+            assertTrue(textToSpeech.stopped)
             controller.close()
         }
 

@@ -25,32 +25,30 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import fr.loevan.jeancalcul.domain.AssistantState
+import fr.loevan.jeancalcul.ui.ActionCard
+import fr.loevan.jeancalcul.ui.ActionCardData
+import fr.loevan.jeancalcul.ui.ActionRisk
 import fr.loevan.jeancalcul.ui.AmbientGlow
 import fr.loevan.jeancalcul.ui.GlassSurface
 import fr.loevan.jeancalcul.ui.GlassSurfaceVariant
 import fr.loevan.jeancalcul.ui.GradientOrb
-import fr.loevan.jeancalcul.ui.GradientOrbState
 import fr.loevan.jeancalcul.ui.JeanCalculButton
 import fr.loevan.jeancalcul.ui.JeanCalculButtonVariant
 import fr.loevan.jeancalcul.ui.JeanCalculTextField
 import fr.loevan.jeancalcul.ui.PrivacyIndicator
 import fr.loevan.jeancalcul.ui.PrivacyIndicatorState
 import fr.loevan.jeancalcul.ui.StatusBadge
-import fr.loevan.jeancalcul.ui.StatusBadgeState
 import fr.loevan.jeancalcul.ui.VoiceWave
-import fr.loevan.jeancalcul.ui.VoiceWaveState
 import fr.loevan.jeancalcul.ui.jeanCalculTheme
 
-/**
- * Transparent assistant-session composition. Its glass treatment is tonal and remains readable
- * without any system backdrop blur.
- */
+/** Transparent assistant-session composition driven by the shared assistant lifecycle. */
 @Composable
 internal fun transparentAssistantSessionContent(
-    visualState: AssistantSessionVisualState,
     voiceState: VoiceSessionState,
     actions: VoiceSessionActions,
 ) {
+    val presentation = voiceState.presentation()
     jeanCalculTheme {
         Box(
             modifier =
@@ -69,7 +67,7 @@ internal fun transparentAssistantSessionContent(
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .height(360.dp),
-                active = voiceState.status in ActiveGlowStatuses,
+                active = presentation.activeGlow,
             )
             GlassSurface(
                 modifier =
@@ -85,9 +83,9 @@ internal fun transparentAssistantSessionContent(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    voiceSessionStatusContent(visualState = visualState, voiceState = voiceState)
-                    voiceSessionTextFallback(voiceState = voiceState, actions = actions)
-                    voiceSessionControls(voiceState = voiceState, actions = actions)
+                    voiceSessionStatusContent(voiceState, presentation)
+                    voiceSessionTextFallback(voiceState, actions)
+                    voiceSessionControls(voiceState, actions)
                 }
             }
         }
@@ -96,23 +94,23 @@ internal fun transparentAssistantSessionContent(
 
 @Composable
 private fun voiceSessionStatusContent(
-    visualState: AssistantSessionVisualState,
     voiceState: VoiceSessionState,
+    presentation: AssistantStatePresentation,
 ) {
     GradientOrb(
-        state = voiceState.orbState(visualState),
-        amplitude = voiceState.visualAmplitude(),
+        state = presentation.orbState,
+        amplitude = presentation.visualAmplitude(),
         progress = 0.42f,
         orbSize = 112.dp,
     )
     VoiceWave(
-        state = voiceState.waveState(),
-        amplitude = voiceState.visualAmplitude(),
+        state = presentation.waveState,
+        amplitude = presentation.visualAmplitude(),
         progress = 0.42f,
         modifier = Modifier.size(width = 184.dp, height = 40.dp),
     )
     Text(
-        text = voiceState.title(visualState),
+        text = presentation.title,
         style = MaterialTheme.typography.headlineMedium,
         textAlign = TextAlign.Center,
     )
@@ -128,25 +126,43 @@ private fun voiceSessionStatusContent(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PrivacyIndicator(
-            state =
-                if (voiceState.status == VoiceSessionStatus.LISTENING) {
-                    PrivacyIndicatorState.MicrophoneActive
-                } else {
-                    PrivacyIndicatorState.MicrophoneInactive
-                },
-        )
-        StatusBadge(voiceState.statusBadge())
+        PrivacyIndicator(state = presentation.microphoneState)
+        StatusBadge(presentation.badgeState)
     }
     PrivacyIndicator(
-        state = voiceState.processingIndicator(),
-        destination = "Services vocaux Android",
+        state = presentation.processingState,
+        destination =
+            if (presentation.processingState == PrivacyIndicatorState.DestinationVisible) {
+                "Profil selectionne"
+            } else {
+                null
+            },
     )
+    actionCard(presentation)
+    transcriptCards(voiceState)
+}
+
+@Composable
+private fun actionCard(presentation: AssistantStatePresentation) {
+    val actionState = presentation.actionState ?: return
+    val summary = presentation.actionSummary ?: return
+    ActionCard(
+        data =
+            ActionCardData(
+                title = "Action Android",
+                summary = summary,
+                risk = ActionRisk.R2,
+                origin = "Assistant local",
+                state = actionState,
+            ),
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+@Composable
+private fun transcriptCards(voiceState: VoiceSessionState) {
     if (voiceState.partialTranscript.isNotBlank()) {
-        GlassSurface(
-            modifier = Modifier.fillMaxWidth(),
-            variant = GlassSurfaceVariant.Selected,
-        ) {
+        GlassSurface(modifier = Modifier.fillMaxWidth(), variant = GlassSurfaceVariant.Selected) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("TRANSCRIPTION", style = MaterialTheme.typography.labelSmall)
                 Text(text = voiceState.partialTranscript, style = MaterialTheme.typography.bodyLarge)
@@ -154,12 +170,9 @@ private fun voiceSessionStatusContent(
         }
     }
     voiceState.finalResult?.let { result ->
-        GlassSurface(
-            modifier = Modifier.fillMaxWidth(),
-            variant = GlassSurfaceVariant.Card,
-        ) {
+        GlassSurface(modifier = Modifier.fillMaxWidth(), variant = GlassSurfaceVariant.Card) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("RÉSULTAT", style = MaterialTheme.typography.labelSmall)
+                Text("RESULTAT", style = MaterialTheme.typography.labelSmall)
                 Text(text = result.text, style = MaterialTheme.typography.bodyMedium)
             }
         }
@@ -182,6 +195,7 @@ private fun voiceSessionTextFallback(
                 label = "Utiliser le texte",
                 modifier = Modifier.fillMaxWidth(),
                 variant = JeanCalculButtonVariant.Secondary,
+                enabled = voiceState.assistantState == AssistantState.Invoked,
                 onClick = actions::submitText,
             )
         }
@@ -193,26 +207,30 @@ private fun voiceSessionControls(
     voiceState: VoiceSessionState,
     actions: VoiceSessionActions,
 ) {
+    val current = voiceState.assistantState
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (voiceState.status == VoiceSessionStatus.CONFIRMATION_REQUIRED) {
-            JeanCalculButton(
-                label = "Confirmer l’action",
-                modifier = Modifier.fillMaxWidth(),
-                onClick = actions::confirmVoiceCommand,
-            )
-        } else if (voiceState.status == VoiceSessionStatus.PERMISSION_REQUIRED) {
-            JeanCalculButton(
-                label = "Autoriser le microphone",
-                modifier = Modifier.fillMaxWidth(),
-                onClick = actions::requestMicrophonePermission,
-            )
-        } else {
-            JeanCalculButton(
-                label = if (voiceState.status == VoiceSessionStatus.LISTENING) "Écoute en cours" else "Écouter",
-                modifier = Modifier.fillMaxWidth(),
-                enabled = voiceState.status != VoiceSessionStatus.LISTENING,
-                onClick = actions::startListening,
-            )
+        when {
+            current is AssistantState.WaitingApproval ->
+                JeanCalculButton(
+                    label = "Confirmer l'action",
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = actions::confirmVoiceCommand,
+                )
+
+            voiceState.microphonePermissionRequired ->
+                JeanCalculButton(
+                    label = "Autoriser le microphone",
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = actions::requestMicrophonePermission,
+                )
+
+            else ->
+                JeanCalculButton(
+                    label = if (current == AssistantState.Listening) "Ecoute en cours" else "Ecouter",
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !current.isInterruptible(),
+                    onClick = actions::startListening,
+                )
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -222,100 +240,27 @@ private fun voiceSessionControls(
                 label = "Tester la voix",
                 modifier = Modifier.weight(1f),
                 variant = JeanCalculButtonVariant.Ghost,
+                enabled = !current.isInterruptible(),
                 onClick = actions::speakTestResponse,
             )
             JeanCalculButton(
                 label = "Interrompre",
                 modifier = Modifier.weight(1f),
                 variant = JeanCalculButtonVariant.Secondary,
-                onClick = actions::cancelVoice,
+                enabled = current.isInterruptible(),
+                onClick = actions::interruptVoice,
             )
         }
     }
 }
 
-private fun VoiceSessionState.orbState(visualState: AssistantSessionVisualState): GradientOrbState =
-    if (visualState == AssistantSessionVisualState.ERROR) {
-        GradientOrbState.Error
-    } else {
-        when (status) {
-            VoiceSessionStatus.INVOKED -> GradientOrbState.Invoked
-            VoiceSessionStatus.PERMISSION_REQUIRED -> GradientOrbState.Offline
-            VoiceSessionStatus.LISTENING -> GradientOrbState.Listening
-            VoiceSessionStatus.PROCESSING -> GradientOrbState.Transcribing
-            VoiceSessionStatus.CONFIRMATION_REQUIRED -> GradientOrbState.WaitingApproval
-            VoiceSessionStatus.SPEAKING -> GradientOrbState.Speaking
-            VoiceSessionStatus.ERROR -> GradientOrbState.Error
-        }
-    }
-
-private fun VoiceSessionState.waveState(): VoiceWaveState =
-    when (status) {
-        VoiceSessionStatus.INVOKED -> VoiceWaveState.Waiting
-        VoiceSessionStatus.PERMISSION_REQUIRED,
-        VoiceSessionStatus.ERROR,
-        -> VoiceWaveState.MicrophoneUnavailable
-
-        VoiceSessionStatus.LISTENING -> VoiceWaveState.Listening
-        VoiceSessionStatus.PROCESSING -> VoiceWaveState.Static
-        VoiceSessionStatus.CONFIRMATION_REQUIRED -> VoiceWaveState.Silence
-        VoiceSessionStatus.SPEAKING -> VoiceWaveState.Speaking
-    }
-
-private fun VoiceSessionState.visualAmplitude(): Float =
-    when (status) {
-        VoiceSessionStatus.LISTENING -> 0.64f
-        VoiceSessionStatus.SPEAKING -> 0.54f
-        VoiceSessionStatus.PROCESSING -> 0.34f
+private fun AssistantStatePresentation.visualAmplitude(): Float =
+    when (waveState) {
+        fr.loevan.jeancalcul.ui.VoiceWaveState.Listening -> 0.64f
+        fr.loevan.jeancalcul.ui.VoiceWaveState.Speaking -> 0.54f
+        fr.loevan.jeancalcul.ui.VoiceWaveState.Static -> 0.34f
         else -> 0.16f
     }
-
-private fun VoiceSessionState.statusBadge(): StatusBadgeState =
-    when (status) {
-        VoiceSessionStatus.LISTENING,
-        VoiceSessionStatus.PROCESSING,
-        VoiceSessionStatus.SPEAKING,
-        -> StatusBadgeState.Active
-
-        VoiceSessionStatus.CONFIRMATION_REQUIRED -> StatusBadgeState.Warning
-        VoiceSessionStatus.PERMISSION_REQUIRED -> StatusBadgeState.Permission
-        VoiceSessionStatus.ERROR -> StatusBadgeState.Error
-        VoiceSessionStatus.INVOKED -> StatusBadgeState.Available
-    }
-
-private fun VoiceSessionState.processingIndicator(): PrivacyIndicatorState =
-    when (status) {
-        VoiceSessionStatus.PROCESSING,
-        VoiceSessionStatus.CONFIRMATION_REQUIRED,
-        -> PrivacyIndicatorState.LocalProcessing
-
-        else -> PrivacyIndicatorState.DestinationVisible
-    }
-
-private fun VoiceSessionState.title(visualState: AssistantSessionVisualState): String =
-    when (status) {
-        VoiceSessionStatus.INVOKED ->
-            if (visualState == AssistantSessionVisualState.ERROR) {
-                "Assistant indisponible"
-            } else {
-                "Assistant invoqué"
-            }
-
-        VoiceSessionStatus.PERMISSION_REQUIRED -> "Microphone requis"
-        VoiceSessionStatus.LISTENING -> "Je vous écoute…"
-        VoiceSessionStatus.PROCESSING -> "Transcription en cours"
-        VoiceSessionStatus.CONFIRMATION_REQUIRED -> "Confirmation requise"
-        VoiceSessionStatus.SPEAKING -> "Réponse vocale"
-        VoiceSessionStatus.ERROR -> "Assistant indisponible"
-    }
-
-private val ActiveGlowStatuses =
-    setOf(
-        VoiceSessionStatus.LISTENING,
-        VoiceSessionStatus.PROCESSING,
-        VoiceSessionStatus.CONFIRMATION_REQUIRED,
-        VoiceSessionStatus.SPEAKING,
-    )
 
 private val TransparentSessionScrimTop = Color(0x66050A0E)
 private val TransparentSessionScrimBottom = Color(0xD90B0F10)

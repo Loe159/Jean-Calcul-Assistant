@@ -7,9 +7,26 @@ import org.junit.Test
 
 class AssistantStateTest {
     @Test
-    fun `idle state is serializable`() {
-        val encoded = Json.encodeToString<AssistantState>(AssistantState.Idle)
+    fun `every assistant state is serializable`() {
+        val states =
+            listOf(
+                AssistantState.Idle,
+                AssistantState.Invoked,
+                AssistantState.Listening,
+                AssistantState.Transcribing,
+                AssistantState.Thinking,
+                AssistantState.ProposingAction("Set volume to 30 percent"),
+                AssistantState.WaitingApproval("Set volume to 30 percent"),
+                AssistantState.Executing("Set volume to 30 percent"),
+                AssistantState.Speaking("Done"),
+                AssistantState.Completed,
+                AssistantState.Cancelled("User cancelled"),
+                AssistantState.Error("Provider unavailable"),
+            )
 
-        assertEquals(AssistantState.Idle, Json.decodeFromString<AssistantState>(encoded))
+        states.forEach { state ->
+            val encoded = Json.encodeToString<AssistantState>(state)
+            assertEquals(state, Json.decodeFromString<AssistantState>(encoded))
+        }
     }
 }

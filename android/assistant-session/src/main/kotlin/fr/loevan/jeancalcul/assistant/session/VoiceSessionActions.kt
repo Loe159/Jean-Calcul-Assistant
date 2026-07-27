@@ -5,7 +5,7 @@ internal interface VoiceSessionActions {
 
     fun requestMicrophonePermission()
 
-    fun cancelVoice()
+    fun interruptVoice()
 
     fun confirmVoiceCommand()
 

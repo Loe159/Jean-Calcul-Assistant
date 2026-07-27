@@ -12,7 +12,6 @@ import android.util.Log
 import android.view.View
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import fr.loevan.jeancalcul.domain.DeterministicVolumeCommandInterpreter
@@ -28,7 +27,6 @@ import fr.loevan.jeancalcul.toolbridge.VolumeToolBridge
 class JeanCalculVoiceInteractionSession(
     context: Context,
 ) : VoiceInteractionSession(context) {
-    private val visualState = mutableStateOf(AssistantSessionVisualState.INVOKED)
     private val lifecycleOwner = SessionLifecycleOwner()
     private val windowController = SessionWindowController(::closeSession)
     private val performanceTrace = AndroidPerformanceTrace(context)
@@ -68,7 +66,6 @@ class JeanCalculVoiceInteractionSession(
             setContent {
                 val voiceState by voiceSessionController.state.collectAsState()
                 transparentAssistantSessionContent(
-                    visualState = visualState.value,
                     voiceState = voiceState,
                     actions =
                         object : VoiceSessionActions {
@@ -83,7 +80,7 @@ class JeanCalculVoiceInteractionSession(
                                 )
                             }
 
-                            override fun cancelVoice() = voiceSessionController.cancelActiveWork()
+                            override fun interruptVoice() = voiceSessionController.interruptActiveWork()
 
                             override fun confirmVoiceCommand() = voiceSessionController.confirmPendingCommand()
 
@@ -105,7 +102,7 @@ class JeanCalculVoiceInteractionSession(
         super.onPrepareShow(args, showFlags)
         performanceTrace.startInvocation()
         performanceTrace.captureMemory("session_invocation")
-        visualState.value = AssistantSessionStateReducer.reduce(AssistantSessionEvent.PREPARED)
+        voiceSessionController.invoke()
     }
 
     override fun onShow(
@@ -114,13 +111,12 @@ class JeanCalculVoiceInteractionSession(
     ) {
         super.onShow(args, showFlags)
         lifecycleOwner.show()
-        visualState.value = AssistantSessionStateReducer.reduce(AssistantSessionEvent.SHOWN)
         startListeningIfAllowed()
     }
 
     override fun onAssistStructureFailure(failure: Throwable?) {
         super.onAssistStructureFailure(failure)
-        visualState.value = AssistantSessionStateReducer.reduce(AssistantSessionEvent.RECOVERABLE_ERROR)
+        voiceSessionController.reportRecoverableError("Le contexte Android de l'assistant est indisponible.")
         Log.w(LOG_TAG, "Assistant context unavailable")
     }
 
