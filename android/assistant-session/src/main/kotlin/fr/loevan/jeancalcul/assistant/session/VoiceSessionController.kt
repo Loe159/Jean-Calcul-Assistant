@@ -55,6 +55,7 @@ internal class VoiceSessionController(
     private val voiceCommandProcessor: VoiceCommandProcessor = NoOpVoiceCommandProcessor,
     private val performanceTrace: PerformanceTrace = NoOpPerformanceTrace,
     private val conversationRecorder: VoiceConversationRecorder = NoOpVoiceConversationRecorder,
+    private val onConversationSessionStarted: (String) -> Unit = { },
     private val stateMachine: AssistantStateMachine = AssistantStateMachine(),
     initialLocaleTag: String = Locale.getDefault().toLanguageTag(),
     dispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
@@ -91,7 +92,7 @@ internal class VoiceSessionController(
 
     fun invoke() {
         prepareStableState()
-        scope.launch { conversationRecorder.beginSession() }
+        scope.launch { onConversationSessionStarted(conversationRecorder.beginSession()) }
         dispatch(AssistantEvent.Invoke)
     }
 
@@ -530,7 +531,7 @@ private object NoOpVoiceCommandProcessor : VoiceCommandProcessor {
 }
 
 private object NoOpVoiceConversationRecorder : VoiceConversationRecorder {
-    override suspend fun beginSession() = Unit
+    override suspend fun beginSession() = "local-session"
 
     override suspend fun recordUserMessage(text: String) = Unit
 

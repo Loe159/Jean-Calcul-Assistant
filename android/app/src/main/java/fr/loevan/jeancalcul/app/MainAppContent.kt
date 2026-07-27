@@ -21,29 +21,33 @@ import fr.loevan.jeancalcul.ui.NavigationItem
 
 @Composable
 internal fun mainAppContent(
-    assistantRoleStatus: AssistantRoleStatus,
-    microphonePermissionGranted: Boolean,
-    conversationState: ConversationUiState,
-    onboardingActions: OnboardingActions,
-    conversationActions: ConversationScreenActions,
+    state: MainAppUiState,
+    actions: MainAppActions,
 ) {
     var page by rememberSaveable { mutableStateOf(PAGE_ASSISTANT) }
     Box(modifier = Modifier.fillMaxSize()) {
         when (page) {
             PAGE_CONVERSATIONS ->
                 ConversationScreen(
-                    state = conversationState,
-                    actions = conversationActions,
+                    state = state.conversation,
+                    actions = actions.conversation,
+                    modifier = Modifier.padding(bottom = 80.dp),
+                )
+
+            PAGE_AUDIT ->
+                AuditScreen(
+                    state = state.audit,
+                    actions = actions.audit,
                     modifier = Modifier.padding(bottom = 80.dp),
                 )
 
             else ->
                 assistantRoleOnboarding(
-                    status = assistantRoleStatus,
-                    microphonePermissionGranted = microphonePermissionGranted,
-                    onRequestRole = onboardingActions.requestRole,
-                    onRequestMicrophonePermission = onboardingActions.requestMicrophonePermission,
-                    onOpenSystemSettings = onboardingActions.openSystemSettings,
+                    status = state.assistantRoleStatus,
+                    microphonePermissionGranted = state.microphonePermissionGranted,
+                    onRequestRole = actions.onboarding.requestRole,
+                    onRequestMicrophonePermission = actions.onboarding.requestMicrophonePermission,
+                    onOpenSystemSettings = actions.onboarding.openSystemSettings,
                 )
         }
         FloatingBottomNavigation(
@@ -51,6 +55,7 @@ internal fun mainAppContent(
                 listOf(
                     NavigationItem(PAGE_ASSISTANT, "Assistant"),
                     NavigationItem(PAGE_CONVERSATIONS, "Conversations"),
+                    NavigationItem(PAGE_AUDIT, "Audit"),
                 ),
             selectedId = page,
             modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
@@ -58,6 +63,19 @@ internal fun mainAppContent(
         )
     }
 }
+
+internal data class MainAppUiState(
+    val assistantRoleStatus: AssistantRoleStatus,
+    val microphonePermissionGranted: Boolean,
+    val conversation: ConversationUiState,
+    val audit: AuditUiState,
+)
+
+internal data class MainAppActions(
+    val onboarding: OnboardingActions,
+    val conversation: ConversationScreenActions,
+    val audit: AuditScreenActions,
+)
 
 internal data class OnboardingActions(
     val requestRole: () -> Unit,
@@ -67,3 +85,4 @@ internal data class OnboardingActions(
 
 private const val PAGE_ASSISTANT = "assistant"
 private const val PAGE_CONVERSATIONS = "conversations"
+private const val PAGE_AUDIT = "audit"

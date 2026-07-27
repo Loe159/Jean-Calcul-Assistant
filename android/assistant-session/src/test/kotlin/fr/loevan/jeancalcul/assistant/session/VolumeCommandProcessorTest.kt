@@ -1,6 +1,10 @@
 package fr.loevan.jeancalcul.assistant.session
 
+import fr.loevan.jeancalcul.domain.ActionApprovalStatus
 import fr.loevan.jeancalcul.domain.DeterministicVolumeCommandInterpreter
+import fr.loevan.jeancalcul.domain.PolicyAuditEvent
+import fr.loevan.jeancalcul.domain.PolicyAuditLogger
+import fr.loevan.jeancalcul.domain.PolicyEngine
 import fr.loevan.jeancalcul.domain.ToolAuditLogger
 import fr.loevan.jeancalcul.domain.VolumeStream
 import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
@@ -53,6 +57,28 @@ class VolumeCommandProcessorTest {
         processor.cancelPending()
 
         assertTrue(processor.confirm() is VoiceCommandOutcome.Invalid)
+        assertEquals(0, controller.writeCount)
+    }
+
+    @Test
+    fun `cancelling a pending action emits a rejected approval audit`() {
+        val controller = FakeVolumeController(current = 7)
+        val policyEvents = mutableListOf<PolicyAuditEvent>()
+        val processor =
+            VolumeCommandProcessor(
+                interpreter = DeterministicVolumeCommandInterpreter(actionIdFactory = { "cancelled-action" }),
+                toolRegistry = createVolumeToolRegistry(controller, ToolAuditLogger { }),
+                availabilityContext = { volumeToolAvailabilityContext(isDeviceLocked = false) },
+                policyEngine = PolicyEngine(PolicyAuditLogger(policyEvents::add)),
+                clock = { 1_000L },
+            )
+
+        processor.process("Mets le volume a 30 %")
+        processor.cancelPending()
+
+        val approval = policyEvents.last()
+        assertEquals(ActionApprovalStatus.REJECTED, approval.approvalStatus)
+        assertEquals(false, approval.approvalApproved)
         assertEquals(0, controller.writeCount)
     }
 

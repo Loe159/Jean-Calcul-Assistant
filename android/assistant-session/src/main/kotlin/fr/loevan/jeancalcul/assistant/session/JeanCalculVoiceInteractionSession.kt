@@ -18,11 +18,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import fr.loevan.jeancalcul.domain.DeterministicVolumeCommandInterpreter
-import fr.loevan.jeancalcul.domain.PolicyAuditLogger
 import fr.loevan.jeancalcul.domain.PolicyEngine
 import fr.loevan.jeancalcul.feature.conversation.VoiceConversationRecorder
 import fr.loevan.jeancalcul.observability.AndroidPerformanceTrace
 import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
+import fr.loevan.jeancalcul.observability.PersistentAuditLogger
 import fr.loevan.jeancalcul.toolbridge.AudioManagerVolumeController
 import fr.loevan.jeancalcul.toolbridge.createVolumeToolRegistry
 import fr.loevan.jeancalcul.toolbridge.volumeToolAvailabilityContext
@@ -39,6 +39,7 @@ class JeanCalculVoiceInteractionSession(
     context: Context,
     private val voicePipelineFactory: VoicePipelineFactory = AndroidVoicePipelineFactory(context),
     private val conversationRecorder: VoiceConversationRecorder,
+    private val auditLogger: PersistentAuditLogger,
 ) : VoiceInteractionSession(context) {
     private val lifecycleOwner = SessionLifecycleOwner()
     private val windowController = SessionWindowController(::closeSession)
@@ -69,6 +70,7 @@ class JeanCalculVoiceInteractionSession(
                                 AudioManagerVolumeController(
                                     requireNotNull(context.getSystemService(AudioManager::class.java)),
                                 ),
+                                auditLogger,
                             ),
                         availabilityContext = {
                             volumeToolAvailabilityContext(
@@ -76,20 +78,12 @@ class JeanCalculVoiceInteractionSession(
                                     context.getSystemService(KeyguardManager::class.java)?.isDeviceLocked == true,
                             )
                         },
-                        policyEngine =
-                            PolicyEngine(
-                                PolicyAuditLogger { event ->
-                                    Log.i(
-                                        POLICY_AUDIT_TAG,
-                                        "${event.stage}:${event.decision}:${event.reason}:" +
-                                            "${event.toolName}:${event.toolVersion}:${event.actionId}",
-                                    )
-                                },
-                            ),
+                        policyEngine = PolicyEngine(auditLogger),
                         performanceTrace = performanceTrace,
                     ),
                 performanceTrace = performanceTrace,
                 conversationRecorder = conversationRecorder,
+                onConversationSessionStarted = auditLogger::setSessionId,
                 initialLocaleTag = context.resources.configuration.locales[0].toLanguageTag(),
             )
     }
@@ -187,6 +181,7 @@ class JeanCalculVoiceInteractionSession(
         windowController.release()
         performanceTrace.captureMemory("session_destroy")
         performanceTrace.finishInvocation("session_destroy")
+        auditLogger.clearSessionId()
         super.onDestroy()
     }
 
@@ -224,7 +219,6 @@ class JeanCalculVoiceInteractionSession(
     }
 
     private companion object {
-        const val POLICY_AUDIT_TAG = "PolicyEngineAudit"
         const val LOG_TAG = "AssistantSession"
         const val ACTION_REQUEST_MICROPHONE_PERMISSION =
             "fr.loevan.jeancalcul.action.REQUEST_MICROPHONE_PERMISSION"

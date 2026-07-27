@@ -19,6 +19,8 @@ class SecretRedactor {
             BEARER_PATTERN.replace(redacted) { match ->
                 "${match.groupValues[1]}$REDACTED"
             }
+        redacted = API_KEY_VALUE_PATTERN.replace(redacted, REDACTED)
+        redacted = JWT_PATTERN.replace(redacted, REDACTED)
         additionalSecrets
             .filter(CharArray::isNotEmpty)
             .forEach { secret -> redacted = redacted.replaceExact(secret) }
@@ -65,10 +67,12 @@ class SecretRedactor {
         private val CREDENTIAL_PATTERN =
             Regex(
                 pattern =
-                    "(?i)\\b(authorization|x-api-key|api[_-]?key|access[_-]?token|token|password|secret)" +
+                    "(?i)\\b(authorization|x-api-key|api[_-]?key|access[_-]?token|token|password|secret|otp)" +
                         "(\\s*[:=]\\s*)(?:(bearer|basic)\\s+)?(\\\"[^\\\"]*\\\"|'[^']*'|[^\\s,;]+)",
             )
         private val BEARER_PATTERN = Regex("(?i)\\b((?:bearer|basic)\\s+)[^\\s,;]+")
+        private val API_KEY_VALUE_PATTERN = Regex("\\b(?:sk|key)-[A-Za-z0-9_-]{16,}\\b")
+        private val JWT_PATTERN = Regex("\\beyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\b")
     }
 }
 

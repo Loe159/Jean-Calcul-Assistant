@@ -5,6 +5,7 @@ import android.service.voice.VoiceInteractionSession
 import android.service.voice.VoiceInteractionSessionService
 import dagger.hilt.android.AndroidEntryPoint
 import fr.loevan.jeancalcul.feature.conversation.VoiceConversationRecorder
+import fr.loevan.jeancalcul.observability.PersistentAuditLogger
 import javax.inject.Inject
 
 /**
@@ -14,6 +15,12 @@ import javax.inject.Inject
 class JeanCalculVoiceInteractionSessionService : VoiceInteractionSessionService() {
     @Inject lateinit var conversationRecorder: VoiceConversationRecorder
 
+    @Inject lateinit var auditLogger: PersistentAuditLogger
+
     override fun onNewSession(args: Bundle?): VoiceInteractionSession =
-        JeanCalculVoiceInteractionSession(this, conversationRecorder = conversationRecorder)
+        JeanCalculVoiceInteractionSession(
+            this,
+            conversationRecorder = conversationRecorder,
+            auditLogger = auditLogger,
+        )
 }

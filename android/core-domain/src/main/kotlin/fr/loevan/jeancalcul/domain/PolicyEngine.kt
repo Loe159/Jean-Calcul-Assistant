@@ -2,9 +2,11 @@
 
 package fr.loevan.jeancalcul.domain
 
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
+@Serializable
 enum class PolicyDecisionType {
     ALLOW,
     CONFIRM,
@@ -13,6 +15,7 @@ enum class PolicyDecisionType {
     DENY,
 }
 
+@Serializable
 enum class PolicyReason {
     TOOL_DEFAULT,
     USER_PREFERENCE,
@@ -27,6 +30,7 @@ enum class PolicyReason {
     RISK_DENIED,
 }
 
+@Serializable
 enum class ActionRequestOrigin {
     USER_VOICE,
     USER_TEXT,
@@ -99,6 +103,7 @@ data class PolicyDecision(
     val evaluatedAtEpochMillis: Long,
 )
 
+@Serializable
 enum class ActionApprovalMethod {
     USER_CONFIRMATION,
     BIOMETRIC,
@@ -116,6 +121,7 @@ data class ActionApproval(
     }
 }
 
+@Serializable
 enum class ActionApprovalStatus {
     AUTHORIZED,
     REJECTED,
@@ -143,11 +149,17 @@ data class PolicyAuditEvent(
     val actionId: String,
     val toolName: String,
     val toolVersion: String,
+    val arguments: JsonObject,
+    val origin: ActionRequestOrigin,
     val riskLevel: ToolRiskLevel,
     val decision: PolicyDecisionType,
     val reason: PolicyReason,
+    val justification: String,
     val stage: PolicyAuditStage,
     val approvalStatus: ActionApprovalStatus? = null,
+    val approvalMethod: ActionApprovalMethod? = null,
+    val approvalApproved: Boolean? = null,
+    val occurredAtEpochMillis: Long,
 )
 
 fun interface PolicyAuditLogger {
@@ -197,11 +209,17 @@ class PolicyEngine(
                     actionId = decision.proposal.actionId,
                     toolName = decision.proposal.toolName,
                     toolVersion = decision.proposal.toolVersion,
+                    arguments = decision.proposal.arguments,
+                    origin = decision.origin,
                     riskLevel = decision.riskLevel,
                     decision = decision.type,
                     reason = decision.reason,
+                    justification = decision.justification,
                     stage = PolicyAuditStage.APPROVAL,
                     approvalStatus = receipt.status,
+                    approvalMethod = receipt.method,
+                    approvalApproved = approval?.approved,
+                    occurredAtEpochMillis = nowEpochMillis,
                 ),
             )
         }
@@ -306,10 +324,14 @@ class PolicyEngine(
                     actionId = proposal.actionId,
                     toolName = proposal.toolName,
                     toolVersion = proposal.toolVersion,
+                    arguments = proposal.arguments,
+                    origin = context.origin,
                     riskLevel = definition.riskLevel,
                     decision = rule.type,
                     reason = rule.reason,
+                    justification = rule.reason.justification(),
                     stage = PolicyAuditStage.DECISION,
+                    occurredAtEpochMillis = context.nowEpochMillis,
                 ),
             )
         }

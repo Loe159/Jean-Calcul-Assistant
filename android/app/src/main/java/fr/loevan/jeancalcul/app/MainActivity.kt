@@ -24,6 +24,7 @@ import fr.loevan.jeancalcul.ui.jeanCalculTheme
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val conversationViewModel: ConversationViewModel by viewModels()
+    private val auditViewModel: AuditViewModel by viewModels()
     private lateinit var assistantRoleController: AssistantRoleController
     private lateinit var assistantRoleGateway: AssistantRoleGateway
     private var assistantRoleStatus by mutableStateOf<AssistantRoleStatus>(AssistantRoleStatus.Unavailable)
@@ -51,24 +52,42 @@ class MainActivity : ComponentActivity() {
         setContent {
             jeanCalculTheme {
                 val conversationState by conversationViewModel.uiState.collectAsState()
+                val auditState by auditViewModel.uiState.collectAsState()
                 mainAppContent(
-                    assistantRoleStatus = assistantRoleStatus,
-                    microphonePermissionGranted = microphonePermissionGranted,
-                    conversationState = conversationState,
-                    onboardingActions =
-                        OnboardingActions(
-                            requestRole = ::requestAssistantRole,
-                            requestMicrophonePermission = ::requestMicrophonePermission,
-                            openSystemSettings = ::openVoiceInputSettings,
+                    state =
+                        MainAppUiState(
+                            assistantRoleStatus = assistantRoleStatus,
+                            microphonePermissionGranted = microphonePermissionGranted,
+                            conversation = conversationState,
+                            audit = auditState,
                         ),
-                    conversationActions =
-                        ConversationScreenActions(
-                            selectConversation = conversationViewModel::selectConversation,
-                            newConversation = conversationViewModel::newConversation,
-                            deleteConversation = conversationViewModel::deleteSelected,
-                            draftChanged = conversationViewModel::updateDraft,
-                            send = conversationViewModel::saveDraft,
-                            export = { conversationViewModel.exportSelected(::shareConversation) },
+                    actions =
+                        MainAppActions(
+                            onboarding =
+                                OnboardingActions(
+                                    requestRole = ::requestAssistantRole,
+                                    requestMicrophonePermission = ::requestMicrophonePermission,
+                                    openSystemSettings = ::openVoiceInputSettings,
+                                ),
+                            conversation =
+                                ConversationScreenActions(
+                                    selectConversation = conversationViewModel::selectConversation,
+                                    newConversation = conversationViewModel::newConversation,
+                                    deleteConversation = conversationViewModel::deleteSelected,
+                                    draftChanged = conversationViewModel::updateDraft,
+                                    send = conversationViewModel::saveDraft,
+                                    export = { conversationViewModel.exportSelected(::shareConversation) },
+                                ),
+                            audit =
+                                AuditScreenActions(
+                                    timeWindowChanged = auditViewModel::setTimeWindow,
+                                    toolNameChanged = auditViewModel::setToolName,
+                                    outcomeChanged = auditViewModel::setOutcome,
+                                    retentionChanged = auditViewModel::setRetentionDays,
+                                    loadMore = auditViewModel::loadMore,
+                                    purgeExpired = auditViewModel::purgeExpired,
+                                    export = { auditViewModel.export(::shareAudit) },
+                                ),
                         ),
                 )
             }
@@ -139,6 +158,16 @@ class MainActivity : ComponentActivity() {
                 putExtra(Intent.EXTRA_TEXT, json)
             }
         startActivity(Intent.createChooser(shareIntent, "Exporter la conversation"))
+    }
+
+    private fun shareAudit(json: String) {
+        val shareIntent =
+            Intent(Intent.ACTION_SEND).apply {
+                type = "application/json"
+                putExtra(Intent.EXTRA_SUBJECT, "Jean Calcul — journal d'audit")
+                putExtra(Intent.EXTRA_TEXT, json)
+            }
+        startActivity(Intent.createChooser(shareIntent, "Exporter le journal d'audit"))
     }
 
     private companion object {

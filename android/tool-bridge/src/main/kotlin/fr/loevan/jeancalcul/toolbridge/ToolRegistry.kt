@@ -79,10 +79,11 @@ class ToolRegistry(
         context: ToolAvailabilityContext,
         approvalReceipt: ActionApprovalReceipt? = null,
     ): ToolResult {
-        audit(proposal, ToolAuditStage.REQUESTED, "Tool request received.")
+        val startedAtEpochMillis = clock()
+        audit(proposal, ToolAuditStage.REQUESTED, "Tool request received.", startedAtEpochMillis)
 
-        if (proposal.expiresAtEpochMillis?.let { clock() >= it } == true) {
-            return failure(proposal, "ACTION_EXPIRED", "The tool request has expired.")
+        if (proposal.expiresAtEpochMillis?.let { startedAtEpochMillis >= it } == true) {
+            return failure(proposal, "ACTION_EXPIRED", "The tool request has expired.", startedAtEpochMillis)
         }
 
         val registration = registrationsByKey[proposal.key()]
@@ -93,16 +94,26 @@ class ToolRegistry(
                 } else {
                     "UNKNOWN_TOOL"
                 }
-            return failure(proposal, code, "The requested tool or version is not registered.")
+            return failure(proposal, code, "The requested tool or version is not registered.", startedAtEpochMillis)
         }
 
         val availability = registration.definition.availabilityIn(context)
         if (availability is ToolAvailabilityStatus.Unavailable) {
-            return failure(proposal, "TOOL_UNAVAILABLE", "The tool is unavailable: ${availability.reason.name}.")
+            return failure(
+                proposal,
+                "TOOL_UNAVAILABLE",
+                "The tool is unavailable: ${availability.reason.name}.",
+                startedAtEpochMillis,
+            )
         }
 
         if (!schemaValidator.isValid(registration.definition.inputSchema, proposal.arguments)) {
-            return failure(proposal, "INPUT_SCHEMA_INVALID", "The tool arguments do not match the declared schema.")
+            return failure(
+                proposal,
+                "INPUT_SCHEMA_INVALID",
+                "The tool arguments do not match the declared schema.",
+                startedAtEpochMillis,
+            )
         }
 
         if (
@@ -117,19 +128,32 @@ class ToolRegistry(
                 proposal,
                 "POLICY_AUTHORIZATION_REQUIRED",
                 "A valid Policy Engine approval receipt is required.",
+                startedAtEpochMillis,
             )
         }
 
         idempotencyHistory[proposal.idempotencyKey]?.let { previous ->
             return if (previous.signature == proposal.signature()) {
-                audit(proposal, ToolAuditStage.REPLAYED, "Idempotent result replayed.")
-                previous.result.copy(replayed = true)
+                previous.result.copy(replayed = true).also { replayed ->
+                    audit(
+                        proposal,
+                        ToolAuditStage.REPLAYED,
+                        "Idempotent result replayed.",
+                        startedAtEpochMillis,
+                        replayed,
+                    )
+                }
             } else {
-                failure(proposal, "IDEMPOTENCY_CONFLICT", "The idempotency key was already used for another action.")
+                failure(
+                    proposal,
+                    "IDEMPOTENCY_CONFLICT",
+                    "The idempotency key was already used for another action.",
+                    startedAtEpochMillis,
+                )
             }
         }
 
-        audit(proposal, ToolAuditStage.VALIDATED, "Tool request validated.")
+        audit(proposal, ToolAuditStage.VALIDATED, "Tool request validated.", startedAtEpochMillis)
         val outcome =
             try {
                 registration.executor.execute(proposal)
@@ -140,7 +164,7 @@ class ToolRegistry(
         val result =
             when (outcome) {
                 is ToolExecutionOutcome.Failure ->
-                    failure(proposal, outcome.error.code, outcome.error.message)
+                    failure(proposal, outcome.error.code, outcome.error.message, startedAtEpochMillis)
 
                 is ToolExecutionOutcome.Success -> {
                     if (schemaValidator.isValid(registration.definition.outputSchema, outcome.output)) {
@@ -149,12 +173,21 @@ class ToolRegistry(
                             toolName = proposal.toolName,
                             toolVersion = proposal.toolVersion,
                             output = outcome.output,
-                        ).also { audit(proposal, ToolAuditStage.RESULT, "Tool execution completed.") }
+                        ).also { result ->
+                            audit(
+                                proposal,
+                                ToolAuditStage.RESULT,
+                                "Tool execution completed.",
+                                startedAtEpochMillis,
+                                result,
+                            )
+                        }
                     } else {
                         failure(
                             proposal,
                             "OUTPUT_SCHEMA_INVALID",
                             "The tool result does not match the declared schema.",
+                            startedAtEpochMillis,
                         )
                     }
                 }
@@ -168,27 +201,35 @@ class ToolRegistry(
         proposal: ActionProposal,
         code: String,
         message: String,
+        startedAtEpochMillis: Long,
     ): ToolResult =
         ToolResult(
             actionId = proposal.actionId,
             toolName = proposal.toolName,
             toolVersion = proposal.toolVersion,
             error = ToolError(code, message),
-        ).also { audit(proposal, ToolAuditStage.ERROR, code) }
+        ).also { result -> audit(proposal, ToolAuditStage.ERROR, code, startedAtEpochMillis, result) }
 
     private fun audit(
         proposal: ActionProposal,
         stage: ToolAuditStage,
         message: String,
+        startedAtEpochMillis: Long,
+        result: ToolResult? = null,
     ) {
+        val occurredAtEpochMillis = clock()
         runCatching {
             auditLogger.log(
                 ToolAuditEvent(
                     actionId = proposal.actionId,
                     toolName = proposal.toolName,
                     toolVersion = proposal.toolVersion,
+                    arguments = proposal.arguments,
                     stage = stage,
                     message = message,
+                    occurredAtEpochMillis = occurredAtEpochMillis,
+                    durationMillis = (occurredAtEpochMillis - startedAtEpochMillis).coerceAtLeast(0),
+                    result = result,
                 ),
             )
         }

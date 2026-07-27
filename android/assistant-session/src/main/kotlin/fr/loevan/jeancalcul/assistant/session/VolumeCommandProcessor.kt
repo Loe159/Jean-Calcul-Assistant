@@ -61,7 +61,20 @@ internal class VolumeCommandProcessor(
     }
 
     override fun cancelPending() {
+        val pending = pendingAction ?: return
         pendingAction = null
+        val now = clock()
+        policyEngine.issueReceipt(
+            decision = pending.decision,
+            nowEpochMillis = now,
+            approval =
+                ActionApproval(
+                    actionId = pending.proposal.actionId,
+                    approved = false,
+                    method = ActionApprovalMethod.USER_CONFIRMATION,
+                    decidedAtEpochMillis = now,
+                ),
+        )
     }
 
     private fun prepareRelativeAdjustment(adjustment: RelativeVolumeAdjustment): VoiceCommandOutcome {

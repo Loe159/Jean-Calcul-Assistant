@@ -8,8 +8,11 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import fr.loevan.jeancalcul.data.audit.AuditDao
+import fr.loevan.jeancalcul.data.audit.RoomAuditRepository
 import fr.loevan.jeancalcul.data.conversation.ConversationDao
 import fr.loevan.jeancalcul.data.conversation.RoomConversationRepository
+import fr.loevan.jeancalcul.domain.AuditRepository
 import fr.loevan.jeancalcul.domain.ConversationRepository
 import kotlinx.serialization.json.Json
 import javax.inject.Singleton
@@ -20,6 +23,10 @@ abstract class ConversationRepositoryModule {
     @Binds
     @Singleton
     abstract fun bindConversationRepository(repository: RoomConversationRepository): ConversationRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAuditRepository(repository: RoomAuditRepository): AuditRepository
 }
 
 @Module
@@ -37,6 +44,9 @@ object ConversationDatabaseModule {
 
     @Provides
     fun provideConversationDao(database: JeanCalculDatabase): ConversationDao = database.conversationDao()
+
+    @Provides
+    fun provideAuditDao(database: JeanCalculDatabase): AuditDao = database.auditDao()
 
     @Provides
     @Singleton

@@ -77,7 +77,7 @@ class ConversationDatabaseTest {
         }
 
     @Test
-    fun initialSchemaUsesVersionOne() {
+    fun currentSchemaUsesVersionTwo() {
         assertEquals(JeanCalculDatabase.VERSION, database.openHelper.readableDatabase.version)
     }
 
@@ -94,9 +94,43 @@ class ConversationDatabaseTest {
     }
 
     @Test
+    fun migrationFromVersionOneAddsAuditStorageWithoutChangingConversations() {
+        val versionOne = migrationHelper.createDatabase(MIGRATION_DATABASE_FROM_ONE, 1)
+        versionOne.execSQL(
+            "INSERT INTO conversations " +
+                "(id, title, createdAtEpochMillis, updatedAtEpochMillis, contextSummary, summarizedThroughSequence) " +
+                "VALUES ('c-before-audit', 'Existing', 1, 1, NULL, NULL)",
+        )
+        versionOne.close()
+
+        val migrated =
+            migrationHelper.runMigrationsAndValidate(
+                MIGRATION_DATABASE_FROM_ONE,
+                JeanCalculDatabase.VERSION,
+                true,
+                JeanCalculDatabase.MIGRATION_1_2,
+            )
+        migrated.query("SELECT id FROM conversations WHERE id = 'c-before-audit'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+        }
+        migrated.query("SELECT COUNT(*) FROM audit_events").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        migrated.close()
+    }
+
+    @Test
     fun repositoryExportsThenDeletesConversation() =
         runTest {
-            val repository = RoomConversationRepository(dao, Json { prettyPrint = true })
+            val repository =
+                RoomConversationRepository(
+                    dao,
+                    Json {
+                        prettyPrint = true
+                        encodeDefaults = true
+                    },
+                )
             repository.saveConversation(Conversation("c2", "Export", 1))
             repository.saveMessage(
                 Message(
@@ -120,5 +154,6 @@ class ConversationDatabaseTest {
 
     private companion object {
         const val MIGRATION_DATABASE = "conversation-migration-test"
+        const val MIGRATION_DATABASE_FROM_ONE = "conversation-migration-from-one-test"
     }
 }

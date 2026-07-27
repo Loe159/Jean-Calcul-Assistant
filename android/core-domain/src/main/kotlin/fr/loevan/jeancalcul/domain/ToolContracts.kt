@@ -1,5 +1,6 @@
 package fr.loevan.jeancalcul.domain
 
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -50,6 +51,7 @@ data class ToolDefinition(
     }
 }
 
+@Serializable
 enum class ToolRiskLevel {
     R0,
     R1,
@@ -162,8 +164,12 @@ data class ToolAuditEvent(
     val actionId: String,
     val toolName: String,
     val toolVersion: String,
+    val arguments: JsonObject,
     val stage: ToolAuditStage,
     val message: String,
+    val occurredAtEpochMillis: Long,
+    val durationMillis: Long = 0,
+    val result: ToolResult? = null,
 )
 
 /** Receives audit events without coupling domain contracts to a storage implementation. */

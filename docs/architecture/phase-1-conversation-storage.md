@@ -5,7 +5,7 @@ Issue de reference : #26.
 ## Decision
 
 Les conversations, messages et references de sessions sont stockes dans la base Room
-`jean_calcul.db`, schema version 1. Le schema exporte est versionne dans
+`jean_calcul.db`, dont le schema initial des conversations est la version 1. Le schema exporte est versionne dans
 `android/core-data/schemas/`.
 
 Les messages d'un modele direct restent un historique local. Une session d'agent conserve sa
@@ -26,6 +26,6 @@ table `conversations` afin qu'une future compression ne reecrive pas l'historiqu
 
 ## Migrations
 
-La version 1 est le schema initial. Toute evolution ajoute une migration explicite dans
-`JeanCalculDatabase.MIGRATIONS`; aucun fallback destructif n'est autorise. L'issue #32 ajoutera les
-tables d'audit par migration depuis ce schema.
+La version 1 est le schema initial. La version 2 ajoute la table d'audit via `MIGRATION_1_2` sans
+modifier les conversations. Toute evolution ajoute une migration explicite dans
+`JeanCalculDatabase.MIGRATIONS`; aucun fallback destructif n'est autorise.

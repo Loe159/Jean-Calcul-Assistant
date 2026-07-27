@@ -16,7 +16,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 interface VoiceConversationRecorder {
-    suspend fun beginSession()
+    suspend fun beginSession(): String
 
     suspend fun recordUserMessage(text: String)
 
@@ -34,9 +34,10 @@ class PersistentVoiceConversationRecorder
         private val mutex = Mutex()
         private var conversationId: String? = null
 
-        override suspend fun beginSession() {
-            mutex.withLock { conversationId = createConversation().id }
-        }
+        override suspend fun beginSession(): String =
+            mutex.withLock {
+                createConversation().id.also { conversationId = it }
+            }
 
         override suspend fun recordUserMessage(text: String) = append(MessageRole.USER, text, MessageStatus.COMPLETED)
 
