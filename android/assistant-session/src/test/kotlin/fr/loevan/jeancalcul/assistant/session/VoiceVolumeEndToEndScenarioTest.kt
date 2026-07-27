@@ -56,6 +56,17 @@ class VoiceVolumeEndToEndScenarioTest {
             )
             runCurrent()
 
+            assertEquals(5, volumeController.volume.current)
+            assertEquals(AssistantState.WaitingApproval::class, controller.state.value.assistantState::class)
+            assertEquals(
+                "30",
+                controller.state.value.pendingPolicyDecision?.summary?.parameters
+                    ?.first { it.name == "volumePercent" }?.exactValue,
+            )
+
+            controller.confirmPendingCommand()
+            runCurrent()
+
             assertEquals(3, volumeController.volume.current)
             assertEquals(
                 AssistantState.Speaking("Le volume de musique est maintenant a 30 %."),

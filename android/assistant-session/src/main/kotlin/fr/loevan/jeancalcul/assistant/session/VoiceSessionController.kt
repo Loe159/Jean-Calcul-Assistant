@@ -118,6 +118,7 @@ internal class VoiceSessionController(
                 partialTranscript = "",
                 finalResult = null,
                 confirmationPrompt = null,
+                pendingPolicyDecision = null,
                 microphonePermissionRequired = false,
                 voiceInputAvailable = true,
             )
@@ -154,6 +155,7 @@ internal class VoiceSessionController(
             mutableState.value.copy(
                 finalResult = SpeechRecognitionResult(text = text, confidence = null),
                 confirmationPrompt = null,
+                pendingPolicyDecision = null,
                 microphonePermissionRequired = false,
             )
         dispatch(AssistantEvent.TextSubmitted(text))
@@ -279,12 +281,25 @@ internal class VoiceSessionController(
                     } else {
                         AssistantEvent.ResponseReady(outcome.response)
                     }
-                mutableState.value = mutableState.value.copy(confirmationPrompt = null)
+                mutableState.value =
+                    mutableState.value.copy(
+                        confirmationPrompt = null,
+                        pendingPolicyDecision = null,
+                    )
                 dispatch(event)
             }
 
-            is VoiceCommandOutcome.ConfirmationRequired -> {
-                dispatch(AssistantEvent.ActionProposed(outcome.prompt))
+            is VoiceCommandOutcome.ApprovalRequired -> {
+                val summary = outcome.decision.exactSummary()
+                mutableState.value = mutableState.value.copy(pendingPolicyDecision = outcome.decision)
+                dispatch(AssistantEvent.ActionProposed(summary))
+                dispatch(AssistantEvent.ApprovalRequired)
+            }
+
+            is VoiceCommandOutcome.PermissionRequired -> {
+                val summary = outcome.decision.exactSummary()
+                mutableState.value = mutableState.value.copy(pendingPolicyDecision = outcome.decision)
+                dispatch(AssistantEvent.ActionProposed(summary))
                 dispatch(AssistantEvent.ApprovalRequired)
             }
 
@@ -382,6 +397,7 @@ internal class VoiceSessionController(
         audioRouteSource.stop()
         audioFocusController.abandon()
         voiceCommandProcessor.cancelPending()
+        mutableState.value = mutableState.value.copy(pendingPolicyDecision = null, confirmationPrompt = null)
     }
 
     private fun prepareForInteraction() {
@@ -500,6 +516,16 @@ private object NoOpVoiceCommandProcessor : VoiceCommandProcessor {
 
     override fun cancelPending() = Unit
 }
+
+private fun fr.loevan.jeancalcul.domain.PolicyDecision.exactSummary(): String =
+    buildString {
+        append(summary.description)
+        if (summary.parameters.isNotEmpty()) {
+            append(" (")
+            append(summary.parameters.joinToString { "${it.name}=${it.exactValue}" })
+            append(")")
+        }
+    }
 
 internal object NoOpPerformanceTrace : PerformanceTrace {
     override fun startInvocation() = Unit

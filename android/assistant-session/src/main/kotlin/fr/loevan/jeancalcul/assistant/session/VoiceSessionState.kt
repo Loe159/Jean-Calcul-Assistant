@@ -1,6 +1,7 @@
 package fr.loevan.jeancalcul.assistant.session
 
 import fr.loevan.jeancalcul.domain.AssistantState
+import fr.loevan.jeancalcul.domain.PolicyDecision
 import fr.loevan.jeancalcul.domain.SpeechRecognitionResult
 import fr.loevan.jeancalcul.domain.VoiceActivity
 import fr.loevan.jeancalcul.domain.VoiceAudioRoute
@@ -10,6 +11,7 @@ internal data class VoiceSessionState(
     val partialTranscript: String = "",
     val finalResult: SpeechRecognitionResult? = null,
     val confirmationPrompt: String? = null,
+    val pendingPolicyDecision: PolicyDecision? = null,
     val microphonePermissionRequired: Boolean = false,
     val voiceInputAvailable: Boolean = true,
     val microphoneAmplitude: Float = 0f,

@@ -55,6 +55,9 @@ class VoiceVolumeEndToEndInstrumentedTest {
             )
             runCurrent()
 
+            session.confirmPendingCommand()
+            runCurrent()
+
             assertEquals(3, volumeController.volume.current)
             assertEquals("Le volume de musique est maintenant a 30 %.", textToSpeech.lastSpokenText)
             session.close()
@@ -88,6 +91,9 @@ class VoiceVolumeEndToEndInstrumentedTest {
                         SpeechRecognitionResult("Mets le volume a 30 %", confidence = 1f),
                     ),
                 )
+                runCurrent()
+
+                session.confirmPendingCommand()
                 runCurrent()
 
                 assertEquals(3, volumeController.volume.current)

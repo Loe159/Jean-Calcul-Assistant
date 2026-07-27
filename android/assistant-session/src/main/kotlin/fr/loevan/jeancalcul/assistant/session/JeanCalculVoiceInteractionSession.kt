@@ -7,7 +7,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.media.AudioManager
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.service.voice.VoiceInteractionSession
 import android.util.Log
 import android.view.View
@@ -16,6 +18,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import fr.loevan.jeancalcul.domain.DeterministicVolumeCommandInterpreter
+import fr.loevan.jeancalcul.domain.PolicyAuditLogger
+import fr.loevan.jeancalcul.domain.PolicyEngine
 import fr.loevan.jeancalcul.observability.AndroidPerformanceTrace
 import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
 import fr.loevan.jeancalcul.toolbridge.AudioManagerVolumeController
@@ -70,6 +74,16 @@ class JeanCalculVoiceInteractionSession(
                                     context.getSystemService(KeyguardManager::class.java)?.isDeviceLocked == true,
                             )
                         },
+                        policyEngine =
+                            PolicyEngine(
+                                PolicyAuditLogger { event ->
+                                    Log.i(
+                                        POLICY_AUDIT_TAG,
+                                        "${event.stage}:${event.decision}:${event.reason}:" +
+                                            "${event.toolName}:${event.toolVersion}:${event.actionId}",
+                                    )
+                                },
+                            ),
                         performanceTrace = performanceTrace,
                     ),
                 performanceTrace = performanceTrace,
@@ -103,6 +117,18 @@ class JeanCalculVoiceInteractionSession(
                             override fun interruptVoice() = voiceSessionController.interruptActiveWork()
 
                             override fun confirmVoiceCommand() = voiceSessionController.confirmPendingCommand()
+
+                            override fun rejectVoiceCommand() = voiceSessionController.cancelActiveWork()
+
+                            override fun openSystemPanel() {
+                                startVoiceActivity(
+                                    Intent(
+                                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                        Uri.parse("package:${context.packageName}"),
+                                    ),
+                                )
+                                voiceSessionController.cancelActiveWork()
+                            }
 
                             override fun speakTestResponse() = voiceSessionController.speakTestResponse()
 
@@ -195,6 +221,7 @@ class JeanCalculVoiceInteractionSession(
     }
 
     private companion object {
+        const val POLICY_AUDIT_TAG = "PolicyEngineAudit"
         const val LOG_TAG = "AssistantSession"
         const val ACTION_REQUEST_MICROPHONE_PERMISSION =
             "fr.loevan.jeancalcul.action.REQUEST_MICROPHONE_PERMISSION"

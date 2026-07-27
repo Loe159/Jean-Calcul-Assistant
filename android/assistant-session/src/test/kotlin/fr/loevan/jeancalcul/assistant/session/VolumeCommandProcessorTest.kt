@@ -14,12 +14,18 @@ import org.junit.Test
 
 class VolumeCommandProcessorTest {
     @Test
-    fun `explicit command applies observed volume and returns spoken result`() {
+    fun `explicit reversible command requires policy confirmation before execution`() {
         val controller = FakeVolumeController(current = 4)
         val processor = processorFor(controller)
 
-        val outcome = processor.process("Mets le volume a 30 %")
+        val review = processor.process("Mets le volume a 30 %")
 
+        assertTrue(review is VoiceCommandOutcome.ApprovalRequired)
+        assertEquals(4, controller.volume.current)
+        val decision = (review as VoiceCommandOutcome.ApprovalRequired).decision
+        assertEquals("30", decision.summary.parameters.first { it.name == "volumePercent" }.exactValue)
+
+        val outcome = processor.confirm()
         assertEquals(3, controller.volume.current)
         assertEquals(
             VoiceCommandOutcome.Completed("Le volume de musique est maintenant a 30 %."),
@@ -43,7 +49,7 @@ class VolumeCommandProcessorTest {
         val controller = FakeVolumeController(current = 7)
         val processor = processorFor(controller)
 
-        assertTrue(processor.process("Baisse le volume") is VoiceCommandOutcome.ConfirmationRequired)
+        assertTrue(processor.process("Baisse le volume") is VoiceCommandOutcome.ApprovalRequired)
         processor.cancelPending()
 
         assertTrue(processor.confirm() is VoiceCommandOutcome.Invalid)
@@ -78,6 +84,7 @@ class VolumeCommandProcessorTest {
             )
 
         processor.process("Mets le volume a 30 %")
+        processor.confirm()
 
         assertEquals(
             listOf(PerformanceTraceEvent.VOLUME_REQUESTED, PerformanceTraceEvent.VOLUME_APPLIED),

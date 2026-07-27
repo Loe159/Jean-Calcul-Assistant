@@ -85,6 +85,7 @@ data class ToolAvailabilityContext(
     val deviceCapabilities: Set<String> = emptySet(),
     val grantedAndroidPermissions: Set<String> = emptySet(),
     val isDeviceLocked: Boolean,
+    val isAppForeground: Boolean = true,
 ) {
     init {
         require(deviceCapabilities.none(String::isBlank))

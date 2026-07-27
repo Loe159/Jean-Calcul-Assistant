@@ -43,7 +43,13 @@ data class ActionCardData(
     val risk: ActionRisk,
     val origin: String,
     val state: ActionCardState,
+    val details: List<ActionDetail> = emptyList(),
     val result: String? = null,
+)
+
+data class ActionDetail(
+    val label: String,
+    val value: String,
 )
 
 /** A presentation-only action summary; policy decisions and execution remain outside core-ui. */
@@ -141,12 +147,8 @@ fun ApprovalSheet(
             Text(text = action.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             Text(text = action.summary, style = MaterialTheme.typography.bodyLarge)
             StatusBadge(state = action.risk.toStatusBadge())
-            GlassSurface(variant = GlassSurfaceVariant.Panel) {
-                Column {
-                    Text(text = "Justification", style = MaterialTheme.typography.labelSmall)
-                    Text(text = justification, style = MaterialTheme.typography.bodyMedium)
-                }
-            }
+            approvalDetails(action.details)
+            approvalJustification(justification)
             if (state == ApprovalSheetState.Biometric) {
                 PrivacyIndicator(state = PrivacyIndicatorState.BiometricRequired)
             }
@@ -170,6 +172,29 @@ fun ApprovalSheet(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun approvalDetails(details: List<ActionDetail>) {
+    if (details.isEmpty()) return
+    GlassSurface(variant = GlassSurfaceVariant.Panel) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(text = "Parametres exacts", style = MaterialTheme.typography.labelSmall)
+            details.forEach { detail ->
+                Text(text = "${detail.label} : ${detail.value}", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+@Composable
+private fun approvalJustification(justification: String) {
+    GlassSurface(variant = GlassSurfaceVariant.Panel) {
+        Column {
+            Text(text = "Justification", style = MaterialTheme.typography.labelSmall)
+            Text(text = justification, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

@@ -146,7 +146,10 @@ fun createVolumeToolRegistry(
     return auditLogger?.let { ToolRegistry(registrations, it) } ?: ToolRegistry(registrations)
 }
 
-fun volumeToolAvailabilityContext(isDeviceLocked: Boolean): ToolAvailabilityContext =
+fun volumeToolAvailabilityContext(
+    isDeviceLocked: Boolean,
+    isAppForeground: Boolean = true,
+): ToolAvailabilityContext =
     ToolAvailabilityContext(
         deviceCapabilities =
             setOf(
@@ -154,4 +157,5 @@ fun volumeToolAvailabilityContext(isDeviceLocked: Boolean): ToolAvailabilityCont
                 ToolDeviceCapabilities.VOLUME_WRITE,
             ),
         isDeviceLocked = isDeviceLocked,
+        isAppForeground = isAppForeground,
     )

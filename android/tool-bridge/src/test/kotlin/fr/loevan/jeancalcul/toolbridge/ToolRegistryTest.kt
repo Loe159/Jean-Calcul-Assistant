@@ -72,10 +72,16 @@ class ToolRegistryTest {
                 ),
                 availableContext(),
             )
+        val invalidOutputProposal = proposal(actionId = "invalid-output")
         val invalidOutput =
             invalidOutputRegistry.execute(
-                proposal(actionId = "invalid-output"),
+                invalidOutputProposal,
                 availableContext(),
+                policyReceipt(
+                    echoDefinition(),
+                    invalidOutputProposal,
+                    availableContext(),
+                ),
             )
 
         assertEquals("INPUT_SCHEMA_INVALID", invalidInput.error?.code)
@@ -131,6 +137,21 @@ class ToolRegistryTest {
     }
 
     @Test
+    fun `valid tool execution requires a matching policy receipt`() {
+        var executionCount = 0
+        val registry =
+            registryFor(echoDefinition()) {
+                executionCount += 1
+                ToolExecutionOutcome.Success(it.arguments)
+            }
+
+        val denied = registry.execute(proposal(), availableContext())
+
+        assertEquals("POLICY_AUTHORIZATION_REQUIRED", denied.error?.code)
+        assertEquals(0, executionCount)
+    }
+
+    @Test
     fun `idempotency replays results rejects conflicts and honors expiration`() {
         var executionCount = 0
         val events = mutableListOf<ToolAuditEvent>()
@@ -148,12 +169,16 @@ class ToolRegistryTest {
             )
         val firstProposal = proposal(expiresAtEpochMillis = 2_000L)
 
-        val first = registry.execute(firstProposal, availableContext())
-        val replay = registry.execute(firstProposal, availableContext())
+        val firstReceipt = policyReceipt(echoDefinition(), firstProposal, availableContext(), nowEpochMillis = 1_000L)
+        val first = registry.execute(firstProposal, availableContext(), firstReceipt)
+        val replay = registry.execute(firstProposal, availableContext(), firstReceipt)
+        val conflictingProposal =
+            firstProposal.copy(arguments = JsonObject(mapOf("value" to JsonPrimitive("different"))))
         val conflict =
             registry.execute(
-                firstProposal.copy(arguments = JsonObject(mapOf("value" to JsonPrimitive("different")))),
+                conflictingProposal,
                 availableContext(),
+                policyReceipt(echoDefinition(), conflictingProposal, availableContext(), nowEpochMillis = 1_000L),
             )
         val expired =
             registry.execute(

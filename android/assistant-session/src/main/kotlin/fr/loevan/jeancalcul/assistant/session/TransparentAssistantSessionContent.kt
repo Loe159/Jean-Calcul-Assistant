@@ -26,12 +26,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.loevan.jeancalcul.domain.AssistantState
+import fr.loevan.jeancalcul.domain.PolicyDecisionType
 import fr.loevan.jeancalcul.domain.VoiceActivity
 import fr.loevan.jeancalcul.domain.VoiceAudioRoute
 import fr.loevan.jeancalcul.ui.ActionCard
 import fr.loevan.jeancalcul.ui.ActionCardData
 import fr.loevan.jeancalcul.ui.ActionRisk
 import fr.loevan.jeancalcul.ui.AmbientGlow
+import fr.loevan.jeancalcul.ui.ApprovalSheet
 import fr.loevan.jeancalcul.ui.GlassSurface
 import fr.loevan.jeancalcul.ui.GlassSurfaceVariant
 import fr.loevan.jeancalcul.ui.GradientOrb
@@ -85,7 +87,7 @@ internal fun transparentAssistantSessionContent(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    voiceSessionStatusContent(voiceState, presentation)
+                    voiceSessionStatusContent(voiceState, presentation, actions)
                     voiceSessionTextFallback(voiceState, actions)
                     voiceSessionControls(voiceState, actions)
                 }
@@ -98,6 +100,7 @@ internal fun transparentAssistantSessionContent(
 private fun voiceSessionStatusContent(
     voiceState: VoiceSessionState,
     presentation: AssistantStatePresentation,
+    actions: VoiceSessionActions,
 ) {
     GradientOrb(
         state = presentation.orbState,
@@ -140,25 +143,47 @@ private fun voiceSessionStatusContent(
                 null
             },
     )
-    actionCard(presentation)
+    actionCard(voiceState, presentation, actions)
     transcriptCards(voiceState)
 }
 
 @Composable
-private fun actionCard(presentation: AssistantStatePresentation) {
-    val actionState = presentation.actionState ?: return
-    val summary = presentation.actionSummary ?: return
-    ActionCard(
-        data =
-            ActionCardData(
-                title = "Action Android",
-                summary = summary,
-                risk = ActionRisk.R2,
-                origin = "Assistant local",
-                state = actionState,
-            ),
-        modifier = Modifier.fillMaxWidth(),
-    )
+private fun actionCard(
+    voiceState: VoiceSessionState,
+    presentation: AssistantStatePresentation,
+    actions: VoiceSessionActions,
+) {
+    val decision = voiceState.pendingPolicyDecision
+    val actionState = presentation.actionState
+    val summary = presentation.actionSummary
+    if (decision != null) {
+        val approveAction =
+            if (decision.type == PolicyDecisionType.OPEN_SYSTEM_PANEL) {
+                actions::openSystemPanel
+            } else {
+                actions::confirmVoiceCommand
+            }
+        ApprovalSheet(
+            state = decision.toApprovalSheetState(),
+            action = decision.toActionCardData(),
+            justification = decision.justification,
+            modifier = Modifier.fillMaxWidth(),
+            onApprove = approveAction,
+            onReject = actions::rejectVoiceCommand,
+        )
+    } else if (actionState != null && summary != null) {
+        ActionCard(
+            data =
+                ActionCardData(
+                    title = "Action Android",
+                    summary = summary,
+                    risk = ActionRisk.R2,
+                    origin = "Assistant local",
+                    state = actionState,
+                ),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 @Composable
@@ -212,12 +237,7 @@ private fun voiceSessionControls(
     val current = voiceState.assistantState
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         when {
-            current is AssistantState.WaitingApproval ->
-                JeanCalculButton(
-                    label = "Confirmer l'action",
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = actions::confirmVoiceCommand,
-                )
+            current is AssistantState.WaitingApproval -> Unit
 
             voiceState.microphonePermissionRequired ->
                 JeanCalculButton(

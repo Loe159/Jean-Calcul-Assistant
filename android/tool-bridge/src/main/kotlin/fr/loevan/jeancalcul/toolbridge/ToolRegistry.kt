@@ -5,6 +5,7 @@ import com.networknt.schema.InputFormat
 import com.networknt.schema.JsonSchema
 import com.networknt.schema.JsonSchemaFactory
 import com.networknt.schema.SpecVersion
+import fr.loevan.jeancalcul.domain.ActionApprovalReceipt
 import fr.loevan.jeancalcul.domain.ActionProposal
 import fr.loevan.jeancalcul.domain.ToolAuditEvent
 import fr.loevan.jeancalcul.domain.ToolAuditLogger
@@ -14,6 +15,7 @@ import fr.loevan.jeancalcul.domain.ToolAvailabilityStatus
 import fr.loevan.jeancalcul.domain.ToolDefinition
 import fr.loevan.jeancalcul.domain.ToolError
 import fr.loevan.jeancalcul.domain.ToolResult
+import fr.loevan.jeancalcul.domain.authorizes
 import kotlinx.serialization.json.JsonObject
 
 fun interface ToolExecutor {
@@ -68,22 +70,16 @@ class ToolRegistry(
             .filter { it.availabilityIn(context) is ToolAvailabilityStatus.Available }
             .sortedWith(compareBy(ToolDefinition::name, ToolDefinition::version))
 
+    fun definitionFor(proposal: ActionProposal): ToolDefinition? = registrationsByKey[proposal.key()]?.definition
+
     @Synchronized
-    @Suppress("LongMethod", "ReturnCount")
+    @Suppress("CyclomaticComplexMethod", "LongMethod", "ReturnCount")
     fun execute(
         proposal: ActionProposal,
         context: ToolAvailabilityContext,
+        approvalReceipt: ActionApprovalReceipt? = null,
     ): ToolResult {
         audit(proposal, ToolAuditStage.REQUESTED, "Tool request received.")
-
-        idempotencyHistory[proposal.idempotencyKey]?.let { previous ->
-            return if (previous.signature == proposal.signature()) {
-                audit(proposal, ToolAuditStage.REPLAYED, "Idempotent result replayed.")
-                previous.result.copy(replayed = true)
-            } else {
-                failure(proposal, "IDEMPOTENCY_CONFLICT", "The idempotency key was already used for another action.")
-            }
-        }
 
         if (proposal.expiresAtEpochMillis?.let { clock() >= it } == true) {
             return failure(proposal, "ACTION_EXPIRED", "The tool request has expired.")
@@ -107,6 +103,30 @@ class ToolRegistry(
 
         if (!schemaValidator.isValid(registration.definition.inputSchema, proposal.arguments)) {
             return failure(proposal, "INPUT_SCHEMA_INVALID", "The tool arguments do not match the declared schema.")
+        }
+
+        if (
+            approvalReceipt?.authorizes(
+                proposal = proposal,
+                nowEpochMillis = clock(),
+                isDeviceLocked = context.isDeviceLocked,
+                isAppForeground = context.isAppForeground,
+            ) != true
+        ) {
+            return failure(
+                proposal,
+                "POLICY_AUTHORIZATION_REQUIRED",
+                "A valid Policy Engine approval receipt is required.",
+            )
+        }
+
+        idempotencyHistory[proposal.idempotencyKey]?.let { previous ->
+            return if (previous.signature == proposal.signature()) {
+                audit(proposal, ToolAuditStage.REPLAYED, "Idempotent result replayed.")
+                previous.result.copy(replayed = true)
+            } else {
+                failure(proposal, "IDEMPOTENCY_CONFLICT", "The idempotency key was already used for another action.")
+            }
         }
 
         audit(proposal, ToolAuditStage.VALIDATED, "Tool request validated.")

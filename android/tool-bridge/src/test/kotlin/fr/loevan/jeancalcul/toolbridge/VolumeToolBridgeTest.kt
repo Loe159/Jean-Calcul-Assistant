@@ -21,7 +21,18 @@ class VolumeToolBridgeTest {
         val registry = createVolumeToolRegistry(controller, ToolAuditLogger { })
 
         VolumeStream.entries.forEach { stream ->
-            val result = registry.execute(getProposal(stream), volumeToolAvailabilityContext(isDeviceLocked = false))
+            val proposal = getProposal(stream)
+            val availability = volumeToolAvailabilityContext(isDeviceLocked = false)
+            val result =
+                registry.execute(
+                    proposal,
+                    availability,
+                    policyReceipt(
+                        VolumeToolSchemas.definitions.first { it.name == proposal.toolName },
+                        proposal,
+                        availability,
+                    ),
+                )
 
             assertTrue(result.isSuccess)
             assertEquals(VolumeToolSchemas.VERSION, result.toolVersion)
@@ -37,7 +48,18 @@ class VolumeToolBridgeTest {
         val controller = FakeVolumeController()
         val registry = createVolumeToolRegistry(controller, ToolAuditLogger { })
 
-        val result = registry.execute(setProposal(VolumeStream.MUSIC, 30), volumeToolAvailabilityContext(false))
+        val proposal = setProposal(VolumeStream.MUSIC, 30)
+        val availability = volumeToolAvailabilityContext(false)
+        val result =
+            registry.execute(
+                proposal,
+                availability,
+                policyReceipt(
+                    VolumeToolSchemas.definitions.first { it.name == proposal.toolName },
+                    proposal,
+                    availability,
+                ),
+            )
 
         assertTrue(result.isSuccess)
         assertEquals(5, controller.volumes.getValue(VolumeStream.MUSIC).current)
@@ -68,7 +90,18 @@ class VolumeToolBridgeTest {
             }
         val registry = createVolumeToolRegistry(controller, ToolAuditLogger { })
 
-        val result = registry.execute(setProposal(VolumeStream.NOTIFICATION, 60), volumeToolAvailabilityContext(false))
+        val proposal = setProposal(VolumeStream.NOTIFICATION, 60)
+        val availability = volumeToolAvailabilityContext(false)
+        val result =
+            registry.execute(
+                proposal,
+                availability,
+                policyReceipt(
+                    VolumeToolSchemas.definitions.first { it.name == proposal.toolName },
+                    proposal,
+                    availability,
+                ),
+            )
 
         assertTrue(result.isSuccess)
         assertEquals(0, controller.writeCount)

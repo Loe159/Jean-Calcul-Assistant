@@ -9,6 +9,10 @@ internal interface VoiceSessionActions {
 
     fun confirmVoiceCommand()
 
+    fun rejectVoiceCommand()
+
+    fun openSystemPanel()
+
     fun speakTestResponse()
 
     fun textChanged(text: String)
