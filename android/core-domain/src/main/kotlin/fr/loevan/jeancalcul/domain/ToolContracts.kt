@@ -108,8 +108,19 @@ enum class ToolUnavailableReason {
 }
 
 object ToolDeviceCapabilities {
+    const val APP_LAUNCHER = "device.apps.launch"
+    const val BATTERY_STATUS = "device.battery.read"
+    const val FLASHLIGHT = "device.flashlight.write"
+    const val LOCAL_TASKS = "device.tasks.local.write"
+    const val LOCAL_TIME = "device.time.local.read"
+    const val MEDIA_CONTROL = "device.media.control"
+    const val SETTINGS_PANEL = "device.settings.open"
     const val VOLUME_READ = "device.volume.read"
     const val VOLUME_WRITE = "device.volume.write"
+}
+
+object ToolAndroidPermissions {
+    const val CAMERA = "android.permission.CAMERA"
 }
 
 /** An untrusted request to execute one declared tool. */

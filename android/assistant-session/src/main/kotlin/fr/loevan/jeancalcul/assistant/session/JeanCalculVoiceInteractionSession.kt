@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
-import android.media.AudioManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -23,9 +22,8 @@ import fr.loevan.jeancalcul.feature.conversation.VoiceConversationRecorder
 import fr.loevan.jeancalcul.observability.AndroidPerformanceTrace
 import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
 import fr.loevan.jeancalcul.observability.PersistentAuditLogger
-import fr.loevan.jeancalcul.toolbridge.AudioManagerVolumeController
-import fr.loevan.jeancalcul.toolbridge.createVolumeToolRegistry
-import fr.loevan.jeancalcul.toolbridge.volumeToolAvailabilityContext
+import fr.loevan.jeancalcul.toolbridge.androidMvpToolAvailabilityContext
+import fr.loevan.jeancalcul.toolbridge.createAndroidMvpToolRegistry
 import fr.loevan.jeancalcul.voice.AndroidVoicePipelineFactory
 import fr.loevan.jeancalcul.voice.VoiceEngineSelection
 import fr.loevan.jeancalcul.voice.VoicePipeline
@@ -65,15 +63,10 @@ class JeanCalculVoiceInteractionSession(
                 voiceCommandProcessor =
                     VolumeCommandProcessor(
                         interpreter = DeterministicVolumeCommandInterpreter(),
-                        toolRegistry =
-                            createVolumeToolRegistry(
-                                AudioManagerVolumeController(
-                                    requireNotNull(context.getSystemService(AudioManager::class.java)),
-                                ),
-                                auditLogger,
-                            ),
+                        toolRegistry = createAndroidMvpToolRegistry(context, auditLogger),
                         availabilityContext = {
-                            volumeToolAvailabilityContext(
+                            androidMvpToolAvailabilityContext(
+                                context = context,
                                 isDeviceLocked =
                                     context.getSystemService(KeyguardManager::class.java)?.isDeviceLocked == true,
                             )

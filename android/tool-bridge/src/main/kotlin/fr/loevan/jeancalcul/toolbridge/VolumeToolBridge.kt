@@ -57,7 +57,7 @@ class AudioManagerVolumeController(
 }
 
 /** Deterministic Android executor used only after the registry has validated a volume request. */
-private class VolumeToolExecutor(
+internal class VolumeToolExecutor(
     private val volumeController: VolumeController,
 ) : ToolExecutor {
     override fun execute(proposal: ActionProposal): ToolExecutionOutcome {
@@ -141,9 +141,13 @@ fun createVolumeToolRegistry(
     volumeController: VolumeController,
     auditLogger: ToolAuditLogger? = null,
 ): ToolRegistry {
-    val executor = VolumeToolExecutor(volumeController)
-    val registrations = VolumeToolSchemas.definitions.map { ToolRegistration(it, executor) }
+    val registrations = volumeToolRegistrations(volumeController)
     return auditLogger?.let { ToolRegistry(registrations, it) } ?: ToolRegistry(registrations)
+}
+
+internal fun volumeToolRegistrations(volumeController: VolumeController): List<ToolRegistration> {
+    val executor = VolumeToolExecutor(volumeController)
+    return VolumeToolSchemas.definitions.map { ToolRegistration(it, executor) }
 }
 
 fun volumeToolAvailabilityContext(
