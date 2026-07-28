@@ -35,6 +35,12 @@ jobs:
       - name: Run unit tests
         run: ./gradlew --no-daemon test
 
+      - name: Compile Baseline Profile and Macrobenchmark tests
+        run: >-
+          ./gradlew --no-daemon
+          :baseline-profile:assembleCoreBenchmarkRelease
+          :baseline-profile:assemblePowerUserBenchmarkRelease
+
       - name: Run ktlint, Detekt and Android Lint
         run: ./gradlew --no-daemon ktlintCheck detekt lint lintCoreDebug lintPowerUserDebug
 
@@ -46,4 +52,7 @@ jobs:
           path: |
             **/build/reports/**
             **/build/test-results/**
+            **/build/outputs/androidTest-results/**
+            **/build/outputs/connected_android_test_additional_output/**
           if-no-files-found: ignore
+
