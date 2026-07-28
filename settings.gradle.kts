@@ -31,6 +31,7 @@ include(
     ":feature-tasks",
     ":feature-voice",
     ":tool-bridge",
+    ":baseline-profile",
 )
 
 project(":app").projectDir = file("android/app")
@@ -47,3 +48,4 @@ project(":feature-settings").projectDir = file("android/feature-settings")
 project(":feature-tasks").projectDir = file("android/feature-tasks")
 project(":feature-voice").projectDir = file("android/feature-voice")
 project(":tool-bridge").projectDir = file("android/tool-bridge")
+project(":baseline-profile").projectDir = file("android/baseline-profile")

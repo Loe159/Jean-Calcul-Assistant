@@ -64,7 +64,7 @@ class VoiceVolumeEndToEndInstrumentedTest {
         }
 
     @Test
-    fun thirty_successive_voice_command_sessions_do_not_crash() =
+    fun one_hundred_successive_voice_command_sessions_do_not_crash() =
         runTest {
             repeat(INVOCATION_COUNT) { invocation ->
                 val speechToText = InstrumentedSpeechToTextProvider()
@@ -151,6 +151,6 @@ class VoiceVolumeEndToEndInstrumentedTest {
     }
 
     private companion object {
-        const val INVOCATION_COUNT = 30
+        const val INVOCATION_COUNT = 100
     }
 }

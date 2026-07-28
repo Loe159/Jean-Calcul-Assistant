@@ -17,6 +17,7 @@ enum class PerformanceTraceEvent(
     MICROPHONE_READY("microphone_ready"),
     SPEECH_STARTED("speech_started"),
     FIRST_TRANSCRIPTION("first_transcription"),
+    FIRST_TOKEN("first_token"),
     FINAL_RESULT("final_result"),
     VOLUME_REQUESTED("volume_requested"),
     VOLUME_APPLIED("volume_applied"),

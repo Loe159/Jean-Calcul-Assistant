@@ -18,6 +18,8 @@ import fr.loevan.jeancalcul.domain.ModelProfile
 import fr.loevan.jeancalcul.domain.ModelProvider
 import fr.loevan.jeancalcul.domain.ProviderException
 import fr.loevan.jeancalcul.domain.StreamEvent
+import fr.loevan.jeancalcul.observability.PerformanceTrace
+import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import java.util.UUID
@@ -36,6 +38,8 @@ class ConversationOrchestrator
     constructor(
         private val repository: ConversationRepository,
     ) {
+        internal var performanceTrace: PerformanceTrace = NoOpConversationPerformanceTrace
+
         private val activeRequests = ConcurrentHashMap<String, ActiveRequest>()
 
         suspend fun createModelConversation(
@@ -129,8 +133,13 @@ class ConversationOrchestrator
                 )
             val activeRequest = ActiveRequest { provider.cancel(requestId) }
             activeRequests[handle.conversation.id] = activeRequest
+            var firstTokenRecorded = false
             try {
                 provider.stream(request).collect { event ->
+                    if (!firstTokenRecorded && event is StreamEvent.TextDelta && event.text.isNotEmpty()) {
+                        firstTokenRecorded = true
+                        performanceTrace.mark(PerformanceTraceEvent.FIRST_TOKEN)
+                    }
                     response = applyStreamEvent(response, event)
                     repository.saveMessage(response)
                     if (event is StreamEvent.Failed) throw ProviderException(event.error)
@@ -345,3 +354,13 @@ private fun List<Message>.toChatMessages(): List<ChatMessage> =
         }
 
 private suspend fun kotlinx.coroutines.flow.Flow<List<Conversation>>.firstSnapshot(): List<Conversation> = first()
+
+private object NoOpConversationPerformanceTrace : PerformanceTrace {
+    override fun startInvocation() = Unit
+
+    override fun mark(event: PerformanceTraceEvent) = Unit
+
+    override fun captureMemory(checkpoint: String) = Unit
+
+    override fun finishInvocation(reason: String) = Unit
+}

@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.androidx.baseline.profile)
     alias(libs.plugins.hilt)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
@@ -60,7 +61,12 @@ kotlin {
     jvmToolchain(17)
 }
 
+baselineProfile {
+    automaticGenerationDuringBuild = false
+}
+
 dependencies {
+    baselineProfile(project(":baseline-profile"))
     implementation(project(":assistant-service"))
     implementation(project(":assistant-session"))
     implementation(project(":core-data"))

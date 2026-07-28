@@ -20,6 +20,8 @@ import fr.loevan.jeancalcul.domain.ProviderErrorCategory
 import fr.loevan.jeancalcul.domain.StreamEvent
 import fr.loevan.jeancalcul.domain.testing.FakeAgentBackend
 import fr.loevan.jeancalcul.domain.testing.FakeModelProvider
+import fr.loevan.jeancalcul.observability.PerformanceTrace
+import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
@@ -46,7 +48,8 @@ class ConversationOrchestratorTest {
             val firstDelta = CompletableDeferred<Unit>()
             val continueStream = CompletableDeferred<Unit>()
             val provider = GatedModelProvider(firstDelta, continueStream)
-            val orchestrator = ConversationOrchestrator(repository)
+            val performanceTrace = RecordingPerformanceTrace()
+            val orchestrator = ConversationOrchestrator(repository).apply { this.performanceTrace = performanceTrace }
             val handle = orchestrator.createModelConversation(profile)
 
             val job = launch { orchestrator.sendToModel(handle, profile, provider, "Bonjour") }
@@ -55,6 +58,7 @@ class ConversationOrchestratorTest {
             val streaming = repository.getMessages(handle.conversation.id).last()
             assertEquals("Bon", streaming.text)
             assertEquals(MessageStatus.STREAMING, streaming.status)
+            assertEquals(listOf(PerformanceTraceEvent.FIRST_TOKEN), performanceTrace.events)
 
             continueStream.complete(Unit)
             job.join()
@@ -140,6 +144,20 @@ class ConversationOrchestratorTest {
             assertTrue(repository.getMessages(handle.conversation.id).all { it.assistantSessionId == session.id })
             assertFalse(repository.getMessages(handle.conversation.id).any { it.text.contains("fake-session-1") })
         }
+}
+
+private class RecordingPerformanceTrace : PerformanceTrace {
+    val events = mutableListOf<PerformanceTraceEvent>()
+
+    override fun startInvocation() = Unit
+
+    override fun mark(event: PerformanceTraceEvent) {
+        events += event
+    }
+
+    override fun captureMemory(checkpoint: String) = Unit
+
+    override fun finishInvocation(reason: String) = Unit
 }
 
 private class GatedModelProvider(

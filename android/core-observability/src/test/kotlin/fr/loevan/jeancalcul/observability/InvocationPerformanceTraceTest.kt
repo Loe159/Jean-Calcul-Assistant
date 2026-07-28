@@ -21,6 +21,9 @@ class InvocationPerformanceTraceTest {
         clock.advanceBy(50)
         trace.mark(PerformanceTraceEvent.FIRST_TRANSCRIPTION)
         trace.mark(PerformanceTraceEvent.FIRST_TRANSCRIPTION)
+        clock.advanceBy(10)
+        trace.mark(PerformanceTraceEvent.FIRST_TOKEN)
+        trace.mark(PerformanceTraceEvent.FIRST_TOKEN)
         clock.advanceBy(60)
         trace.mark(PerformanceTraceEvent.FINAL_RESULT)
         clock.advanceBy(70)
@@ -28,11 +31,12 @@ class InvocationPerformanceTraceTest {
         clock.advanceBy(80)
         trace.mark(PerformanceTraceEvent.VOLUME_APPLIED)
 
-        assertEquals(8, logs.size)
+        assertEquals(9, logs.size)
         assertTrue(logs[1].contains("event=first_frame"))
         assertTrue(logs[1].contains("elapsed_ms=20"))
         assertTrue(logs[4].contains("speech_elapsed_ms=50"))
-        assertTrue(logs[7].contains("volume_elapsed_ms=80"))
+        assertTrue(logs[5].contains("event=first_token"))
+        assertTrue(logs[8].contains("volume_elapsed_ms=80"))
     }
 
     @Test
