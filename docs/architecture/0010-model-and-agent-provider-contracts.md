@@ -2,7 +2,7 @@
 
 Status: accepted
 Issue: #21
-Contract version: 1.0.0
+Contract version: 1.1.0
 
 ## Decision
 
@@ -36,12 +36,16 @@ Adapters convert external failures to `ProviderError` and stable `ProviderErrorC
 Streaming failures use `StreamEvent.Failed`; failures before a stream is available may throw
 `ProviderException` containing the same normalized error.
 
+`ProviderUsage` may preserve a provider-reported cost as an exact decimal string, an ISO currency
+code and an `estimated` marker. The decimal string avoids floating-point rounding and remains
+optional for providers that only expose token counts.
+
 `FakeModelProvider` and `FakeAgentBackend` are deterministic, in-memory test implementations with
 scripted event streams. They perform no network or Android work.
 
 ## Versioning
 
-`ProviderContractVersion.CURRENT` is `1.0.0` and requests carry that version. Backward-compatible
+`ProviderContractVersion.CURRENT` is `1.1.0` and requests carry that version. Backward-compatible
 additions increment the minor version. Clarifications and fixes increment the patch version.
 Removing or changing existing fields, event meaning, cancellation semantics, or routing guarantees
 requires a new major version and an explicit migration for stored profiles and active sessions.

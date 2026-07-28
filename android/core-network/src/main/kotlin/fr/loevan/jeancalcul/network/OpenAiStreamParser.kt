@@ -2,6 +2,7 @@ package fr.loevan.jeancalcul.network
 
 import fr.loevan.jeancalcul.domain.FinishReason
 import fr.loevan.jeancalcul.domain.ModelStreamEvent
+import fr.loevan.jeancalcul.domain.ProviderCost
 import fr.loevan.jeancalcul.domain.ProviderException
 import fr.loevan.jeancalcul.domain.ProviderUsage
 import fr.loevan.jeancalcul.domain.StreamEvent
@@ -101,6 +102,10 @@ internal class OpenAiStreamParser(
                 ProviderUsage(
                     inputTokens = this["prompt_tokens"]?.jsonPrimitive?.intOrNull,
                     outputTokens = this["completion_tokens"]?.jsonPrimitive?.intOrNull,
+                    cost =
+                        this["cost"]?.jsonPrimitive?.contentOrNull?.let {
+                            ProviderCost(amount = it)
+                        },
                 ),
             sequence = nextSequence(),
         )

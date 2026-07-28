@@ -1,1 +1,6 @@
-<manifest />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Ollama may be explicitly configured on a trusted LAN over HTTP. -->
+    <application android:usesCleartextTraffic="true" />
+</manifest>

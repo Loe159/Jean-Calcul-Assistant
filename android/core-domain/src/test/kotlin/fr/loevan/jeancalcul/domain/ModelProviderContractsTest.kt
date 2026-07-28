@@ -80,6 +80,20 @@ class ModelProviderContractsTest {
         assertFalse(authentication.fallbackEligible)
     }
 
+    @Test
+    fun `provider usage preserves decimal cost without floating point loss`() {
+        val usage =
+            ProviderUsage(
+                inputTokens = 12,
+                outputTokens = 4,
+                cost = ProviderCost(amount = "0.00000125"),
+            )
+
+        assertEquals("0.00000125", usage.cost?.amount)
+        assertEquals("USD", usage.cost?.currencyCode)
+        assertTrue(usage.cost?.estimated == true)
+    }
+
     private fun textRequest(requestId: String) =
         ChatRequest(
             requestId = requestId,

@@ -5,6 +5,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import fr.loevan.jeancalcul.domain.ProviderConnection
+import fr.loevan.jeancalcul.domain.ProviderKind
 import fr.loevan.jeancalcul.security.SecretStore
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
@@ -49,7 +50,7 @@ class OkHttpProviderConnectionProbe
         @Suppress("ReturnCount")
         override suspend fun test(connection: ProviderConnection): ConnectionProbeResult {
             val url =
-                connection.baseUrl.trim().toHttpUrlOrNull()
+                connection.probeUrl()
                     ?: return ConnectionProbeResult.Failure(
                         code = "invalid_url",
                         userMessage = "L'URL du fournisseur est invalide. Verifiez le protocole et le nom d'hote.",
@@ -124,6 +125,22 @@ class OkHttpProviderConnectionProbe
                     )
             }
     }
+
+private fun ProviderConnection.probeUrl(): okhttp3.HttpUrl? {
+    val rawBase = baseUrl.trim().trimEnd('/')
+    val route =
+        when (kind) {
+            ProviderKind.OPENAI_COMPATIBLE,
+            ProviderKind.ANTHROPIC,
+            ProviderKind.OPENROUTER,
+            -> "models"
+
+            ProviderKind.OLLAMA -> if (rawBase.endsWith("/api")) "tags" else "api/tags"
+            ProviderKind.AGENT_BACKEND -> null
+        }
+    val normalized = "$rawBase/".toHttpUrlOrNull() ?: return null
+    return route?.let(normalized::resolve) ?: normalized
+}
 
 private suspend fun Call.await(): Response =
     suspendCancellableCoroutine { continuation ->

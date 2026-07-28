@@ -5,7 +5,7 @@ import kotlinx.serialization.json.JsonObject
 
 /** Semantic version shared by model and agent contracts. */
 object ProviderContractVersion {
-    const val CURRENT = "1.0.0"
+    const val CURRENT = "1.1.0"
 }
 
 @Serializable
@@ -270,9 +270,22 @@ data class ToolCall(
 }
 
 @Serializable
+data class ProviderCost(
+    val amount: String,
+    val currencyCode: String = "USD",
+    val estimated: Boolean = true,
+) {
+    init {
+        require(amount.toBigDecimalOrNull()?.signum()?.let { it >= 0 } == true)
+        require(currencyCode.matches(Regex("^[A-Z]{3}$")))
+    }
+}
+
+@Serializable
 data class ProviderUsage(
     val inputTokens: Int? = null,
     val outputTokens: Int? = null,
+    val cost: ProviderCost? = null,
 ) {
     init {
         require(inputTokens == null || inputTokens >= 0)

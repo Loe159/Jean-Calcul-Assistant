@@ -48,11 +48,20 @@ data class OpenAiCompatibleConfiguration(
     val configuredModels: List<ModelDescriptor> = emptyList(),
     val capabilitiesByModel: Map<String, ModelCapabilities> = emptyMap(),
     val defaultCapabilities: ModelCapabilities = DEFAULT_OPENAI_CAPABILITIES,
+    val providerId: String = OPENAI_COMPATIBLE_PROVIDER_ID,
+    val providerKind: ProviderKind = ProviderKind.OPENAI_COMPATIBLE,
+    val fallbackModelIds: List<String> = emptyList(),
+    val additionalHeaders: Map<String, String> = emptyMap(),
+    val includeUsageCost: Boolean = false,
 ) {
     init {
-        require(connection.kind == ProviderKind.OPENAI_COMPATIBLE)
+        require(connection.kind == providerKind)
+        require(providerId.isNotBlank())
         require(configuredModels.map(ModelDescriptor::id).distinct().size == configuredModels.size)
         require(capabilitiesByModel.keys.none(String::isBlank))
+        require(fallbackModelIds.none(String::isBlank))
+        require(fallbackModelIds.distinct().size == fallbackModelIds.size)
+        require(additionalHeaders.all { (name, value) -> name.isNotBlank() && value.isNotBlank() })
     }
 }
 
@@ -85,7 +94,7 @@ class OpenAiCompatibleProvider(
     private val configuration: OpenAiCompatibleConfiguration,
     private val json: Json = DEFAULT_JSON,
 ) : ModelProvider {
-    override val id: String = OPENAI_COMPATIBLE_PROVIDER_ID
+    override val id: String = configuration.providerId
 
     private val apiClient = client
     private val streamingClient = client.newBuilder().callTimeout(0, TimeUnit.MILLISECONDS).build()
@@ -134,7 +143,7 @@ class OpenAiCompatibleProvider(
                 val cancellation = currentCoroutineContext().job.invokeOnCompletion { call.cancel() }
                 try {
                     call.awaitResponse().use { response ->
-                        if (!response.isSuccessful) throw response.toProviderException()
+                        if (!response.isSuccessful) throw response.toProviderException(id)
                         val body = response.body ?: throw protocolException("empty_response_body")
                         val parser = OpenAiStreamParser(request.requestId, json) { sequence++ }
                         body.source().use { source ->
@@ -156,7 +165,7 @@ class OpenAiCompatibleProvider(
             } catch (error: ProviderException) {
                 emit(StreamEvent.Failed(request.requestId, error.error, sequence))
             } catch (timeout: SocketTimeoutException) {
-                emit(StreamEvent.Failed(request.requestId, timeoutError(), sequence))
+                emit(StreamEvent.Failed(request.requestId, timeoutError(id), sequence))
             } catch (error: IOException) {
                 val normalized =
                     if (cancelledRequestIds.remove(request.requestId)) {
@@ -166,7 +175,7 @@ class OpenAiCompatibleProvider(
                             "La requete a ete annulee.",
                         )
                     } else {
-                        networkError()
+                        networkError(id)
                     }
                 activeCalls.remove(request.requestId)
                 emit(StreamEvent.Failed(request.requestId, normalized, sequence))
@@ -191,16 +200,17 @@ class OpenAiCompatibleProvider(
                 .get()
                 .header("Accept", JSON_MEDIA_TYPE.toString())
                 .header("User-Agent", USER_AGENT)
+        configuration.additionalHeaders.forEach(requestBuilder::header)
         authenticate(requestBuilder)
         return try {
             apiClient.newCall(requestBuilder.build()).awaitResponse().use { response ->
-                if (!response.isSuccessful) throw response.toProviderException()
+                if (!response.isSuccessful) throw response.toProviderException(id)
                 response.decodeModels(json, configuration)
             }
         } catch (timeout: SocketTimeoutException) {
-            throw ProviderException(timeoutError(), timeout)
+            throw ProviderException(timeoutError(id), timeout)
         } catch (error: IOException) {
-            throw ProviderException(networkError(), error)
+            throw ProviderException(networkError(id), error)
         } catch (error: IllegalArgumentException) {
             throw protocolException("invalid_models_response", error)
         } catch (error: IllegalStateException) {
@@ -212,9 +222,15 @@ class OpenAiCompatibleProvider(
         val requestBuilder =
             Request.Builder()
                 .url(configuration.endpoint("chat/completions"))
-                .post(request.toOpenAiJson().toString().toRequestBody(JSON_MEDIA_TYPE))
+                .post(
+                    request.toOpenAiJson(
+                        fallbackModelIds = configuration.fallbackModelIds,
+                        includeUsageCost = configuration.includeUsageCost,
+                    ).toString().toRequestBody(JSON_MEDIA_TYPE),
+                )
                 .header("Accept", SSE_MEDIA_TYPE)
                 .header("User-Agent", USER_AGENT)
+        configuration.additionalHeaders.forEach(requestBuilder::header)
         authenticate(requestBuilder)
         return requestBuilder.build()
     }
@@ -279,13 +295,13 @@ private suspend fun Call.awaitResponse(): Response =
         )
     }
 
-private fun Response.toProviderException(): ProviderException {
+private fun Response.toProviderException(providerId: String): ProviderException {
     val retryAfterMillis = header("Retry-After")?.toLongOrNull()?.times(1_000)
     val category = code.toProviderErrorCategory()
     return ProviderException(
         ProviderError(
             category = category,
-            code = "openai_http_$code",
+            code = "${providerId}_http_$code",
             message = category.userMessage(),
             retryAfterMillis = retryAfterMillis,
         ),
@@ -295,7 +311,7 @@ private fun Response.toProviderException(): ProviderException {
 private fun Int.toProviderErrorCategory(): ProviderErrorCategory =
     when (this) {
         401 -> ProviderErrorCategory.AUTHENTICATION
-        403 -> ProviderErrorCategory.PERMISSION_DENIED
+        402, 403 -> ProviderErrorCategory.PERMISSION_DENIED
         404 -> ProviderErrorCategory.MODEL_NOT_FOUND
         408 -> ProviderErrorCategory.TIMEOUT
         429 -> ProviderErrorCategory.RATE_LIMITED
@@ -333,17 +349,17 @@ internal fun protocolException(
         cause,
     )
 
-private fun timeoutError() =
+private fun timeoutError(providerId: String) =
     ProviderError(
         ProviderErrorCategory.TIMEOUT,
-        "openai_timeout",
+        "${providerId}_timeout",
         "Le fournisseur n'a pas repondu dans le delai imparti.",
     )
 
-private fun networkError() =
+private fun networkError(providerId: String) =
     ProviderError(
         ProviderErrorCategory.NETWORK,
-        "openai_network_error",
+        "${providerId}_network_error",
         "La connexion au fournisseur a echoue.",
     )
 

@@ -47,8 +47,11 @@ class SecretValue internal constructor(
 
     override fun toString(): String = SecretRedactor.REDACTED
 
-    private companion object {
-        const val NULL_CHARACTER = '\u0000'
+    companion object {
+        /** Creates an isolated secret buffer for custom [SecretStore] implementations and tests. */
+        fun copyOf(value: CharArray): SecretValue = SecretValue(value.copyOf())
+
+        private const val NULL_CHARACTER = '\u0000'
     }
 }
 

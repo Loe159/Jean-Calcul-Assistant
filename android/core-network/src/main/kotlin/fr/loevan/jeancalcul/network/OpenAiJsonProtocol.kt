@@ -24,11 +24,18 @@ import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Response
 
-internal fun ChatRequest.toOpenAiJson(): JsonObject =
+internal fun ChatRequest.toOpenAiJson(
+    fallbackModelIds: List<String> = emptyList(),
+    includeUsageCost: Boolean = false,
+): JsonObject =
     buildJsonObject {
         put("model", profile.modelId)
+        if (fallbackModelIds.isNotEmpty()) {
+            putJsonArray("models") { fallbackModelIds.forEach { add(JsonPrimitive(it)) } }
+        }
         put("stream", true)
         putJsonObject("stream_options") { put("include_usage", true) }
+        if (includeUsageCost) putJsonObject("usage") { put("include", true) }
         putJsonArray("messages") { messages.forEach { add(it.toOpenAiJson()) } }
         options.temperature?.let { put("temperature", it) }
         options.maxOutputTokens?.let { put("max_tokens", it) }
@@ -118,12 +125,53 @@ internal fun Response.decodeModels(
             ?: throw protocolException("invalid_models_response")
     return data.mapNotNull { element ->
         val modelId = element.jsonObject["id"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+        val model = element.jsonObject
         ModelDescriptor(
             id = modelId,
-            displayName = modelId,
-            capabilities = configuration.capabilitiesFor(modelId),
+            displayName = model["name"]?.jsonPrimitive?.contentOrNull ?: modelId,
+            capabilities = model.toDiscoveredCapabilities(configuration.capabilitiesFor(modelId)),
         )
     }
 }
+
+private fun JsonObject.toDiscoveredCapabilities(fallback: ModelCapabilities): ModelCapabilities {
+    val architecture = this["architecture"] as? JsonObject
+    val inputModalities =
+        architecture?.get("input_modalities")?.jsonArray?.mapNotNull {
+            it.jsonPrimitive.contentOrNull.toContentModality()
+        }?.toSet().orEmpty()
+    val outputModalities =
+        architecture?.get("output_modalities")?.jsonArray?.mapNotNull {
+            it.jsonPrimitive.contentOrNull.toContentModality()
+        }?.toSet().orEmpty()
+    val parameters = this["supported_parameters"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull }.orEmpty()
+    val context = this["context_length"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+    val maxOutput =
+        (this["top_provider"] as? JsonObject)
+            ?.get("max_completion_tokens")
+            ?.jsonPrimitive
+            ?.contentOrNull
+            ?.toIntOrNull()
+    return fallback.copy(
+        inputModalities = inputModalities.ifEmpty { fallback.inputModalities },
+        outputModalities = outputModalities.ifEmpty { fallback.outputModalities },
+        supportsToolCalling = if (parameters.isEmpty()) fallback.supportsToolCalling else "tools" in parameters,
+        supportsParallelToolCalls =
+            if (parameters.isEmpty()) fallback.supportsParallelToolCalls else "tools" in parameters,
+        limits =
+            fallback.limits.copy(
+                maxContextTokens = context ?: fallback.limits.maxContextTokens,
+                maxOutputTokens = maxOutput ?: fallback.limits.maxOutputTokens,
+            ),
+    )
+}
+
+private fun String?.toContentModality() =
+    when (this?.lowercase()) {
+        "text" -> fr.loevan.jeancalcul.domain.ContentModality.TEXT
+        "image" -> fr.loevan.jeancalcul.domain.ContentModality.IMAGE
+        "audio" -> fr.loevan.jeancalcul.domain.ContentModality.AUDIO
+        else -> null
+    }
 
 private fun MessageRole.toOpenAiRole(): String = name.lowercase()

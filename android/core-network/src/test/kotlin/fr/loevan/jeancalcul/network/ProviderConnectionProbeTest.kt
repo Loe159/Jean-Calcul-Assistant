@@ -38,6 +38,7 @@ class ProviderConnectionProbeTest {
 
             assertTrue(result is ConnectionProbeResult.Success)
             assertTrue((result as ConnectionProbeResult.Success).insecureTransport)
+            assertEquals("/api/tags", server.takeRequest().path)
         }
 
     @Test
@@ -61,6 +62,28 @@ class ProviderConnectionProbeTest {
 
             assertEquals("secret_missing", (result as ConnectionProbeResult.Failure).code)
             assertEquals(0, server.requestCount)
+        }
+
+    @Test
+    fun `OpenRouter probe uses models route and application authentication`() =
+        runTest {
+            server.enqueue(MockResponse().setResponseCode(200))
+            val probe = OkHttpProviderConnectionProbe(OkHttpClient(), StaticSecretStore())
+            val connection =
+                ProviderConnection(
+                    id = "openrouter",
+                    displayName = "OpenRouter",
+                    kind = ProviderKind.OPENROUTER,
+                    baseUrl = server.url("/api/v1/").toString(),
+                    secretId = "provider.openrouter",
+                )
+
+            val result = probe.test(connection)
+
+            assertTrue(result is ConnectionProbeResult.Success)
+            val request = server.takeRequest()
+            assertEquals("/api/v1/models", request.path)
+            assertEquals("Bearer test-secret", request.getHeader("Authorization"))
         }
 
     private fun connection(secretId: String? = null) =
