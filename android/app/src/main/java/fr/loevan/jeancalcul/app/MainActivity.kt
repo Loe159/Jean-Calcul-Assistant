@@ -17,14 +17,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dagger.hilt.android.AndroidEntryPoint
+import fr.loevan.jeancalcul.domain.AppearanceSettings
+import fr.loevan.jeancalcul.domain.AppearanceTheme
 import fr.loevan.jeancalcul.feature.conversation.ConversationScreenActions
 import fr.loevan.jeancalcul.feature.conversation.ConversationViewModel
+import fr.loevan.jeancalcul.feature.settings.SettingsScreenActions
+import fr.loevan.jeancalcul.feature.settings.SettingsViewModel
+import fr.loevan.jeancalcul.ui.ThemeMode
+import fr.loevan.jeancalcul.ui.VisualEffects
 import fr.loevan.jeancalcul.ui.jeanCalculTheme
 
 @AndroidEntryPoint
+@Suppress("TooManyFunctions")
 class MainActivity : ComponentActivity() {
     private val conversationViewModel: ConversationViewModel by viewModels()
     private val auditViewModel: AuditViewModel by viewModels()
+    private val settingsViewModel: SettingsViewModel by viewModels()
     private lateinit var assistantRoleController: AssistantRoleController
     private lateinit var assistantRoleGateway: AssistantRoleGateway
     private var assistantRoleStatus by mutableStateOf<AssistantRoleStatus>(AssistantRoleStatus.Unavailable)
@@ -49,10 +57,21 @@ class MainActivity : ComponentActivity() {
         assistantRoleController = AssistantRoleController(assistantRoleGateway)
         refreshAssistantRoleStatus()
         microphonePermissionGranted = hasMicrophonePermission()
+        setAppContent()
+        if (intent.action == ACTION_REQUEST_MICROPHONE_PERMISSION) {
+            requestMicrophonePermission()
+        }
+    }
+
+    private fun setAppContent() {
         setContent {
-            jeanCalculTheme {
-                val conversationState by conversationViewModel.uiState.collectAsState()
-                val auditState by auditViewModel.uiState.collectAsState()
+            val conversationState by conversationViewModel.uiState.collectAsState()
+            val auditState by auditViewModel.uiState.collectAsState()
+            val settingsState by settingsViewModel.uiState.collectAsState()
+            jeanCalculTheme(
+                themeMode = settingsState.settings.appearance.theme.themeMode,
+                visualEffects = settingsState.settings.appearance.visualEffects,
+            ) {
                 mainAppContent(
                     state =
                         MainAppUiState(
@@ -60,42 +79,60 @@ class MainActivity : ComponentActivity() {
                             microphonePermissionGranted = microphonePermissionGranted,
                             conversation = conversationState,
                             audit = auditState,
+                            settings = settingsState,
                         ),
-                    actions =
-                        MainAppActions(
-                            onboarding =
-                                OnboardingActions(
-                                    requestRole = ::requestAssistantRole,
-                                    requestMicrophonePermission = ::requestMicrophonePermission,
-                                    openSystemSettings = ::openVoiceInputSettings,
-                                ),
-                            conversation =
-                                ConversationScreenActions(
-                                    selectConversation = conversationViewModel::selectConversation,
-                                    newConversation = conversationViewModel::newConversation,
-                                    deleteConversation = conversationViewModel::deleteSelected,
-                                    draftChanged = conversationViewModel::updateDraft,
-                                    send = conversationViewModel::saveDraft,
-                                    export = { conversationViewModel.exportSelected(::shareConversation) },
-                                ),
-                            audit =
-                                AuditScreenActions(
-                                    timeWindowChanged = auditViewModel::setTimeWindow,
-                                    toolNameChanged = auditViewModel::setToolName,
-                                    outcomeChanged = auditViewModel::setOutcome,
-                                    retentionChanged = auditViewModel::setRetentionDays,
-                                    loadMore = auditViewModel::loadMore,
-                                    purgeExpired = auditViewModel::purgeExpired,
-                                    export = { auditViewModel.export(::shareAudit) },
-                                ),
-                        ),
+                    actions = mainAppActions(),
                 )
             }
         }
-        if (intent.action == ACTION_REQUEST_MICROPHONE_PERMISSION) {
-            requestMicrophonePermission()
-        }
     }
+
+    private fun mainAppActions() =
+        MainAppActions(
+            onboarding =
+                OnboardingActions(
+                    requestRole = ::requestAssistantRole,
+                    requestMicrophonePermission = ::requestMicrophonePermission,
+                    openSystemSettings = ::openVoiceInputSettings,
+                ),
+            conversation =
+                ConversationScreenActions(
+                    selectConversation = conversationViewModel::selectConversation,
+                    newConversation = conversationViewModel::newConversation,
+                    deleteConversation = conversationViewModel::deleteSelected,
+                    draftChanged = conversationViewModel::updateDraft,
+                    send = conversationViewModel::saveDraft,
+                    export = { conversationViewModel.exportSelected(::shareConversation) },
+                ),
+            audit =
+                AuditScreenActions(
+                    timeWindowChanged = auditViewModel::setTimeWindow,
+                    toolNameChanged = auditViewModel::setToolName,
+                    outcomeChanged = auditViewModel::setOutcome,
+                    retentionChanged = auditViewModel::setRetentionDays,
+                    loadMore = auditViewModel::loadMore,
+                    purgeExpired = auditViewModel::purgeExpired,
+                    export = { auditViewModel.export(::shareAudit) },
+                ),
+            settings =
+                SettingsScreenActions(
+                    saveProvider = settingsViewModel::saveProvider,
+                    deleteProvider = settingsViewModel::deleteProvider,
+                    testConnection = settingsViewModel::testConnection,
+                    saveModel = settingsViewModel::saveModel,
+                    duplicateModel = settingsViewModel::duplicateModel,
+                    activateModel = settingsViewModel::activateModel,
+                    deleteModel = settingsViewModel::deleteModel,
+                    saveAgent = settingsViewModel::saveAgent,
+                    duplicateAgent = settingsViewModel::duplicateAgent,
+                    activateAgent = settingsViewModel::activateAgent,
+                    setAgentPermission = settingsViewModel::setAgentPermission,
+                    deleteAgent = settingsViewModel::deleteAgent,
+                    updateVoice = settingsViewModel::updateVoice,
+                    updateAppearance = settingsViewModel::updateAppearance,
+                    clearError = settingsViewModel::clearError,
+                ),
+        )
 
     override fun onResume() {
         super.onResume()
@@ -176,3 +213,14 @@ class MainActivity : ComponentActivity() {
             "fr.loevan.jeancalcul.action.REQUEST_MICROPHONE_PERMISSION"
     }
 }
+
+private val AppearanceTheme.themeMode: ThemeMode
+    get() =
+        when (this) {
+            AppearanceTheme.SYSTEM -> ThemeMode.System
+            AppearanceTheme.DARK -> ThemeMode.Dark
+            AppearanceTheme.LIGHT -> ThemeMode.Light
+        }
+
+private val AppearanceSettings.visualEffects: VisualEffects
+    get() = VisualEffects(reduceMotion, blurEnabled, shadersEnabled, highContrast)

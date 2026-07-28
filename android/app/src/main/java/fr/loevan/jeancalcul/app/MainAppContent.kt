@@ -16,6 +16,9 @@ import androidx.compose.ui.unit.dp
 import fr.loevan.jeancalcul.feature.conversation.ConversationScreen
 import fr.loevan.jeancalcul.feature.conversation.ConversationScreenActions
 import fr.loevan.jeancalcul.feature.conversation.ConversationUiState
+import fr.loevan.jeancalcul.feature.settings.SettingsScreen
+import fr.loevan.jeancalcul.feature.settings.SettingsScreenActions
+import fr.loevan.jeancalcul.feature.settings.SettingsUiState
 import fr.loevan.jeancalcul.ui.FloatingBottomNavigation
 import fr.loevan.jeancalcul.ui.NavigationItem
 
@@ -41,6 +44,13 @@ internal fun mainAppContent(
                     modifier = Modifier.padding(bottom = 80.dp),
                 )
 
+            PAGE_SETTINGS ->
+                SettingsScreen(
+                    state = state.settings,
+                    actions = actions.settings,
+                    modifier = Modifier.padding(bottom = 80.dp),
+                )
+
             else ->
                 assistantRoleOnboarding(
                     status = state.assistantRoleStatus,
@@ -56,6 +66,7 @@ internal fun mainAppContent(
                     NavigationItem(PAGE_ASSISTANT, "Assistant"),
                     NavigationItem(PAGE_CONVERSATIONS, "Conversations"),
                     NavigationItem(PAGE_AUDIT, "Audit"),
+                    NavigationItem(PAGE_SETTINGS, "Reglages"),
                 ),
             selectedId = page,
             modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
@@ -69,12 +80,14 @@ internal data class MainAppUiState(
     val microphonePermissionGranted: Boolean,
     val conversation: ConversationUiState,
     val audit: AuditUiState,
+    val settings: SettingsUiState,
 )
 
 internal data class MainAppActions(
     val onboarding: OnboardingActions,
     val conversation: ConversationScreenActions,
     val audit: AuditScreenActions,
+    val settings: SettingsScreenActions,
 )
 
 internal data class OnboardingActions(
@@ -86,3 +99,4 @@ internal data class OnboardingActions(
 private const val PAGE_ASSISTANT = "assistant"
 private const val PAGE_CONVERSATIONS = "conversations"
 private const val PAGE_AUDIT = "audit"
+private const val PAGE_SETTINGS = "settings"
