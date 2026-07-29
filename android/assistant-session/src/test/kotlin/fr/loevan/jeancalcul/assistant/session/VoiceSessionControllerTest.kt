@@ -220,6 +220,30 @@ class VoiceSessionControllerTest {
         }
 
     @Test
+    fun `recognition acquires audio focus only after the microphone is ready`() =
+        runTest {
+            val speechToText = FakeSpeechToTextProvider()
+            val audioFocus = FakeAudioFocusController()
+            val controller =
+                VoiceSessionController(
+                    speechToTextProvider = speechToText,
+                    textToSpeechProvider = FakeTextToSpeechProvider(),
+                    audioFocusController = audioFocus,
+                    dispatcher = StandardTestDispatcher(testScheduler),
+                )
+            runCurrent()
+
+            controller.startListening()
+            assertTrue(audioFocus.requests.isEmpty())
+
+            speechToText.emit(SpeechToTextEvent.Ready)
+            runCurrent()
+
+            assertEquals(listOf(VoiceAudioUse.RECOGNITION), audioFocus.requests)
+            controller.close()
+        }
+
+    @Test
     fun `transient audio interruption resumes listening after focus returns`() =
         runTest {
             val speechToText = FakeSpeechToTextProvider()
@@ -233,6 +257,8 @@ class VoiceSessionControllerTest {
                 )
             runCurrent()
             controller.startListening()
+            speechToText.emit(SpeechToTextEvent.Ready)
+            runCurrent()
 
             audioFocus.emit(VoiceAudioInterruption.LOST_TRANSIENT)
             runCurrent()
@@ -242,6 +268,9 @@ class VoiceSessionControllerTest {
             audioFocus.emit(VoiceAudioInterruption.GAINED)
             runCurrent()
             assertEquals(AssistantState.Listening, controller.assistantState.value)
+
+            speechToText.emit(SpeechToTextEvent.Ready)
+            runCurrent()
             assertEquals(listOf(VoiceAudioUse.RECOGNITION, VoiceAudioUse.RECOGNITION), audioFocus.requests)
             controller.close()
         }

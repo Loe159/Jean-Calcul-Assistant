@@ -195,7 +195,7 @@ internal class VoiceSessionController(
 
     private fun handleSpeechEvent(event: SpeechToTextEvent) {
         when (event) {
-            SpeechToTextEvent.Ready -> performanceTrace.mark(PerformanceTraceEvent.MICROPHONE_READY)
+            SpeechToTextEvent.Ready -> handleRecognitionReady()
             SpeechToTextEvent.SpeechStarted -> performanceTrace.mark(PerformanceTraceEvent.SPEECH_STARTED)
             is SpeechToTextEvent.Partial -> {
                 if (assistantState.value == AssistantState.Listening) {
@@ -329,16 +329,21 @@ internal class VoiceSessionController(
     }
 
     private fun startSpeechRecognition() {
-        if (!audioFocusController.request(VoiceAudioUse.RECOGNITION)) {
-            dispatch(AssistantEvent.Fail("Le microphone est utilise par une autre application."))
-            return
-        }
         audioRouteSource.start()
         amplitudeSource.start()
         activityDetector.start()
         speechToTextProvider.startListening(
             SpeechToTextRequest(locale = VoiceLocale(mutableState.value.localeTag)),
         )
+    }
+
+    private fun handleRecognitionReady() {
+        if (assistantState.value != AssistantState.Listening) return
+        if (!audioFocusController.request(VoiceAudioUse.RECOGNITION)) {
+            dispatch(AssistantEvent.Fail("Le microphone est utilise par une autre application."))
+            return
+        }
+        performanceTrace.mark(PerformanceTraceEvent.MICROPHONE_READY)
     }
 
     private fun stopSpeechRecognition() {

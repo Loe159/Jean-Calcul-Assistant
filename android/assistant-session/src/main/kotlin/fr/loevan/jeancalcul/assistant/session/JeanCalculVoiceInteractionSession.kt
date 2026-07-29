@@ -96,11 +96,9 @@ class JeanCalculVoiceInteractionSession(
                             override fun startListening() = startListeningIfAllowed()
 
                             override fun requestMicrophonePermission() {
-                                startVoiceActivity(
-                                    Intent(ACTION_REQUEST_MICROPHONE_PERMISSION).setClassName(
-                                        context,
-                                        MAIN_ACTIVITY_CLASS_NAME,
-                                    ),
+                                launchOutsideVoiceControl(
+                                    intent = microphonePermissionRequestIntent(context),
+                                    errorMessage = "Impossible d'ouvrir la demande d'autorisation du microphone.",
                                 )
                             }
 
@@ -111,13 +109,10 @@ class JeanCalculVoiceInteractionSession(
                             override fun rejectVoiceCommand() = voiceSessionController.cancelActiveWork()
 
                             override fun openSystemPanel() {
-                                startVoiceActivity(
-                                    Intent(
-                                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                        Uri.parse("package:${context.packageName}"),
-                                    ),
+                                launchOutsideVoiceControl(
+                                    intent = applicationDetailsSettingsIntent(context),
+                                    errorMessage = "Impossible d'ouvrir les parametres de l'application.",
                                 )
-                                voiceSessionController.cancelActiveWork()
                             }
 
                             override fun speakTestResponse() = voiceSessionController.speakTestResponse()
@@ -196,6 +191,18 @@ class JeanCalculVoiceInteractionSession(
         }
     }
 
+    private fun launchOutsideVoiceControl(
+        intent: Intent,
+        errorMessage: String,
+    ) {
+        runCatching { context.startActivity(intent) }
+            .onSuccess { closeSession() }
+            .onFailure { error ->
+                Log.e(LOG_TAG, errorMessage, error)
+                voiceSessionController.reportRecoverableError(errorMessage)
+            }
+    }
+
     private fun markFirstFrame(view: View) {
         view.viewTreeObserver.addOnPreDrawListener(
             object : android.view.ViewTreeObserver.OnPreDrawListener {
@@ -210,11 +217,20 @@ class JeanCalculVoiceInteractionSession(
             },
         )
     }
-
-    private companion object {
-        const val LOG_TAG = "AssistantSession"
-        const val ACTION_REQUEST_MICROPHONE_PERMISSION =
-            "fr.loevan.jeancalcul.action.REQUEST_MICROPHONE_PERMISSION"
-        const val MAIN_ACTIVITY_CLASS_NAME = "fr.loevan.jeancalcul.app.MainActivity"
-    }
 }
+
+internal fun microphonePermissionRequestIntent(context: Context): Intent =
+    Intent(ACTION_REQUEST_MICROPHONE_PERMISSION)
+        .setClassName(context, MAIN_ACTIVITY_CLASS_NAME)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+internal fun applicationDetailsSettingsIntent(context: Context): Intent =
+    Intent(
+        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        Uri.parse("package:${context.packageName}"),
+    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+private const val LOG_TAG = "AssistantSession"
+private const val ACTION_REQUEST_MICROPHONE_PERMISSION =
+    "fr.loevan.jeancalcul.action.REQUEST_MICROPHONE_PERMISSION"
+private const val MAIN_ACTIVITY_CLASS_NAME = "fr.loevan.jeancalcul.app.MainActivity"

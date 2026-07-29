@@ -18,11 +18,13 @@ The recognizer sends its real RMS values to `AudioAmplitudeSource`. Values are n
 `0..1`; `VoiceActivityDetector` adds a stable speech/silence state. The session passes the real
 microphone amplitude to `VoiceWave` and `GradientOrb` only while listening.
 
-Android audio focus is acquired for recognition and synthesis. A transient loss interrupts the
-active work and remembers an interrupted listening session. Listening restarts after focus is
-regained. A permanent loss becomes a recoverable assistant error. Cancelling or failing an
-interaction destroys the active recognizer, stops the amplitude/VAD sources, unregisters route
-callbacks and abandons audio focus.
+Android audio focus is acquired for synthesis and after the recognition service reports that its
+microphone is ready. Waiting for the ready callback prevents a system recognition service from
+being mistaken for an external interruption when that service briefly acquires audio focus while
+opening the microphone. A later transient loss interrupts the active work and remembers an
+interrupted listening session. Listening restarts after focus is regained. A permanent loss becomes
+a recoverable assistant error. Cancelling or failing an interaction destroys the active recognizer,
+stops the amplitude/VAD sources, unregisters route callbacks and abandons audio focus.
 
 The locale is a BCP 47 tag carried by each STT/TTS request. A configuration change updates the
 next request without recreating a parallel session state. Bluetooth is detected from Android
