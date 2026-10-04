@@ -104,7 +104,9 @@ class CodexAppServerProtocolTest(unittest.TestCase):
                 assert "features.unified_exec=false" in sys.argv
                 assert "features.code_mode_host=false" in sys.argv
                 assert 'web_search="disabled"' in sys.argv
-                assert "app-server" in sys.argv and "--stdio" in sys.argv
+                assert "app-server" in sys.argv
+                listen_index = sys.argv.index("--listen")
+                assert sys.argv[listen_index + 1] == "stdio://"
                 for line in sys.stdin:
                     message = json.loads(line)
                     assert "jsonrpc" not in message
