@@ -61,9 +61,6 @@ class CodexCompanionTest(unittest.TestCase):
         self.assertEqual(run.events[-1].error, "boom")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 class CodexAppServerProtocolTest(unittest.TestCase):
     def _fake_codex(self, account_type="chatgpt"):
         import os
@@ -77,6 +74,11 @@ class CodexAppServerProtocolTest(unittest.TestCase):
                 f'''\
                 #!/usr/bin/env python3
                 import json, sys
+                assert "features.shell_tool=false" in sys.argv
+                assert "features.unified_exec=false" in sys.argv
+                assert "features.code_mode_host=false" in sys.argv
+                assert 'web_search="disabled"' in sys.argv
+                assert "app-server" in sys.argv and "--stdio" in sys.argv
                 for line in sys.stdin:
                     message = json.loads(line)
                     assert "jsonrpc" not in message
@@ -136,3 +138,7 @@ class CodexAppServerProtocolTest(unittest.TestCase):
         finally:
             app_server.close()
             directory.cleanup()
+
+
+if __name__ == "__main__":
+    unittest.main()
