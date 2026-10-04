@@ -28,6 +28,7 @@ Au démarrage, le compagnon affiche aussi l'empreinte TLS `sha256/...`. Copiez c
 ```bash
 npm run login          # Continue with ChatGPT
 npm run status         # état local, sans afficher de jeton
+npm run models         # modèles accessibles au compte ChatGPT
 npm run pairing-reset  # révoque l'ancien appareil et crée un nouveau jeton local
 npm run logout         # révoque la session OAuth quand possible puis efface les jetons
 npm start -- --host 0.0.0.0 --port 43120
