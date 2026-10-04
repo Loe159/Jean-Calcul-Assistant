@@ -173,3 +173,11 @@ interface AgentBackend {
 
     suspend fun getStatus(profile: AgentProfile): AgentBackendStatus
 }
+
+/** Creates a concrete backend for one configured agent connection. */
+interface AgentBackendFactory {
+    suspend fun create(
+        connection: ProviderConnection,
+        profile: AgentProfile,
+    ): AgentBackend
+}
