@@ -589,7 +589,7 @@ def main() -> int:
             finally:
                 app_server.close()
         if args.command == "serve":
-            if args.host not in {"127.0.0.1", "localhost", "::1"}:
+            if args.host not in {"127.0.0.1", "localhost"}:
                 raise CompanionError("Remote plaintext binding is disabled. Use loopback plus adb reverse or a trusted tunnel.")
             token = load_or_create_token()
             cwd = args.cwd or str(companion_workspace_path())
