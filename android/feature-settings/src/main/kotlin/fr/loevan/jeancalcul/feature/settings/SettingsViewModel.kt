@@ -125,7 +125,10 @@ class SettingsViewModel
                         baseUrl = draft.baseUrl.trim().trimEnd('/'),
                         secretId = secretId,
                         enabled = draft.enabled,
-                        tlsCertificateSha256 = draft.tlsCertificateSha256.trim().ifBlank { null },
+                        tlsCertificateSha256 =
+                            draft.tlsCertificateSha256
+                                .trim()
+                                .takeIf { draft.kind == ProviderKind.AGENT_BACKEND && it.isNotBlank() },
                     )
                 val errors = AssistantSettingsValidator.providerErrors(connection)
                 if (errors.isNotEmpty()) {
