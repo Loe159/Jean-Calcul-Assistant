@@ -61,6 +61,32 @@ class CodexCompanionTest(unittest.TestCase):
         self.assertEqual(run.events[-1].error, "boom")
 
 
+class CompanionServiceTest(unittest.TestCase):
+    def test_resume_is_idempotent_for_session_created_in_current_process(self):
+        class FakeCodex:
+            def __init__(self):
+                self.resume_calls = 0
+                self.handler = None
+
+            def add_notification_handler(self, handler):
+                self.handler = handler
+
+            def start_thread(self):
+                return "thread-1"
+
+            def resume_thread(self, session_id):
+                self.resume_calls += 1
+                return session_id
+
+        codex = FakeCodex()
+        service = module.CompanionService(codex)
+        session_id = service.create_session()
+
+        self.assertEqual(service.resume_session(session_id), session_id)
+        self.assertEqual(service.resume_session(session_id), session_id)
+        self.assertEqual(codex.resume_calls, 0)
+
+
 class CodexAppServerProtocolTest(unittest.TestCase):
     def _fake_codex(self, account_type="chatgpt"):
         import os
