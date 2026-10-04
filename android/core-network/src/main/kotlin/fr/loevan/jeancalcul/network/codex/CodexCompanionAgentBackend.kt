@@ -105,12 +105,13 @@ internal class CodexCompanionAgentBackend(
         )
 
     override suspend fun createSession(profile: AgentProfile): AgentSession {
-        val response = executeJson(
-            requestBuilder("/v1/sessions")
-                .post(ByteArray(0).toRequestBody(null))
-                .build(),
-            SessionResponse.serializer(),
-        )
+        val response =
+            executeJson(
+                requestBuilder("/v1/sessions")
+                    .post(ByteArray(0).toRequestBody(null))
+                    .build(),
+                SessionResponse.serializer(),
+            )
         return AgentSession(response.sessionId, profile.id, response.resumable)
     }
 
@@ -118,12 +119,13 @@ internal class CodexCompanionAgentBackend(
         profile: AgentProfile,
         sessionId: String,
     ): AgentSession {
-        val response = executeJson(
-            requestBuilder("/v1/sessions/${sessionId.urlPathSegment()}/resume")
-                .post(ByteArray(0).toRequestBody(null))
-                .build(),
-            SessionResponse.serializer(),
-        )
+        val response =
+            executeJson(
+                requestBuilder("/v1/sessions/${sessionId.urlPathSegment()}/resume")
+                    .post(ByteArray(0).toRequestBody(null))
+                    .build(),
+                SessionResponse.serializer(),
+            )
         check(response.sessionId == sessionId) { "Companion resumed a different session." }
         return AgentSession(response.sessionId, profile.id, response.resumable)
     }
@@ -141,16 +143,18 @@ internal class CodexCompanionAgentBackend(
                 ?.trim()
                 .orEmpty()
         require(text.isNotEmpty()) { "Agent request has no user text." }
-        val body = json.encodeToString(
-            RunRequest.serializer(),
-            RunRequest(request.requestId, text),
-        )
-        val response = executeJson(
-            requestBuilder("/v1/sessions/${sessionId.urlPathSegment()}/runs")
-                .post(body.toRequestBody(JSON_MEDIA_TYPE))
-                .build(),
-            RunResponse.serializer(),
-        )
+        val body =
+            json.encodeToString(
+                RunRequest.serializer(),
+                RunRequest(request.requestId, text),
+            )
+        val response =
+            executeJson(
+                requestBuilder("/v1/sessions/${sessionId.urlPathSegment()}/runs")
+                    .post(body.toRequestBody(JSON_MEDIA_TYPE))
+                    .build(),
+                RunResponse.serializer(),
+            )
         activeRuns[sessionId] = response.runId
         return AgentRun(response.runId, sessionId, request.requestId, AgentRunStatus.RUNNING)
     }
@@ -273,10 +277,11 @@ internal class CodexCompanionAgentBackend(
 
     override suspend fun getStatus(profile: AgentProfile): AgentBackendStatus =
         try {
-            val response = executeJson(
-                requestBuilder("/v1/status").get().build(),
-                StatusResponse.serializer(),
-            )
+            val response =
+                executeJson(
+                    requestBuilder("/v1/status").get().build(),
+                    StatusResponse.serializer(),
+                )
             when {
                 response.protocolVersion != COMPANION_PROTOCOL_VERSION ->
                     AgentBackendStatus(AgentBackendState.DEGRADED, "Version du compagnon Codex incompatible.")
