@@ -38,4 +38,4 @@ Le serveur refuse toute écoute HTTP hors loopback. Pour un appareil de dévelop
 
 Le transport LAN/TLS, la découverte, la rotation et la révocation complète de l'appairage restent dans l'issue #42. Tant que cette issue n'est pas terminée, il ne faut pas exposer le port du compagnon sur le réseau.
 
-Codex est démarré avec une politique d'approbation `never`, un sandbox read-only et des instructions développeur interdisant toute opération hôte. Les outils Android ne sont pas encore exposés à Codex dans cette étape ; ils resteront soumis au registre, au Policy Engine et à l'audit lors de #44.
+Codex est démarré avec une politique d'approbation `never`, un sandbox read-only et un espace de travail isolé. Le compagnon force aussi la désactivation de `shell_tool`, `unified_exec`, `code_mode_host` et de la recherche Web, puis ajoute des instructions développeur interdisant les opérations hôte. Les outils Android ne sont pas encore exposés à Codex dans cette étape ; ils resteront soumis au registre, au Policy Engine et à l'audit lors de #44.
