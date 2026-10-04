@@ -271,7 +271,7 @@ export async function loginWithChatGpt(home, { newAccount = false, fetchImpl = f
   return { clientId: issuedClientId, label: credential.label };
 }
 
-let refreshLock = Promise.resolve();
+let refreshPromise = null;
 
 async function refreshCredential(home, credential, fetchImpl) {
   const body = new URLSearchParams({
@@ -324,8 +324,12 @@ export async function getAccessToken(home, fetchImpl = fetch) {
     throw new Error("Authentification ChatGPT requise. Exécutez npm run login dans companion/.");
   }
   if ((credential.expires_at || 0) <= Date.now() + REFRESH_SKEW_MS) {
-    refreshLock = refreshLock.then(() => refreshCredential(home, credential, fetchImpl));
-    credential = await refreshLock;
+    if (!refreshPromise) {
+      refreshPromise = refreshCredential(home, credential, fetchImpl).finally(() => {
+        refreshPromise = null;
+      });
+    }
+    credential = await refreshPromise;
   }
   return credential.access_token;
 }
