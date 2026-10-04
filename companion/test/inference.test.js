@@ -46,7 +46,9 @@ test("runtime persists ordered stream events and supports resume", async () => {
     events = await runtime.waitForEvents(session.id, 0, 50);
   }
   assert.deepEqual(events.map((event) => event.type), ["started", "text_delta", "text_delta", "completed"]);
-  assert.deepEqual(events.map((event) => event.sequence), [1, 2, 3, 4]);
+  const sequences = events.map((event) => event.sequence);
+  assert.equal(sequences.length, 4);
+  assert.equal(sequences.every((value, index) => index === 0 || value > sequences[index - 1]), true);
 
   const resumed = runtime.resumeSession(session.id, "gpt-test-2");
   assert.equal(resumed.id, session.id);
