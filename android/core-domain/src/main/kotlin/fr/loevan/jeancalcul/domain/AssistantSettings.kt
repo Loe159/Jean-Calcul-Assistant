@@ -21,11 +21,13 @@ data class ProviderConnection(
     val baseUrl: String,
     val secretId: String? = null,
     val enabled: Boolean = true,
+    val tlsCertificateSha256: String? = null,
 ) {
     init {
         require(id.isNotBlank())
         require(displayName.isNotBlank())
         require(secretId == null || secretId.isNotBlank())
+        require(tlsCertificateSha256 == null || tlsCertificateSha256.isNotBlank())
     }
 
     val usesInsecureTransport: Boolean
@@ -140,6 +142,15 @@ object AssistantSettingsValidator {
             if (!uri.isValidProviderUri()) {
                 add("L'URL doit etre une adresse HTTP(S) absolue, sans identifiants, requete ni fragment.")
             }
+            if (connection.kind == ProviderKind.AGENT_BACKEND && uri?.scheme?.lowercase() != "https") {
+                add("Un compagnon agent distant doit utiliser HTTPS.")
+            }
+            if (
+                connection.tlsCertificateSha256 != null &&
+                !TLS_CERTIFICATE_PIN.matches(connection.tlsCertificateSha256)
+            ) {
+                add("L'empreinte TLS doit utiliser le format sha256/<base64>.")
+            }
         }
 
     fun modelActivationErrors(
@@ -172,9 +183,12 @@ object AssistantSettingsValidator {
             }
             if (connection != null) {
                 if (!connection.enabled) add("Le backend selectionne est desactive.")
+                if (connection.secretId == null) add("Le backend agent doit etre appaire avant activation.")
                 addAll(providerErrors(connection))
             }
         }
+
+    private val TLS_CERTIFICATE_PIN = Regex("^sha256/[A-Za-z0-9+/]{43}=$")
 }
 
 private fun URI?.isValidProviderUri(): Boolean {
