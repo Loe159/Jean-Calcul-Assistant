@@ -15,6 +15,7 @@ import fr.loevan.jeancalcul.domain.AgentStreamEvent
 import fr.loevan.jeancalcul.domain.AgentToolApproval
 import fr.loevan.jeancalcul.domain.AgentToolDescriptor
 import fr.loevan.jeancalcul.domain.AssistantSettingsRepository
+import fr.loevan.jeancalcul.domain.AssistantSettingsValidator
 import fr.loevan.jeancalcul.domain.ContentModality
 import fr.loevan.jeancalcul.domain.FinishReason
 import fr.loevan.jeancalcul.domain.MessageContent
@@ -56,6 +57,7 @@ import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import javax.net.ssl.HostnameVerifier
@@ -71,22 +73,33 @@ class CompanionHttpClientFactory
     constructor(
         private val baseClient: OkHttpClient,
     ) {
+        private val companionBaseClient: OkHttpClient =
+            baseClient
+                .newBuilder()
+                .readTimeout(COMPANION_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .callTimeout(COMPANION_CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .build()
         private val pinnedClients = ConcurrentHashMap<String, OkHttpClient>()
 
         @SuppressLint("CustomX509TrustManager", "BadHostnameVerifier")
         fun clientFor(connection: ProviderConnection): OkHttpClient {
-            val pin = connection.tlsCertificateSha256 ?: return baseClient
+            val pin = connection.tlsCertificateSha256 ?: return companionBaseClient
             return pinnedClients.getOrPut(pin) {
                 val trustManager = PinnedTrustManager(pin)
                 val sslContext = SSLContext.getInstance("TLS").apply {
                     init(null, arrayOf(trustManager), SecureRandom())
                 }
-                baseClient
+                companionBaseClient
                     .newBuilder()
                     .sslSocketFactory(sslContext.socketFactory, trustManager)
                     .hostnameVerifier(PinnedHostnameVerifier(pin))
                     .build()
             }
+        }
+
+        private companion object {
+            const val COMPANION_READ_TIMEOUT_SECONDS = 35L
+            const val COMPANION_CALL_TIMEOUT_SECONDS = 45L
         }
     }
 
@@ -351,6 +364,14 @@ class CodexChatGptAgentBackend
                     ProviderErrorCategory.INVALID_REQUEST,
                     "invalid_connection",
                     "Le compagnon agent est desactive ou invalide.",
+                )
+            }
+            val configurationErrors = AssistantSettingsValidator.providerErrors(connection)
+            if (configurationErrors.isNotEmpty()) {
+                throw providerException(
+                    ProviderErrorCategory.INVALID_REQUEST,
+                    "invalid_connection_security",
+                    configurationErrors.joinToString(" "),
                 )
             }
             return connection
