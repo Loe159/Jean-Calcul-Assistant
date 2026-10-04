@@ -96,7 +96,12 @@ class OkHttpProviderConnectionProbe
                 401, 403 ->
                     ConnectionProbeResult.Failure(
                         code = "authentication_failed",
-                        userMessage = "Authentification refusee. Remplacez la cle API puis reessayez.",
+                        userMessage =
+                            if (connection.kind == ProviderKind.AGENT_BACKEND) {
+                                "Appairage refuse ou connexion ChatGPT requise sur le compagnon."
+                            } else {
+                                "Authentification refusee. Remplacez la cle API puis reessayez."
+                            },
                         recoverable = true,
                     )
 
