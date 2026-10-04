@@ -301,15 +301,25 @@ class CompanionService:
     def __init__(self, codex: CodexAppServer) -> None:
         self.codex = codex
         self._runs: dict[str, RunState] = {}
+        self._sessions: set[str] = set()
         self._runs_lock = threading.Lock()
         self._pending_notifications: dict[str, list[dict[str, Any]]] = {}
         codex.add_notification_handler(self._on_notification)
 
     def create_session(self) -> str:
-        return self.codex.start_thread()
+        session_id = self.codex.start_thread()
+        with self._runs_lock:
+            self._sessions.add(session_id)
+        return session_id
 
     def resume_session(self, session_id: str) -> str:
-        return self.codex.resume_thread(session_id)
+        with self._runs_lock:
+            if session_id in self._sessions:
+                return session_id
+        resumed = self.codex.resume_thread(session_id)
+        with self._runs_lock:
+            self._sessions.add(resumed)
+        return resumed
 
     def start_run(self, session_id: str, request_id: str, text: str) -> RunState:
         turn_id = self.codex.start_turn(session_id, request_id, text)
@@ -324,6 +334,11 @@ class CompanionService:
     def get_run(self, turn_id: str) -> RunState | None:
         with self._runs_lock:
             return self._runs.get(turn_id)
+
+    def release_run(self, turn_id: str) -> None:
+        with self._runs_lock:
+            self._runs.pop(turn_id, None)
+            self._pending_notifications.pop(turn_id, None)
 
     def cancel(self, session_id: str, turn_id: str) -> None:
         run = self.get_run(turn_id)
@@ -502,6 +517,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.wfile.flush()
                     cursor = event.sequence
                 if terminal and not any(event.sequence > cursor for event in run.events):
+                    self.server.service.release_run(run.turn_id)
                     return
         except (BrokenPipeError, ConnectionResetError):
             return
