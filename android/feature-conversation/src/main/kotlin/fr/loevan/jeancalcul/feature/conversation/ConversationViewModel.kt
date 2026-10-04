@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import fr.loevan.jeancalcul.domain.AgentBackendFactory
 import fr.loevan.jeancalcul.domain.AssistantSessionKind
 import fr.loevan.jeancalcul.domain.AssistantSettingsRepository
+import fr.loevan.jeancalcul.domain.AssistantSettingsValidator
 import fr.loevan.jeancalcul.domain.Conversation
 import fr.loevan.jeancalcul.domain.ConversationRepository
 import fr.loevan.jeancalcul.domain.Message
@@ -95,12 +96,13 @@ class ConversationViewModel
         fun saveDraft() {
             val text = draft.value.trim()
             if (text.isBlank()) return
+            draft.value = ""
             viewModelScope.launch {
                 runCatching { sendDraft(text) }
                     .onSuccess {
-                        draft.value = ""
                         errorMessage.value = null
                     }.onFailure { error ->
+                        if (draft.value.isEmpty()) draft.value = text
                         errorMessage.value = error.message ?: "Impossible de contacter le backend actif."
                     }
             }
@@ -114,6 +116,8 @@ class ConversationViewModel
                 persistLocalDraft(text)
                 return
             }
+            val activationErrors = AssistantSettingsValidator.agentActivationErrors(configuredAgent, settings)
+            require(activationErrors.isEmpty()) { activationErrors.joinToString(" ") }
             val profile = configuredAgent.profile
             val connection =
                 settings.providers.firstOrNull { it.id == profile.connectionId }
