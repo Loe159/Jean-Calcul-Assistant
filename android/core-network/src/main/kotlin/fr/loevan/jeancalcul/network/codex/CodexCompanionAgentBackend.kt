@@ -48,6 +48,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val BACKEND_ID = "codex-companion"
+private const val COMPANION_PROTOCOL_VERSION = "1"
 private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
 @Singleton
@@ -69,6 +70,12 @@ class CodexCompanionAgentBackendFactory
             }
             require(profile.connectionId == connection.id) {
                 "Agent profile and connection do not match."
+            }
+            require(connection.enabled && profile.enabled) {
+                "Codex companion profile and connection must be enabled."
+            }
+            require(connection.secretId != null) {
+                "Codex companion requires a pairing secret."
             }
             return CodexCompanionAgentBackend(connection, client, secretStore)
         }
@@ -280,10 +287,12 @@ internal class CodexCompanionAgentBackend(
                 requestBuilder("/v1/status").get().build(),
                 StatusResponse.serializer(),
             )
-            if (response.state == "ready" && response.auth == "chatgpt") {
-                AgentBackendStatus(AgentBackendState.AVAILABLE, "Codex connecté via ChatGPT.")
-            } else {
-                AgentBackendStatus(AgentBackendState.DEGRADED, "Compagnon Codex indisponible.")
+            when {
+                response.protocolVersion != COMPANION_PROTOCOL_VERSION ->
+                    AgentBackendStatus(AgentBackendState.DEGRADED, "Version du compagnon Codex incompatible.")
+                response.state == "ready" && response.auth == "chatgpt" ->
+                    AgentBackendStatus(AgentBackendState.AVAILABLE, "Codex connecté via ChatGPT.")
+                else -> AgentBackendStatus(AgentBackendState.DEGRADED, "Compagnon Codex indisponible.")
             }
         } catch (_: ProviderException) {
             AgentBackendStatus(AgentBackendState.OFFLINE, "Compagnon Codex inaccessible.")
