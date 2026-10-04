@@ -18,6 +18,8 @@ import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.tls.HandshakeCertificates
+import okhttp3.tls.HeldCertificate
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -32,7 +34,24 @@ class CodexChatGptAgentBackendTest {
 
     @Before
     fun setUp() {
+        val heldCertificate =
+            HeldCertificate
+                .Builder()
+                .commonName("localhost")
+                .addSubjectAlternativeName("localhost")
+                .build()
+        val serverCertificates =
+            HandshakeCertificates
+                .Builder()
+                .heldCertificate(heldCertificate)
+                .build()
+        val clientCertificates =
+            HandshakeCertificates
+                .Builder()
+                .addTrustedCertificate(heldCertificate.certificate)
+                .build()
         server = MockWebServer()
+        server.useHttps(serverCertificates.sslSocketFactory(), false)
         server.start()
         connection =
             ProviderConnection(
@@ -57,7 +76,13 @@ class CodexChatGptAgentBackendTest {
                         AssistantSettings(providers = listOf(connection)),
                     ),
                 secretStore = StaticSecretStore("pairing-secret"),
-                clientFactory = CompanionHttpClientFactory(OkHttpClient()),
+                clientFactory =
+                    CompanionHttpClientFactory(
+                        OkHttpClient
+                            .Builder()
+                            .sslSocketFactory(clientCertificates.sslSocketFactory(), clientCertificates.trustManager)
+                            .build(),
+                    ),
             )
     }
 
