@@ -140,6 +140,9 @@ object AssistantSettingsValidator {
             if (!uri.isValidProviderUri()) {
                 add("L'URL doit etre une adresse HTTP(S) absolue, sans identifiants, requete ni fragment.")
             }
+            if (connection.kind == ProviderKind.AGENT_BACKEND && connection.secretId == null) {
+                add("Le secret d'appairage du backend agent est obligatoire.")
+            }
         }
 
     fun modelActivationErrors(

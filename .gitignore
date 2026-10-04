@@ -41,3 +41,7 @@ Thumbs.db
 !.env.example
 secrets.properties
 google-services.json
+
+# Python
+__pycache__/
+*.py[cod]
