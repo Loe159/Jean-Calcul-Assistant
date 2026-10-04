@@ -1,12 +1,20 @@
-# Jean-Calcul Assistant
+# Jean Calcul Assistant
 
 Assistant personnel Android open source, local-first et configurable.
 
-Le projet vise une intégration comme assistant Android, une interaction vocale, des fournisseurs de modèles interchangeables, un backend Hermes optionnel et des modules personnels pour les notifications, tâches, calendrier, mails et dashboard.
+Jean Calcul peut remplacer l'assistant système Android, être invoqué depuis le bouton Power, dialoguer en voix ou en texte, utiliser plusieurs fournisseurs de modèles et exécuter des outils Android derrière un registre versionné, un moteur de politique et un journal d'audit.
 
-## Démarrer le projet Android
+## État du projet
 
-Prérequis : JDK 17 et Android Studio Ladybug (ou une version plus récente) avec Android SDK Platform 35.
+- **Phase 0 terminée** : intégration assistant Android/Samsung, invocation Power, session transparente et premier parcours vocal validés.
+- **Phase 1 implémentée** : design system, voix, fournisseurs, conversations locales, outils, politiques, secrets, paramètres et audit sont présents. L'epic #17 reste ouverte uniquement pour quatre validations physiques explicitement reportées.
+- **Phase 1B active** : l'epic #39 raccorde maintenant l'interface à une vraie boucle Codex authentifiée via ChatGPT, avec appairage privé et appels d'outils de bout en bout.
+
+Les issues GitHub sont la source de vérité pour l'avancement.
+
+## Compiler l'application
+
+Prérequis : JDK 17 et Android SDK Platform 35.
 
 ```bash
 git clone https://github.com/Loe159/Jean-Calcul-Assistant.git
@@ -15,50 +23,36 @@ cd Jean-Calcul-Assistant
 ./gradlew test ktlintCheck detekt lintCoreDebug lintPowerUserDebug
 ```
 
-Ouvre ensuite le dossier racine dans Android Studio. Le projet utilise le wrapper Gradle et le catalogue
-`gradle/libs.versions.toml` : aucun Gradle installé globalement n’est nécessaire.
+Les APKs de debug sont également publiés comme artefacts par la CI GitHub Actions sur chaque push vers `main`.
 
-Les variantes `core` et `powerUser` sont deux binaires distincts. La variante Power User est uniquement
-une frontière de distribution à ce stade : aucune accessibilité ni automatisation n’est encore implémentée.
+## Architecture
 
-### Modules Android
+Le projet est un monorepo Android Kotlin/Compose. Les principaux modules sont :
 
-| Module | Responsabilité actuelle | Dépendances autorisées |
-| --- | --- | --- |
-| `app` | Point d’entrée Compose et assemblage des variantes | Tous les modules nécessaires à l’application, jamais l’inverse |
-| `assistant-service` | Service assistant Android léger et métadonnées système | `core-domain`, `core-observability` ; jamais Room ni réseau |
-| `assistant-session` | Session Compose transparente isolée ; cycle de fermeture et fallback visuel | Domaine, UI, voix, conversation et pont d’outils |
-| `core-domain` | Contrats Kotlin indépendants d’Android | Aucune dépendance Android |
-| `core-data` | Fondation Room/DataStore et futurs repositories | `core-domain` |
-| `core-network` | Fondation HTTP/streaming des futurs fournisseurs | `core-domain`, `core-security` |
-| `core-observability` | Traces et budgets de performance partagés | Aucune couche fonctionnelle |
-| `core-security` | Fondation Keystore, biométrie et expurgation | `core-domain` |
-| `core-ui` | Fondations Compose partagées | Aucune couche métier ou data |
-| `feature-conversation` | Frontière des conversations persistées et de leur UI | Domaine, data et UI |
-| `feature-settings` | Frontière des écrans et profils de configuration | Domaine, data, réseau, sécurité et UI |
-| `feature-tasks` | Frontière des tâches locales | Domaine et data |
-| `feature-voice` | Frontière du pipeline vocal Android | Domaine et observabilité |
-| `tool-bridge` | Registre et exécution déterministe d’outils | Domaine et fonctionnalités locales explicitement exposées |
+| Module | Rôle |
+| --- | --- |
+| `app` | Point d'entrée, navigation et assemblage des variantes |
+| `assistant-service` | Intégration au rôle d'assistant Android |
+| `assistant-session` | Session transparente, orchestration de l'invocation et UI assistant |
+| `core-domain` | Contrats métier indépendants d'Android |
+| `core-data` | Room, DataStore, conversations, paramètres et audit |
+| `core-network` | Fournisseurs de modèles et transport réseau |
+| `core-security` | Keystore, secrets et expurgation |
+| `core-ui` | Design system Compose |
+| `feature-conversation` | Conversation et streaming |
+| `feature-settings` | Configuration des profils |
+| `feature-voice` | Pipeline STT/TTS et audio |
+| `feature-tasks` | Tâches locales |
+| `tool-bridge` | Registre et exécution contrôlée des outils Android |
 
-Le rôle assistant est configuré par l’onboarding : il propose la demande système puis un accès de secours
-aux paramètres de saisie vocale. Le service reste minimal ; la session transparente est isolée et la
-reconnaissance vocale sera ajoutée dans son issue dédiée. Les décisions sont consignées dans
-[`docs/architecture/0001-android-foundation.md`](docs/architecture/0001-android-foundation.md) et
-[`docs/architecture/0002-android-assistant-role.md`](docs/architecture/0002-android-assistant-role.md),
-[`docs/architecture/0003-transparent-assistant-session.md`](docs/architecture/0003-transparent-assistant-session.md)
-et [`docs/architecture/0006-phase-1-module-foundation.md`](docs/architecture/0006-phase-1-module-foundation.md).
+Deux variantes existent : `core` et `powerUser`. La variante Power User reste une frontière de distribution ; aucune automatisation intrusive n'y est activée par défaut.
 
-## Commencer ici
+## Contribuer
 
-- [`AGENTS.md`](AGENTS.md) — instructions obligatoires pour tout agent travaillant sur le dépôt.
-- [`docs/plan/README.md`](docs/plan/README.md) — index du plan d’implémentation.
-- [`docs/plan/01-system-architecture.md`](docs/plan/01-system-architecture.md) — architecture cible.
-- [`docs/plan/04-roadmap-and-dependencies.md`](docs/plan/04-roadmap-and-dependencies.md) — ordre des phases et dépendances.
-- [Backlog GitHub](../../issues) — tâches exécutables, priorités et critères d’acceptation.
+Avant toute modification, lire :
 
-## Développement actuel
+- [`AGENTS.md`](AGENTS.md) pour les règles de contribution des agents ;
+- [`docs/plan/README.md`](docs/plan/README.md) pour la roadmap ;
+- l'issue GitHub concernée et ses critères d'acceptation.
 
-- Phase 0 : validation technique de l’intégration assistant Android/Samsung — epic #7.
-- Phase 1 : assistant vocal minimal, fournisseurs interchangeables et outils Android sécurisés — epic #17.
-
-Les issues GitHub sont la source de vérité pour l’avancement. La documentation fournit le contexte, les contraintes et les détails nécessaires à l’exécution.
+Les décisions d'architecture sont documentées dans [`docs/architecture/`](docs/architecture/) et les validations appareil dans [`docs/testing/`](docs/testing/) et [`docs/observability/`](docs/observability/).

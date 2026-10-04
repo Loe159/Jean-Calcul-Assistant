@@ -3,9 +3,11 @@
 ## Ordre global
 
 ```text
-Phase 0 — Validation Android/Samsung
+Phase 0 — Validation Android/Samsung [terminée]
   ↓
-Phase 1 — Assistant vocal MVP
+Phase 1 — Assistant vocal MVP [implémentée, validations physiques résiduelles]
+  ↓
+Phase 1B — Boucle Codex utilisable [active, bloquante]
   ├── Phase 2 — Notifications, tâches, calendrier
   └── Phase 3 — Gateway et Hermes
         ↓
@@ -16,170 +18,51 @@ Phase 1 — Assistant vocal MVP
       Phase 6 — Finalisation et livraison
 ```
 
-La phase 6 est également transversale : sécurité, tests et observabilité commencent dès la phase 0.
+La phase 6 reste également transversale : sécurité, tests et observabilité commencent bien avant sa clôture.
 
-## Dépendances principales
+## Phase 1 → Phase 1B
 
-### Phase 0 → Phase 1
+Le socle nécessaire existe déjà :
 
-Bloquants :
+- contrats `ModelProvider` et `AgentBackend` ;
+- conversations persistées et streaming ;
+- registre d’outils et Policy Engine ;
+- secrets, profils et audit ;
+- pipeline voix/texte.
 
-- rôle assistant Android ;
-- session transparente ;
-- invocation Power Samsung ;
-- STT/TTS ;
-- premier outil déterministe ;
-- parcours complet.
+La phase 1B corrige le dernier écart entre ce socle et un parcours réellement utilisable : l’interface doit parler à un backend Codex réel, appairé de manière privée, et les propositions d’outils doivent revenir jusqu’à Android pour décision et exécution.
 
-Sans validation de ces points, ne pas investir dans les intégrations de fournisseurs.
+Epic : #39. Issues : #40 à #46.
 
-### Phase 1 → Phase 2
+## Phase 1B → Phases 2 et 3
 
-Pré-requis :
+La phase 1B est bloquante pour les nouveaux parcours fonctionnels. Avant de poursuivre :
 
-- registre d’outils ;
-- Policy Engine ;
-- audit ;
-- stockage local ;
-- redaction ;
-- UI de confirmation.
+- texte et voix doivent partager le même orchestrateur réel ;
+- l’authentification ChatGPT reste confinée au compagnon Codex ;
+- l’appairage Android-compagnon doit être révocable et protégé ;
+- au moins un outil de lecture et un outil à effet doivent fonctionner de bout en bout ;
+- refus, annulation, perte réseau et session expirée doivent être récupérables ;
+- la validation Samsung de #46 doit être versionnée.
 
-La classification des notifications doit réutiliser ces mécanismes et non créer un second chemin d’action.
+## Dépendances suivantes
 
-### Phase 1 → Phase 3
+### Phase 2
 
-Pré-requis :
+Réutilise le registre d’outils, le Policy Engine, l’audit, le stockage local et l’UI de confirmation. Aucun second chemin d’action ne doit être créé.
 
-- contrats `AgentBackend` ;
-- streaming normalisé ;
-- approbation d’outils ;
-- profils et secrets ;
-- reprise de conversation.
+### Phase 3
 
-### Phase 2 + Phase 3 → Phase 4
+Réutilise `AgentBackend`, le streaming normalisé, les approbations, les profils, les secrets et la reprise de conversation. Hermes reste distinct du compagnon Codex de phase 1B.
 
-Les skills et hooks ont besoin :
+### Phases 4 à 6
 
-- d’outils mobiles stables ;
-- d’un Gateway capable de sandbox ;
-- de données personnelles structurées ;
-- d’un moteur de permissions mature.
-
-### Phase 4 → Phase 5
-
-Le dashboard avancé utilise :
-
-- mémoire ;
-- objectifs/TELOS ;
-- hooks ;
-- agents ;
-- Doctor ;
-- tâches et calendrier.
-
-Les mails peuvent commencer plus tôt comme expérimentation isolée, mais leur intégration au dashboard suit cette dépendance.
-
-## Critères de passage
-
-### Sortie phase 0
-
-- parcours vocal volume validé sur Samsung ;
-- stabilité et budgets documentés ;
-- limites constructeur connues.
-
-### Sortie phase 1
-
-- assistant utilisable ;
-- fournisseurs configurables ;
-- actions locales sécurisées ;
-- audit et secrets ;
-- mode hors connexion.
-
-### Sortie phase 2
-
-- inbox fiable ;
-- règles ;
-- tâches/calendrier ;
-- injection testée ;
-- résumés.
-
-### Sortie phase 3
-
-- appairage ;
-- Hermes ;
-- streaming/reprise ;
-- outils mobiles ;
-- jobs longs.
-
-### Sortie phase 4
-
-- skills versionnés ;
-- permissions ;
-- sandbox ;
-- TELOS/mémoire ;
-- import LifeOS ;
-- Doctor.
-
-### Sortie phase 5
-
-- dashboard ;
-- email ;
-- recherche ;
-- brief ;
-- automatisations ;
-- sauvegarde.
-
-### Sortie phase 6
-
-- sécurité auditée ;
-- performances et batterie validées ;
-- builds distribuables ;
-- récupération et support.
-
-## Parallélisation possible
-
-Après la phase 1 :
-
-- notifications/tâches peuvent avancer en parallèle du Gateway ;
-- design du dashboard peut être prototypé sans connecteurs réels ;
-- threat model et tests d’injection avancent en continu ;
-- documentation d’auto-hébergement peut avancer avec le Gateway.
-
-À ne pas paralléliser sans contrat stable :
-
-- providers avant `ModelProvider` ;
-- outils avant registre et Policy Engine ;
-- skills avant permissions et sandbox ;
-- automatisations avant audit et hooks.
+Les skills et la mémoire dépendent d’outils mobiles et de permissions stables. Le dashboard et les mails s’appuient ensuite sur ces fondations. La phase 6 consolide sécurité, performances, distribution et récupération.
 
 ## Priorités
 
 - P0 : bloque un parcours principal ou une garantie de sécurité.
-- P1 : nécessaire au MVP ou à la qualité d’usage.
+- P1 : nécessaire à la qualité d’usage ou au jalon courant.
 - P2 : amélioration pouvant être reportée.
 
-Une phase n’exige pas nécessairement toutes ses P2 pour être déclarée terminée. Les P0 doivent être fermées et les P1 restantes explicitement acceptées.
-
-## Estimation indicative
-
-Pour un développeur principal :
-
-- phase 0 : 1–2 semaines ;
-- phase 1 : 6–10 semaines ;
-- phase 2 : 6–8 semaines ;
-- phase 3 : 4–7 semaines ;
-- phase 4 : 6–10 semaines ;
-- phase 5 : 8–12 semaines ;
-- finalisation phase 6 : 4–8 semaines.
-
-Ces estimations supposent une validation régulière sur appareil réel et n’incluent pas les délais externes de publication ou de vérification OAuth.
-
-## Mise à jour du plan
-
-À la fin de chaque phase :
-
-1. publier un rapport de validation ;
-2. mettre à jour les contraintes confirmées ;
-3. créer ou ajuster les issues de la phase suivante ;
-4. supprimer les hypothèses invalidées ;
-5. consigner les décisions d’architecture ;
-6. réviser les estimations.
+Une phase ne doit pas être déclarée terminée tant que ses P0 obligatoires sont ouverts, sauf report explicite documenté dans l’epic.
