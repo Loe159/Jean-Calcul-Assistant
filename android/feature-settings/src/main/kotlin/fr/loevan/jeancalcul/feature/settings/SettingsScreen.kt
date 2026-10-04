@@ -390,11 +390,13 @@ private fun agentEditor(
     var connectionId by rememberSaveable {
         mutableStateOf(configured?.profile?.connectionId ?: backends.firstOrNull()?.id.orEmpty())
     }
-    var backendId by rememberSaveable { mutableStateOf(configured?.profile?.backendId.orEmpty()) }
+    var backendId by rememberSaveable {
+        mutableStateOf(configured?.profile?.backendId ?: CHATGPT_PLAN_BACKEND_ID)
+    }
     var agentId by rememberSaveable { mutableStateOf(configured?.profile?.agentId.orEmpty()) }
     var enabled by rememberSaveable { mutableStateOf(configured?.profile?.enabled ?: true) }
     var resume by rememberSaveable { mutableStateOf(configured?.capabilities?.supportsSessionResume ?: true) }
-    var approvals by rememberSaveable { mutableStateOf(configured?.capabilities?.supportsToolApprovals ?: true) }
+    var approvals by rememberSaveable { mutableStateOf(configured?.capabilities?.supportsToolApprovals ?: false) }
     var policy by rememberSaveable { mutableStateOf((configured?.policyMode ?: AgentPolicyMode.STRICT).name) }
     var permissions by remember(configured) { mutableStateOf(configured?.grantedPermissions ?: emptySet()) }
     SettingsSection(if (configured == null) "Nouvel agent" else "Modifier l'agent") {
@@ -402,7 +404,8 @@ private fun agentEditor(
         Text("Backend agent")
         chipRow(backends, connectionId, ProviderConnection::id, ProviderConnection::displayName) { connectionId = it }
         JeanCalculTextField(backendId, { backendId = it }, "Type de backend")
-        JeanCalculTextField(agentId, { agentId = it }, "Identifiant de l'agent")
+        JeanCalculTextField(agentId, { agentId = it }, "Modele ChatGPT (slug)")
+        Text("Listez les modeles autorises avec `cd companion && npm run models` sur la machine compagnon.")
         SegmentedControl(
             AgentPolicyMode.entries.map { SegmentedControlOption(it.name, it.shortLabel) },
             policy,
@@ -653,3 +656,4 @@ private enum class SettingsPage(val label: String) {
 }
 
 private const val NEW_ID = "new"
+private const val CHATGPT_PLAN_BACKEND_ID = "chatgpt-plan"
