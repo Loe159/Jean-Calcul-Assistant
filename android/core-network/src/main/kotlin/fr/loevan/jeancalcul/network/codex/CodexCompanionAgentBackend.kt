@@ -168,77 +168,35 @@ internal class CodexCompanionAgentBackend(
                         "No active Codex run exists for this session.",
                     )
             val after = (afterSequence ?: 0L).coerceAtLeast(0L)
-            val request =
-                requestBuilder("/v1/sessions/${sessionId.urlPathSegment()}/runs/${runId.urlPathSegment()}/events?after=$after")
-                    .get()
-                    .build()
+            companionEvents(sessionId, runId, after).collect { event ->
+                event.toDomainEvent()?.let { emit(it) }
+                if (event.isTerminal) activeRuns.remove(sessionId, runId)
+            }
+        }.flowOn(Dispatchers.IO)
+
+    private fun companionEvents(
+        sessionId: String,
+        runId: String,
+        afterSequence: Long,
+    ): Flow<CompanionEvent> =
+        flow {
+            val path =
+                "/v1/sessions/${sessionId.urlPathSegment()}/runs/" +
+                    "${runId.urlPathSegment()}/events?after=$afterSequence"
+            val request = requestBuilder(path).get().build()
             try {
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) throw response.toProviderException()
-                    val source = response.body?.source()
-                        ?: throw providerException(
-                            ProviderErrorCategory.PROTOCOL,
-                            "empty_stream",
-                            "Codex companion returned an empty event stream.",
-                        )
+                    val source =
+                        response.body?.source()
+                            ?: throw providerException(
+                                ProviderErrorCategory.PROTOCOL,
+                                "empty_stream",
+                                "Codex companion returned an empty event stream.",
+                            )
                     while (!source.exhausted()) {
                         val line = source.readUtf8Line()?.trim().orEmpty()
-                        if (line.isEmpty()) continue
-                        val event = runCatching {
-                            json.decodeFromString(CompanionEvent.serializer(), line)
-                        }.getOrElse {
-                            throw providerException(
-                                ProviderErrorCategory.PROTOCOL,
-                                "invalid_event",
-                                "Codex companion returned an invalid event.",
-                                it,
-                            )
-                        }
-                        when (event.type) {
-                            "text_delta" ->
-                                emit(
-                                    StreamEvent.TextDelta(
-                                        requestId = event.requestId,
-                                        text = event.text.orEmpty(),
-                                        sequence = event.sequence,
-                                    ),
-                                )
-                            "completed" -> {
-                                emit(
-                                    StreamEvent.Completed(
-                                        requestId = event.requestId,
-                                        finishReason = FinishReason.STOP,
-                                        sequence = event.sequence,
-                                    ),
-                                )
-                                activeRuns.remove(sessionId, runId)
-                            }
-                            "cancelled" -> {
-                                emit(
-                                    StreamEvent.Completed(
-                                        requestId = event.requestId,
-                                        finishReason = FinishReason.CANCELLED,
-                                        sequence = event.sequence,
-                                    ),
-                                )
-                                activeRuns.remove(sessionId, runId)
-                            }
-                            "failed" -> {
-                                emit(
-                                    StreamEvent.Failed(
-                                        requestId = event.requestId,
-                                        error =
-                                            ProviderError(
-                                                category = ProviderErrorCategory.SERVICE_UNAVAILABLE,
-                                                code = "codex_turn_failed",
-                                                message = event.error ?: "Codex turn failed.",
-                                            ),
-                                        sequence = event.sequence,
-                                    ),
-                                )
-                                activeRuns.remove(sessionId, runId)
-                            }
-                        }
+                        if (line.isNotEmpty()) emit(decodeEvent(line))
                     }
                 }
             } catch (error: ProviderException) {
@@ -251,7 +209,39 @@ internal class CodexCompanionAgentBackend(
                     error,
                 )
             }
-        }.flowOn(Dispatchers.IO)
+        }
+
+    private fun decodeEvent(line: String): CompanionEvent =
+        runCatching { json.decodeFromString(CompanionEvent.serializer(), line) }.getOrElse {
+            throw providerException(
+                ProviderErrorCategory.PROTOCOL,
+                "invalid_event",
+                "Codex companion returned an invalid event.",
+                it,
+            )
+        }
+
+    private fun CompanionEvent.toDomainEvent(): AgentStreamEvent? =
+        when (type) {
+            "text_delta" -> StreamEvent.TextDelta(requestId, text.orEmpty(), sequence)
+            "completed" -> StreamEvent.Completed(requestId, FinishReason.STOP, sequence)
+            "cancelled" -> StreamEvent.Completed(requestId, FinishReason.CANCELLED, sequence)
+            "failed" ->
+                StreamEvent.Failed(
+                    requestId = requestId,
+                    error =
+                        ProviderError(
+                            category = ProviderErrorCategory.SERVICE_UNAVAILABLE,
+                            code = "codex_turn_failed",
+                            message = error ?: "Codex turn failed.",
+                        ),
+                    sequence = sequence,
+                )
+            else -> null
+        }
+
+    private val CompanionEvent.isTerminal: Boolean
+        get() = type == "completed" || type == "cancelled" || type == "failed"
 
     override suspend fun cancel(
         sessionId: String,
