@@ -154,9 +154,17 @@ private fun providerEditor(
     val selectedKind = ProviderKind.valueOf(kind)
     val secretLabel =
         if (selectedKind == ProviderKind.AGENT_BACKEND) {
-            if (provider?.secretId == null) "Secret d'appairage" else "Nouveau secret d'appairage (laisser vide pour conserver)"
+            if (provider?.secretId == null) {
+                "Secret d'appairage"
+            } else {
+                "Nouveau secret d'appairage (laisser vide pour conserver)"
+            }
         } else {
-            if (provider?.secretId == null) "Cle API (facultative)" else "Nouvelle cle API (laisser vide pour conserver)"
+            if (provider?.secretId == null) {
+                "Cle API (facultative)"
+            } else {
+                "Nouvelle cle API (laisser vide pour conserver)"
+            }
         }
     SettingsSection(if (provider == null) "Nouveau fournisseur" else "Modifier le fournisseur") {
         JeanCalculTextField(name, { name = it }, "Nom")
@@ -368,7 +376,7 @@ private fun agentEditor(
     var agentId by rememberSaveable { mutableStateOf(configured?.profile?.agentId ?: "codex") }
     var enabled by rememberSaveable { mutableStateOf(configured?.profile?.enabled ?: true) }
     var resume by rememberSaveable { mutableStateOf(configured?.capabilities?.supportsSessionResume ?: true) }
-    var approvals by rememberSaveable { mutableStateOf(configured?.capabilities?.supportsToolApprovals ?: true) }
+    var approvals by rememberSaveable { mutableStateOf(configured?.capabilities?.supportsToolApprovals ?: false) }
     var policy by rememberSaveable { mutableStateOf((configured?.policyMode ?: AgentPolicyMode.STRICT).name) }
     var permissions by remember(configured) { mutableStateOf(configured?.grantedPermissions ?: emptySet()) }
     SettingsSection(if (configured == null) "Nouvel agent" else "Modifier l'agent") {
