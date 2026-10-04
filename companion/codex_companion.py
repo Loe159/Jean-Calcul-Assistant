@@ -62,7 +62,19 @@ class CodexAppServer:
         if self._process is not None:
             return
         self._process = subprocess.Popen(
-            [self.codex_bin, "app-server", "--stdio"],
+            [
+                self.codex_bin,
+                "--config",
+                "features.shell_tool=false",
+                "--config",
+                "features.unified_exec=false",
+                "--config",
+                "features.code_mode_host=false",
+                "--config",
+                'web_search="disabled"',
+                "app-server",
+                "--stdio",
+            ],
             cwd=self.cwd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -500,16 +512,20 @@ def config_path() -> Path:
 
 def load_or_create_token() -> str:
     path = config_path()
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(path.parent, 0o700)
     if path.exists():
+        os.chmod(path, 0o600)
         data = json.loads(path.read_text(encoding="utf-8"))
         token = data.get("pairingToken")
         if isinstance(token, str) and len(token) >= 32:
             return token
         raise CompanionError(f"invalid companion config: {path}")
-    path.parent.mkdir(parents=True, exist_ok=True)
     token = secrets.token_urlsafe(32)
-    path.write_text(json.dumps({"pairingToken": token}, indent=2) + "\n", encoding="utf-8")
-    os.chmod(path, 0o600)
+    payload = json.dumps({"pairingToken": token}, indent=2) + "\n"
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        handle.write(payload)
     return token
 
 def resolve_codex(binary: str) -> str:
@@ -518,9 +534,12 @@ def resolve_codex(binary: str) -> str:
         raise CompanionError("Codex CLI not found. Install Codex before starting the companion.")
     return resolved
 
-def login_status(codex_bin: str) -> tuple[bool, str]:
-    result = subprocess.run([codex_bin, "login", "status"], text=True, capture_output=True, timeout=20)
-    return result.returncode == 0, (result.stdout or result.stderr).strip()
+def companion_workspace_path() -> Path:
+    root = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+    path = root / "jean-calcul" / "codex-workspace"
+    path.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(path, 0o700)
+    return path
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Jean Calcul companion for ChatGPT-authenticated Codex")
@@ -532,7 +551,7 @@ def build_parser() -> argparse.ArgumentParser:
     serve = sub.add_parser("serve")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=DEFAULT_PORT)
-    serve.add_argument("--cwd", default=str(Path.home()))
+    serve.add_argument("--cwd", default=None, help="Explicit Codex read-only working directory")
     return parser
 
 def main() -> int:
@@ -544,7 +563,7 @@ def main() -> int:
         if args.command == "logout":
             return subprocess.call([codex_bin, "logout"])
         if args.command == "status":
-            app_server = CodexAppServer(codex_bin, str(Path.home()))
+            app_server = CodexAppServer(codex_bin, str(companion_workspace_path()))
             try:
                 app_server.start()
                 print("Codex authenticated with a ChatGPT subscription.")
@@ -556,7 +575,8 @@ def main() -> int:
             if args.host not in {"127.0.0.1", "localhost", "::1"}:
                 raise CompanionError("Remote plaintext binding is disabled. Use loopback plus adb reverse or a trusted tunnel.")
             token = load_or_create_token()
-            app_server = CodexAppServer(codex_bin, args.cwd)
+            cwd = args.cwd or str(companion_workspace_path())
+            app_server = CodexAppServer(codex_bin, cwd)
             app_server.start()
             server = CompanionHttpServer((args.host, args.port), service=CompanionService(app_server), token=token)
             print(f"Jean Calcul companion listening on http://{args.host}:{args.port}")
