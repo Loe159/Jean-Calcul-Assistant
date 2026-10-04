@@ -84,7 +84,7 @@ class ProviderConnectionProbeTest {
             val request = server.takeRequest()
             assertEquals("/v1/status", request.path)
             assertEquals("Bearer test-secret", request.getHeader("Authorization"))
-            assertEquals("1", request.getHeader("X-Jean-Calcul-Protocol"))
+            assertEquals("2", request.getHeader("X-Jean-Calcul-Protocol"))
         }
 
     @Test

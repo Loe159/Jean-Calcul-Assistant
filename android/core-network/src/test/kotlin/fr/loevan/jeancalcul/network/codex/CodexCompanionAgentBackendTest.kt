@@ -55,7 +55,7 @@ class CodexCompanionAgentBackendTest {
             assertEquals("POST", request.method)
             assertEquals("/v1/sessions", request.path)
             assertEquals("Bearer pairing-secret", request.getHeader("Authorization"))
-            assertEquals("1", request.getHeader("X-Jean-Calcul-Protocol"))
+            assertEquals("2", request.getHeader("X-Jean-Calcul-Protocol"))
         }
 
     @Test
@@ -112,7 +112,7 @@ class CodexCompanionAgentBackendTest {
                 MockResponse()
                     .setResponseCode(200)
                     .setHeader("Content-Type", "application/json")
-                    .setBody("""{"protocolVersion":"1","state":"ready","auth":"chatgpt"}"""),
+                    .setBody("""{"protocolVersion":"2","state":"ready","auth":"chatgpt"}"""),
             )
 
             val status = backend().getStatus(profile)
