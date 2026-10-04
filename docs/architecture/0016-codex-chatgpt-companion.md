@@ -4,7 +4,7 @@
 
 Jean Calcul utilise un compagnon local pour accéder à Codex avec l'abonnement ChatGPT, sans clé API OpenAI.
 
-Le compagnon lance le CLI officiel avec `codex app-server --stdio` et utilise son protocole JSONL. Le CLI Codex reste seul propriétaire des identifiants ChatGPT. Android ne reçoit jamais access token, refresh token, cookie ou identifiant de compte.
+Le compagnon lance le CLI officiel avec `codex app-server --listen stdio://` et utilise son protocole JSONL. Le CLI Codex reste seul propriétaire des identifiants ChatGPT. Android ne reçoit jamais access token, refresh token, cookie ou identifiant de compte.
 
 ## Flux
 
