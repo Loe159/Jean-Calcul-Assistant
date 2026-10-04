@@ -173,14 +173,17 @@ class ConversationOrchestrator
             if (retryResponse == null) appendUserMessage(handle, text, requestId)
             var response = prepareResponse(handle, requestId, retryResponse)
             val request = AgentRequest(requestId, repository.getMessages(handle.conversation.id).toChatMessages())
-            val run = backend.sendMessage(requireNotNull(session.agentBackendSessionId), request)
-            val activeRequest =
-                ActiveRequest { backend.cancel(requireNotNull(session.agentBackendSessionId), run.id) }
-            activeRequests[handle.conversation.id] = activeRequest
+            val remoteSessionId = requireNotNull(session.agentBackendSessionId)
+            var activeRequest: ActiveRequest? = null
+            var runId: String? = null
             var updatedSession = session
             try {
+                val run = backend.sendMessage(remoteSessionId, request)
+                runId = run.id
+                activeRequest = ActiveRequest { backend.cancel(remoteSessionId, run.id) }
+                activeRequests[handle.conversation.id] = activeRequest
                 backend.streamEvents(
-                    requireNotNull(session.agentBackendSessionId),
+                    remoteSessionId,
                     session.lastAgentEventSequence,
                 ).collect { event ->
                     response = applyStreamEvent(response, event)
@@ -196,7 +199,7 @@ class ConversationOrchestrator
                     if (event is StreamEvent.Failed) throw ProviderException(event.error)
                 }
             } catch (cancelled: CancellationException) {
-                backend.cancel(requireNotNull(session.agentBackendSessionId), run.id)
+                runId?.let { backend.cancel(remoteSessionId, it) }
                 response = response.finished(MessageStatus.INTERRUPTED)
                 repository.saveMessage(response)
                 throw cancelled
@@ -204,7 +207,7 @@ class ConversationOrchestrator
                 response = response.failed(failure.error.message)
                 repository.saveMessage(response)
             } finally {
-                activeRequests.remove(handle.conversation.id, activeRequest)
+                activeRequest?.let { activeRequests.remove(handle.conversation.id, it) }
             }
             return response
         }
