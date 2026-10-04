@@ -21,6 +21,21 @@ class AssistantSettingsTest {
     }
 
     @Test
+    fun `agent backend requires a pairing secret`() {
+        val provider =
+            ProviderConnection(
+                id = "backend",
+                displayName = "Codex",
+                kind = ProviderKind.AGENT_BACKEND,
+                baseUrl = "http://127.0.0.1:43120",
+            )
+
+        val errors = AssistantSettingsValidator.providerErrors(provider)
+
+        assertTrue(errors.any { it.contains("appairage") })
+    }
+
+    @Test
     fun `model cannot activate when its provider is disabled`() {
         val provider =
             ProviderConnection("provider", "Provider", ProviderKind.OLLAMA, "http://localhost:11434", enabled = false)
