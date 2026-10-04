@@ -300,6 +300,7 @@ internal class CodexCompanionAgentBackend(
                 .url(base + path)
                 .header("Accept", "application/json")
                 .header("User-Agent", "Jean-Calcul-Assistant/0.1")
+                .header("X-Jean-Calcul-Protocol", COMPANION_PROTOCOL_VERSION)
         val authFailure = authenticator.authenticate(connection, builder)
         if (authFailure != null) {
             throw providerException(

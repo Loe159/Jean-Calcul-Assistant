@@ -55,6 +55,7 @@ class CodexCompanionAgentBackendTest {
             assertEquals("POST", request.method)
             assertEquals("/v1/sessions", request.path)
             assertEquals("Bearer pairing-secret", request.getHeader("Authorization"))
+            assertEquals("1", request.getHeader("X-Jean-Calcul-Protocol"))
         }
 
     @Test

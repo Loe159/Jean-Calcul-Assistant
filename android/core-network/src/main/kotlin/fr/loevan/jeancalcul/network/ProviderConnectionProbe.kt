@@ -61,6 +61,9 @@ class OkHttpProviderConnectionProbe
                     .url(url)
                     .get()
                     .header("User-Agent", "Jean-Calcul-Assistant/0.1")
+            if (connection.kind == ProviderKind.AGENT_BACKEND) {
+                requestBuilder.header("X-Jean-Calcul-Protocol", "1")
+            }
             val authenticationFailure = authenticator.authenticate(connection, requestBuilder)
             if (authenticationFailure != null) {
                 return ConnectionProbeResult.Failure(

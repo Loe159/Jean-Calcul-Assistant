@@ -468,6 +468,13 @@ class Handler(BaseHTTPRequestHandler):
         if not hmac.compare_digest(supplied, f"Bearer {self.server.token}"):
             self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
             return False
+        protocol_version = self.headers.get("X-Jean-Calcul-Protocol")
+        if protocol_version != PROTOCOL_VERSION:
+            self._json(
+                HTTPStatus.UPGRADE_REQUIRED,
+                {"error": "incompatible_protocol", "supportedProtocolVersion": PROTOCOL_VERSION},
+            )
+            return False
         return True
 
     def _read_json(self) -> dict[str, Any]:

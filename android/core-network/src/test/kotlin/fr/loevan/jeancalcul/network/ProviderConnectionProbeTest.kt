@@ -65,6 +65,29 @@ class ProviderConnectionProbeTest {
         }
 
     @Test
+    fun `agent backend probe sends pairing token and protocol version`() =
+        runTest {
+            server.enqueue(MockResponse().setResponseCode(200))
+            val probe = OkHttpProviderConnectionProbe(OkHttpClient(), StaticSecretStore())
+            val connection =
+                ProviderConnection(
+                    id = "codex",
+                    displayName = "Codex",
+                    kind = ProviderKind.AGENT_BACKEND,
+                    baseUrl = server.url("/").toString(),
+                    secretId = "provider.codex",
+                )
+
+            val result = probe.test(connection)
+
+            assertTrue(result is ConnectionProbeResult.Success)
+            val request = server.takeRequest()
+            assertEquals("/v1/status", request.path)
+            assertEquals("Bearer test-secret", request.getHeader("Authorization"))
+            assertEquals("1", request.getHeader("X-Jean-Calcul-Protocol"))
+        }
+
+    @Test
     fun `OpenRouter probe uses models route and application authentication`() =
         runTest {
             server.enqueue(MockResponse().setResponseCode(200))

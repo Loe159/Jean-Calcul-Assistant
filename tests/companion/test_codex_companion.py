@@ -1,7 +1,10 @@
 import importlib.util
 import json
 import sys
+import threading
 import unittest
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 MODULE_PATH = Path(__file__).resolve().parents[2] / "companion" / "codex_companion.py"
@@ -85,6 +88,54 @@ class CompanionServiceTest(unittest.TestCase):
         self.assertEqual(service.resume_session(session_id), session_id)
         self.assertEqual(service.resume_session(session_id), session_id)
         self.assertEqual(codex.resume_calls, 0)
+
+
+class CompanionHttpAuthenticationTest(unittest.TestCase):
+    class FakeCodex:
+        alive = True
+
+        def add_notification_handler(self, handler):
+            self.handler = handler
+
+    def setUp(self):
+        service = module.CompanionService(self.FakeCodex())
+        self.server = module.CompanionHttpServer(("127.0.0.1", 0), service=service, token="pairing-token")
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        self.base_url = f"http://127.0.0.1:{self.server.server_address[1]}"
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=2)
+
+    def test_rejects_unauthenticated_client(self):
+        with self.assertRaises(urllib.error.HTTPError) as raised:
+            urllib.request.urlopen(self.base_url + "/v1/status", timeout=2)
+        self.assertEqual(raised.exception.code, 401)
+        raised.exception.close()
+
+    def test_rejects_incompatible_protocol(self):
+        request = urllib.request.Request(
+            self.base_url + "/v1/status",
+            headers={"Authorization": "Bearer pairing-token", "X-Jean-Calcul-Protocol": "999"},
+        )
+        with self.assertRaises(urllib.error.HTTPError) as raised:
+            urllib.request.urlopen(request, timeout=2)
+        self.assertEqual(raised.exception.code, 426)
+        body = json.loads(raised.exception.read())
+        self.assertEqual(body["supportedProtocolVersion"], "1")
+        raised.exception.close()
+
+    def test_accepts_authenticated_current_protocol(self):
+        request = urllib.request.Request(
+            self.base_url + "/v1/status",
+            headers={"Authorization": "Bearer pairing-token", "X-Jean-Calcul-Protocol": "1"},
+        )
+        with urllib.request.urlopen(request, timeout=2) as response:
+            body = json.load(response)
+        self.assertEqual(body["state"], "ready")
+        self.assertEqual(body["auth"], "chatgpt")
 
 
 class CodexAppServerProtocolTest(unittest.TestCase):
