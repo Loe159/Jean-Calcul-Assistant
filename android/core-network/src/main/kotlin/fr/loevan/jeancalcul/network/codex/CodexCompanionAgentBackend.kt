@@ -18,6 +18,7 @@ import fr.loevan.jeancalcul.domain.AgentSkillDescriptor
 import fr.loevan.jeancalcul.domain.AgentStreamEvent
 import fr.loevan.jeancalcul.domain.AgentToolApproval
 import fr.loevan.jeancalcul.domain.AgentToolDescriptor
+import fr.loevan.jeancalcul.domain.AgentToolResultSink
 import fr.loevan.jeancalcul.domain.ContentModality
 import fr.loevan.jeancalcul.domain.FinishReason
 import fr.loevan.jeancalcul.domain.MessageContent
@@ -29,6 +30,9 @@ import fr.loevan.jeancalcul.domain.ProviderErrorCategory
 import fr.loevan.jeancalcul.domain.ProviderException
 import fr.loevan.jeancalcul.domain.ProviderKind
 import fr.loevan.jeancalcul.domain.StreamEvent
+import fr.loevan.jeancalcul.domain.ToolCall
+import fr.loevan.jeancalcul.domain.ToolDefinition
+import fr.loevan.jeancalcul.domain.ToolResult
 import fr.loevan.jeancalcul.network.ProviderRequestAuthenticator
 import fr.loevan.jeancalcul.security.SecretStore
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +42,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -48,7 +53,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val BACKEND_ID = "codex-companion"
-private const val COMPANION_PROTOCOL_VERSION = "1"
+private const val COMPANION_PROTOCOL_VERSION = "2"
 private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
 @Singleton
@@ -86,7 +91,7 @@ internal class CodexCompanionAgentBackend(
     private val connection: ProviderConnection,
     private val client: OkHttpClient,
     secretStore: SecretStore,
-) : AgentBackend {
+) : AgentBackend, AgentToolResultSink {
     override val id: String = BACKEND_ID
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -108,7 +113,10 @@ internal class CodexCompanionAgentBackend(
         val response =
             executeJson(
                 requestBuilder("/v1/sessions")
-                    .post(ByteArray(0).toRequestBody(null))
+                    .post(
+                        json.encodeToString(SessionRequest.serializer(), SessionRequest())
+                            .toRequestBody(JSON_MEDIA_TYPE),
+                    )
                     .build(),
                 SessionResponse.serializer(),
             )
@@ -122,7 +130,10 @@ internal class CodexCompanionAgentBackend(
         val response =
             executeJson(
                 requestBuilder("/v1/sessions/${sessionId.urlPathSegment()}/resume")
-                    .post(ByteArray(0).toRequestBody(null))
+                    .post(
+                        json.encodeToString(SessionRequest.serializer(), SessionRequest())
+                            .toRequestBody(JSON_MEDIA_TYPE),
+                    )
                     .build(),
                 SessionResponse.serializer(),
             )
@@ -146,7 +157,11 @@ internal class CodexCompanionAgentBackend(
         val body =
             json.encodeToString(
                 RunRequest.serializer(),
-                RunRequest(request.requestId, text),
+                RunRequest(
+                    requestId = request.requestId,
+                    text = text,
+                    tools = request.availableTools.map(ToolDefinition::toCompanionTool),
+                ),
             )
         val response =
             executeJson(
@@ -228,6 +243,16 @@ internal class CodexCompanionAgentBackend(
     private fun CompanionEvent.toDomainEvent(): AgentStreamEvent? =
         when (type) {
             "text_delta" -> StreamEvent.TextDelta(requestId, text.orEmpty(), sequence)
+            "tool_call" -> {
+                val callId = callId ?: return null
+                val toolName = toolName ?: return null
+                val arguments = arguments ?: JsonObject(emptyMap())
+                StreamEvent.ToolCallReady(
+                    requestId,
+                    ToolCall(callId, toolName, arguments),
+                    sequence,
+                )
+            }
             "completed" -> StreamEvent.Completed(requestId, FinishReason.STOP, sequence)
             "cancelled" -> StreamEvent.Completed(requestId, FinishReason.CANCELLED, sequence)
             "failed" ->
@@ -246,6 +271,29 @@ internal class CodexCompanionAgentBackend(
 
     private val CompanionEvent.isTerminal: Boolean
         get() = type == "completed" || type == "cancelled" || type == "failed"
+
+    override suspend fun submitToolResult(
+        sessionId: String,
+        runId: String,
+        callId: String,
+        result: ToolResult,
+    ) {
+        val body =
+            json.encodeToString(
+                ToolResultRequest.serializer(),
+                ToolResultRequest(
+                    callId = callId,
+                    success = result.isSuccess,
+                    output = result.output,
+                    error = result.error?.let { "${it.code}: ${it.message}" },
+                ),
+            )
+        executeNoContent(
+            requestBuilder("/v1/sessions/${sessionId.urlPathSegment()}/runs/${runId.urlPathSegment()}/tool-results")
+                .post(body.toRequestBody(JSON_MEDIA_TYPE))
+                .build(),
+        )
+    }
 
     override suspend fun cancel(
         sessionId: String,
@@ -405,9 +453,34 @@ private data class SessionResponse(
 )
 
 @Serializable
+private data class SessionRequest(
+    val tools: List<CompanionTool> = emptyList(),
+)
+
+@Serializable
+private data class CompanionTool(
+    val name: String,
+    val version: String,
+    val description: String,
+    val inputSchema: JsonObject,
+)
+
+private fun ToolDefinition.toCompanionTool() =
+    CompanionTool(name = name, version = version, description = description, inputSchema = inputSchema)
+
+@Serializable
 private data class RunRequest(
     val requestId: String,
     val text: String,
+    val tools: List<CompanionTool> = emptyList(),
+)
+
+@Serializable
+private data class ToolResultRequest(
+    val callId: String,
+    val success: Boolean,
+    val output: JsonObject? = null,
+    val error: String? = null,
 )
 
 @Serializable
@@ -430,6 +503,10 @@ private data class CompanionEvent(
     val requestId: String,
     val text: String? = null,
     val error: String? = null,
+    val callId: String? = null,
+    val toolName: String? = null,
+    val toolVersion: String? = null,
+    val arguments: JsonObject? = null,
 )
 
 @Module

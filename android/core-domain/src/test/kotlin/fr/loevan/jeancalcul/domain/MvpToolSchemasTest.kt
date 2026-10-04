@@ -47,9 +47,9 @@ class MvpToolSchemasTest {
     }
 
     @Test
-    fun `flashlight declares camera permission and reversible tools require confirmation`() {
+    fun `flashlight does not require camera permission and reversible tools require confirmation`() {
         val flashlight = MvpToolSchemas.definitions.first { it.name == MvpToolSchemas.DEVICE_TOGGLE_FLASHLIGHT }
-        assertEquals(setOf(ToolAndroidPermissions.CAMERA), flashlight.requiredAndroidPermissions)
+        assertTrue(flashlight.requiredAndroidPermissions.isEmpty())
 
         val reversible =
             MvpToolSchemas.definitions.filter { it.riskLevel == ToolRiskLevel.R2 }

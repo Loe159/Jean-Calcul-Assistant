@@ -1,8 +1,12 @@
 package fr.loevan.jeancalcul.feature.conversation
 
+import android.app.KeyguardManager
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import fr.loevan.jeancalcul.domain.ActionRequestOrigin
 import fr.loevan.jeancalcul.domain.AgentBackendFactory
 import fr.loevan.jeancalcul.domain.AssistantSessionKind
 import fr.loevan.jeancalcul.domain.AssistantSettingsRepository
@@ -12,6 +16,11 @@ import fr.loevan.jeancalcul.domain.ConversationRepository
 import fr.loevan.jeancalcul.domain.Message
 import fr.loevan.jeancalcul.domain.MessageRole
 import fr.loevan.jeancalcul.domain.MessageStatus
+import fr.loevan.jeancalcul.domain.PolicyEngine
+import fr.loevan.jeancalcul.observability.PersistentAuditLogger
+import fr.loevan.jeancalcul.toolbridge.LocalAgentToolRuntime
+import fr.loevan.jeancalcul.toolbridge.androidMvpToolAvailabilityContext
+import fr.loevan.jeancalcul.toolbridge.createAndroidMvpToolRegistry
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -41,7 +50,11 @@ class ConversationViewModel
         private val settingsRepository: AssistantSettingsRepository,
         private val orchestrator: ConversationOrchestrator,
         private val agentBackendFactory: AgentBackendFactory,
+        @ApplicationContext private val context: Context,
+        private val auditLogger: PersistentAuditLogger,
     ) : ViewModel() {
+        private val toolRegistry by lazy { createAndroidMvpToolRegistry(context, auditLogger) }
+        private val policyEngine by lazy { PolicyEngine(auditLogger) }
         private val selectedConversationId = MutableStateFlow<String?>(null)
         private val draft = MutableStateFlow("")
         private val errorMessage = MutableStateFlow<String?>(null)
@@ -134,7 +147,21 @@ class ConversationViewModel
                     ConversationHandle(conversation, session)
                 } ?: orchestrator.createAgentConversation(profile, text.take(48))
             selectedConversationId.value = handle.conversation.id
-            orchestrator.sendToAgent(handle, profile, backend, text)
+            val toolRuntime =
+                LocalAgentToolRuntime(
+                    toolRegistry = toolRegistry,
+                    availabilityContext = {
+                        androidMvpToolAvailabilityContext(
+                            context = context,
+                            isDeviceLocked =
+                                context.getSystemService(KeyguardManager::class.java)?.isDeviceLocked == true,
+                        )
+                    },
+                    policyEngine = policyEngine,
+                    origin = ActionRequestOrigin.USER_TEXT,
+                    profileId = profile.id,
+                )
+            orchestrator.sendToAgent(handle, profile, backend, text, toolRuntime)
         }
 
         private suspend fun persistLocalDraft(text: String) {

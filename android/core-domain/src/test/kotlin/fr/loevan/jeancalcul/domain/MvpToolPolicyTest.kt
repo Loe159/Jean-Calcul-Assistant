@@ -18,12 +18,12 @@ class MvpToolPolicyTest {
         )
 
     @Test
-    fun `missing camera permission produces an explicit system panel decision`() {
+    fun `flashlight is reversible and requires confirmation by default`() {
         val decision = engine.evaluate(flashlight, proposal, context(grantedPermissions = emptySet()))
 
-        assertEquals(PolicyDecisionType.OPEN_SYSTEM_PANEL, decision.type)
-        assertEquals(PolicyReason.PERMISSION_MISSING, decision.reason)
-        assertEquals(setOf(ToolAndroidPermissions.CAMERA), decision.missingAndroidPermissions)
+        assertEquals(PolicyDecisionType.CONFIRM, decision.type)
+        assertEquals(PolicyReason.TOOL_DEFAULT, decision.reason)
+        assertEquals(emptySet<String>(), decision.missingAndroidPermissions)
     }
 
     @Test

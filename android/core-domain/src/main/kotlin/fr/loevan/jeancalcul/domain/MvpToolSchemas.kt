@@ -86,7 +86,6 @@ object MvpToolSchemas {
                         required = listOf("cameraId", "enabled"),
                     ),
                 riskLevel = ToolRiskLevel.R2,
-                requiredAndroidPermissions = setOf(ToolAndroidPermissions.CAMERA),
                 availability = unlockedCapability(ToolDeviceCapabilities.FLASHLIGHT),
                 defaultPolicy = ToolDefaultPolicy.CONFIRM,
             ),

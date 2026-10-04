@@ -3,6 +3,7 @@ package fr.loevan.jeancalcul.feature.conversation
 import fr.loevan.jeancalcul.domain.AgentBackend
 import fr.loevan.jeancalcul.domain.AgentProfile
 import fr.loevan.jeancalcul.domain.AgentRequest
+import fr.loevan.jeancalcul.domain.AgentToolResultSink
 import fr.loevan.jeancalcul.domain.AssistantSession
 import fr.loevan.jeancalcul.domain.AssistantSessionKind
 import fr.loevan.jeancalcul.domain.ChatMessage
@@ -18,8 +19,11 @@ import fr.loevan.jeancalcul.domain.ModelProfile
 import fr.loevan.jeancalcul.domain.ModelProvider
 import fr.loevan.jeancalcul.domain.ProviderException
 import fr.loevan.jeancalcul.domain.StreamEvent
+import fr.loevan.jeancalcul.domain.ToolError
+import fr.loevan.jeancalcul.domain.ToolResult
 import fr.loevan.jeancalcul.observability.PerformanceTrace
 import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
+import fr.loevan.jeancalcul.toolbridge.LocalAgentToolRuntime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 import java.util.UUID
@@ -75,7 +79,8 @@ class ConversationOrchestrator
             profile: AgentProfile,
             backend: AgentBackend,
             text: String,
-        ): Message = sendAgent(handle, profile, backend, text.trim(), null)
+            toolRuntime: LocalAgentToolRuntime? = null,
+        ): Message = sendAgent(handle, profile, backend, text.trim(), null, toolRuntime)
 
         suspend fun retryAgentResponse(
             responseMessageId: String,
@@ -85,7 +90,7 @@ class ConversationOrchestrator
             val (handle, response, userMessage) = retryContext(responseMessageId)
             require(handle.session.kind == AssistantSessionKind.AGENT)
             require(handle.session.agentProfileId == profile.id)
-            return sendAgent(handle, profile, backend, userMessage.text, response)
+            return sendAgent(handle, profile, backend, userMessage.text, response, null)
         }
 
         suspend fun cancel(conversationId: String) {
@@ -164,6 +169,7 @@ class ConversationOrchestrator
             backend: AgentBackend,
             text: String,
             retryResponse: Message?,
+            toolRuntime: LocalAgentToolRuntime?,
         ): Message {
             require(text.isNotBlank())
             require(initialHandle.session.kind == AssistantSessionKind.AGENT)
@@ -172,7 +178,12 @@ class ConversationOrchestrator
             val requestId = UUID.randomUUID().toString()
             if (retryResponse == null) appendUserMessage(handle, text, requestId)
             var response = prepareResponse(handle, requestId, retryResponse)
-            val request = AgentRequest(requestId, repository.getMessages(handle.conversation.id).toChatMessages())
+            val request =
+                AgentRequest(
+                    requestId = requestId,
+                    messages = repository.getMessages(handle.conversation.id).toChatMessages(),
+                    availableTools = toolRuntime?.availableTools().orEmpty(),
+                )
             val run =
                 try {
                     backend.sendMessage(requireNotNull(session.agentBackendSessionId), request)
@@ -190,6 +201,32 @@ class ConversationOrchestrator
                     requireNotNull(session.agentBackendSessionId),
                     session.lastAgentEventSequence,
                 ).collect { event ->
+                    if (event is StreamEvent.ToolCallReady) {
+                        val sink = backend as? AgentToolResultSink
+                        val toolResult =
+                            if (toolRuntime != null && sink != null) {
+                                toolRuntime.execute(event.call)
+                            } else {
+                                ToolResult(
+                                    actionId = event.call.callId,
+                                    toolName = event.call.toolName,
+                                    toolVersion = "1.0.0",
+                                    error =
+                                        ToolError(
+                                            "TOOL_BRIDGE_UNAVAILABLE",
+                                            "Android tool execution is unavailable.",
+                                        ),
+                                )
+                            }
+                        if (sink != null) {
+                            sink.submitToolResult(
+                                requireNotNull(session.agentBackendSessionId),
+                                run.id,
+                                event.call.callId,
+                                toolResult,
+                            )
+                        }
+                    }
                     response = applyStreamEvent(response, event)
                     repository.saveMessage(response)
                     event.sequence?.let { sequence ->

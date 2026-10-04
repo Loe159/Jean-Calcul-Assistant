@@ -174,6 +174,16 @@ interface AgentBackend {
     suspend fun getStatus(profile: AgentProfile): AgentBackendStatus
 }
 
+/** Optional capability for agent backends that can pause a turn for a local Android tool result. */
+interface AgentToolResultSink {
+    suspend fun submitToolResult(
+        sessionId: String,
+        runId: String,
+        callId: String,
+        result: ToolResult,
+    )
+}
+
 /** Creates a concrete backend for one configured agent connection. */
 interface AgentBackendFactory {
     suspend fun create(

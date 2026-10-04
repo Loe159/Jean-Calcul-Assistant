@@ -53,6 +53,7 @@ internal class VoiceSessionController(
     private val audioFocusController: VoiceAudioFocusController = NoOpVoiceAudioFocusController,
     private val audioRouteSource: VoiceAudioRouteSource = NoOpVoiceAudioRouteSource,
     private val voiceCommandProcessor: VoiceCommandProcessor = NoOpVoiceCommandProcessor,
+    private val voiceAgentProcessor: VoiceAgentProcessor? = null,
     private val performanceTrace: PerformanceTrace = NoOpPerformanceTrace,
     private val conversationRecorder: VoiceConversationRecorder = NoOpVoiceConversationRecorder,
     private val onConversationSessionStarted: (String) -> Unit = { },
@@ -260,8 +261,13 @@ internal class VoiceSessionController(
             AssistantEffect.StartSpeechRecognition -> startSpeechRecognition()
             AssistantEffect.StopSpeechRecognition -> stopSpeechRecognition()
             is AssistantEffect.RequestResponse -> {
-                scope.launch { conversationRecorder.recordUserMessage(effect.input) }
-                handleCommandOutcome(voiceCommandProcessor.process(effect.input))
+                scope.launch {
+                    conversationRecorder.recordUserMessage(effect.input)
+                    val outcome =
+                        voiceAgentProcessor?.process(effect.input)
+                            ?: voiceCommandProcessor.process(effect.input)
+                    handleCommandOutcome(outcome)
+                }
             }
             is AssistantEffect.PresentAction -> Unit
             is AssistantEffect.RequestApproval -> {

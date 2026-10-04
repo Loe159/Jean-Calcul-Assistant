@@ -1,6 +1,5 @@
 package fr.loevan.jeancalcul.toolbridge
 
-import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -16,7 +15,6 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.view.KeyEvent
 import fr.loevan.jeancalcul.domain.MvpToolSchemas
-import fr.loevan.jeancalcul.domain.ToolAndroidPermissions
 import fr.loevan.jeancalcul.domain.ToolAuditLogger
 import fr.loevan.jeancalcul.domain.ToolAvailabilityContext
 import fr.loevan.jeancalcul.domain.ToolDeviceCapabilities
@@ -197,15 +195,9 @@ fun androidMvpToolAvailabilityContext(
                 add(ToolDeviceCapabilities.APP_LAUNCHER)
             }
         }
-    val grantedPermissions =
-        buildSet {
-            if (context.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                add(ToolAndroidPermissions.CAMERA)
-            }
-        }
     return ToolAvailabilityContext(
         deviceCapabilities = capabilities,
-        grantedAndroidPermissions = grantedPermissions,
+        grantedAndroidPermissions = emptySet(),
         isDeviceLocked = isDeviceLocked,
         isAppForeground = isAppForeground,
     )

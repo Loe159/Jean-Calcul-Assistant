@@ -16,12 +16,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import fr.loevan.jeancalcul.domain.ActionRequestOrigin
+import fr.loevan.jeancalcul.domain.AgentBackendFactory
+import fr.loevan.jeancalcul.domain.AssistantSettingsRepository
 import fr.loevan.jeancalcul.domain.DeterministicVolumeCommandInterpreter
 import fr.loevan.jeancalcul.domain.PolicyEngine
 import fr.loevan.jeancalcul.feature.conversation.VoiceConversationRecorder
 import fr.loevan.jeancalcul.observability.AndroidPerformanceTrace
 import fr.loevan.jeancalcul.observability.PerformanceTraceEvent
 import fr.loevan.jeancalcul.observability.PersistentAuditLogger
+import fr.loevan.jeancalcul.toolbridge.LocalAgentToolRuntime
 import fr.loevan.jeancalcul.toolbridge.androidMvpToolAvailabilityContext
 import fr.loevan.jeancalcul.toolbridge.createAndroidMvpToolRegistry
 import fr.loevan.jeancalcul.voice.AndroidVoicePipelineFactory
@@ -38,6 +42,8 @@ class JeanCalculVoiceInteractionSession(
     private val voicePipelineFactory: VoicePipelineFactory = AndroidVoicePipelineFactory(context),
     private val conversationRecorder: VoiceConversationRecorder,
     private val auditLogger: PersistentAuditLogger,
+    private val settingsRepository: AssistantSettingsRepository,
+    private val agentBackendFactory: AgentBackendFactory,
 ) : VoiceInteractionSession(context) {
     private val lifecycleOwner = SessionLifecycleOwner()
     private val windowController = SessionWindowController(::closeSession)
@@ -52,6 +58,15 @@ class JeanCalculVoiceInteractionSession(
         getWindow()?.window?.decorView?.installSessionViewTreeOwners(lifecycleOwner)
         windowController.prepare(getWindow())
         voicePipeline = voicePipelineFactory.create(VoiceEngineSelection())
+        val toolRegistry = createAndroidMvpToolRegistry(context, auditLogger)
+        val policyEngine = PolicyEngine(auditLogger)
+        val availabilityContext = {
+            androidMvpToolAvailabilityContext(
+                context = context,
+                isDeviceLocked =
+                    context.getSystemService(KeyguardManager::class.java)?.isDeviceLocked == true,
+            )
+        }
         voiceSessionController =
             VoiceSessionController(
                 speechToTextProvider = voicePipeline.speechToTextProvider,
@@ -63,16 +78,24 @@ class JeanCalculVoiceInteractionSession(
                 voiceCommandProcessor =
                     VolumeCommandProcessor(
                         interpreter = DeterministicVolumeCommandInterpreter(),
-                        toolRegistry = createAndroidMvpToolRegistry(context, auditLogger),
-                        availabilityContext = {
-                            androidMvpToolAvailabilityContext(
-                                context = context,
-                                isDeviceLocked =
-                                    context.getSystemService(KeyguardManager::class.java)?.isDeviceLocked == true,
+                        toolRegistry = toolRegistry,
+                        availabilityContext = availabilityContext,
+                        policyEngine = policyEngine,
+                        performanceTrace = performanceTrace,
+                    ),
+                voiceAgentProcessor =
+                    VoiceAgentCommandProcessor(
+                        settingsRepository = settingsRepository,
+                        agentBackendFactory = agentBackendFactory,
+                        toolRuntimeFactory = { profileId ->
+                            LocalAgentToolRuntime(
+                                toolRegistry = toolRegistry,
+                                availabilityContext = availabilityContext,
+                                policyEngine = policyEngine,
+                                origin = ActionRequestOrigin.USER_VOICE,
+                                profileId = profileId,
                             )
                         },
-                        policyEngine = PolicyEngine(auditLogger),
-                        performanceTrace = performanceTrace,
                     ),
                 performanceTrace = performanceTrace,
                 conversationRecorder = conversationRecorder,

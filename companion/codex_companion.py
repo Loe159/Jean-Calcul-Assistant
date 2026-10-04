@@ -11,6 +11,7 @@ import hmac
 import json
 import os
 import queue
+import re
 import secrets
 import shutil
 import subprocess
@@ -24,13 +25,15 @@ from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
 
-PROTOCOL_VERSION = "1"
+PROTOCOL_VERSION = "2"
 DEFAULT_PORT = 43120
 SAFE_DEVELOPER_INSTRUCTIONS = (
-    "You are the Codex reasoning backend for Jean Calcul on Android. "
-    "Do not run shell commands, edit files, browse the network, or operate the host. "
-    "Android owns device tools, policy decisions, confirmations, and execution. "
-    "For this connection phase, answer conversationally with text only."
+    "You are Jean Calcul, the reasoning agent for an Android phone. "
+    "Android device capabilities are exposed as dynamic tools in the android namespace. "
+    "Use those tools whenever they are relevant to the user's request; do not claim that you lack "
+    "phone access when a matching tool is available. Android owns tool execution, policy, auditing, "
+    "and permission checks. Never run shell commands, edit host files, browse the network, or operate "
+    "the companion host. After a tool result, answer the user naturally and concisely."
 )
 
 class CompanionError(RuntimeError):
@@ -49,10 +52,14 @@ class CodexAppServer:
         self._write_lock = threading.Lock()
         self._next_id = 1
         self._handlers: list[Callable[[dict[str, Any]], None]] = []
+        self._request_handler: Callable[[dict[str, Any]], dict[str, Any]] | None = None
         self._closed = threading.Event()
 
     def add_notification_handler(self, handler: Callable[[dict[str, Any]], None]) -> None:
         self._handlers.append(handler)
+
+    def set_request_handler(self, handler: Callable[[dict[str, Any]], dict[str, Any]]) -> None:
+        self._request_handler = handler
 
     @property
     def alive(self) -> bool:
@@ -93,7 +100,7 @@ class CodexAppServer:
                     "title": "Jean Calcul Companion",
                     "version": "0.1.0",
                 },
-                "capabilities": {"experimentalApi": False},
+                "capabilities": {"experimentalApi": True},
             },
         )
         self.notify("initialized")
@@ -163,17 +170,24 @@ class CodexAppServer:
             payload["params"] = params
         self._send(payload)
 
-    def start_thread(self) -> str:
-        result = self.request(
-            "thread/start",
-            {
-                "cwd": self.cwd,
-                "approvalPolicy": "never",
-                "sandbox": "read-only",
-                "developerInstructions": SAFE_DEVELOPER_INSTRUCTIONS,
-                "ephemeral": False,
-            },
-        )
+    def start_thread(self, tools: list["ToolSpec"] | None = None) -> str:
+        params: dict[str, Any] = {
+            "cwd": self.cwd,
+            "approvalPolicy": "never",
+            "sandbox": "read-only",
+            "developerInstructions": SAFE_DEVELOPER_INSTRUCTIONS,
+            "ephemeral": False,
+        }
+        if tools:
+            params["dynamicTools"] = [
+                {
+                    "type": "namespace",
+                    "name": "android",
+                    "description": "Local Android device tools executed by Jean Calcul on the phone.",
+                    "tools": [tool.as_dynamic_tool() for tool in tools],
+                }
+            ]
+        result = self.request("thread/start", params)
         thread = result.get("thread")
         if not isinstance(thread, dict) or not isinstance(thread.get("id"), str):
             raise JsonRpcError("thread/start did not return a thread id")
@@ -236,6 +250,15 @@ class CodexAppServer:
             if not isinstance(message, dict):
                 continue
             request_id = message.get("id")
+            method = message.get("method")
+            if isinstance(request_id, int) and isinstance(method, str):
+                threading.Thread(
+                    target=self._handle_server_request,
+                    args=(message,),
+                    name=f"codex-request-{request_id}",
+                    daemon=True,
+                ).start()
+                continue
             if isinstance(request_id, int):
                 with self._pending_lock:
                     pending = self._pending.get(request_id)
@@ -245,7 +268,7 @@ class CodexAppServer:
                     except queue.Full:
                         pass
                 continue
-            if isinstance(message.get("method"), str):
+            if isinstance(method, str):
                 for handler in tuple(self._handlers):
                     try:
                         handler(message)
@@ -253,11 +276,77 @@ class CodexAppServer:
                         pass
         self._closed.set()
 
+    def _handle_server_request(self, message: dict[str, Any]) -> None:
+        request_id = message.get("id")
+        handler = self._request_handler
+        if not isinstance(request_id, int):
+            return
+        if handler is None:
+            result = {
+                "contentItems": [{"type": "inputText", "text": "Jean Calcul cannot handle this tool request."}],
+                "success": False,
+            }
+        else:
+            try:
+                result = handler(message)
+            except Exception as error:
+                result = {
+                    "contentItems": [{"type": "inputText", "text": f"Android tool failed: {error}"}],
+                    "success": False,
+                }
+        self._send({"id": request_id, "result": result})
+
     def _drain_stderr(self) -> None:
         process = self._process
         if process is not None and process.stderr is not None:
             for _ in process.stderr:
                 pass
+
+@dataclass(frozen=True)
+class ToolSpec:
+    name: str
+    version: str
+    description: str
+    input_schema: dict[str, Any]
+
+    @property
+    def dynamic_name(self) -> str:
+        normalized = re.sub(r"[^A-Za-z0-9_-]+", "_", self.name).strip("_")
+        return f"jc_{normalized}" or "jc_tool"
+
+    def as_dynamic_tool(self) -> dict[str, Any]:
+        return {
+            "type": "function",
+            "name": self.dynamic_name,
+            "description": self.description,
+            "inputSchema": self.input_schema,
+            "deferLoading": False,
+        }
+
+    @staticmethod
+    def parse_many(value: Any) -> list["ToolSpec"]:
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise CompanionError("tools must be an array")
+        tools: list[ToolSpec] = []
+        for raw in value:
+            if not isinstance(raw, dict):
+                raise CompanionError("tool definition must be an object")
+            name = raw.get("name")
+            version = raw.get("version")
+            description = raw.get("description")
+            input_schema = raw.get("inputSchema")
+            if not all(isinstance(item, str) and item.strip() for item in (name, version, description)):
+                raise CompanionError("tool name, version and description are required")
+            if not isinstance(input_schema, dict):
+                raise CompanionError("tool inputSchema must be an object")
+            tools.append(ToolSpec(name, version, description, input_schema))
+        dynamic_names = [tool.dynamic_name for tool in tools]
+        if len(set(dynamic_names)) != len(dynamic_names):
+            raise CompanionError("tool names collide after Codex normalization")
+        return tools
+
 
 @dataclass
 class StreamEvent:
@@ -266,6 +355,10 @@ class StreamEvent:
     request_id: str
     text: str | None = None
     error: str | None = None
+    call_id: str | None = None
+    tool_name: str | None = None
+    tool_version: str | None = None
+    arguments: dict[str, Any] | None = None
 
     def as_json(self) -> str:
         payload: dict[str, Any] = {
@@ -277,54 +370,114 @@ class StreamEvent:
             payload["text"] = self.text
         if self.error is not None:
             payload["error"] = self.error
+        if self.call_id is not None:
+            payload["callId"] = self.call_id
+        if self.tool_name is not None:
+            payload["toolName"] = self.tool_name
+        if self.tool_version is not None:
+            payload["toolVersion"] = self.tool_version
+        if self.arguments is not None:
+            payload["arguments"] = self.arguments
         return json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
+
+
+@dataclass
+class SessionState:
+    session_id: str
+    tools: list[ToolSpec] = field(default_factory=list)
+    thread_id: str | None = None
+
+    def tool_by_dynamic_name(self, name: str) -> ToolSpec | None:
+        return next((tool for tool in self.tools if tool.dynamic_name == name), None)
+
 
 @dataclass
 class RunState:
+    session_id: str
     thread_id: str
     turn_id: str
     request_id: str
     next_sequence: int = field(default_factory=time.time_ns)
     events: list[StreamEvent] = field(default_factory=list)
+    tool_results: dict[str, dict[str, Any]] = field(default_factory=dict)
     terminal: bool = False
     condition: threading.Condition = field(default_factory=threading.Condition)
 
-    def append(self, event_type: str, text: str | None = None, error: str | None = None) -> None:
+    def append(
+        self,
+        event_type: str,
+        *,
+        text: str | None = None,
+        error: str | None = None,
+        call_id: str | None = None,
+        tool_name: str | None = None,
+        tool_version: str | None = None,
+        arguments: dict[str, Any] | None = None,
+    ) -> None:
         with self.condition:
             sequence = self.next_sequence
             self.next_sequence += 1
-            self.events.append(StreamEvent(sequence, event_type, self.request_id, text, error))
+            self.events.append(
+                StreamEvent(
+                    sequence,
+                    event_type,
+                    self.request_id,
+                    text,
+                    error,
+                    call_id,
+                    tool_name,
+                    tool_version,
+                    arguments,
+                )
+            )
             if event_type in {"completed", "failed", "cancelled"}:
                 self.terminal = True
             self.condition.notify_all()
+
 
 class CompanionService:
     def __init__(self, codex: CodexAppServer) -> None:
         self.codex = codex
         self._runs: dict[str, RunState] = {}
-        self._sessions: set[str] = set()
+        self._sessions: dict[str, SessionState] = {}
         self._runs_lock = threading.Lock()
         self._pending_notifications: dict[str, list[dict[str, Any]]] = {}
         codex.add_notification_handler(self._on_notification)
+        codex.set_request_handler(self._handle_server_request)
 
-    def create_session(self) -> str:
-        session_id = self.codex.start_thread()
+    def create_session(self, tools: list[ToolSpec] | None = None) -> str:
+        session_id = f"jc_{secrets.token_urlsafe(18)}"
         with self._runs_lock:
-            self._sessions.add(session_id)
+            self._sessions[session_id] = SessionState(session_id, list(tools or []))
         return session_id
 
-    def resume_session(self, session_id: str) -> str:
+    def resume_session(self, session_id: str, tools: list[ToolSpec] | None = None) -> str:
         with self._runs_lock:
-            if session_id in self._sessions:
-                return session_id
-        resumed = self.codex.resume_thread(session_id)
-        with self._runs_lock:
-            self._sessions.add(resumed)
-        return resumed
+            session = self._sessions.get(session_id)
+            if session is None:
+                self._sessions[session_id] = SessionState(session_id, list(tools or []))
+            elif tools and tools != session.tools:
+                session.tools = list(tools)
+                session.thread_id = None
+        return session_id
 
-    def start_run(self, session_id: str, request_id: str, text: str) -> RunState:
-        turn_id = self.codex.start_turn(session_id, request_id, text)
-        run = RunState(session_id, turn_id, request_id)
+    def _session(self, session_id: str, tools: list[ToolSpec] | None = None) -> SessionState:
+        self.resume_session(session_id, tools)
+        with self._runs_lock:
+            return self._sessions[session_id]
+
+    def start_run(
+        self,
+        session_id: str,
+        request_id: str,
+        text: str,
+        tools: list[ToolSpec] | None = None,
+    ) -> RunState:
+        session = self._session(session_id, tools)
+        if session.thread_id is None:
+            session.thread_id = self.codex.start_thread(session.tools)
+        turn_id = self.codex.start_turn(session.thread_id, request_id, text)
+        run = RunState(session_id, session.thread_id, turn_id, request_id)
         with self._runs_lock:
             self._runs[turn_id] = run
             buffered = self._pending_notifications.pop(turn_id, [])
@@ -341,11 +494,90 @@ class CompanionService:
             self._runs.pop(turn_id, None)
             self._pending_notifications.pop(turn_id, None)
 
+    def submit_tool_result(
+        self,
+        session_id: str,
+        turn_id: str,
+        call_id: str,
+        result: dict[str, Any],
+    ) -> None:
+        run = self.get_run(turn_id)
+        if run is None or run.session_id != session_id:
+            raise CompanionError("unknown run")
+        with run.condition:
+            run.tool_results[call_id] = result
+            run.condition.notify_all()
+
     def cancel(self, session_id: str, turn_id: str) -> None:
         run = self.get_run(turn_id)
-        if run is None:
+        if run is None or run.session_id != session_id:
             raise CompanionError("unknown run")
-        self.codex.interrupt_turn(session_id, turn_id)
+        self.codex.interrupt_turn(run.thread_id, turn_id)
+
+    def _handle_server_request(self, request: dict[str, Any]) -> dict[str, Any]:
+        if request.get("method") != "item/tool/call":
+            return self._dynamic_tool_failure("Unsupported Codex client request.")
+        params = request.get("params")
+        if not isinstance(params, dict):
+            return self._dynamic_tool_failure("Invalid Android tool request.")
+        turn_id = params.get("turnId")
+        call_id = params.get("callId")
+        dynamic_name = params.get("tool")
+        arguments = params.get("arguments")
+        if not all(isinstance(value, str) and value for value in (turn_id, call_id, dynamic_name)):
+            return self._dynamic_tool_failure("Invalid Android tool request.")
+        if not isinstance(arguments, dict):
+            return self._dynamic_tool_failure("Android tool arguments must be a JSON object.")
+        run = self.get_run(turn_id)
+        if run is None:
+            deadline = time.monotonic() + 5.0
+            while run is None and time.monotonic() < deadline:
+                time.sleep(0.01)
+                run = self.get_run(turn_id)
+        if run is None:
+            return self._dynamic_tool_failure("The Android interaction is no longer active.")
+        with self._runs_lock:
+            session = self._sessions.get(run.session_id)
+        if session is None:
+            return self._dynamic_tool_failure("The Android session is unavailable.")
+        tool = session.tool_by_dynamic_name(dynamic_name)
+        if tool is None:
+            return self._dynamic_tool_failure(f"Unknown Android tool: {dynamic_name}")
+        run.append(
+            "tool_call",
+            call_id=call_id,
+            tool_name=tool.name,
+            tool_version=tool.version,
+            arguments=arguments,
+        )
+        deadline = time.monotonic() + 120.0
+        with run.condition:
+            while call_id not in run.tool_results and not run.terminal:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                run.condition.wait(timeout=min(10.0, remaining))
+            result = run.tool_results.pop(call_id, None)
+        if result is None:
+            return self._dynamic_tool_failure("Android tool execution timed out or was cancelled.")
+        success = result.get("success") is True
+        payload = result.get("output") if success else {"error": result.get("error", "Android tool failed")}
+        return {
+            "contentItems": [
+                {
+                    "type": "inputText",
+                    "text": json.dumps(payload, separators=(",", ":"), ensure_ascii=False),
+                }
+            ],
+            "success": success,
+        }
+
+    @staticmethod
+    def _dynamic_tool_failure(message: str) -> dict[str, Any]:
+        return {
+            "contentItems": [{"type": "inputText", "text": message}],
+            "success": False,
+        }
 
     def _on_notification(self, notification: dict[str, Any]) -> None:
         params = notification.get("params")
@@ -416,7 +648,7 @@ class Handler(BaseHTTPRequestHandler):
         if len(parts) == 6 and parts[:2] == ["v1", "sessions"] and parts[3] == "runs" and parts[5] == "events":
             session_id, turn_id = parts[2], parts[4]
             run = self.server.service.get_run(turn_id)
-            if run is None or run.thread_id != session_id:
+            if run is None or run.session_id != session_id:
                 self._json(HTTPStatus.NOT_FOUND, {"error": "unknown_run"})
                 return
             try:
@@ -434,22 +666,36 @@ class Handler(BaseHTTPRequestHandler):
         parts = urlparse(self.path).path.strip("/").split("/")
         try:
             if parts == ["v1", "sessions"]:
-                session_id = self.server.service.create_session()
+                body = self._read_json()
+                tools = ToolSpec.parse_many(body.get("tools"))
+                session_id = self.server.service.create_session(tools)
                 self._json(HTTPStatus.CREATED, {"sessionId": session_id, "resumable": True})
                 return
             if len(parts) == 4 and parts[:2] == ["v1", "sessions"] and parts[3] == "resume":
-                session_id = self.server.service.resume_session(parts[2])
+                body = self._read_json()
+                tools = ToolSpec.parse_many(body.get("tools"))
+                session_id = self.server.service.resume_session(parts[2], tools)
                 self._json(HTTPStatus.OK, {"sessionId": session_id, "resumable": True})
                 return
             if len(parts) == 4 and parts[:2] == ["v1", "sessions"] and parts[3] == "runs":
                 body = self._read_json()
                 request_id = body.get("requestId")
                 text = body.get("text")
+                tools = ToolSpec.parse_many(body.get("tools"))
                 if not isinstance(request_id, str) or not request_id.strip() or not isinstance(text, str) or not text.strip():
                     self._json(HTTPStatus.BAD_REQUEST, {"error": "invalid_request"})
                     return
-                run = self.server.service.start_run(parts[2], request_id, text)
+                run = self.server.service.start_run(parts[2], request_id, text, tools)
                 self._json(HTTPStatus.ACCEPTED, {"runId": run.turn_id, "status": "running"})
+                return
+            if len(parts) == 6 and parts[:2] == ["v1", "sessions"] and parts[3] == "runs" and parts[5] == "tool-results":
+                body = self._read_json()
+                call_id = body.get("callId")
+                if not isinstance(call_id, str) or not call_id.strip() or not isinstance(body.get("success"), bool):
+                    self._json(HTTPStatus.BAD_REQUEST, {"error": "invalid_tool_result"})
+                    return
+                self.server.service.submit_tool_result(parts[2], parts[4], call_id, body)
+                self._json(HTTPStatus.ACCEPTED, {"status": "accepted"})
                 return
             if len(parts) == 6 and parts[:2] == ["v1", "sessions"] and parts[3] == "runs" and parts[5] == "cancel":
                 self.server.service.cancel(parts[2], parts[4])

@@ -72,6 +72,9 @@ class ToolRegistry(
 
     fun definitionFor(proposal: ActionProposal): ToolDefinition? = registrationsByKey[proposal.key()]?.definition
 
+    fun definitionForName(toolName: String): ToolDefinition? =
+        registrationsByKey.values.map(ToolRegistration::definition).singleOrNull { it.name == toolName }
+
     @Synchronized
     @Suppress("CyclomaticComplexMethod", "LongMethod", "ReturnCount")
     fun execute(
