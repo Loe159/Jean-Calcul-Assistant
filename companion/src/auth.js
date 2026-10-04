@@ -1,7 +1,14 @@
 import http from "node:http";
 import { createHash, createPublicKey, randomBytes, constants, verify as verifySignature } from "node:crypto";
 import { spawn } from "node:child_process";
-import { credentialPath, loadOrCreateHostId, readJson, writePrivateJson } from "./storage.js";
+import {
+  credentialPath,
+  loadOrCreateHostId,
+  readJson,
+  refreshLockPath,
+  withFileLock,
+  writePrivateJson,
+} from "./storage.js";
 
 const AUTHORIZE_URL = "https://auth.openai.com/api/accounts/authorize";
 const TOKEN_URL = "https://auth.openai.com/api/accounts/oauth/token";
@@ -299,7 +306,7 @@ async function refreshCredential(home, credential, fetchImpl) {
     ...current,
     access_token: token.access_token,
     refresh_token: token.refresh_token || current.refresh_token,
-    id_token: token.id_token || current.id_token,
+    id_token: current.id_token,
     token_type: token.token_type || current.token_type || "Bearer",
     expires_in: expiresIn,
     expires_at: Date.now() + expiresIn * 1000,
@@ -325,9 +332,17 @@ export async function getAccessToken(home, fetchImpl = fetch) {
   }
   if ((credential.expires_at || 0) <= Date.now() + REFRESH_SKEW_MS) {
     if (!refreshPromise) {
-      refreshPromise = refreshCredential(home, credential, fetchImpl).finally(() => {
-        refreshPromise = null;
-      });
+      refreshPromise =
+        withFileLock(refreshLockPath(home), async () => {
+          const latest = await activeCredential(home);
+          if (!latest?.refresh_token) {
+            throw new Error("Authentification ChatGPT requise. Exécutez npm run login dans companion/.");
+          }
+          if ((latest.expires_at || 0) > Date.now() + REFRESH_SKEW_MS) return latest;
+          return refreshCredential(home, latest, fetchImpl);
+        }).finally(() => {
+          refreshPromise = null;
+        });
     }
     credential = await refreshPromise;
   }
