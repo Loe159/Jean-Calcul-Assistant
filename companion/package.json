@@ -12,6 +12,7 @@
     "logout": "node src/cli.js logout",
     "pairing-reset": "node src/cli.js pairing-reset",
     "status": "node src/cli.js status",
+    "models": "node src/cli.js models",
     "test": "node --test"
   }
 }
