@@ -92,7 +92,12 @@ class OkHttpProviderConnectionProbe
                 401, 403 ->
                     ConnectionProbeResult.Failure(
                         code = "authentication_failed",
-                        userMessage = "Authentification refusee. Remplacez la cle API puis reessayez.",
+                        userMessage =
+                            if (connection.kind == ProviderKind.AGENT_BACKEND) {
+                                "Appairage refuse. Remplacez le secret d'appairage puis reessayez."
+                            } else {
+                                "Authentification refusee. Remplacez la cle API puis reessayez."
+                            },
                         recoverable = true,
                     )
 
@@ -136,7 +141,7 @@ private fun ProviderConnection.probeUrl(): okhttp3.HttpUrl? {
             -> "models"
 
             ProviderKind.OLLAMA -> if (rawBase.endsWith("/api")) "tags" else "api/tags"
-            ProviderKind.AGENT_BACKEND -> null
+            ProviderKind.AGENT_BACKEND -> "v1/status"
         }
     val normalized = "$rawBase/".toHttpUrlOrNull() ?: return null
     return route?.let(normalized::resolve) ?: normalized

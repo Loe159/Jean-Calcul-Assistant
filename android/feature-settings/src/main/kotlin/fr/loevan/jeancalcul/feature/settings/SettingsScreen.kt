@@ -151,6 +151,21 @@ private fun providerEditor(
     var baseUrl by rememberSaveable { mutableStateOf(provider?.baseUrl.orEmpty()) }
     var apiKey by rememberSaveable { mutableStateOf("") }
     var enabled by rememberSaveable { mutableStateOf(provider?.enabled ?: true) }
+    val selectedKind = ProviderKind.valueOf(kind)
+    val secretLabel =
+        if (selectedKind == ProviderKind.AGENT_BACKEND) {
+            if (provider?.secretId == null) {
+                "Secret d'appairage"
+            } else {
+                "Nouveau secret d'appairage (laisser vide pour conserver)"
+            }
+        } else {
+            if (provider?.secretId == null) {
+                "Cle API (facultative)"
+            } else {
+                "Nouvelle cle API (laisser vide pour conserver)"
+            }
+        }
     SettingsSection(if (provider == null) "Nouveau fournisseur" else "Modifier le fournisseur") {
         JeanCalculTextField(name, { name = it }, "Nom")
         SegmentedControl(
@@ -162,15 +177,16 @@ private fun providerEditor(
         JeanCalculTextField(
             value = apiKey,
             onValueChange = { apiKey = it },
-            label =
-                if (provider?.secretId == null) {
-                    "Cle API (facultative)"
-                } else {
-                    "Nouvelle cle API (laisser vide pour conserver)"
-                },
+            label = secretLabel,
             visualTransformation = PasswordVisualTransformation(),
         )
-        Text("La cle est stockee dans Android Keystore et ne sera jamais reaffichee.")
+        Text(
+            if (selectedKind == ProviderKind.AGENT_BACKEND) {
+                "Le secret d'appairage est stocke dans Android Keystore et ne sera jamais reaffiche."
+            } else {
+                "La cle est stockee dans Android Keystore et ne sera jamais reaffichee."
+            },
+        )
         JeanCalculToggle("Fournisseur actif", enabled, { enabled = it })
         testState?.let { Text(it.label, style = MaterialTheme.typography.bodyMedium) }
         actionRow {
@@ -356,11 +372,11 @@ private fun agentEditor(
     var connectionId by rememberSaveable {
         mutableStateOf(configured?.profile?.connectionId ?: backends.firstOrNull()?.id.orEmpty())
     }
-    var backendId by rememberSaveable { mutableStateOf(configured?.profile?.backendId.orEmpty()) }
-    var agentId by rememberSaveable { mutableStateOf(configured?.profile?.agentId.orEmpty()) }
+    var backendId by rememberSaveable { mutableStateOf(configured?.profile?.backendId ?: "codex-companion") }
+    var agentId by rememberSaveable { mutableStateOf(configured?.profile?.agentId ?: "codex") }
     var enabled by rememberSaveable { mutableStateOf(configured?.profile?.enabled ?: true) }
     var resume by rememberSaveable { mutableStateOf(configured?.capabilities?.supportsSessionResume ?: true) }
-    var approvals by rememberSaveable { mutableStateOf(configured?.capabilities?.supportsToolApprovals ?: true) }
+    var approvals by rememberSaveable { mutableStateOf(configured?.capabilities?.supportsToolApprovals ?: false) }
     var policy by rememberSaveable { mutableStateOf((configured?.policyMode ?: AgentPolicyMode.STRICT).name) }
     var permissions by remember(configured) { mutableStateOf(configured?.grantedPermissions ?: emptySet()) }
     SettingsSection(if (configured == null) "Nouvel agent" else "Modifier l'agent") {

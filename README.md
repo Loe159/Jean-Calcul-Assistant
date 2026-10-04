@@ -25,6 +25,18 @@ cd Jean-Calcul-Assistant
 
 Les APKs de debug sont également publiés comme artefacts par la CI GitHub Actions sur chaque push vers `main`.
 
+## Utiliser Codex avec son abonnement ChatGPT
+
+Jean Calcul peut utiliser Codex sans clé API OpenAI grâce au compagnon local inclus dans `companion/`. L'authentification ChatGPT reste entièrement dans le CLI Codex sur le PC.
+
+```bash
+python3 companion/codex_companion.py login
+python3 companion/codex_companion.py serve
+adb reverse tcp:43120 tcp:43120
+```
+
+Le guide complet de configuration Android et les garanties de sécurité sont dans [`companion/README.md`](companion/README.md).
+
 ## Architecture
 
 Le projet est un monorepo Android Kotlin/Compose. Les principaux modules sont :

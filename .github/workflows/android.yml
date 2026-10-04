@@ -29,6 +29,11 @@ jobs:
       - name: Install Android SDK platform
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
+      - name: Verify Codex companion protocol
+        run: |
+          python3 -m py_compile companion/codex_companion.py
+          PYTHONWARNINGS=error::ResourceWarning python3 -m unittest -v tests.companion.test_codex_companion
+
       - name: Build project and verify Core and Power User variants
         run: ./gradlew --no-daemon build assembleCoreDebug assemblePowerUserDebug
 

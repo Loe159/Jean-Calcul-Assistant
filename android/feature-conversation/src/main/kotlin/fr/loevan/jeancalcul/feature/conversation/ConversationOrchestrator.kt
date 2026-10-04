@@ -173,7 +173,14 @@ class ConversationOrchestrator
             if (retryResponse == null) appendUserMessage(handle, text, requestId)
             var response = prepareResponse(handle, requestId, retryResponse)
             val request = AgentRequest(requestId, repository.getMessages(handle.conversation.id).toChatMessages())
-            val run = backend.sendMessage(requireNotNull(session.agentBackendSessionId), request)
+            val run =
+                try {
+                    backend.sendMessage(requireNotNull(session.agentBackendSessionId), request)
+                } catch (failure: ProviderException) {
+                    response = response.failed(failure.error.message)
+                    repository.saveMessage(response)
+                    return response
+                }
             val activeRequest =
                 ActiveRequest { backend.cancel(requireNotNull(session.agentBackendSessionId), run.id) }
             activeRequests[handle.conversation.id] = activeRequest
