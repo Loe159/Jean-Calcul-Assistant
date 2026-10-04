@@ -63,11 +63,11 @@ fun ConversationScreen(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                items(state.messages, key = Message::id) { message -> conversationMessage(message) }
+                items(state.messages, key = Message::id) { message -> conversationMessage(message, actions) }
             }
         }
         state.errorMessage?.let {
-            ContentStateMessage(ContentState.Error, "Export impossible", it)
+            ContentStateMessage(ContentState.Error, "Conversation interrompue", it)
         }
         AssistantInputBar(
             value = state.draft,
@@ -94,15 +94,26 @@ fun ConversationScreen(
 }
 
 @Composable
-private fun conversationMessage(message: Message) {
+private fun conversationMessage(
+    message: Message,
+    actions: ConversationScreenActions,
+) {
     AssistantBubble(
         kind = message.bubbleKind(),
         text = message.text.ifBlank { "…" },
         metadata = message.status.name.lowercase(),
         actions =
             AssistantBubbleActions(
-                onStop = null,
-                onRetry = null,
+                onStop =
+                    actions.cancel.takeIf {
+                        message.role == MessageRole.ASSISTANT &&
+                            message.status == MessageStatus.STREAMING
+                    },
+                onRetry =
+                    { actions.retry(message.id) }.takeIf {
+                        message.role == MessageRole.ASSISTANT &&
+                            message.status in setOf(MessageStatus.FAILED, MessageStatus.INTERRUPTED)
+                    },
             ),
     )
 }
