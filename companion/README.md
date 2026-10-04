@@ -37,7 +37,9 @@ Dans Jean Calcul, créer un fournisseur de type **Agent backend** avec :
 - toutes les routes exigent `Authorization: Bearer <pairing token>` ;
 - le token est stocké dans `~/.config/jean-calcul/companion.json` avec mode `0600` ;
 - Codex tourne avec `approvalPolicy=never` et `sandbox=read-only` ;
-- les instructions du thread interdisent les opérations sur l'hôte : Android reste l'autorité pour les outils ;
+- le compagnon désactive explicitement `shell_tool`, `unified_exec`, `code_mode_host` et la recherche Web pour cette phase ;
+- le répertoire de travail par défaut est un dossier Jean Calcul isolé et vide, pas le dossier personnel ;
+- les instructions du thread interdisent également les opérations sur l'hôte : Android reste l'autorité pour les outils ;
 - le serveur ne journalise ni en-têtes, ni prompts, ni tokens.
 
 ## Diagnostic
