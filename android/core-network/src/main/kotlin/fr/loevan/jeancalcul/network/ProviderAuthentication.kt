@@ -47,7 +47,12 @@ internal class ProviderRequestAuthenticator(
                 if (secret == null) {
                     ProviderAuthenticationFailure(
                         code = "secret_missing",
-                        userMessage = "La cle API n'est plus disponible. Saisissez-la de nouveau.",
+                        userMessage =
+                            if (providerKind == ProviderKind.AGENT_BACKEND) {
+                                "Le jeton d'appairage n'est plus disponible. Appairez de nouveau le compagnon."
+                            } else {
+                                "La cle API n'est plus disponible. Saisissez-la de nouveau."
+                            },
                         recoverable = true,
                     )
                 } else {
