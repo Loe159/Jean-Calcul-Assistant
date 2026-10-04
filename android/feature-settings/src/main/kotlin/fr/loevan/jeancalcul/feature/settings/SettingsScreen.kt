@@ -149,8 +149,11 @@ private fun providerEditor(
     var name by rememberSaveable { mutableStateOf(provider?.displayName.orEmpty()) }
     var kind by rememberSaveable { mutableStateOf((provider?.kind ?: ProviderKind.OPENAI_COMPATIBLE).name) }
     var baseUrl by rememberSaveable { mutableStateOf(provider?.baseUrl.orEmpty()) }
-    var apiKey by rememberSaveable { mutableStateOf("") }
+    var secret by rememberSaveable { mutableStateOf("") }
+    var tlsPin by rememberSaveable { mutableStateOf(provider?.tlsCertificateSha256.orEmpty()) }
     var enabled by rememberSaveable { mutableStateOf(provider?.enabled ?: true) }
+    val selectedKind = ProviderKind.valueOf(kind)
+    val isCompanion = selectedKind == ProviderKind.AGENT_BACKEND
     SettingsSection(if (provider == null) "Nouveau fournisseur" else "Modifier le fournisseur") {
         JeanCalculTextField(name, { name = it }, "Nom")
         SegmentedControl(
@@ -158,26 +161,57 @@ private fun providerEditor(
             selectedId = kind,
             onSelect = { kind = it },
         )
-        JeanCalculTextField(baseUrl, { baseUrl = it }, "URL de base")
         JeanCalculTextField(
-            value = apiKey,
-            onValueChange = { apiKey = it },
+            baseUrl,
+            { baseUrl = it },
+            if (isCompanion) "URL HTTPS du compagnon" else "URL de base",
+        )
+        if (isCompanion) {
+            JeanCalculTextField(
+                value = tlsPin,
+                onValueChange = { tlsPin = it },
+                label = "Empreinte TLS sha256/... (facultative avec certificat public)",
+            )
+            Text(
+                "Pour le certificat auto-signe du compagnon, recopiez exactement l'empreinte affichee au demarrage.",
+            )
+        }
+        JeanCalculTextField(
+            value = secret,
+            onValueChange = { secret = it },
             label =
-                if (provider?.secretId == null) {
-                    "Cle API (facultative)"
-                } else {
-                    "Nouvelle cle API (laisser vide pour conserver)"
+                when {
+                    isCompanion && provider?.secretId == null -> "Jeton d'appairage du compagnon"
+                    isCompanion -> "Nouveau jeton d'appairage (laisser vide pour conserver)"
+                    provider?.secretId == null -> "Cle API (facultative)"
+                    else -> "Nouvelle cle API (laisser vide pour conserver)"
                 },
             visualTransformation = PasswordVisualTransformation(),
         )
-        Text("La cle est stockee dans Android Keystore et ne sera jamais reaffichee.")
+        Text(
+            if (isCompanion) {
+                "Le jeton d'appairage est local au compagnon et chiffre dans Android Keystore. Aucun jeton ChatGPT n'est stocke sur le telephone."
+            } else {
+                "La cle est stockee dans Android Keystore et ne sera jamais reaffichee."
+            },
+        )
         JeanCalculToggle("Fournisseur actif", enabled, { enabled = it })
         testState?.let { Text(it.label, style = MaterialTheme.typography.bodyMedium) }
         actionRow {
             JeanCalculButton("Enregistrer", modifier = Modifier.weight(1f)) {
-                val chars = apiKey.takeIf(String::isNotEmpty)?.toCharArray()
-                apiKey = ""
-                onSave(ProviderDraft(provider?.id, name, ProviderKind.valueOf(kind), baseUrl, enabled), chars)
+                val chars = secret.takeIf(String::isNotEmpty)?.toCharArray()
+                secret = ""
+                onSave(
+                    ProviderDraft(
+                        id = provider?.id,
+                        displayName = name,
+                        kind = selectedKind,
+                        baseUrl = baseUrl,
+                        tlsCertificateSha256 = tlsPin,
+                        enabled = enabled,
+                    ),
+                    chars,
+                )
             }
             onTest?.let { JeanCalculButton("Tester", variant = JeanCalculButtonVariant.Secondary, onClick = it) }
             JeanCalculButton("Annuler", variant = JeanCalculButtonVariant.Ghost, onClick = onCancel)
@@ -356,11 +390,13 @@ private fun agentEditor(
     var connectionId by rememberSaveable {
         mutableStateOf(configured?.profile?.connectionId ?: backends.firstOrNull()?.id.orEmpty())
     }
-    var backendId by rememberSaveable { mutableStateOf(configured?.profile?.backendId.orEmpty()) }
+    var backendId by rememberSaveable {
+        mutableStateOf(configured?.profile?.backendId ?: CHATGPT_PLAN_BACKEND_ID)
+    }
     var agentId by rememberSaveable { mutableStateOf(configured?.profile?.agentId.orEmpty()) }
     var enabled by rememberSaveable { mutableStateOf(configured?.profile?.enabled ?: true) }
     var resume by rememberSaveable { mutableStateOf(configured?.capabilities?.supportsSessionResume ?: true) }
-    var approvals by rememberSaveable { mutableStateOf(configured?.capabilities?.supportsToolApprovals ?: true) }
+    var approvals by rememberSaveable { mutableStateOf(configured?.capabilities?.supportsToolApprovals ?: false) }
     var policy by rememberSaveable { mutableStateOf((configured?.policyMode ?: AgentPolicyMode.STRICT).name) }
     var permissions by remember(configured) { mutableStateOf(configured?.grantedPermissions ?: emptySet()) }
     SettingsSection(if (configured == null) "Nouvel agent" else "Modifier l'agent") {
@@ -368,7 +404,8 @@ private fun agentEditor(
         Text("Backend agent")
         chipRow(backends, connectionId, ProviderConnection::id, ProviderConnection::displayName) { connectionId = it }
         JeanCalculTextField(backendId, { backendId = it }, "Type de backend")
-        JeanCalculTextField(agentId, { agentId = it }, "Identifiant de l'agent")
+        JeanCalculTextField(agentId, { agentId = it }, "Modele ChatGPT (slug)")
+        Text("Listez les modeles autorises avec `cd companion && npm run models` sur la machine compagnon.")
         SegmentedControl(
             AgentPolicyMode.entries.map { SegmentedControlOption(it.name, it.shortLabel) },
             policy,
@@ -619,3 +656,4 @@ private enum class SettingsPage(val label: String) {
 }
 
 private const val NEW_ID = "new"
+private const val CHATGPT_PLAN_BACKEND_ID = "chatgpt-plan"

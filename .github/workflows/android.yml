@@ -18,6 +18,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify ChatGPT companion
+        working-directory: companion
+        run: npm test
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

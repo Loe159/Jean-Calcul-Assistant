@@ -1,0 +1,18 @@
+{
+  "name": "@jean-calcul/chatgpt-companion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/cli.js serve",
+    "login": "node src/cli.js login",
+    "logout": "node src/cli.js logout",
+    "pairing-reset": "node src/cli.js pairing-reset",
+    "status": "node src/cli.js status",
+    "models": "node src/cli.js models",
+    "test": "node --test"
+  }
+}

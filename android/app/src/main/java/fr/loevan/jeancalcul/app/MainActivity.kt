@@ -102,6 +102,8 @@ class MainActivity : ComponentActivity() {
                     deleteConversation = conversationViewModel::deleteSelected,
                     draftChanged = conversationViewModel::updateDraft,
                     send = conversationViewModel::saveDraft,
+                    cancel = conversationViewModel::cancelActive,
+                    retry = conversationViewModel::retry,
                     export = { conversationViewModel.exportSelected(::shareConversation) },
                 ),
             audit =

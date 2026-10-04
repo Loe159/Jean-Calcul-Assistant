@@ -59,6 +59,7 @@ data class ProviderDraft(
     val displayName: String,
     val kind: ProviderKind,
     val baseUrl: String,
+    val tlsCertificateSha256: String = "",
     val enabled: Boolean = true,
 )
 
@@ -103,13 +104,19 @@ class SettingsViewModel
 
         fun saveProvider(
             draft: ProviderDraft,
-            apiKey: CharArray? = null,
+            secret: CharArray? = null,
         ) {
             val id = draft.id ?: UUID.randomUUID().toString()
             viewModelScope.launch {
                 val previous = uiState.value.settings.providers.firstOrNull { it.id == id }
-                val suppliedSecret = apiKey?.takeIf(CharArray::isNotEmpty)
-                val secretId = previous?.secretId ?: suppliedSecret?.let { "provider.$id.api_key" }
+                val suppliedSecret = secret?.takeIf(CharArray::isNotEmpty)
+                val kindChanged = previous != null && previous.kind != draft.kind
+                val secretId =
+                    when {
+                        suppliedSecret != null -> providerSecretId(draft.kind, id)
+                        kindChanged -> null
+                        else -> previous?.secretId
+                    }
                 val connection =
                     ProviderConnection(
                         id = id,
@@ -118,6 +125,10 @@ class SettingsViewModel
                         baseUrl = draft.baseUrl.trim().trimEnd('/'),
                         secretId = secretId,
                         enabled = draft.enabled,
+                        tlsCertificateSha256 =
+                            draft.tlsCertificateSha256
+                                .trim()
+                                .takeIf { draft.kind == ProviderKind.AGENT_BACKEND && it.isNotBlank() },
                     )
                 val errors = AssistantSettingsValidator.providerErrors(connection)
                 if (errors.isNotEmpty()) {
@@ -137,6 +148,10 @@ class SettingsViewModel
                         return@launch
                     }
                 }
+                val previousSecretId = previous?.secretId
+                if (previousSecretId != null && previousSecretId != secretId) {
+                    secretStore.delete(SecretId(previousSecretId))
+                }
                 repository.update { current ->
                     current.copy(
                         providers = current.providers.replaceBy(id, connection, ProviderConnection::id),
@@ -145,6 +160,16 @@ class SettingsViewModel
                 clearError()
             }
         }
+
+        private fun providerSecretId(
+            kind: ProviderKind,
+            id: String,
+        ): String =
+            if (kind == ProviderKind.AGENT_BACKEND) {
+                "provider.$id.pairing_token"
+            } else {
+                "provider.$id.api_key"
+            }
 
         fun deleteProvider(id: String) {
             viewModelScope.launch {

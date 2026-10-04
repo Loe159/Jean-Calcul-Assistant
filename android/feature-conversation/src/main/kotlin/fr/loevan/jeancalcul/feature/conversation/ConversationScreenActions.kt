@@ -6,5 +6,7 @@ data class ConversationScreenActions(
     val deleteConversation: () -> Unit,
     val draftChanged: (String) -> Unit,
     val send: () -> Unit,
+    val cancel: () -> Unit,
+    val retry: (String) -> Unit,
     val export: () -> Unit,
 )

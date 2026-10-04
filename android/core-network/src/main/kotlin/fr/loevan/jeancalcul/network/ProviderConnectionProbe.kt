@@ -6,6 +6,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import fr.loevan.jeancalcul.domain.ProviderConnection
 import fr.loevan.jeancalcul.domain.ProviderKind
+import fr.loevan.jeancalcul.network.codex.CompanionHttpClientFactory
 import fr.loevan.jeancalcul.security.SecretStore
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
@@ -44,6 +45,7 @@ class OkHttpProviderConnectionProbe
     constructor(
         private val client: OkHttpClient,
         secretStore: SecretStore,
+        private val companionClients: CompanionHttpClientFactory = CompanionHttpClientFactory(client),
     ) : ProviderConnectionProbe {
         private val authenticator = ProviderRequestAuthenticator(secretStore)
 
@@ -71,7 +73,9 @@ class OkHttpProviderConnectionProbe
             }
 
             return try {
-                client.newCall(requestBuilder.build()).await().use { response -> response.toProbeResult(connection) }
+                val transport =
+                    if (connection.kind == ProviderKind.AGENT_BACKEND) companionClients.clientFor(connection) else client
+                transport.newCall(requestBuilder.build()).await().use { response -> response.toProbeResult(connection) }
             } catch (_: IOException) {
                 ConnectionProbeResult.Failure(
                     code = "network_unreachable",
@@ -92,7 +96,12 @@ class OkHttpProviderConnectionProbe
                 401, 403 ->
                     ConnectionProbeResult.Failure(
                         code = "authentication_failed",
-                        userMessage = "Authentification refusee. Remplacez la cle API puis reessayez.",
+                        userMessage =
+                            if (connection.kind == ProviderKind.AGENT_BACKEND) {
+                                "Appairage refuse ou connexion ChatGPT requise sur le compagnon."
+                            } else {
+                                "Authentification refusee. Remplacez la cle API puis reessayez."
+                            },
                         recoverable = true,
                     )
 
@@ -136,7 +145,7 @@ private fun ProviderConnection.probeUrl(): okhttp3.HttpUrl? {
             -> "models"
 
             ProviderKind.OLLAMA -> if (rawBase.endsWith("/api")) "tags" else "api/tags"
-            ProviderKind.AGENT_BACKEND -> null
+            ProviderKind.AGENT_BACKEND -> "v1/status"
         }
     val normalized = "$rawBase/".toHttpUrlOrNull() ?: return null
     return route?.let(normalized::resolve) ?: normalized
