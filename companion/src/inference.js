@@ -160,7 +160,7 @@ function sessionRecord(id, model) {
   return {
     id,
     model,
-    sequence: 0,
+    sequence: Date.now() * 1000,
     events: [],
     active: null,
     waiters: new Set(),
