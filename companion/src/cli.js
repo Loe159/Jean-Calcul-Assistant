@@ -2,6 +2,7 @@
 import { companionHome } from "./storage.js";
 import { authStatus, loginWithChatGpt, logoutChatGpt } from "./auth.js";
 import { resetPairingToken } from "./pairing.js";
+import { ChatGptPlanClient } from "./inference.js";
 import { createCompanionServer } from "./server.js";
 
 function valueOf(name, fallback) {
@@ -30,6 +31,16 @@ async function main() {
   if (command === "status") {
     const status = await authStatus(home);
     console.log(status.authenticated ? `ChatGPT: connecté (${status.label})` : "ChatGPT: connexion requise");
+    return;
+  }
+
+  if (command === "models") {
+    const models = await new ChatGptPlanClient(home).listModels();
+    if (!models.length) {
+      console.log("Aucun modèle ChatGPT visible pour ce compte.");
+    } else {
+      for (const model of models) console.log(`${model.id}\t${model.display_name}`);
+    }
     return;
   }
 
