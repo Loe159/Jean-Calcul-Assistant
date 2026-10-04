@@ -1,4 +1,4 @@
-import { chmod, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, open, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { randomBytes, randomUUID } from "node:crypto";
@@ -57,4 +57,40 @@ export function tlsKeyPath(home) {
 
 export function tlsCertPath(home) {
   return join(home, "tls-cert.pem");
+}
+
+export function refreshLockPath(home) {
+  return join(home, "chatgpt-refresh.lock");
+}
+
+export async function withFileLock(path, block, {
+  timeoutMs = 30_000,
+  staleMs = 60_000,
+  retryMs = 50,
+} = {}) {
+  await ensurePrivateDirectory(dirname(path));
+  const deadline = Date.now() + timeoutMs;
+  while (true) {
+    let handle;
+    try {
+      handle = await open(path, "wx", 0o600);
+      await handle.writeFile(JSON.stringify({ pid: process.pid, acquired_at: Date.now() }));
+      try {
+        return await block();
+      } finally {
+        await handle.close().catch(() => {});
+        await rm(path, { force: true }).catch(() => {});
+      }
+    } catch (error) {
+      await handle?.close().catch(() => {});
+      if (error?.code !== "EEXIST") throw error;
+      const metadata = await stat(path).catch(() => null);
+      if (metadata && Date.now() - metadata.mtimeMs > staleMs) {
+        await rm(path, { force: true }).catch(() => {});
+        continue;
+      }
+      if (Date.now() >= deadline) throw new Error("Délai d'attente du verrou OAuth dépassé.");
+      await new Promise((resolve) => setTimeout(resolve, retryMs));
+    }
+  }
 }
