@@ -38,12 +38,12 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-internal const val CHATGPT_PLAN_BACKEND_ID = "openai-chatgpt-plan"
-internal const val CHATGPT_PLAN_PROVIDER_ID = "chatgpt-plan"
-internal const val CHATGPT_PLAN_AGENT_ID = "chatgpt-plan-agent"
-internal const val CHATGPT_PLAN_API_BASE_URL = "https://api.openai.com/v1"
-internal const val CHATGPT_PLAN_SECRET_ID = "provider.chatgpt.plan.oauth"
-internal const val CHATGPT_PLAN_DEFAULT_MODEL = "gpt-6.1-sol"
+const val CHATGPT_PLAN_BACKEND_ID = "openai-chatgpt-plan"
+const val CHATGPT_PLAN_PROVIDER_ID = "chatgpt-plan"
+const val CHATGPT_PLAN_AGENT_ID = "chatgpt-plan-agent"
+const val CHATGPT_PLAN_API_BASE_URL = "https://api.openai.com/v1"
+const val CHATGPT_PLAN_SECRET_ID = "provider.chatgpt.plan.oauth"
+const val CHATGPT_PLAN_DEFAULT_MODEL = "gpt-6.1-sol"
 
 data class ChatGptPlanAccount(
     val secretId: String,
