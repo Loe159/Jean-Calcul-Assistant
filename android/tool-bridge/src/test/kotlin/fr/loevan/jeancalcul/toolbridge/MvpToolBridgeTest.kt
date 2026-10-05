@@ -2,7 +2,6 @@ package fr.loevan.jeancalcul.toolbridge
 
 import fr.loevan.jeancalcul.domain.ActionProposal
 import fr.loevan.jeancalcul.domain.MvpToolSchemas
-import fr.loevan.jeancalcul.domain.ToolAndroidPermissions
 import fr.loevan.jeancalcul.domain.ToolAuditEvent
 import fr.loevan.jeancalcul.domain.ToolAuditLogger
 import fr.loevan.jeancalcul.domain.ToolAuditStage
@@ -53,7 +52,7 @@ class MvpToolBridgeTest {
     }
 
     @Test
-    fun `discovery filters camera permission and lock screen capabilities dynamically`() {
+    fun `discovery keeps flashlight available without camera permission and filters lock screen`() {
         val registry = registry()
         val unlockedWithoutCamera = availableContext().copy(grantedAndroidPermissions = emptySet())
         val unlockedNames = registry.availableDefinitions(unlockedWithoutCamera).map(ToolDefinition::name)
@@ -62,7 +61,7 @@ class MvpToolBridgeTest {
                 availableContext().copy(isDeviceLocked = true),
             ).map(ToolDefinition::name)
 
-        assertFalse(MvpToolSchemas.DEVICE_TOGGLE_FLASHLIGHT in unlockedNames)
+        assertTrue(MvpToolSchemas.DEVICE_TOGGLE_FLASHLIGHT in unlockedNames)
         assertEquals(
             listOf(MvpToolSchemas.DEVICE_GET_BATTERY, MvpToolSchemas.DEVICE_GET_LOCAL_TIME),
             lockedNames,
@@ -131,7 +130,7 @@ class MvpToolBridgeTest {
                     ToolDeviceCapabilities.MEDIA_CONTROL,
                     ToolDeviceCapabilities.SETTINGS_PANEL,
                 ),
-            grantedAndroidPermissions = setOf(ToolAndroidPermissions.CAMERA),
+            grantedAndroidPermissions = emptySet(),
             isDeviceLocked = false,
         )
 
