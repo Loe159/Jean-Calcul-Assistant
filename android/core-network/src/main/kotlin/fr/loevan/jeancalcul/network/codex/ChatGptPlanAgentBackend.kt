@@ -261,16 +261,16 @@ internal class ChatGptPlanAgentBackend(
                     val payload = line.removePrefix("data:").trim()
                     if (payload.isEmpty() || payload == "[DONE]") continue
                     val event =
-                        runCatching { json.parseToJsonElement(payload).jsonObject }
-                            .getOrElse {
-                                failed =
-                                    ProviderError(
-                                        ProviderErrorCategory.PROTOCOL,
-                                        "invalid_sse",
-                                        "Flux OpenAI invalide.",
-                                    )
-                                break
-                            }
+                        runCatching { json.parseToJsonElement(payload).jsonObject }.getOrNull()
+                    if (event == null) {
+                        failed =
+                            ProviderError(
+                                ProviderErrorCategory.PROTOCOL,
+                                "invalid_sse",
+                                "Flux OpenAI invalide.",
+                            )
+                        break
+                    }
                     val type = event["type"]?.jsonPrimitive?.contentOrNull.orEmpty()
                     when (type) {
                         "response.output_text.delta" -> {
@@ -486,16 +486,17 @@ internal class ChatGptPlanAgentBackend(
         )
     }
 
-    override suspend fun getStatus(profile: AgentProfile): AgentBackendStatus =
-        try {
-            tokenProvider.accessToken(
-                connection.secretId
-                    ?: return AgentBackendStatus(AgentBackendState.OFFLINE, "ChatGPT n'est pas connecté."),
-            )
+    override suspend fun getStatus(profile: AgentProfile): AgentBackendStatus {
+        val secretId =
+            connection.secretId
+                ?: return AgentBackendStatus(AgentBackendState.OFFLINE, "ChatGPT n'est pas connecté.")
+        return try {
+            tokenProvider.accessToken(secretId)
             AgentBackendStatus(AgentBackendState.AVAILABLE, "ChatGPT connecté directement.")
         } catch (error: Exception) {
             AgentBackendStatus(AgentBackendState.DEGRADED, error.message ?: "Connexion ChatGPT indisponible.")
         }
+    }
 
     private fun ToolDefinition.toResponseTool(): JsonObject =
         buildJsonObject {
