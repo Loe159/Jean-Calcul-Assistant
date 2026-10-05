@@ -1,5 +1,6 @@
 @file:Suppress(
     "CyclomaticComplexMethod",
+    "LargeClass",
     "LongMethod",
     "LoopWithTooManyJumpStatements",
     "MaxLineLength",
