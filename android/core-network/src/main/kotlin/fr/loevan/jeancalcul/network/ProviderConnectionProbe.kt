@@ -6,6 +6,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import fr.loevan.jeancalcul.domain.ProviderConnection
 import fr.loevan.jeancalcul.domain.ProviderKind
+import fr.loevan.jeancalcul.network.codex.CHATGPT_PLAN_API_BASE_URL
 import fr.loevan.jeancalcul.security.SecretStore
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
@@ -49,6 +50,23 @@ class OkHttpProviderConnectionProbe
 
         @Suppress("ReturnCount")
         override suspend fun test(connection: ProviderConnection): ConnectionProbeResult {
+            if (
+                connection.kind == ProviderKind.AGENT_BACKEND &&
+                connection.baseUrl.trimEnd('/') == CHATGPT_PLAN_API_BASE_URL
+            ) {
+                return if (connection.secretId != null) {
+                    ConnectionProbeResult.Success(
+                        message = "Authentification ChatGPT gérée par OAuth.",
+                        insecureTransport = false,
+                    )
+                } else {
+                    ConnectionProbeResult.Failure(
+                        code = "oauth_missing",
+                        userMessage = "Connectez ChatGPT depuis les réglages.",
+                        recoverable = true,
+                    )
+                }
+            }
             val url =
                 connection.probeUrl()
                     ?: return ConnectionProbeResult.Failure(
