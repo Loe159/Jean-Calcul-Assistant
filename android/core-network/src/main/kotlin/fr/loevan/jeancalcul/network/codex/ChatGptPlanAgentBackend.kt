@@ -1,5 +1,6 @@
 @file:Suppress(
     "CyclomaticComplexMethod",
+    "LargeClass",
     "LongMethod",
     "LoopWithTooManyJumpStatements",
     "MaxLineLength",
@@ -103,7 +104,16 @@ internal class ChatGptPlanAgentBackend(
         request: AgentRequest,
     ): AgentRun {
         val runId = UUID.randomUUID().toString()
-        runs[runId] = RunState(sessionId = sessionId, request = request)
+        val wireToolNames =
+            request.availableTools.mapIndexed { index, definition ->
+                responseToolWireName(definition.name, index) to definition.name
+            }.toMap()
+        runs[runId] =
+            RunState(
+                sessionId = sessionId,
+                request = request,
+                wireToolNames = wireToolNames,
+            )
         return AgentRun(runId, sessionId, request.requestId, AgentRunStatus.RUNNING)
     }
 
@@ -183,7 +193,7 @@ internal class ChatGptPlanAgentBackend(
                                     state.finished = true
                                     return@flow
                                 }
-                        historyItems += functionCallOutput(functionCall.callId, result)
+                        historyItems += functionCallOutput(functionCall, result)
                     }
                     if (round == MAX_TOOL_ROUNDS - 1) {
                         emit(
@@ -250,7 +260,33 @@ internal class ChatGptPlanAgentBackend(
                     },
                 )
                 if (state.request.availableTools.isNotEmpty()) {
-                    put("tools", buildJsonArray { state.request.availableTools.forEach { add(it.toResponseTool()) } })
+                    put(
+                        "tools",
+                        buildJsonArray {
+                            add(
+                                buildJsonObject {
+                                    put("type", "namespace")
+                                    put("name", ANDROID_TOOL_NAMESPACE)
+                                    put(
+                                        "description",
+                                        "Actions locales disponibles sur le téléphone Android de l'utilisateur.",
+                                    )
+                                    put(
+                                        "tools",
+                                        buildJsonArray {
+                                            state.request.availableTools.forEachIndexed { index, definition ->
+                                                add(
+                                                    definition.toResponseTool(
+                                                        responseToolWireName(definition.name, index),
+                                                    ),
+                                                )
+                                            }
+                                        },
+                                    )
+                                },
+                            )
+                        },
+                    )
                 }
             }
         val request =
@@ -317,12 +353,15 @@ internal class ChatGptPlanAgentBackend(
                             if (item["type"]?.jsonPrimitive?.contentOrNull == "function_call") {
                                 val itemId = item["id"]?.jsonPrimitive?.contentOrNull ?: continue
                                 val callId = item["call_id"]?.jsonPrimitive?.contentOrNull ?: continue
-                                val name = item["name"]?.jsonPrimitive?.contentOrNull ?: continue
+                                val wireName = item["name"]?.jsonPrimitive?.contentOrNull ?: continue
+                                val toolName = state.wireToolNames[wireName] ?: wireName
                                 functionCalls[itemId] =
                                     PendingFunctionCall(
                                         itemId = itemId,
                                         callId = callId,
-                                        name = name,
+                                        wireName = wireName,
+                                        toolName = toolName,
+                                        namespace = item["namespace"]?.jsonPrimitive?.contentOrNull,
                                         arguments = item["arguments"]?.jsonPrimitive?.contentOrNull.orEmpty(),
                                     )
                             }
@@ -345,8 +384,12 @@ internal class ChatGptPlanAgentBackend(
                             val responseObject = event["response"] as? JsonObject
                             completedOutput = responseObject?.get("output") as? JsonArray ?: JsonArray(emptyList())
                             completedOutput.functionCalls().forEach { completed ->
+                                completed.toolName =
+                                    state.wireToolNames[completed.wireName] ?: completed.wireName
                                 val pending =
                                     functionCalls.getOrPut(completed.itemId) { completed }
+                                pending.toolName =
+                                    state.wireToolNames[pending.wireName] ?: pending.wireName
                                 pending.arguments = completed.arguments
                                 emitToolCallIfReady(state, pending, sequence, emitEvent)
                             }
@@ -408,7 +451,7 @@ internal class ChatGptPlanAgentBackend(
         emitEvent(
             StreamEvent.ToolCallReady(
                 state.request.requestId,
-                ToolCall(pending.callId, pending.name, arguments),
+                ToolCall(pending.callId, pending.toolName, arguments),
                 sequence.incrementAndGet(),
             ),
         )
@@ -524,14 +567,27 @@ internal class ChatGptPlanAgentBackend(
         }
     }
 
-    private fun ToolDefinition.toResponseTool(): JsonObject =
+    private fun ToolDefinition.toResponseTool(wireName: String): JsonObject =
         buildJsonObject {
             put("type", "function")
-            put("name", name)
+            put("name", wireName)
             put("description", description)
             put("parameters", inputSchema)
             put("strict", true)
         }
+
+    private fun responseToolWireName(
+        toolName: String,
+        index: Int,
+    ): String {
+        val normalized =
+            toolName
+                .replace(Regex("[^A-Za-z0-9_-]"), "_")
+                .trim('_')
+                .take(MAX_TOOL_NAME_LENGTH - TOOL_NAME_SUFFIX_RESERVE)
+                .ifBlank { "android_tool" }
+        return "${normalized}_$index"
+    }
 
     private fun fr.loevan.jeancalcul.domain.ChatMessage.toResponseInput(): JsonObject? {
         val text = content.filterIsInstance<MessageContent.Text>().joinToString("\n") { it.text }.trim()
@@ -562,21 +618,26 @@ internal class ChatGptPlanAgentBackend(
         mapNotNull { item ->
             val objectItem = item as? JsonObject ?: return@mapNotNull null
             if (objectItem["type"]?.jsonPrimitive?.contentOrNull != "function_call") return@mapNotNull null
+            val wireName = objectItem["name"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
             PendingFunctionCall(
                 itemId = objectItem["id"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null,
                 callId = objectItem["call_id"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null,
-                name = objectItem["name"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null,
+                wireName = wireName,
+                toolName = wireName,
+                namespace = objectItem["namespace"]?.jsonPrimitive?.contentOrNull,
                 arguments = objectItem["arguments"]?.jsonPrimitive?.contentOrNull.orEmpty(),
             )
         }
 
     private fun functionCallOutput(
-        callId: String,
+        call: PendingFunctionCall,
         result: ToolResult,
     ): JsonObject =
         buildJsonObject {
             put("type", "function_call_output")
-            put("call_id", callId)
+            put("call_id", call.callId)
+            put("name", call.wireName)
+            call.namespace?.let { put("namespace", it) }
             put(
                 "output",
                 result.output?.toString()
@@ -612,8 +673,21 @@ internal class ChatGptPlanAgentBackend(
     }
 
     private fun okhttp3.Response.toProviderException(): ProviderException {
+        val httpCode = code
+        val rawBody = body?.string().orEmpty()
+        val apiError =
+            runCatching {
+                val root = json.parseToJsonElement(rawBody).jsonObject
+                root["error"] as? JsonObject
+            }.getOrNull()
+        val apiCode = apiError?.get("code")?.jsonPrimitive?.contentOrNull
+        val apiMessage =
+            apiError?.get("message")?.jsonPrimitive?.contentOrNull
+                ?.trim()
+                ?.take(MAX_ERROR_MESSAGE_LENGTH)
         val category =
-            when (code) {
+            when (httpCode) {
+                400 -> ProviderErrorCategory.INVALID_REQUEST
                 401, 403 -> ProviderErrorCategory.AUTHENTICATION
                 404 -> ProviderErrorCategory.MODEL_NOT_FOUND
                 408 -> ProviderErrorCategory.TIMEOUT
@@ -622,19 +696,25 @@ internal class ChatGptPlanAgentBackend(
                 else -> ProviderErrorCategory.PROTOCOL
             }
         val message =
-            when (category) {
-                ProviderErrorCategory.AUTHENTICATION -> "La connexion ChatGPT doit être renouvelée."
-                ProviderErrorCategory.RATE_LIMITED -> "Le quota ChatGPT limite temporairement cette requête."
-                ProviderErrorCategory.MODEL_NOT_FOUND -> "Le modèle ChatGPT configuré n'est pas disponible."
-                ProviderErrorCategory.SERVICE_UNAVAILABLE -> "OpenAI est temporairement indisponible."
-                else -> "OpenAI a renvoyé HTTP $code."
-            }
-        return providerException(category, "openai_http_$code", message)
+            apiMessage?.takeIf(String::isNotBlank)
+                ?: when (category) {
+                    ProviderErrorCategory.AUTHENTICATION -> "La connexion ChatGPT doit être renouvelée."
+                    ProviderErrorCategory.RATE_LIMITED -> "Le quota ChatGPT limite temporairement cette requête."
+                    ProviderErrorCategory.MODEL_NOT_FOUND -> "Le modèle ChatGPT configuré n'est pas disponible."
+                    ProviderErrorCategory.SERVICE_UNAVAILABLE -> "OpenAI est temporairement indisponible."
+                    else -> "OpenAI a renvoyé HTTP $httpCode."
+                }
+        return providerException(
+            category,
+            apiCode?.takeIf(String::isNotBlank) ?: "openai_http_$httpCode",
+            message,
+        )
     }
 
     private data class RunState(
         val sessionId: String,
         val request: AgentRequest,
+        val wireToolNames: Map<String, String>,
         val toolResults: ConcurrentHashMap<String, ToolResult> = ConcurrentHashMap(),
         @Volatile var cancelled: Boolean = false,
         @Volatile var finished: Boolean = false,
@@ -643,7 +723,9 @@ internal class ChatGptPlanAgentBackend(
     private data class PendingFunctionCall(
         val itemId: String,
         val callId: String,
-        val name: String,
+        val wireName: String,
+        var toolName: String,
+        val namespace: String?,
         var arguments: String,
         var emitted: Boolean = false,
     )
@@ -656,6 +738,10 @@ internal class ChatGptPlanAgentBackend(
 
     private companion object {
         const val MAX_TOOL_ROUNDS = 8
+        const val MAX_TOOL_NAME_LENGTH = 128
+        const val TOOL_NAME_SUFFIX_RESERVE = 12
+        const val MAX_ERROR_MESSAGE_LENGTH = 500
+        const val ANDROID_TOOL_NAMESPACE = "android"
         const val AGENT_INSTRUCTIONS =
             "Vous êtes Jean Calcul, l'assistant Android de l'utilisateur. " +
                 "Répondez dans la langue de l'utilisateur. Pour agir sur le téléphone, utilisez uniquement " +
