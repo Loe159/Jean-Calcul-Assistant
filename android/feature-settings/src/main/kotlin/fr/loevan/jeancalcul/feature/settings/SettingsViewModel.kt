@@ -1,4 +1,4 @@
-@file:Suppress("TooManyFunctions")
+@file:Suppress("LongMethod", "TooManyFunctions")
 
 package fr.loevan.jeancalcul.feature.settings
 
@@ -121,8 +121,6 @@ class SettingsViewModel
                 runCatching { chatGptPlanAuthManager.signIn() }
                     .onSuccess { account ->
                         repository.update { current ->
-                            val previousProvider =
-                                current.providers.firstOrNull { it.id == CHATGPT_PLAN_PROVIDER_ID }
                             val provider =
                                 ProviderConnection(
                                     id = CHATGPT_PLAN_PROVIDER_ID,
