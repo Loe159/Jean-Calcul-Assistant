@@ -36,7 +36,7 @@ internal class VoiceAgentCommandProcessor(
         val configured =
             settings.agentProfiles.firstOrNull { it.profile.id == settings.activeAgentProfileId }
                 ?: return VoiceCommandOutcome.Invalid(
-                    "Aucun agent actif n'est configure. Ouvrez Jean Calcul pour connecter Codex Companion.",
+                    "Aucun agent actif n'est configuré. Ouvrez Jean Calcul pour connecter ChatGPT.",
                 )
         val activationErrors = AssistantSettingsValidator.agentActivationErrors(configured, settings)
         if (activationErrors.isNotEmpty()) {
