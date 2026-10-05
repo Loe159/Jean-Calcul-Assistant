@@ -27,6 +27,7 @@ internal class VoiceAgentCommandProcessor(
     private val agentBackendFactory: AgentBackendFactory,
     private val toolRuntimeFactory: (profileId: String) -> LocalAgentToolRuntime,
 ) : VoiceAgentProcessor {
+    @Suppress("ReturnCount")
     override suspend fun process(transcript: String): VoiceCommandOutcome {
         val text = transcript.trim()
         if (text.isEmpty()) return VoiceCommandOutcome.Invalid("La demande est vide.")
@@ -50,14 +51,20 @@ internal class VoiceAgentCommandProcessor(
             runCatching { agentBackendFactory.create(connection, profile) }
                 .getOrElse { return VoiceCommandOutcome.Failure(it.message ?: "Impossible d'ouvrir l'agent.") }
 
-        return try {
-            val response = runTurn(backend, profile, text, toolRuntimeFactory(profile.id))
-            VoiceCommandOutcome.Completed(response.ifBlank { "Termine." })
-        } catch (error: ProviderException) {
-            VoiceCommandOutcome.Failure(error.error.message)
-        } catch (error: Exception) {
-            VoiceCommandOutcome.Failure(error.message ?: "L'agent n'a pas pu repondre.")
-        }
+        return runCatching {
+            runTurn(backend, profile, text, toolRuntimeFactory(profile.id))
+        }.fold(
+            onSuccess = { response ->
+                VoiceCommandOutcome.Completed(response.ifBlank { "Termine." })
+            },
+            onFailure = { error ->
+                val message =
+                    (error as? ProviderException)?.error?.message
+                        ?: error.message
+                        ?: "L'agent n'a pas pu repondre."
+                VoiceCommandOutcome.Failure(message)
+            },
+        )
     }
 
     private suspend fun runTurn(
