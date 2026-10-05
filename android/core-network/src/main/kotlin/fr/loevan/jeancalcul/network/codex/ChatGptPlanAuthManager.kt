@@ -129,7 +129,9 @@ class ChatGptPlanAuthManager
 
                     val callback = receiveCallback(callbackServer)
                     if (callback.state != state) {
-                        throw ChatGptPlanAuthException("La réponse OAuth ne correspond pas à cette tentative de connexion.")
+                        throw ChatGptPlanAuthException(
+                            "La réponse OAuth ne correspond pas à cette tentative de connexion.",
+                        )
                     }
                     callback.error?.let {
                         throw ChatGptPlanAuthException(
@@ -154,7 +156,9 @@ class ChatGptPlanAuthManager
                     val identity = verifyIdToken(tokens.idToken, issuedClientId, nonce)
                     existing?.subject?.let { previousSubject ->
                         if (previousSubject != identity.subject) {
-                            throw ChatGptPlanAuthException("Le compte ChatGPT connecté ne correspond pas au compte existant.")
+                            throw ChatGptPlanAuthException(
+                                "Le compte ChatGPT connecté ne correspond pas au compte existant.",
+                            )
                         }
                     }
 
@@ -196,12 +200,16 @@ class ChatGptPlanAuthManager
         private fun receiveCallback(server: ServerSocket): OAuthCallback =
             server.accept().use { socket ->
                 socket.soTimeout = SOCKET_READ_TIMEOUT_MILLIS
-                val reader = BufferedReader(InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))
+                val reader =
+                    BufferedReader(
+                        InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8),
+                    )
                 val requestLine =
                     reader.readLine()
                         ?: throw ChatGptPlanAuthException("Réponse OAuth locale vide.")
-                val target = requestLine.split(' ').getOrNull(1)
-                    ?: throw ChatGptPlanAuthException("Réponse OAuth locale invalide.")
+                val target =
+                    requestLine.split(' ').getOrNull(1)
+                        ?: throw ChatGptPlanAuthException("Réponse OAuth locale invalide.")
                 while (true) {
                     val line = reader.readLine() ?: break
                     if (line.isEmpty()) break
@@ -266,7 +274,9 @@ class ChatGptPlanAuthManager
                     ?.toSet()
                     ?: credentials.scopes
             if (DIRECT_SCOPE !in scopes) {
-                throw ChatGptPlanAuthException("Le jeton renouvelé n'autorise plus l'utilisation directe du plan ChatGPT.")
+                throw ChatGptPlanAuthException(
+                    "Le jeton renouvelé n'autorise plus l'utilisation directe du plan ChatGPT.",
+                )
             }
             return credentials.copy(
                 accessToken = tokens.accessToken,
@@ -373,10 +383,12 @@ class ChatGptPlanAuthManager
                     throw ChatGptPlanAuthException("Type de clé OpenAI inattendu.")
                 }
                 return JsonWebKey(
-                    n = key["n"]?.jsonPrimitive?.content
-                        ?: throw ChatGptPlanAuthException("Module RSA OpenAI absent."),
-                    e = key["e"]?.jsonPrimitive?.content
-                        ?: throw ChatGptPlanAuthException("Exposant RSA OpenAI absent."),
+                    n =
+                        key["n"]?.jsonPrimitive?.content
+                            ?: throw ChatGptPlanAuthException("Module RSA OpenAI absent."),
+                    e =
+                        key["e"]?.jsonPrimitive?.content
+                            ?: throw ChatGptPlanAuthException("Exposant RSA OpenAI absent."),
                 )
             }
         }
