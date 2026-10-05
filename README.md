@@ -27,15 +27,11 @@ Les APKs de debug sont également publiés comme artefacts par la CI GitHub Acti
 
 ## Utiliser Codex avec son abonnement ChatGPT
 
-Jean Calcul peut utiliser Codex sans clé API OpenAI grâce au compagnon local inclus dans `companion/`. L'authentification ChatGPT reste entièrement dans le CLI Codex sur le PC.
+Le chemin recommandé est entièrement direct : ouvrez **Configuration > Fournisseurs**, puis **Continuer avec ChatGPT**. Jean Calcul lance l'authentification OpenAI dans le navigateur, conserve les jetons dans Android Keystore et utilise ensuite l'API Responses directement avec le quota de l'abonnement ChatGPT/Codex.
 
-```bash
-python3 companion/codex_companion.py login
-python3 companion/codex_companion.py serve
-adb reverse tcp:43120 tcp:43120
-```
+Aucune clé API, aucun PC et aucun serveur Companion ne sont nécessaires. Les demandes d'actions du modèle continuent de passer par le registre d'outils Android, le Policy Engine et le journal d'audit avant exécution.
 
-Le guide complet de configuration Android et les garanties de sécurité sont dans [`companion/README.md`](companion/README.md).
+Le Companion historique reste disponible uniquement comme solution de compatibilité pour les anciennes configurations. Voir [l'architecture du backend direct](docs/architecture/0017-chatgpt-plan-direct.md).
 
 ## Architecture
 
