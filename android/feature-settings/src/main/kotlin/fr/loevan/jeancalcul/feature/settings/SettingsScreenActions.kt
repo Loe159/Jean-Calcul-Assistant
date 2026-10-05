@@ -5,6 +5,7 @@ import fr.loevan.jeancalcul.domain.AppearanceSettings
 import fr.loevan.jeancalcul.domain.VoiceSettings
 
 data class SettingsScreenActions(
+    val connectChatGptPlan: () -> Unit,
     val saveProvider: (ProviderDraft, CharArray?) -> Unit,
     val deleteProvider: (String) -> Unit,
     val testConnection: (String) -> Unit,

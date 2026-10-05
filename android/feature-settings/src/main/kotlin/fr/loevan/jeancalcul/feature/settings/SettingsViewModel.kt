@@ -1,4 +1,4 @@
-@file:Suppress("TooManyFunctions")
+@file:Suppress("LongMethod", "TooManyFunctions")
 
 package fr.loevan.jeancalcul.feature.settings
 
@@ -22,6 +22,12 @@ import fr.loevan.jeancalcul.domain.ProviderKind
 import fr.loevan.jeancalcul.domain.VoiceSettings
 import fr.loevan.jeancalcul.network.ConnectionProbeResult
 import fr.loevan.jeancalcul.network.ProviderConnectionProbe
+import fr.loevan.jeancalcul.network.codex.CHATGPT_PLAN_AGENT_ID
+import fr.loevan.jeancalcul.network.codex.CHATGPT_PLAN_API_BASE_URL
+import fr.loevan.jeancalcul.network.codex.CHATGPT_PLAN_BACKEND_ID
+import fr.loevan.jeancalcul.network.codex.CHATGPT_PLAN_DEFAULT_MODEL
+import fr.loevan.jeancalcul.network.codex.CHATGPT_PLAN_PROVIDER_ID
+import fr.loevan.jeancalcul.network.codex.ChatGptPlanAuthManager
 import fr.loevan.jeancalcul.security.SecretId
 import fr.loevan.jeancalcul.security.SecretStore
 import fr.loevan.jeancalcul.security.SecretStoreResult
@@ -38,6 +44,7 @@ data class SettingsUiState(
     val settings: AssistantSettings = AssistantSettings(),
     val connectionTests: Map<String, ConnectionTestUiState> = emptyMap(),
     val errorMessage: String? = null,
+    val chatGptSignInRunning: Boolean = false,
 )
 
 sealed interface ConnectionTestUiState {
@@ -94,12 +101,106 @@ class SettingsViewModel
         private val repository: AssistantSettingsRepository,
         private val secretStore: SecretStore,
         private val connectionProbe: ProviderConnectionProbe,
+        private val chatGptPlanAuthManager: ChatGptPlanAuthManager? = null,
     ) : ViewModel() {
         private val transient = MutableStateFlow(SettingsTransientState())
         val uiState =
             combine(repository.settings, transient) { settings, local ->
-                SettingsUiState(settings, local.connectionTests, local.errorMessage)
+                SettingsUiState(
+                    settings = settings,
+                    connectionTests = local.connectionTests,
+                    errorMessage = local.errorMessage,
+                    chatGptSignInRunning = local.chatGptSignInRunning,
+                )
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
+
+        fun connectChatGptPlan() {
+            if (transient.value.chatGptSignInRunning) return
+            val authManager =
+                chatGptPlanAuthManager
+                    ?: run {
+                        showError("L'authentification ChatGPT n'est pas disponible.")
+                        return
+                    }
+            transient.update { it.copy(chatGptSignInRunning = true, errorMessage = null) }
+            viewModelScope.launch {
+                runCatching { authManager.signIn() }
+                    .onSuccess { account ->
+                        repository.update { current ->
+                            val provider =
+                                ProviderConnection(
+                                    id = CHATGPT_PLAN_PROVIDER_ID,
+                                    displayName =
+                                        account.email?.takeIf(String::isNotBlank)?.let { "ChatGPT · $it" }
+                                            ?: "ChatGPT",
+                                    kind = ProviderKind.AGENT_BACKEND,
+                                    baseUrl = CHATGPT_PLAN_API_BASE_URL,
+                                    secretId = account.secretId,
+                                    enabled = true,
+                                )
+                            val previousAgent =
+                                current.agentProfiles.firstOrNull { it.profile.id == CHATGPT_PLAN_AGENT_ID }
+                            val agent =
+                                ConfiguredAgentProfile(
+                                    profile =
+                                        AgentProfile(
+                                            id = CHATGPT_PLAN_AGENT_ID,
+                                            backendId = CHATGPT_PLAN_BACKEND_ID,
+                                            agentId = previousAgent?.profile?.agentId ?: CHATGPT_PLAN_DEFAULT_MODEL,
+                                            displayName = "ChatGPT (abonnement)",
+                                            connectionId = CHATGPT_PLAN_PROVIDER_ID,
+                                            enabled = true,
+                                        ),
+                                    capabilities =
+                                        AgentCapabilities(
+                                            supportsSessionResume = true,
+                                            supportsCancellation = true,
+                                            supportsToolApprovals = false,
+                                            supportsSkills = false,
+                                            supportsLongRunningJobs = false,
+                                        ),
+                                    grantedPermissions = previousAgent?.grantedPermissions.orEmpty(),
+                                    policyMode = previousAgent?.policyMode ?: AgentPolicyMode.BALANCED,
+                                )
+                            current.copy(
+                                providers =
+                                    current.providers.replaceBy(
+                                        CHATGPT_PLAN_PROVIDER_ID,
+                                        provider,
+                                        ProviderConnection::id,
+                                    ),
+                                agentProfiles =
+                                    current.agentProfiles.replaceBy(
+                                        CHATGPT_PLAN_AGENT_ID,
+                                        agent,
+                                    ) { it.profile.id },
+                                activeAgentProfileId = CHATGPT_PLAN_AGENT_ID,
+                            )
+                        }
+                        transient.update {
+                            it.copy(
+                                chatGptSignInRunning = false,
+                                errorMessage = null,
+                                connectionTests =
+                                    it.connectionTests +
+                                        (
+                                            CHATGPT_PLAN_PROVIDER_ID to
+                                                ConnectionTestUiState.Success(
+                                                    "ChatGPT connecté directement.",
+                                                )
+                                        ),
+                            )
+                        }
+                    }.onFailure { error ->
+                        transient.update {
+                            it.copy(
+                                chatGptSignInRunning = false,
+                                errorMessage = error.message ?: "Impossible de connecter ChatGPT.",
+                            )
+                        }
+                    }
+            }
+        }
 
         fun saveProvider(
             draft: ProviderDraft,
@@ -443,6 +544,7 @@ class SettingsViewModel
         private data class SettingsTransientState(
             val connectionTests: Map<String, ConnectionTestUiState> = emptyMap(),
             val errorMessage: String? = null,
+            val chatGptSignInRunning: Boolean = false,
         )
 
         private companion object {

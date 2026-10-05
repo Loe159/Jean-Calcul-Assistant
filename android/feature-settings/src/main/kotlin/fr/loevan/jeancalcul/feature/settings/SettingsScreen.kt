@@ -40,6 +40,8 @@ import fr.loevan.jeancalcul.domain.ProviderConnection
 import fr.loevan.jeancalcul.domain.ProviderKind
 import fr.loevan.jeancalcul.domain.VoiceInputMode
 import fr.loevan.jeancalcul.domain.VoiceSettings
+import fr.loevan.jeancalcul.network.codex.CHATGPT_PLAN_BACKEND_ID
+import fr.loevan.jeancalcul.network.codex.CHATGPT_PLAN_DEFAULT_MODEL
 import fr.loevan.jeancalcul.ui.ContentState
 import fr.loevan.jeancalcul.ui.ContentStateMessage
 import fr.loevan.jeancalcul.ui.FilterChip
@@ -98,7 +100,30 @@ private fun providersPage(
     actions: SettingsScreenActions,
 ) {
     var editingId by rememberSaveable { mutableStateOf<String?>(null) }
-    SettingsSection("Fournisseurs") {
+    val directAgent =
+        state.settings.agentProfiles.firstOrNull { it.profile.backendId == CHATGPT_PLAN_BACKEND_ID }
+    SettingsSection("ChatGPT") {
+        Text(
+            "Utilise directement votre abonnement ChatGPT/Codex. " +
+                "Aucune clé API ni serveur Companion n'est nécessaire.",
+        )
+        JeanCalculButton(
+            label = if (state.chatGptSignInRunning) "Connexion en cours..." else "Continuer avec ChatGPT",
+            enabled = !state.chatGptSignInRunning,
+            onClick = actions.connectChatGptPlan,
+        )
+        if (directAgent != null) {
+            Text(
+                if (directAgent.profile.id == state.settings.activeAgentProfileId) {
+                    "Connecté · agent actif · ${directAgent.profile.agentId}"
+                } else {
+                    "Connecté · ${directAgent.profile.agentId}"
+                },
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+    }
+    SettingsSection("Fournisseurs avancés") {
         if (state.settings.providers.isEmpty()) {
             Text("Aucun fournisseur configure.")
         }
@@ -372,8 +397,8 @@ private fun agentEditor(
     var connectionId by rememberSaveable {
         mutableStateOf(configured?.profile?.connectionId ?: backends.firstOrNull()?.id.orEmpty())
     }
-    var backendId by rememberSaveable { mutableStateOf(configured?.profile?.backendId ?: "codex-companion") }
-    var agentId by rememberSaveable { mutableStateOf(configured?.profile?.agentId ?: "codex") }
+    var backendId by rememberSaveable { mutableStateOf(configured?.profile?.backendId ?: CHATGPT_PLAN_BACKEND_ID) }
+    var agentId by rememberSaveable { mutableStateOf(configured?.profile?.agentId ?: CHATGPT_PLAN_DEFAULT_MODEL) }
     var enabled by rememberSaveable { mutableStateOf(configured?.profile?.enabled ?: true) }
     var resume by rememberSaveable { mutableStateOf(configured?.capabilities?.supportsSessionResume ?: true) }
     var approvals by rememberSaveable { mutableStateOf(configured?.capabilities?.supportsToolApprovals ?: false) }

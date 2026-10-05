@@ -62,25 +62,37 @@ class CodexCompanionAgentBackendFactory
     constructor(
         private val client: OkHttpClient,
         private val secretStore: SecretStore,
+        private val chatGptPlanAuthManager: ChatGptPlanAuthManager,
     ) : AgentBackendFactory {
         override suspend fun create(
             connection: ProviderConnection,
             profile: AgentProfile,
         ): AgentBackend {
             require(connection.kind == ProviderKind.AGENT_BACKEND) {
-                "Codex companion requires an AGENT_BACKEND connection."
-            }
-            require(profile.backendId == BACKEND_ID) {
-                "Unsupported agent backend: ${profile.backendId}"
+                "Agent backend requires an AGENT_BACKEND connection."
             }
             require(profile.connectionId == connection.id) {
                 "Agent profile and connection do not match."
             }
             require(connection.enabled && profile.enabled) {
-                "Codex companion profile and connection must be enabled."
+                "Agent profile and connection must be enabled."
             }
             require(connection.secretId != null) {
-                "Codex companion requires a pairing secret."
+                "Agent backend requires credentials."
+            }
+            if (profile.backendId == CHATGPT_PLAN_BACKEND_ID) {
+                require(connection.baseUrl.trimEnd('/') == CHATGPT_PLAN_API_BASE_URL) {
+                    "ChatGPT plan backend must use the official OpenAI API endpoint."
+                }
+                return ChatGptPlanAgentBackend(
+                    connection = connection,
+                    profile = profile,
+                    client = client,
+                    tokenProvider = chatGptPlanAuthManager,
+                )
+            }
+            require(profile.backendId == BACKEND_ID) {
+                "Unsupported agent backend: ${profile.backendId}"
             }
             return CodexCompanionAgentBackend(connection, client, secretStore)
         }
