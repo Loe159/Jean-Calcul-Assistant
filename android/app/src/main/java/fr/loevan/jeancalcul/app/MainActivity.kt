@@ -116,6 +116,7 @@ class MainActivity : ComponentActivity() {
                 ),
             settings =
                 SettingsScreenActions(
+                    connectChatGptPlan = settingsViewModel::connectChatGptPlan,
                     saveProvider = settingsViewModel::saveProvider,
                     deleteProvider = settingsViewModel::deleteProvider,
                     testConnection = settingsViewModel::testConnection,
