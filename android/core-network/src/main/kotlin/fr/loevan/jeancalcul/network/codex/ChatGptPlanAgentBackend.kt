@@ -48,11 +48,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -126,7 +124,13 @@ internal class ChatGptPlanAgentBackend(
             try {
                 repeat(MAX_TOOL_ROUNDS) { round ->
                     if (state.cancelled) {
-                        emit(StreamEvent.Completed(state.request.requestId, FinishReason.CANCELLED, sequence.incrementAndGet()))
+                        emit(
+                            StreamEvent.Completed(
+                                state.request.requestId,
+                                FinishReason.CANCELLED,
+                                sequence.incrementAndGet(),
+                            ),
+                        )
                         state.finished = true
                         return@flow
                     }
@@ -138,12 +142,24 @@ internal class ChatGptPlanAgentBackend(
                             emitEvent = { emit(it) },
                         )
                     if (roundResult.failed != null) {
-                        emit(StreamEvent.Failed(state.request.requestId, roundResult.failed, sequence.incrementAndGet()))
+                        emit(
+                            StreamEvent.Failed(
+                                state.request.requestId,
+                                roundResult.failed,
+                                sequence.incrementAndGet(),
+                            ),
+                        )
                         state.finished = true
                         return@flow
                     }
                     if (roundResult.functionCalls.isEmpty()) {
-                        emit(StreamEvent.Completed(state.request.requestId, FinishReason.STOP, sequence.incrementAndGet()))
+                        emit(
+                            StreamEvent.Completed(
+                                state.request.requestId,
+                                FinishReason.STOP,
+                                sequence.incrementAndGet(),
+                            ),
+                        )
                         state.finished = true
                         return@flow
                     }
