@@ -101,7 +101,7 @@ class SettingsViewModel
         private val repository: AssistantSettingsRepository,
         private val secretStore: SecretStore,
         private val connectionProbe: ProviderConnectionProbe,
-        private val chatGptPlanAuthManager: ChatGptPlanAuthManager,
+        private val chatGptPlanAuthManager: ChatGptPlanAuthManager? = null,
     ) : ViewModel() {
         private val transient = MutableStateFlow(SettingsTransientState())
         val uiState =
@@ -116,9 +116,15 @@ class SettingsViewModel
 
         fun connectChatGptPlan() {
             if (transient.value.chatGptSignInRunning) return
+            val authManager =
+                chatGptPlanAuthManager
+                    ?: run {
+                        showError("L'authentification ChatGPT n'est pas disponible.")
+                        return
+                    }
             transient.update { it.copy(chatGptSignInRunning = true, errorMessage = null) }
             viewModelScope.launch {
-                runCatching { chatGptPlanAuthManager.signIn() }
+                runCatching { authManager.signIn() }
                     .onSuccess { account ->
                         repository.update { current ->
                             val provider =
