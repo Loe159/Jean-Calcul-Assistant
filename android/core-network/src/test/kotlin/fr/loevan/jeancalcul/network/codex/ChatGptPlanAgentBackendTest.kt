@@ -84,7 +84,7 @@ class ChatGptPlanAgentBackendTest {
             assertEquals(true, event.call.arguments["enabled"]?.jsonPrimitive?.content?.toBoolean())
 
             val request = server.takeRequest()
-            val requestJson = Json.parseToJsonElement(requireNotNull(request.body.readUtf8())).jsonObject
+            val requestJson = Json.parseToJsonElement(request.body.readUtf8()).jsonObject
             val namespace = requestJson["tools"]!!.jsonArray.single().jsonObject
             assertEquals("namespace", namespace["type"]?.jsonPrimitive?.content)
             assertEquals("android", namespace["name"]?.jsonPrimitive?.content)
@@ -106,7 +106,10 @@ class ChatGptPlanAgentBackendTest {
                 ),
             profile = profile,
             client = OkHttpClient(),
-            tokenProvider = ChatGptPlanTokenProvider { "oauth-token" },
+            tokenProvider =
+                object : ChatGptPlanTokenProvider {
+                    override suspend fun accessToken(secretId: String): String = "oauth-token"
+                },
             apiBaseUrl = server.url("/v1").toString().trimEnd('/'),
         )
 
