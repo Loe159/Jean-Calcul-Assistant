@@ -383,8 +383,12 @@ internal class ChatGptPlanAgentBackend(
                             val responseObject = event["response"] as? JsonObject
                             completedOutput = responseObject?.get("output") as? JsonArray ?: JsonArray(emptyList())
                             completedOutput.functionCalls().forEach { completed ->
+                                completed.toolName =
+                                    state.wireToolNames[completed.wireName] ?: completed.wireName
                                 val pending =
                                     functionCalls.getOrPut(completed.itemId) { completed }
+                                pending.toolName =
+                                    state.wireToolNames[pending.wireName] ?: pending.wireName
                                 pending.arguments = completed.arguments
                                 emitToolCallIfReady(state, pending, sequence, emitEvent)
                             }
