@@ -42,7 +42,6 @@ import fr.loevan.jeancalcul.domain.VoiceInputMode
 import fr.loevan.jeancalcul.domain.VoiceSettings
 import fr.loevan.jeancalcul.network.codex.CHATGPT_PLAN_BACKEND_ID
 import fr.loevan.jeancalcul.network.codex.CHATGPT_PLAN_DEFAULT_MODEL
-import fr.loevan.jeancalcul.network.codex.CHATGPT_PLAN_PROVIDER_ID
 import fr.loevan.jeancalcul.ui.ContentState
 import fr.loevan.jeancalcul.ui.ContentStateMessage
 import fr.loevan.jeancalcul.ui.FilterChip
