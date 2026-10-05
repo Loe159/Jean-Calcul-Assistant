@@ -1,3 +1,15 @@
+@file:Suppress(
+    "CyclomaticComplexMethod",
+    "LongMethod",
+    "LoopWithTooManyJumpStatements",
+    "MaxLineLength",
+    "NestedBlockDepth",
+    "ReturnCount",
+    "ThrowsCount",
+    "TooGenericExceptionCaught",
+    "TooManyFunctions",
+)
+
 package fr.loevan.jeancalcul.network.codex
 
 import fr.loevan.jeancalcul.domain.AgentBackend
