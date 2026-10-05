@@ -80,7 +80,10 @@ class ConversationOrchestrator
             backend: AgentBackend,
             text: String,
             toolRuntime: LocalAgentToolRuntime? = null,
-        ): Message = sendAgent(handle, profile, backend, text.trim(), null, toolRuntime)
+        ): Message =
+            sendAgent(
+                AgentSendInput(handle, profile, backend, text.trim(), null, toolRuntime),
+            )
 
         suspend fun retryAgentResponse(
             responseMessageId: String,
@@ -90,7 +93,9 @@ class ConversationOrchestrator
             val (handle, response, userMessage) = retryContext(responseMessageId)
             require(handle.session.kind == AssistantSessionKind.AGENT)
             require(handle.session.agentProfileId == profile.id)
-            return sendAgent(handle, profile, backend, userMessage.text, response, null)
+            return sendAgent(
+                AgentSendInput(handle, profile, backend, userMessage.text, response, null),
+            )
         }
 
         suspend fun cancel(conversationId: String) {
@@ -163,70 +168,49 @@ class ConversationOrchestrator
             return response
         }
 
-        private suspend fun sendAgent(
-            initialHandle: ConversationHandle,
-            profile: AgentProfile,
-            backend: AgentBackend,
-            text: String,
-            retryResponse: Message?,
-            toolRuntime: LocalAgentToolRuntime?,
-        ): Message {
-            require(text.isNotBlank())
-            require(initialHandle.session.kind == AssistantSessionKind.AGENT)
-            val session = ensureRemoteAgentSession(initialHandle.session, profile, backend)
-            val handle = initialHandle.copy(session = session)
+        private suspend fun sendAgent(input: AgentSendInput): Message {
+            require(input.text.isNotBlank())
+            require(input.handle.session.kind == AssistantSessionKind.AGENT)
+            val session = ensureRemoteAgentSession(input.handle.session, input.profile, input.backend)
+            val handle = input.handle.copy(session = session)
             val requestId = UUID.randomUUID().toString()
-            if (retryResponse == null) appendUserMessage(handle, text, requestId)
-            var response = prepareResponse(handle, requestId, retryResponse)
+            if (input.retryResponse == null) appendUserMessage(handle, input.text, requestId)
+            var response = prepareResponse(handle, requestId, input.retryResponse)
             val request =
                 AgentRequest(
                     requestId = requestId,
                     messages = repository.getMessages(handle.conversation.id).toChatMessages(),
-                    availableTools = toolRuntime?.availableTools().orEmpty(),
+                    availableTools = input.toolRuntime?.availableTools().orEmpty(),
                 )
             val run =
                 try {
-                    backend.sendMessage(requireNotNull(session.agentBackendSessionId), request)
+                    input.backend.sendMessage(requireNotNull(session.agentBackendSessionId), request)
                 } catch (failure: ProviderException) {
                     response = response.failed(failure.error.message)
                     repository.saveMessage(response)
                     return response
                 }
-            val activeRequest =
-                ActiveRequest { backend.cancel(requireNotNull(session.agentBackendSessionId), run.id) }
-            activeRequests[handle.conversation.id] = activeRequest
-            var updatedSession = session
+            return streamAgentRun(
+                AgentStreamContext(handle, session, input.backend, run.id, input.toolRuntime),
+                response,
+            )
+        }
+
+        private suspend fun streamAgentRun(
+            context: AgentStreamContext,
+            initialResponse: Message,
+        ): Message {
+            val remoteSessionId = requireNotNull(context.session.agentBackendSessionId)
+            val activeRequest = ActiveRequest { context.backend.cancel(remoteSessionId, context.runId) }
+            activeRequests[context.handle.conversation.id] = activeRequest
+            var response = initialResponse
+            var updatedSession = context.session
             try {
-                backend.streamEvents(
-                    requireNotNull(session.agentBackendSessionId),
-                    session.lastAgentEventSequence,
+                context.backend.streamEvents(
+                    remoteSessionId,
+                    context.session.lastAgentEventSequence,
                 ).collect { event ->
-                    if (event is StreamEvent.ToolCallReady) {
-                        val sink = backend as? AgentToolResultSink
-                        val toolResult =
-                            if (toolRuntime != null && sink != null) {
-                                toolRuntime.execute(event.call)
-                            } else {
-                                ToolResult(
-                                    actionId = event.call.callId,
-                                    toolName = event.call.toolName,
-                                    toolVersion = "1.0.0",
-                                    error =
-                                        ToolError(
-                                            "TOOL_BRIDGE_UNAVAILABLE",
-                                            "Android tool execution is unavailable.",
-                                        ),
-                                )
-                            }
-                        if (sink != null) {
-                            sink.submitToolResult(
-                                requireNotNull(session.agentBackendSessionId),
-                                run.id,
-                                event.call.callId,
-                                toolResult,
-                            )
-                        }
-                    }
+                    if (event is StreamEvent.ToolCallReady) handleAgentToolCall(context, event)
                     response = applyStreamEvent(response, event)
                     repository.saveMessage(response)
                     event.sequence?.let { sequence ->
@@ -240,7 +224,7 @@ class ConversationOrchestrator
                     if (event is StreamEvent.Failed) throw ProviderException(event.error)
                 }
             } catch (cancelled: CancellationException) {
-                backend.cancel(requireNotNull(session.agentBackendSessionId), run.id)
+                context.backend.cancel(remoteSessionId, context.runId)
                 response = response.finished(MessageStatus.INTERRUPTED)
                 repository.saveMessage(response)
                 throw cancelled
@@ -248,9 +232,34 @@ class ConversationOrchestrator
                 response = response.failed(failure.error.message)
                 repository.saveMessage(response)
             } finally {
-                activeRequests.remove(handle.conversation.id, activeRequest)
+                activeRequests.remove(context.handle.conversation.id, activeRequest)
             }
             return response
+        }
+
+        private suspend fun handleAgentToolCall(
+            context: AgentStreamContext,
+            event: StreamEvent.ToolCallReady,
+        ) {
+            val sink = context.backend as? AgentToolResultSink ?: return
+            val toolResult =
+                context.toolRuntime?.execute(event.call)
+                    ?: ToolResult(
+                        actionId = event.call.callId,
+                        toolName = event.call.toolName,
+                        toolVersion = "1.0.0",
+                        error =
+                            ToolError(
+                                "TOOL_BRIDGE_UNAVAILABLE",
+                                "Android tool execution is unavailable.",
+                            ),
+                    )
+            sink.submitToolResult(
+                requireNotNull(context.session.agentBackendSessionId),
+                context.runId,
+                event.call.callId,
+                toolResult,
+            )
         }
 
         private suspend fun ensureRemoteAgentSession(
@@ -343,6 +352,23 @@ class ConversationOrchestrator
         }
 
         private data class ActiveRequest(val cancel: suspend () -> Unit)
+
+        private data class AgentSendInput(
+            val handle: ConversationHandle,
+            val profile: AgentProfile,
+            val backend: AgentBackend,
+            val text: String,
+            val retryResponse: Message?,
+            val toolRuntime: LocalAgentToolRuntime?,
+        )
+
+        private data class AgentStreamContext(
+            val handle: ConversationHandle,
+            val session: AssistantSession,
+            val backend: AgentBackend,
+            val runId: String,
+            val toolRuntime: LocalAgentToolRuntime?,
+        )
 
         private data class RetryContext(
             val handle: ConversationHandle,
