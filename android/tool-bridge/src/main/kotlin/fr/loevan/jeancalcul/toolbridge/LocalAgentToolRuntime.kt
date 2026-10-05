@@ -4,9 +4,11 @@ import fr.loevan.jeancalcul.domain.ActionPolicyPreference
 import fr.loevan.jeancalcul.domain.ActionProposal
 import fr.loevan.jeancalcul.domain.ActionRequestOrigin
 import fr.loevan.jeancalcul.domain.AgentPolicyProfile
+import fr.loevan.jeancalcul.domain.PolicyDecision
 import fr.loevan.jeancalcul.domain.PolicyDecisionType
 import fr.loevan.jeancalcul.domain.PolicyEngine
 import fr.loevan.jeancalcul.domain.PolicyEvaluationContext
+import fr.loevan.jeancalcul.domain.ToolAvailabilityContext
 import fr.loevan.jeancalcul.domain.ToolCall
 import fr.loevan.jeancalcul.domain.ToolDefinition
 import fr.loevan.jeancalcul.domain.ToolError
@@ -33,17 +35,25 @@ class LocalAgentToolRuntime(
         val definition =
             toolRegistry.definitionForName(call.toolName)
                 ?: return failure(call, "UNKNOWN_TOOL", "The requested Android tool is not registered.")
-
         val availability = availabilityContext()
-        if (toolRegistry.availableDefinitions(availability).none { it.name == definition.name }) {
-            return failure(
+        return if (toolRegistry.availableDefinitions(availability).none { it.name == definition.name }) {
+            failure(
                 call,
                 "TOOL_UNAVAILABLE",
                 "The requested Android tool is unavailable in the current device state.",
                 definition.version,
             )
+        } else {
+            executeAvailable(call, definition, availability)
         }
+    }
 
+    private fun executeAvailable(
+        call: ToolCall,
+        definition: ToolDefinition,
+        availability: ToolAvailabilityContext,
+    ): ToolResult {
+        val now = clock()
         val proposal =
             ActionProposal(
                 actionId = call.callId,
@@ -51,51 +61,56 @@ class LocalAgentToolRuntime(
                 toolVersion = definition.version,
                 arguments = call.arguments,
                 idempotencyKey = call.callId,
-                expiresAtEpochMillis = clock() + TOOL_REQUEST_TTL_MILLIS,
+                expiresAtEpochMillis = now + TOOL_REQUEST_TTL_MILLIS,
             )
-        val now = clock()
-        val policyProfile =
-            AgentPolicyProfile(
-                id = profileId,
-                allowAutomaticReversibleActions = true,
-                confirmAgentActions = false,
-            )
-        val decision =
-            policyEngine.evaluate(
-                definition,
-                proposal,
-                PolicyEvaluationContext(
-                    profile = policyProfile,
-                    origin = origin,
-                    grantedAndroidPermissions = availability.grantedAndroidPermissions,
-                    isDeviceLocked = availability.isDeviceLocked,
-                    isAppForeground = availability.isAppForeground,
-                    preferences =
-                        listOf(
-                            ActionPolicyPreference(
-                                toolName = definition.name,
-                                decision = PolicyDecisionType.ALLOW,
-                            ),
-                        ),
-                    nowEpochMillis = now,
-                ),
-            )
-
-        if (decision.type != PolicyDecisionType.ALLOW) {
-            val code =
-                when (decision.type) {
-                    PolicyDecisionType.CONFIRM -> "USER_CONFIRMATION_REQUIRED"
-                    PolicyDecisionType.BIOMETRIC -> "BIOMETRIC_REQUIRED"
-                    PolicyDecisionType.OPEN_SYSTEM_PANEL -> "ANDROID_PERMISSION_REQUIRED"
-                    PolicyDecisionType.DENY -> "POLICY_DENIED"
-                    PolicyDecisionType.ALLOW -> error("unreachable")
-                }
-            return failure(call, code, decision.justification, definition.version)
+        val decision = evaluatePolicy(definition, proposal, availability, now)
+        return if (decision.type == PolicyDecisionType.ALLOW) {
+            val receipt = policyEngine.issueReceipt(decision, now)
+            toolRegistry.execute(proposal, availability, receipt)
+        } else {
+            failure(call, decision.failureCode(), decision.justification, definition.version)
         }
-
-        val receipt = policyEngine.issueReceipt(decision, now)
-        return toolRegistry.execute(proposal, availability, receipt)
     }
+
+    private fun evaluatePolicy(
+        definition: ToolDefinition,
+        proposal: ActionProposal,
+        availability: ToolAvailabilityContext,
+        now: Long,
+    ): PolicyDecision =
+        policyEngine.evaluate(
+            definition,
+            proposal,
+            PolicyEvaluationContext(
+                profile =
+                    AgentPolicyProfile(
+                        id = profileId,
+                        allowAutomaticReversibleActions = true,
+                        confirmAgentActions = false,
+                    ),
+                origin = origin,
+                grantedAndroidPermissions = availability.grantedAndroidPermissions,
+                isDeviceLocked = availability.isDeviceLocked,
+                isAppForeground = availability.isAppForeground,
+                preferences =
+                    listOf(
+                        ActionPolicyPreference(
+                            toolName = definition.name,
+                            decision = PolicyDecisionType.ALLOW,
+                        ),
+                    ),
+                nowEpochMillis = now,
+            ),
+        )
+
+    private fun PolicyDecision.failureCode(): String =
+        when (type) {
+            PolicyDecisionType.CONFIRM -> "USER_CONFIRMATION_REQUIRED"
+            PolicyDecisionType.BIOMETRIC -> "BIOMETRIC_REQUIRED"
+            PolicyDecisionType.OPEN_SYSTEM_PANEL -> "ANDROID_PERMISSION_REQUIRED"
+            PolicyDecisionType.DENY -> "POLICY_DENIED"
+            PolicyDecisionType.ALLOW -> error("Allowed policy decisions do not have a failure code.")
+        }
 
     private fun failure(
         call: ToolCall,
