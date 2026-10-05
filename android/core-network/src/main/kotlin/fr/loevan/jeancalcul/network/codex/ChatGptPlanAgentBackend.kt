@@ -586,7 +586,7 @@ internal class ChatGptPlanAgentBackend(
                 .trim('_')
                 .take(MAX_TOOL_NAME_LENGTH - TOOL_NAME_SUFFIX_RESERVE)
                 .ifBlank { "android_tool" }
-        return "${normalized}_${index}"
+        return "${normalized}_$index"
     }
 
     private fun fr.loevan.jeancalcul.domain.ChatMessage.toResponseInput(): JsonObject? {
