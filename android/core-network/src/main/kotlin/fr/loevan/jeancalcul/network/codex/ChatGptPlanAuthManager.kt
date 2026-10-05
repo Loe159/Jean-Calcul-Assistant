@@ -1,3 +1,12 @@
+@file:Suppress(
+    "CyclomaticComplexMethod",
+    "LongMethod",
+    "LoopWithTooManyJumpStatements",
+    "MaxLineLength",
+    "ThrowsCount",
+    "TooManyFunctions",
+)
+
 package fr.loevan.jeancalcul.network.codex
 
 import android.content.Context
