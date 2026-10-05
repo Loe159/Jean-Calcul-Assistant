@@ -261,12 +261,14 @@ internal class VoiceSessionController(
             AssistantEffect.StartSpeechRecognition -> startSpeechRecognition()
             AssistantEffect.StopSpeechRecognition -> stopSpeechRecognition()
             is AssistantEffect.RequestResponse -> {
-                scope.launch {
-                    conversationRecorder.recordUserMessage(effect.input)
-                    val outcome =
-                        voiceAgentProcessor?.process(effect.input)
-                            ?: voiceCommandProcessor.process(effect.input)
-                    handleCommandOutcome(outcome)
+                if (voiceAgentProcessor == null) {
+                    scope.launch { conversationRecorder.recordUserMessage(effect.input) }
+                    handleCommandOutcome(voiceCommandProcessor.process(effect.input))
+                } else {
+                    scope.launch {
+                        conversationRecorder.recordUserMessage(effect.input)
+                        handleCommandOutcome(voiceAgentProcessor.process(effect.input))
+                    }
                 }
             }
             is AssistantEffect.PresentAction -> Unit
