@@ -20,6 +20,7 @@ import fr.loevan.jeancalcul.domain.ModelProfile
 import fr.loevan.jeancalcul.domain.ProviderConnection
 import fr.loevan.jeancalcul.domain.ProviderKind
 import fr.loevan.jeancalcul.domain.VoiceSettings
+import fr.loevan.jeancalcul.domain.normalizeActiveSelections
 import fr.loevan.jeancalcul.network.ConnectionProbeResult
 import fr.loevan.jeancalcul.network.ProviderConnectionProbe
 import fr.loevan.jeancalcul.network.codex.CHATGPT_PLAN_AGENT_ID
@@ -175,7 +176,8 @@ class SettingsViewModel
                                         agent,
                                     ) { it.profile.id },
                                 activeAgentProfileId = CHATGPT_PLAN_AGENT_ID,
-                            )
+                                activeModelProfileId = null,
+                            ).normalizeActiveSelections()
                         }
                         transient.update {
                             it.copy(
@@ -241,7 +243,7 @@ class SettingsViewModel
                 repository.update { current ->
                     current.copy(
                         providers = current.providers.replaceBy(id, connection, ProviderConnection::id),
-                    ).withoutInvalidSelections()
+                    ).normalizeActiveSelections()
                 }
                 clearError()
             }
@@ -262,7 +264,7 @@ class SettingsViewModel
                         agentProfiles = current.agentProfiles.filterNot { it.profile.id in agentIds },
                         activeModelProfileId = current.activeModelProfileId.takeUnless { it in modelIds },
                         activeAgentProfileId = current.activeAgentProfileId.takeUnless { it in agentIds },
-                    ).withoutInvalidSelections()
+                    ).normalizeActiveSelections()
                 }
                 transient.update { it.copy(connectionTests = it.connectionTests - id) }
             }
@@ -349,7 +351,7 @@ class SettingsViewModel
                                 configured.profile.id,
                                 configured,
                             ) { it.profile.id },
-                    ).withoutInvalidSelections()
+                    ).normalizeActiveSelections()
                 }
                 clearError()
             }
@@ -382,10 +384,10 @@ class SettingsViewModel
                             ?: listOf("Profil modele introuvable.")
                     if (errors.isNotEmpty()) {
                         showError(errors.joinToString(" "))
-                        current
+                        current.normalizeActiveSelections()
                     } else {
                         clearError()
-                        current.copy(activeModelProfileId = id)
+                        current.copy(activeModelProfileId = id, activeAgentProfileId = null)
                     }
                 }
             }
@@ -397,7 +399,7 @@ class SettingsViewModel
                     current.copy(
                         modelProfiles = current.modelProfiles.filterNot { it.profile.id == id },
                         activeModelProfileId = current.activeModelProfileId.takeUnless { it == id },
-                    )
+                    ).normalizeActiveSelections()
                 }
             }
         }
@@ -433,7 +435,7 @@ class SettingsViewModel
                     current.copy(
                         agentProfiles =
                             current.agentProfiles.replaceBy(configured.profile.id, configured) { it.profile.id },
-                    ).withoutInvalidSelections()
+                    ).normalizeActiveSelections()
                 }
                 clearError()
             }
@@ -466,10 +468,10 @@ class SettingsViewModel
                             ?: listOf("Profil agent introuvable.")
                     if (errors.isNotEmpty()) {
                         showError(errors.joinToString(" "))
-                        current
+                        current.normalizeActiveSelections()
                     } else {
                         clearError()
-                        current.copy(activeAgentProfileId = id)
+                        current.copy(activeAgentProfileId = id, activeModelProfileId = null)
                     }
                 }
             }
@@ -509,7 +511,7 @@ class SettingsViewModel
                     current.copy(
                         agentProfiles = current.agentProfiles.filterNot { it.profile.id == id },
                         activeAgentProfileId = current.activeAgentProfileId.takeUnless { it == id },
-                    )
+                    ).normalizeActiveSelections()
                 }
             }
         }
@@ -557,17 +559,3 @@ private fun <T> List<T>.replaceBy(
     value: T,
     idOf: (T) -> String,
 ): List<T> = if (any { idOf(it) == id }) map { if (idOf(it) == id) value else it } else this + value
-
-private fun AssistantSettings.withoutInvalidSelections(): AssistantSettings {
-    val validModelId =
-        activeModelProfileId?.takeIf { activeId ->
-            modelProfiles.firstOrNull { it.profile.id == activeId }
-                ?.let { AssistantSettingsValidator.modelActivationErrors(it, this).isEmpty() } == true
-        }
-    val validAgentId =
-        activeAgentProfileId?.takeIf { activeId ->
-            agentProfiles.firstOrNull { it.profile.id == activeId }
-                ?.let { AssistantSettingsValidator.agentActivationErrors(it, this).isEmpty() } == true
-        }
-    return copy(activeModelProfileId = validModelId, activeAgentProfileId = validAgentId)
-}

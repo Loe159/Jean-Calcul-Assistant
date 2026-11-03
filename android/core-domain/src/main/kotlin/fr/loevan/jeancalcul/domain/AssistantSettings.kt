@@ -155,6 +155,9 @@ object AssistantSettingsValidator {
             if (!configured.profile.enabled) add("Le profil modele est desactive.")
             if (connectionId == null || connection == null) add("Selectionnez un fournisseur existant.")
             if (connection != null) {
+                if (connection.kind == ProviderKind.AGENT_BACKEND) {
+                    add("Le profil modele doit utiliser un fournisseur modele distinct d'un backend agent.")
+                }
                 if (!connection.enabled) add("Le fournisseur selectionne est desactive.")
                 addAll(providerErrors(connection))
             }

@@ -13,6 +13,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import fr.loevan.jeancalcul.domain.AssistantSettings
 import fr.loevan.jeancalcul.domain.AssistantSettingsRepository
+import fr.loevan.jeancalcul.domain.normalizeActiveSelections
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -25,7 +26,11 @@ import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private val Context.assistantSettingsDataStore by preferencesDataStore(name = "assistant_settings")
+/**
+ * Single shared preferences DataStore for the assistant settings file. The instrumented test
+ * reuses this delegate so the process never opens a second active DataStore on the same file.
+ */
+internal val Context.assistantSettingsDataStore by preferencesDataStore(name = "assistant_settings")
 
 @Singleton
 class DataStoreAssistantSettingsRepository
@@ -40,12 +45,12 @@ class DataStoreAssistantSettingsRepository
             context.assistantSettingsDataStore.data
                 .catch { error ->
                     if (error is IOException) emit(emptyPreferences()) else throw error
-                }.map(::decode)
+                }.map { preferences -> decode(preferences).normalizeActiveSelections() }
 
         override suspend fun update(transform: (AssistantSettings) -> AssistantSettings) {
             updateMutex.withLock {
                 context.assistantSettingsDataStore.edit { preferences ->
-                    val updated = transform(decode(preferences))
+                    val updated = transform(decode(preferences)).normalizeActiveSelections()
                     preferences[SETTINGS_JSON] = json.encodeToString(updated)
                 }
             }

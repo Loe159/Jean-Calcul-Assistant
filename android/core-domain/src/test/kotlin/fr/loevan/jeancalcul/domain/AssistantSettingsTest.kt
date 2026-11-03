@@ -51,6 +51,27 @@ class AssistantSettingsTest {
     }
 
     @Test
+    fun `model profile requires a distinct model provider`() {
+        val provider =
+            ProviderConnection(
+                "backend",
+                "Codex",
+                ProviderKind.AGENT_BACKEND,
+                "http://127.0.0.1:43120",
+                "secret.backend",
+            )
+        val model =
+            ConfiguredModelProfile(
+                ModelProfile("model", "codex", "assistant", "Model", connectionId = provider.id),
+            )
+        val settings = AssistantSettings(providers = listOf(provider), modelProfiles = listOf(model))
+
+        val errors = AssistantSettingsValidator.modelActivationErrors(model, settings)
+
+        assertTrue(errors.any { it.contains("backend agent") })
+    }
+
+    @Test
     fun `agent profile requires a distinct agent backend`() {
         val provider = ProviderConnection("provider", "Provider", ProviderKind.ANTHROPIC, "https://api.anthropic.com")
         val agent =
