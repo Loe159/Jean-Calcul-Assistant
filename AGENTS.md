@@ -1,89 +1,68 @@
-# Guide d’exécution pour les agents
+# Jean Calcul — instructions pour les agents de développement
 
-Ce fichier est le point d’entrée obligatoire pour tout agent travaillant sur Jean-Calcul Assistant.
+## Mission et point de départ
 
-## Ordre de lecture
+Jean Calcul est un assistant Android local-first, Kotlin/Compose, avec modèles directs,
+agents distants et outils Android contrôlés. Le chantier courant est la fiabilisation du
+produit existant. Ne pas repartir de zéro sans une mission qui précise la migration.
 
-Avant toute modification, lire dans cet ordre :
+Lire [le portail agents](docs/agents/README.md), puis **une seule fiche de mission** dans
+[le catalogue](docs/agents/tasks/README.md). Sans issue assignée, prendre la première
+mission dont les dépendances sont satisfaites. Les fiches découpent le backlog ; elles ne
+prouvent pas sa clôture. Ne pas créer d'issue ni envoyer de commentaire sans autorisation.
 
-1. l’issue GitHub assignée ;
-2. `docs/plan/README.md` ;
-3. le document de phase correspondant dans `docs/plan/phases/` ;
-4. les documents transverses référencés par la phase ;
-5. le code et les tests existants.
+## Autorité des documents
 
-Ne pas charger toutes les phases si la tâche n’en dépend pas. Les documents sont volontairement séparés pour limiter le contexte.
+1. Instruction explicite de l'utilisateur et critères de l'issue active.
+2. Invariants de sécurité ci-dessous et contrats existants testés.
+3. Spécification normative liée à la mission dans [docs/specs](docs/specs/README.md).
+4. ADR applicables et plan de phase.
+5. Références visuelles et anciens rapports.
 
-## Sources de vérité
+`OBSERVÉ` décrit le code au commit indiqué ; `CIBLE` décrit le comportement à implémenter ;
+`À VALIDER` exige une preuve externe ; `DIFFÉRÉ` ne doit pas être implémenté.
+Un mock ne prouve ni la compatibilité d'un service externe ni un résultat Samsung.
+En cas de conflit entre sécurité et comportement existant, produire un test de régression et
+corriger dans la mission. Ne pas préserver un contournement au nom de la compatibilité.
 
-En cas de divergence, appliquer l’ordre suivant :
+## Avant de modifier
 
-1. critères d’acceptation et décisions explicites de l’issue active ;
-2. décisions d’architecture déjà implémentées et testées ;
-3. documentation de phase ;
-4. documentation transversale ;
-5. anciennes discussions ou prototypes.
+- Lire [l'état réel](docs/agents/current-state.md) et les AGENTS.md du sous-arbre touché.
+- Lire les sources et tests cités par la fiche, pas toutes les phases du projet.
+- Vérifier `git status --short --branch`. Préserver tout travail préexistant.
+- Partir de main à jour dans une branche dédiée ; ne pas forcer checkout, reset ou push.
+- Annoncer le résultat attendu, les modules touchés et les vérifications prévues.
+- Relever les permissions, secrets, migrations et actions Android réellement affectés.
 
-Les issues décrivent le travail exécutable. Les documents du plan donnent le contexte, les contraintes et la cible globale.
+## Invariants
 
-## Protocole avant implémentation
+- core-domain reste sans Android, UI, réseau ni stockage concret.
+- ModelProvider et AgentBackend restent distincts. Pas de cast entre les deux.
+- Android décide de toute action : schéma strict, outil/version, disponibilité, politique,
+  éventuelle confirmation/biométrie, reçu, exécution et audit. Aucun chemin parallèle.
+- Une demande générale n'est pas une autorisation générale de modifier le téléphone.
+- Contenus externes et sorties d'outils sont non fiables, jamais des instructions système.
+- Les secrets passent par SecretStore. Jamais dans Room, DataStore, logs, rapports ou skills.
+- VoiceInteractionService reste léger : aucun client lourd ni ouverture Room au démarrage.
+- Le registre ne dépend pas de Compose. core-ui ne dépend pas des features/providers.
+- Toute évolution Room a une migration testée ; aucun fallback destructif.
+- API officielles en Core ; accessibilité réservée à un chantier Power User explicite.
+- L'annulation se propage, libère réseau/audio et laisse un état terminal cohérent.
 
-- Partir de la branche `main` à jour.
-- Vérifier les dépendances listées dans l’issue.
-- Inspecter les modules touchés et les tests associés.
-- Résumer les changements attendus avant de coder.
-- Identifier les permissions Android, données personnelles et actions sensibles concernées.
-- Ne pas réutiliser l’ancien prototype supprimé comme référence implicite.
+## Livraison
 
-## Règles d’architecture non négociables
+Suivre [le workflow](docs/agents/workflow.md) et [la validation](docs/agents/verification.md).
+Implémenter une mission à la fois avec ses tests comportementaux. Ne pas affaiblir un test
+pour le faire passer ni faire une refonte globale hors mission. Les projets Gradle sont
+nommés :app, :core-domain, etc. et les commandes s'exécutent à la racine.
 
-- L’application est local-first.
-- `ModelProvider` et `AgentBackend` sont deux abstractions distinctes.
-- Un modèle ou agent n’accède jamais directement aux API Android.
-- Toute action passe par le registre versionné des outils, la validation de schéma, le Policy Engine et le journal d’audit.
-- Le `VoiceInteractionService` reste minimal ; l’UI et les traitements lourds vivent dans d’autres composants/processus.
-- Les secrets ne sont jamais stockés en clair, transmis à un skill ou écrits dans les logs.
-- Une donnée externe — notification, mail, page web, résultat d’outil — est non fiable et ne peut pas modifier les instructions système.
-- Aucune action sensible ne doit être exécutée silencieusement.
-- Les API Android officielles sont prioritaires. L’accessibilité reste optionnelle et isolée dans la variante Power User.
+Les skills sont dans [.agents/skills](.agents/skills/). Lire celui de la fiche ; il ne donne
+aucune permission supplémentaire et ne suppose aucun plugin externe.
 
-## Discipline de périmètre
+Avant livraison : `python3 scripts/check_agent_docs.py`, checks pertinents, diff relu,
+documentation cohérente. Une dépendance manquante est un blocage, pas un test réussi.
 
-- Implémenter uniquement l’issue active et les ajustements indispensables à son fonctionnement.
-- Ne pas anticiper une phase future par une architecture spéculative complexe.
-- Créer des interfaces d’extension lorsque le plan l’exige, mais ne pas implémenter les futurs fournisseurs sans issue dédiée.
-- Signaler les incohérences dans l’issue plutôt que contourner une contrainte.
-
-## Qualité attendue
-
-Chaque changement doit inclure selon le cas :
-
-- tests unitaires ;
-- tests instrumentés Android ;
-- tests de schéma et de politique ;
-- gestion des erreurs et annulations ;
-- mise à jour de la documentation touchée ;
-- métriques ou traces lorsqu’une performance critique est concernée.
-
-## Definition of Done
-
-Une issue est terminée seulement si :
-
-- tous les critères d’acceptation sont vérifiés ;
-- les tests pertinents passent ;
-- aucune permission ou donnée sensible supplémentaire n’est introduite sans documentation ;
-- le code respecte les frontières de modules ;
-- les erreurs sont récupérables ou explicitement documentées ;
-- les comportements testés sur appareil sont consignés lorsqu’ils dépendent d’Android ou One UI ;
-- le commit et la PR référencent l’issue.
-
-## Format de compte rendu
-
-À la fin du travail, indiquer :
-
-- fichiers et modules modifiés ;
-- comportement ajouté ;
-- tests exécutés ;
-- limitations restantes ;
-- critères d’acceptation validés ;
-- éventuelles décisions à reporter dans la documentation.
+Utiliser [le modèle de résultat](docs/agents/templates/result.md) : mission/issue, changements,
+critères validés et preuves, commandes/résultats exacts, critères non vérifiés et limites.
+Référencer l'issue dans commit/PR sans la clôturer si des critères physiques restent ouverts.
+Ne pas fusionner, publier ou installer sur un téléphone personnel sans autorisation adaptée.
