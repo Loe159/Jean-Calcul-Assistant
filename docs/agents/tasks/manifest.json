@@ -1,0 +1,452 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "7490e79f19b0ec78136db622d2588032cd5c0596",
+  "tasks": [
+    {
+      "id": "JC-01",
+      "title": "Rendre la sélection du profil unique et vérifiable",
+      "file": "docs/agents/tasks/jc-01-active-profile.md",
+      "depends_on": [],
+      "issues": [
+        40,
+        43
+      ],
+      "skill": ".agents/skills/jc-runtime/SKILL.md",
+      "specs": [
+        "docs/specs/01-conversation-runtime.md",
+        "docs/specs/04-data-and-privacy.md",
+        "docs/specs/03-backends-auth-and-protocol.md"
+      ],
+      "requirements": [
+        "CONV-01",
+        "CONV-02",
+        "CONV-04",
+        "DATA-05",
+        "AUTH-06"
+      ],
+      "sources": [
+        "android/core-domain/src/main/kotlin/fr/loevan/jeancalcul/domain/AssistantSettings.kt",
+        "android/core-domain/src/main/kotlin/fr/loevan/jeancalcul/domain/ProviderSelection.kt",
+        "android/feature-settings/src/main/kotlin/fr/loevan/jeancalcul/feature/settings/SettingsViewModel.kt",
+        "android/core-network/src/main/kotlin/fr/loevan/jeancalcul/network/codex/CodexCompanionAgentBackend.kt"
+      ]
+    },
+    {
+      "id": "JC-02",
+      "title": "Garantir la fin, l’annulation et le réessai des tours",
+      "file": "docs/agents/tasks/jc-02-turn-lifecycle.md",
+      "depends_on": [
+        "JC-01"
+      ],
+      "issues": [
+        40,
+        43
+      ],
+      "skill": ".agents/skills/jc-runtime/SKILL.md",
+      "specs": [
+        "docs/specs/01-conversation-runtime.md",
+        "docs/specs/07-quality-and-acceptance.md"
+      ],
+      "requirements": [
+        "CONV-05",
+        "CONV-06",
+        "CONV-07",
+        "CONV-08",
+        "CONV-09",
+        "CONV-10",
+        "CONV-11",
+        "CONV-12",
+        "QA-02",
+        "QA-03"
+      ],
+      "sources": [
+        "android/feature-conversation/src/main/kotlin/fr/loevan/jeancalcul/feature/conversation/ConversationOrchestrator.kt",
+        "android/core-domain/src/main/kotlin/fr/loevan/jeancalcul/domain/Conversation.kt",
+        "android/core-domain/src/main/kotlin/fr/loevan/jeancalcul/domain/ConversationRepository.kt",
+        "android/core-domain/src/main/kotlin/fr/loevan/jeancalcul/domain/ProviderContracts.kt"
+      ]
+    },
+    {
+      "id": "JC-03",
+      "title": "Raccorder le parcours texte aux modèles et agents",
+      "file": "docs/agents/tasks/jc-03-conversation-routing.md",
+      "depends_on": [
+        "JC-01",
+        "JC-02"
+      ],
+      "issues": [
+        40,
+        43
+      ],
+      "skill": ".agents/skills/jc-runtime/SKILL.md",
+      "specs": [
+        "docs/specs/00-product.md",
+        "docs/specs/01-conversation-runtime.md",
+        "docs/specs/03-backends-auth-and-protocol.md"
+      ],
+      "requirements": [
+        "PROD-01",
+        "PROD-02",
+        "PROD-03",
+        "CONV-02",
+        "CONV-03",
+        "CONV-04",
+        "CONV-05",
+        "CONV-13",
+        "CONV-14",
+        "NET-06"
+      ],
+      "sources": [
+        "android/feature-conversation/src/main/kotlin/fr/loevan/jeancalcul/feature/conversation/ConversationViewModel.kt",
+        "android/feature-conversation/src/main/kotlin/fr/loevan/jeancalcul/feature/conversation/ConversationScreenActions.kt",
+        "android/app/src/main/java/fr/loevan/jeancalcul/app/MainActivity.kt",
+        "android/core-network/src/main/kotlin/fr/loevan/jeancalcul/network/OpenAiCompatibleProvider.kt",
+        "android/core-network/src/main/kotlin/fr/loevan/jeancalcul/network/anthropic/AnthropicProvider.kt",
+        "android/core-network/src/main/kotlin/fr/loevan/jeancalcul/network/openrouter/OpenRouterProvider.kt",
+        "android/core-network/src/main/kotlin/fr/loevan/jeancalcul/network/ollama/OllamaProvider.kt"
+      ]
+    },
+    {
+      "id": "JC-04",
+      "title": "Appliquer les permissions et politiques réellement configurées",
+      "file": "docs/agents/tasks/jc-04-configured-policy.md",
+      "depends_on": [
+        "JC-01"
+      ],
+      "issues": [
+        44
+      ],
+      "skill": ".agents/skills/jc-tools-policy/SKILL.md",
+      "specs": [
+        "docs/specs/02-tools-policy-and-approvals.md"
+      ],
+      "requirements": [
+        "POL-01",
+        "POL-02",
+        "POL-03",
+        "POL-10",
+        "POL-11",
+        "POL-12"
+      ],
+      "sources": [
+        "android/tool-bridge/src/main/kotlin/fr/loevan/jeancalcul/toolbridge/LocalAgentToolRuntime.kt",
+        "android/tool-bridge/src/main/kotlin/fr/loevan/jeancalcul/toolbridge/ToolRegistry.kt",
+        "android/core-domain/src/main/kotlin/fr/loevan/jeancalcul/domain/PolicyEngine.kt",
+        "android/core-domain/src/main/kotlin/fr/loevan/jeancalcul/domain/AssistantSettings.kt",
+        "android/feature-conversation/src/main/kotlin/fr/loevan/jeancalcul/feature/conversation/ConversationViewModel.kt"
+      ]
+    },
+    {
+      "id": "JC-05",
+      "title": "Faire aboutir les confirmations jusqu’au résultat outil",
+      "file": "docs/agents/tasks/jc-05-approval-round-trip.md",
+      "depends_on": [
+        "JC-02",
+        "JC-04"
+      ],
+      "issues": [
+        44
+      ],
+      "skill": ".agents/skills/jc-tools-policy/SKILL.md",
+      "specs": [
+        "docs/specs/01-conversation-runtime.md",
+        "docs/specs/02-tools-policy-and-approvals.md",
+        "docs/specs/06-ux-and-design.md"
+      ],
+      "requirements": [
+        "POL-04",
+        "POL-05",
+        "POL-06",
+        "POL-07",
+        "POL-08",
+        "POL-09",
+        "POL-10",
+        "POL-11",
+        "POL-12",
+        "CONV-09",
+        "CONV-10",
+        "UI-09"
+      ],
+      "sources": [
+        "android/tool-bridge/src/main/kotlin/fr/loevan/jeancalcul/toolbridge/LocalAgentToolRuntime.kt",
+        "android/feature-conversation/src/main/kotlin/fr/loevan/jeancalcul/feature/conversation/ConversationOrchestrator.kt",
+        "android/core-domain/src/main/kotlin/fr/loevan/jeancalcul/domain/PolicyEngine.kt",
+        "android/core-ui/src/main/kotlin/fr/loevan/jeancalcul/ui/ActionComponents.kt",
+        "android/app/src/main/java/fr/loevan/jeancalcul/app/MainActivity.kt"
+      ]
+    },
+    {
+      "id": "JC-06",
+      "title": "Unifier les tours texte et voix et libérer les ressources",
+      "file": "docs/agents/tasks/jc-06-voice-parity.md",
+      "depends_on": [
+        "JC-03",
+        "JC-05",
+        "JC-09"
+      ],
+      "issues": [
+        45
+      ],
+      "skill": ".agents/skills/jc-voice/SKILL.md",
+      "specs": [
+        "docs/specs/05-voice-and-android-lifecycle.md",
+        "docs/specs/04-data-and-privacy.md"
+      ],
+      "requirements": [
+        "VOICE-01",
+        "VOICE-02",
+        "VOICE-03",
+        "VOICE-04",
+        "VOICE-05",
+        "VOICE-06",
+        "VOICE-07",
+        "VOICE-08",
+        "VOICE-09",
+        "VOICE-10",
+        "DATA-10"
+      ],
+      "sources": [
+        "android/assistant-session/src/main/kotlin/fr/loevan/jeancalcul/assistant/session/VoiceAgentCommandProcessor.kt",
+        "android/assistant-session/src/main/kotlin/fr/loevan/jeancalcul/assistant/session/VoiceSessionController.kt",
+        "android/assistant-session/src/main/kotlin/fr/loevan/jeancalcul/assistant/session/JeanCalculVoiceInteractionSession.kt",
+        "android/feature-conversation/src/main/kotlin/fr/loevan/jeancalcul/feature/conversation/VoiceConversationRecorder.kt",
+        "android/feature-voice/src/main/kotlin/fr/loevan/jeancalcul/voice/VoicePipeline.kt"
+      ]
+    },
+    {
+      "id": "JC-07",
+      "title": "Recomposer conversation et navigation pour un usage Android",
+      "file": "docs/agents/tasks/jc-07-conversation-ui.md",
+      "depends_on": [
+        "JC-03",
+        "JC-05"
+      ],
+      "issues": [
+        40,
+        39
+      ],
+      "skill": ".agents/skills/jc-compose-ui/SKILL.md",
+      "specs": [
+        "docs/specs/06-ux-and-design.md",
+        "docs/specs/01-conversation-runtime.md",
+        "docs/specs/00-product.md"
+      ],
+      "requirements": [
+        "UI-01",
+        "UI-02",
+        "UI-03",
+        "UI-04",
+        "UI-05",
+        "UI-06",
+        "UI-07",
+        "UI-08",
+        "UI-09",
+        "UI-12",
+        "PROD-04",
+        "PROD-05",
+        "CONV-13"
+      ],
+      "sources": [
+        "android/feature-conversation/src/main/kotlin/fr/loevan/jeancalcul/feature/conversation/ConversationScreen.kt",
+        "android/feature-conversation/src/main/kotlin/fr/loevan/jeancalcul/feature/conversation/ConversationScreenActions.kt",
+        "android/app/src/main/java/fr/loevan/jeancalcul/app/MainAppContent.kt",
+        "android/core-ui/src/main/kotlin/fr/loevan/jeancalcul/ui/ConversationComponents.kt",
+        "android/core-ui/src/main/kotlin/fr/loevan/jeancalcul/ui/SupportComponents.kt",
+        "android/core-ui/src/main/kotlin/fr/loevan/jeancalcul/ui/DesignTokens.kt"
+      ]
+    },
+    {
+      "id": "JC-08",
+      "title": "Clarifier mise en service, réglages et audit",
+      "file": "docs/agents/tasks/jc-08-settings-audit-ui.md",
+      "depends_on": [
+        "JC-01",
+        "JC-04",
+        "JC-09"
+      ],
+      "issues": [
+        39,
+        43,
+        44
+      ],
+      "skill": ".agents/skills/jc-compose-ui/SKILL.md",
+      "specs": [
+        "docs/specs/06-ux-and-design.md",
+        "docs/specs/03-backends-auth-and-protocol.md",
+        "docs/specs/00-product.md"
+      ],
+      "requirements": [
+        "UI-01",
+        "UI-02",
+        "UI-03",
+        "UI-04",
+        "UI-05",
+        "UI-10",
+        "UI-11",
+        "UI-12",
+        "PROD-03",
+        "PROD-04",
+        "PROD-06"
+      ],
+      "sources": [
+        "android/app/src/main/java/fr/loevan/jeancalcul/app/AssistantRoleOnboarding.kt",
+        "android/feature-settings/src/main/kotlin/fr/loevan/jeancalcul/feature/settings/SettingsScreen.kt",
+        "android/feature-settings/src/main/kotlin/fr/loevan/jeancalcul/feature/settings/SettingsViewModel.kt",
+        "android/app/src/main/java/fr/loevan/jeancalcul/app/AuditScreen.kt",
+        "android/app/src/main/java/fr/loevan/jeancalcul/app/AuditViewModel.kt"
+      ]
+    },
+    {
+      "id": "JC-09",
+      "title": "Sécuriser persistance, récupération et exports",
+      "file": "docs/agents/tasks/jc-09-data-recovery-privacy.md",
+      "depends_on": [
+        "JC-02"
+      ],
+      "issues": [
+        40,
+        44
+      ],
+      "skill": ".agents/skills/jc-data/SKILL.md",
+      "specs": [
+        "docs/specs/04-data-and-privacy.md",
+        "docs/specs/01-conversation-runtime.md",
+        "docs/specs/07-quality-and-acceptance.md"
+      ],
+      "requirements": [
+        "DATA-01",
+        "DATA-02",
+        "DATA-03",
+        "DATA-04",
+        "DATA-05",
+        "DATA-06",
+        "DATA-07",
+        "DATA-08",
+        "DATA-09",
+        "DATA-10",
+        "CONV-12",
+        "CONV-13",
+        "QA-04"
+      ],
+      "sources": [
+        "android/core-data/src/main/kotlin/fr/loevan/jeancalcul/data/JeanCalculDatabase.kt",
+        "android/core-data/src/main/kotlin/fr/loevan/jeancalcul/data/conversation/RoomConversationRepository.kt",
+        "android/core-data/src/main/kotlin/fr/loevan/jeancalcul/data/conversation/ConversationDao.kt",
+        "android/core-data/src/main/kotlin/fr/loevan/jeancalcul/data/settings/DataStoreAssistantSettingsRepository.kt",
+        "android/core-observability/src/main/kotlin/fr/loevan/jeancalcul/observability/RedactedAuditExporter.kt"
+      ]
+    },
+    {
+      "id": "JC-10",
+      "title": "Qualifier auth et reprise des backends sans promesse fictive",
+      "file": "docs/agents/tasks/jc-10-backend-compatibility.md",
+      "depends_on": [
+        "JC-01",
+        "JC-02"
+      ],
+      "issues": [
+        41,
+        42,
+        43
+      ],
+      "skill": ".agents/skills/jc-backend/SKILL.md",
+      "specs": [
+        "docs/specs/03-backends-auth-and-protocol.md",
+        "docs/specs/00-product.md"
+      ],
+      "requirements": [
+        "AUTH-01",
+        "AUTH-02",
+        "AUTH-03",
+        "AUTH-04",
+        "AUTH-05",
+        "AUTH-06",
+        "AUTH-07",
+        "AUTH-08",
+        "NET-01",
+        "NET-02",
+        "NET-03",
+        "NET-04",
+        "NET-05",
+        "NET-06",
+        "NET-07",
+        "NET-08",
+        "PROD-06"
+      ],
+      "sources": [
+        "android/core-network/src/main/kotlin/fr/loevan/jeancalcul/network/codex/ChatGptPlanAuthManager.kt",
+        "android/core-network/src/main/kotlin/fr/loevan/jeancalcul/network/codex/ChatGptPlanAgentBackend.kt",
+        "android/core-network/src/main/kotlin/fr/loevan/jeancalcul/network/codex/CodexCompanionAgentBackend.kt",
+        "companion/codex_companion.py",
+        "companion/README.md"
+      ]
+    },
+    {
+      "id": "JC-11",
+      "title": "Exécuter la qualification automatisée et assembler les preuves",
+      "file": "docs/agents/tasks/jc-11-integration-qualification.md",
+      "depends_on": [
+        "JC-06",
+        "JC-07",
+        "JC-08",
+        "JC-09",
+        "JC-10"
+      ],
+      "issues": [
+        39,
+        46
+      ],
+      "skill": ".agents/skills/jc-verify/SKILL.md",
+      "specs": [
+        "docs/specs/07-quality-and-acceptance.md"
+      ],
+      "requirements": [
+        "QA-01",
+        "QA-02",
+        "QA-03",
+        "QA-04",
+        "QA-05",
+        "QA-07",
+        "QA-08"
+      ],
+      "sources": [
+        ".github/workflows/android.yml",
+        "docs/agents/verification.md",
+        "docs/observability/phase_1_mvp_validation.md"
+      ]
+    },
+    {
+      "id": "JC-12",
+      "title": "Valider réellement le parcours sur le Samsung de référence",
+      "file": "docs/agents/tasks/jc-12-samsung-validation.md",
+      "depends_on": [
+        "JC-11"
+      ],
+      "issues": [
+        46,
+        17
+      ],
+      "skill": ".agents/skills/jc-verify/SKILL.md",
+      "specs": [
+        "docs/specs/05-voice-and-android-lifecycle.md",
+        "docs/specs/06-ux-and-design.md",
+        "docs/specs/07-quality-and-acceptance.md",
+        "docs/specs/03-backends-auth-and-protocol.md"
+      ],
+      "requirements": [
+        "QA-01",
+        "QA-05",
+        "QA-06",
+        "QA-08",
+        "UI-12",
+        "AUTH-01"
+      ],
+      "sources": [
+        "docs/testing/device-matrix.md",
+        "docs/testing/samsung-power-invocation.md",
+        "docs/testing/phase-1-voice-pipeline.md",
+        "docs/agents/templates/device-report.md"
+      ]
+    }
+  ]
+}

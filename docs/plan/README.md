@@ -2,6 +2,14 @@
 
 Cette documentation complète le backlog GitHub. Les issues restent la source de vérité pour l’avancement et les critères d’acceptation ; les documents du plan décrivent la cible, les contraintes et les dépendances.
 
+## Délégation de la remise en état
+
+Pour implémenter le chantier courant, commencer par [le portail agents](../agents/README.md),
+[l'état réel daté](../agents/current-state.md), les [spécifications exécutables](../specs/README.md)
+et une [mission bornée](../agents/tasks/README.md). Ces documents complètent les phases ci-dessous.
+Les fiches JC ne sont pas des clôtures d'issues et leurs exigences sont des cibles, pas des succès attestés.
+La [décision 0018](../architecture/0018-agent-delegation-contract.md) explique ce contrat documentaire.
+
 ## Lecture rapide pour un agent
 
 1. lire `AGENTS.md` ;
