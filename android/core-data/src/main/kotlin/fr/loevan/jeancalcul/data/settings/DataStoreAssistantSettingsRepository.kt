@@ -50,7 +50,8 @@ class DataStoreAssistantSettingsRepository
         override suspend fun update(transform: (AssistantSettings) -> AssistantSettings) {
             updateMutex.withLock {
                 context.assistantSettingsDataStore.edit { preferences ->
-                    val updated = transform(decode(preferences)).normalizeActiveSelections()
+                    val current = decode(preferences).normalizeActiveSelections()
+                    val updated = transform(current).normalizeActiveSelections()
                     preferences[SETTINGS_JSON] = json.encodeToString(updated)
                 }
             }
