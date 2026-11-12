@@ -55,15 +55,20 @@ def check_instrumentation_results(directory, serial, since=0):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--run-id', default=dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ'))
-    parser.add_argument('--attempt', type=int, choices=(1, 2, 3, 4), default=1)
+    parser.add_argument('--attempt', type=int, default=1)
     parser.add_argument('--extra-validation-authorized', action='store_true',
-                        help='Attempt 4 only: requires explicit user authorization to exceed the budget')
+                        help='Attempts above 3 require explicit user authorization to exceed the budget')
+    parser.add_argument('--authorization-note', help='Record the explicit user instruction authorizing additional attempts')
     parser.add_argument('--show-window', action='store_true')
     parser.add_argument('--keep-emulator', action='store_true', help='Leave the synthetic AVD open for interaction')
     parser.add_argument('--port', type=int, default=5580)
     args = parser.parse_args()
-    if args.attempt == 4 and not args.extra_validation_authorized:
-        parser.error('Attempt 4 requires explicit user authorization and --extra-validation-authorized')
+    if args.attempt < 1:
+        parser.error('Attempt must be positive')
+    if args.attempt > 3 and not args.extra_validation_authorized:
+        parser.error('Attempts above 3 require explicit user authorization and --extra-validation-authorized')
+    if args.attempt > 4 and not args.authorization_note:
+        parser.error('Attempts above 4 require --authorization-note recording the explicit user instruction')
     if not re.fullmatch(r'[A-Za-z0-9_-]+', args.run_id):
         parser.error('run-id must contain only letters, numbers, underscore or dash')
     if args.port < 5554 or args.port > 5682 or args.port % 2:
@@ -73,8 +78,8 @@ def main():
     (out / 'screenshots').mkdir()
     (out / 'logs').mkdir()
     report = {'issue': int(re.sub(r'\D', '', args.run_id) or '54'), 'attempt': args.attempt,
-              'attempt_budget': 4 if args.attempt == 4 else 3,
-              'budget_override': 'Explicit user authorization, 2026-11-12' if args.attempt == 4 else None, 'created_utc': dt.datetime.now(dt.timezone.utc).isoformat(),
+              'attempt_budget': max(3, args.attempt),
+              'budget_override': (args.authorization_note or 'Explicit user authorization, 2026-11-12') if args.attempt > 3 else None, 'created_utc': dt.datetime.now(dt.timezone.utc).isoformat(),
               'commit': '', 'working_tree_dirty': False, 'api': 35, 'serial': f'emulator-{args.port}',
               'technical': {'status': 'NOT_RUN'},
               'captures': {s: {'status': 'NOT_RUN'} for s in SCENARIOS},
@@ -201,14 +206,29 @@ def main():
         build_started = time.time()
         build = run([ROOT / 'gradlew', '--no-daemon',
              '-Pandroid.testInstrumentationRunnerArguments.class=' + APP + '.SmokeTest', ':app:assembleDebug', ':app:assembleDebugAndroidTest',
-             ':app:testDebugUnitTest', ':app:lintDebug', ':app:connectedDebugAndroidTest'], 'gradle', timeout=1500)
+             ':app:testDebugUnitTest', ':app:lintDebug', ':app:connectedDebugAndroidTest'], 'gradle', timeout=1500, check=False)
         (out / 'test-results').mkdir()
         for result in (ROOT / 'app/build/outputs/androidTest-results/connected/debug').rglob('TEST-*.xml'):
             if result.stat().st_mtime >= build_started:
                 shutil.copy2(result, out / 'test-results' / result.name)
-        check_instrumentation_results(out / 'test-results', report['serial'])
-        report['technical'] = {'status': 'PASS', 'evidence': 'logs/gradle.txt',
+        technical_error = None
+        try:
+            check_instrumentation_results(out / 'test-results', report['serial'])
+            if build.returncode:
+                raise RuntimeError(f'Gradle failed ({build.returncode}); see logs/gradle.txt')
+        except RuntimeError as error:
+            technical_error = redact(str(error))
+        report['technical'] = {'status': 'FAIL' if technical_error else 'PASS', 'evidence': 'logs/gradle.txt',
             'jvm_tests': 'NOT_RUN' if ':app:testDebugUnitTest NO-SOURCE' in build.stdout else 'PASS'}
+        if technical_error:
+            report['error'] = technical_error
+            report['technical']['error'] = technical_error
+            print('Technical failure retained; collecting visual scenarios independently…', flush=True)
+        save()
+        # Never collect stale APKs left by a previous build after a compilation failure.
+        for task in ('assembleDebug', 'assembleDebugAndroidTest'):
+            if not re.search(rf'> Task :app:{task}(?: UP-TO-DATE)?(?:\r?\n|$)', build.stdout):
+                raise RuntimeError(f'{task} did not complete; refusing to install an older APK')
         for apk in (ROOT / 'app/build/outputs/apk/debug/app-debug.apk',
                     ROOT / 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk'):
             run(adb + ['install', '-r', apk], 'install-' + apk.stem)
@@ -268,7 +288,7 @@ def main():
         baseline()
         shell('am', 'force-stop', APP)
         shell('am', 'start', '-n', APP + '/.MainActivity')
-        success = True
+        success = technical_error is None
     except (OSError, RuntimeError, subprocess.TimeoutExpired, ET.ParseError) as error:
         report['error'] = redact(str(error))
         print(report['error'], file=sys.stderr)

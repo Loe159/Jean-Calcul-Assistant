@@ -44,3 +44,17 @@ hors Git. Empreinte APK dans `report.json`. Ils sont candidats, non validés.
 La PR #60 reste en brouillon. Aucun nouveau run n'est lancé : le budget de
 quatre tentatives accordé est épuisé. Samsung, haptique physique, fluidité,
 Android 13 et scénarios de capture restent non validés.
+
+## Reprise autorisée après la tentative 4
+
+L'utilisateur demande explicitement : « Il faut corriger le problème jusqu'à
+ce que tu puisses passer tous les tests ». Cette instruction autorise la
+poursuite des corrections et validations au-delà de la dérogation précédente,
+sous le même run-id `issue55`, sans écraser les résultats antérieurs. Chaque
+nouvelle tentative consigne cette instruction avec `--authorization-note`.
+
+Les logs de la tentative 4 signalent que `OnBackInvokedCallback` n'est pas
+activé. La reprise active le chemin de retour Android moderne dans le manifeste
+et attend explicitement la disparition de l'IME avant d'injecter Retour.
+Les captures sont maintenant collectées même en cas d'échec des tests Smoke,
+tout en conservant le statut technique FAIL et le code de sortie non nul.

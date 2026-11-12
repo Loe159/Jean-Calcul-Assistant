@@ -1,5 +1,6 @@
 package fr.loevan.jeancalcul.v2
 
+import android.view.WindowInsets
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -33,7 +34,15 @@ class SmokeTest {
         rule.onNodeWithTag("composer").performTextInput("Brouillon")
         rule.onNodeWithTag("settings").performClick()
         rule.onNodeWithText("Préférences").assertIsDisplayed()
-        // Android's IME/window dismissal is outside the Compose test clock.
+        // An idle accessibility tree does not mean that a pending IME show/hide finished.
+        rule.waitUntil(10_000) {
+            var hidden = false
+            rule.runOnUiThread {
+                hidden = rule.activity.window.decorView.rootWindowInsets
+                    ?.isVisible(WindowInsets.Type.ime()) == false
+            }
+            hidden
+        }
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle()
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack()
         rule.onNodeWithText("Brouillon").assertExists()

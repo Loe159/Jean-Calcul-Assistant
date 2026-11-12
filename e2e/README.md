@@ -127,3 +127,11 @@ explicitement illustratives) et le dialogue COUI. Le numéro du rapport suit les
 chiffres du run-id (`issue55` → #55). Les rapports historiques conservent leur
 liste propre de captures. Les tests vérifient l'annulation de l'effacement,
 la conservation du brouillon en navigation et le retour système depuis la galerie.
+
+Une instruction utilisateur explicite peut autoriser une poursuite après la
+quatrième tentative. Conserver le même run-id et les preuves précédentes ;
+utiliser `--extra-validation-authorized --authorization-note '<instruction>'`
+pour enregistrer l'autorisation dans chaque rapport. Aucun dépassement implicite.
+Les échecs Smoke sont conservés en FAIL mais n'empêchent plus la collecte des
+scénarios visuels indépendants si les APK sont disponibles. Un build ou scénario
+inexploitable arrête toujours la collecte avec les preuves partielles.
