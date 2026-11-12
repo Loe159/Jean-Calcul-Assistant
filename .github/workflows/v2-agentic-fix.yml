@@ -1,0 +1,69 @@
+name: Jean-Calcul V2 - Agentic repair (manual only)
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'Internal feature branch (feat/v2-*), never foundation or main'
+        required: true
+        type: string
+permissions:
+  contents: write
+jobs:
+  bounded-repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      TARGET_BRANCH: ${{ inputs.target_branch }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      E2E_SYNTHETIC_ONLY: 'true'
+      E2E_VISION_MODEL: gpt-4.1-mini
+    steps:
+      - name: Validate safe branch and secret
+        shell: bash
+        run: |
+          [[ "$TARGET_BRANCH" =~ ^feat/v2-[a-zA-Z0-9._/-]+$ ]] || exit 1
+          [[ -n "$OPENAI_API_KEY" ]] || { echo 'OPENAI_API_KEY required'; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_branch }}
+          persist-credentials: true
+          fetch-depth: 0
+      - name: Refuse non-internal or modified workflow
+        shell: bash
+        run: |
+          [[ "$GITHUB_REPOSITORY" == "Loe159/Jean-Calcul-Assistant" ]] || exit 1
+          git merge-base --is-ancestor origin/feature/jean-calcul-v2-foundation HEAD
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v4
+      - run: sdkmanager --channel=3 "platforms;android-37.0"
+      - run: python3 -m pip install -r e2e/requirements.txt
+      - run: npm install -g @openai/codex
+      - name: Configure commit author
+        run: |
+          git config user.name "jean-calcul-e2e-bot"
+          git config user.email "actions@users.noreply.github.com"
+      - name: Iterate on emulator (maximum three attempts)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: bash e2e/agentic_loop.sh
+      - name: Build resulting APK
+        if: always()
+        run: ./gradlew --no-daemon :app:assembleDebug
+      - name: Upload evidence and APK; user reviews PR
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V2-Agentic-Repair-${{ github.run_id }}
+          path: |
+            e2e-artifacts/**
+            app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
