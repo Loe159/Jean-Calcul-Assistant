@@ -4,6 +4,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.UiDevice
 import org.junit.Rule
 import org.junit.Test
 
@@ -24,7 +26,7 @@ class SmokeTest {
     @Test fun settingsScreen() {
         rule.onNodeWithTag("settings").performClick()
         rule.onNodeWithTag("composer").assertDoesNotExist()
-        rule.onNodeWithTag("settings").performClick()
+        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack()
         rule.onNodeWithTag("composer").assertExists()
     }
 }

@@ -17,3 +17,8 @@ e2e-artifacts/
 
 # OS
 .DS_Store
+
+# Local Python helpers
+__pycache__/
+
+.kotlin/
