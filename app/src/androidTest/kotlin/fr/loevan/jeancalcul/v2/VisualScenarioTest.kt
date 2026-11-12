@@ -24,6 +24,8 @@ import androidx.test.uiautomator.UiDevice
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
@@ -47,7 +49,16 @@ class VisualScenarioTest {
                 rule.onNodeWithText("Bonjour V2 — test synthétique").assertIsDisplayed()
                 // Android Back belongs to the system, outside the Compose semantics tree.
                 device.pressBack()
+                rule.waitUntil(10_000) {
+                    var hidden = false
+                    rule.runOnUiThread {
+                        hidden = rule.activity.window.decorView.rootWindowInsets
+                            ?.isVisible(WindowInsets.Type.ime()) == false
+                    }
+                    hidden
+                }
                 rule.waitForIdle()
+                rule.onNodeWithTag("navigation").assertIsDisplayed()
                 if (scenario == "reset") {
                     rule.onNodeWithTag("reset").performClick()
                     rule.onNodeWithText("Effacer").performClick()
@@ -98,6 +109,17 @@ class VisualScenarioTest {
         device.waitForIdle()
         // Let system insets / IME animations settle before taking a full-device capture.
         android.os.SystemClock.sleep(600)
+        // Compose idleness is not a GPU presentation fence. COUI records content
+        // into graphics layers; wait for two submitted frames before reading pixels.
+        if (scenario != "dialog") repeat(2) {
+            val committed = CountDownLatch(1)
+            rule.runOnUiThread {
+                val view = rule.activity.window.decorView
+                view.viewTreeObserver.registerFrameCommitCallback { committed.countDown() }
+                view.postInvalidateOnAnimation()
+            }
+            assertTrue("No rendered frame committed before capture", committed.await(10, TimeUnit.SECONDS))
+        }
         val directory = File(rule.activity.filesDir, "e2e").apply { mkdirs() }
         val destination = File(directory, "$scenario.png")
         var captured = false

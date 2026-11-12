@@ -78,6 +78,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 fun V2App() {
     JeanTheme {
         val focus = LocalFocusManager.current
@@ -131,7 +132,7 @@ fun V2App() {
                 Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
                     if (page == "chat") Composer(draft, { draft = it }, ::send)
                     // The keyboard gets the available height; destination controls return on dismissal.
-                    val keyboard = WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
+                    val keyboard = WindowInsets.isImeVisible
                     if (!keyboard) DestinationBar(page, messages.isNotEmpty(), { navigate(it) }) {
                         if (messages.isEmpty() && draft.isBlank()) reset() else confirmReset = true
                     }
@@ -215,12 +216,12 @@ private fun DestinationBar(page: String, hasMessages: Boolean, onSelection: (Str
     val items = listOf(CouiNavigationItem("Chat", Icons.Default.Home, Icons.Default.Home),
         CouiNavigationItem("Réglages", Icons.Default.Settings, Icons.Default.Settings))
     if (Build.VERSION.SDK_INT >= 34 && androidx.compose.ui.platform.LocalDensity.current.fontScale <= 1.3f) {
-        NavigationBar(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        NavigationBar(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).testTag("navigation"),
             renderer = remember { CouiFloatingRenderer() }, items = items,
             selectedIndex = if (page == "chat") 0 else 1,
             rightIcon = Icons.Default.Add, rightDescription = "Nouvelle conversation", rightVisible = hasMessages && page == "chat",
             onRightClick = onReset, onSelection = { onSelection(if (it == 0) "chat" else "settings") })
-    } else Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    } else Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).testTag("navigation"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items.forEachIndexed { index, item ->
             val selected = (page == "chat") == (index == 0)
             val source = remember { MutableInteractionSource() }
