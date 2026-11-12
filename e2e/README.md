@@ -38,6 +38,10 @@ dans cet AVD.
 Les étapes : compilation, JVM/lint, tests instrumentés Compose, installation des
 APK, actions système UI Automator/ADB, captures plein écran et hashes SHA-256.
 Les erreurs instrumentées sont détectées même si `am instrument` renvoie zéro.
+Les PNG restent dans le stockage privé de cette app debug et sont lus via
+`adb exec-out run-as` ; pas de dépendance au nettoyage asynchrone du stockage partagé.
+Chaque scénario repart d’une activité neuve après force-stop, ce qui réinitialise
+les données en mémoire du prototype (adapter cette fixture lors de l’ajout de persistance).
 Un échec arrête la tentative et conserve les preuves partielles avec NOT_RUN.
 Boot limité à 240 s, build/tests à 1500 s, scénario à 120 s. Les logs enregistrés
 sont expurgés (chemin personnel, jetons usuels, emails) ; les inspecter avant partage.

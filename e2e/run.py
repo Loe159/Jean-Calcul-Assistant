@@ -207,7 +207,8 @@ def main():
             print(f'Capturing {scenario}…', flush=True)
             baseline()
             shell('am', 'force-stop', APP)
-            shell('pm', 'clear', APP)
+            # The prototype stores chat only in memory: force-stop restores its empty state.
+            # Avoid pm clear: external storage cleanup can outlive that command.
             if scenario == 'dark':
                 shell('cmd', 'uimode', 'night', 'yes')
             if scenario == 'small_screen':
@@ -215,7 +216,7 @@ def main():
                 shell('wm', 'density', '320')
             if scenario == 'large_text':
                 shell('settings', 'put', 'system', 'font_scale', '2.0')
-            remote = f'/sdcard/Android/data/{APP}/files/e2e/{scenario}.png'
+            remote = f'files/e2e/{scenario}.png'
             result = run(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
                 APP + '.VisualScenarioTest#capture', '-e', 'scenario', scenario, RUNNER],
                 scenario, timeout=120)
@@ -225,7 +226,14 @@ def main():
                 save()
                 raise RuntimeError(f'Instrumentation failed for {scenario}; see logs/{scenario}.txt')
             path = out / 'screenshots' / f'{scenario}.png'
-            run(adb + ['pull', remote, path], 'pull-' + scenario)
+            transfer = subprocess.run(adb + ['exec-out', 'run-as', APP, 'cat', remote],
+                cwd=ROOT, env=env, capture_output=True, timeout=30)
+            (out / 'logs' / f'transfer-{scenario}.txt').write_text(
+                f'exit={transfer.returncode} bytes={len(transfer.stdout)}\n' +
+                redact(transfer.stderr.decode(errors='replace')))
+            if transfer.returncode:
+                raise RuntimeError(f'Screenshot transfer failed for {scenario}; see logs/transfer-{scenario}.txt')
+            path.write_bytes(transfer.stdout)
             if not path.read_bytes().startswith(b'\x89PNG\r\n\x1a\n'):
                 raise RuntimeError(f'Invalid PNG for {scenario}')
             report['captures'][scenario] = {'status': 'PASS', 'path': f'screenshots/{scenario}.png',

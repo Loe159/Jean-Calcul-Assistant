@@ -87,7 +87,7 @@ class VisualScenarioTest {
         device.waitForIdle()
         // Let system insets / IME animations settle before taking a full-device capture.
         android.os.SystemClock.sleep(600)
-        val directory = File(rule.activity.getExternalFilesDir(null), "e2e").apply { mkdirs() }
+        val directory = File(rule.activity.filesDir, "e2e").apply { mkdirs() }
         assertTrue(device.takeScreenshot(File(directory, "$scenario.png")))
     }
 }
