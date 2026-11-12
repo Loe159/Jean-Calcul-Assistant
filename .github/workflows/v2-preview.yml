@@ -1,0 +1,67 @@
+name: V2 Preview APK and E2E
+on:
+  push:
+    branches: [feature/jean-calcul-v2-foundation]
+    paths: ['v2/**', '.github/workflows/v2-preview.yml']
+  pull_request:
+    paths: ['v2/**', '.github/workflows/v2-preview.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    name: APK and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: android-actions/setup-android@v4
+      - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - run: ./gradlew -p v2 --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JeanCalcul-V2-${{ github.sha }}
+          path: v2/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 21
+  emulator:
+    name: Android Emulator E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: android-actions/setup-android@v4
+      - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            ./gradlew -p v2 --no-daemon :app:connectedDebugAndroidTest
+            adb shell am start -n fr.loevan.jeancalcul.v2/.MainActivity
+            sleep 3
+            mkdir -p v2/e2e-artifacts
+            adb exec-out screencap -p > v2/e2e-artifacts/home.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: JeanCalcul-V2-E2E-${{ github.sha }}
+          path: |
+            v2/e2e-artifacts/**
+            v2/app/build/outputs/androidTest-results/**
+            v2/app/build/reports/androidTests/**
+          if-no-files-found: warn
+          retention-days: 21
