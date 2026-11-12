@@ -1,11 +1,11 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
 android {
     namespace = "fr.loevan.jeancalcul.v2"
-    compileSdk = 35
+    compileSdk = 37
     defaultConfig {
         applicationId = "fr.loevan.jeancalcul.v2"
         minSdk = 33
@@ -16,15 +16,15 @@ android {
     }
     buildTypes { getByName("release") { isMinifyEnabled = false } }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_25
+        targetCompatibility = JavaVersion.VERSION_25
     }
-    kotlinOptions { jvmTarget = "17" }
+
     buildFeatures { compose = true }
     testOptions { animationsDisabled = true }
 }
 dependencies {
-    implementation(platform("androidx.compose:compose-bom:2024.12.01"))
+    implementation(platform("androidx.compose:compose-bom:2026.10.00"))
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
     implementation("androidx.activity:activity-compose:1.10.0")
     implementation("androidx.compose.ui:ui")

@@ -18,11 +18,14 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '25'
           cache: gradle
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.7.1
       - uses: android-actions/setup-android@v4
-      - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
-      - run: ./gradlew -p v2 --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug
+      - run: sdkmanager --channel=3 "platforms;android-37.0"
+      - run: gradle -p v2 --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug
       - uses: actions/upload-artifact@v4
         with:
           name: JeanCalcul-V2-${{ github.sha }}
@@ -38,10 +41,13 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '25'
           cache: gradle
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 9.7.1
       - uses: android-actions/setup-android@v4
-      - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - run: sdkmanager --channel=3 "platforms;android-37.0"
       - uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -50,7 +56,7 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
-            ./gradlew -p v2 --no-daemon :app:connectedDebugAndroidTest
+            gradle -p v2 --no-daemon :app:connectedDebugAndroidTest
             adb shell am start -n fr.loevan.jeancalcul.v2/.MainActivity
             sleep 3
             mkdir -p v2/e2e-artifacts
