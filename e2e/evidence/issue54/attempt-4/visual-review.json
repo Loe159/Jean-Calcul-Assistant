@@ -1,0 +1,71 @@
+{
+  "empty": {
+    "status": "PASS",
+    "sha256": "7f929850c7ef5a775dafe8ee605db9d7dea9c2cccdaeb5b8bc6e85917e203215",
+    "observation": "Capture finale ouverte : titre/actions compacts, accueil et avertissement complets, champ de saisie au-dessus du geste système ; barre de statut lisible en clair.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "message": {
+    "status": "PASS",
+    "sha256": "4fd1fee017ae972ec99159b5e83460c34901505c8bf9af5f59f91439cc2ff70f",
+    "observation": "Bulle Bonjour V2 et avertissement mémoire visibles ; champ vidé après envoi. Aucun chevauchement des contrôles ou barres système.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reset": {
+    "status": "PASS",
+    "sha256": "7f929850c7ef5a775dafe8ee605db9d7dea9c2cccdaeb5b8bc6e85917e203215",
+    "observation": "Accueil restauré, bulle synthétique absente et champ vide ; PNG complet, mention prototype entièrement lisible.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "settings": {
+    "status": "PASS",
+    "sha256": "98c233ba6d3e05d74c94888107aa5d139500b5558255df28a09832ea055d622f",
+    "observation": "Préférences et mention sans moteur IA visibles, retour au chat identifiable. Le retour système a également passé le test connecté.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "dark": {
+    "status": "PASS",
+    "sha256": "57e2bc022802b2cb818d7ab8df4cda834059b09cb7eb70975672f9c405af1343",
+    "observation": "Fond sombre cohérent, texte et actions clairs lisibles ; surface de saisie et geste système bien séparés.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "small_screen": {
+    "status": "PASS",
+    "sha256": "84b656d4e704008ba395f5a7c2f44344307f7cb906d55ef858caf0e8d7b361fe",
+    "observation": "À 360×640 dp, navigation, texte d’accueil, avertissement et saisie restent dans la fenêtre. Placeholder sur deux lignes sans texte coupé.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "large_text": {
+    "status": "PASS",
+    "sha256": "c68437252e8e8c3e010e2344405f22d0be0b825eb77d675aa8b08344d27ccc43",
+    "observation": "À 200 %, Jean-Calcul et le sous-titre restent lisibles ; avertissement IA non connectée entièrement affiché sur deux lignes. Envoi et saisie ne débordent pas.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "keyboard": {
+    "status": "PASS",
+    "sha256": "6f2f7343c20c42d2b437cd8d00779a9a2b16afccfb084099279ac903beb29d66",
+    "observation": "Clavier Android visible, texte synthétique et bouton Envoyer actif au-dessus de l’IME. Le contenu reste lisible sans chevauchement du clavier.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reduced_motion": {
+    "status": "PASS",
+    "sha256": "6ae4d9201a904dbc113cb1ed3c3c429bcb75c346fba0fa35c8e29dbc1d4a3e04",
+    "observation": "Capture stable et complète, thème clair lisible et insets corrects avec animations système à zéro. Fluidité et haptique physiques non déduites de cette image.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "regression_fixture": {
+    "status": "FAIL",
+    "sha256": "85c0af06bcfab1c93b1303f41f0663bf3103d80c9b5cde265a518aa257eb8817",
+    "observation": "FAIL volontaire détecté dans cette nouvelle capture : rectangle rouge plein masquant toute la saisie et le bouton Envoyer. Aucun défaut analogue sur les neuf états normaux.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "_reference_comparison": {
+    "status": "PASS",
+    "opened_with": "functions.view_image (vision native, références et captures rouvertes pour cette validation)",
+    "reference_sha256": {
+      "chat_home.jpg": "b52261d66f78b41ce5c67f6d24925a795868a37544f44163d56652de98cc9111",
+      "settings.jpg": "8578d0d1ef91036e93c7b6b7ec8433e5790c476c43ebebbe68c514e84078cb30"
+    },
+    "observation": "Références Eta chat_home.jpg et settings.jpg rouvertes à côté des nouvelles captures. Les états communs de V2 conservent fond neutre, espace central, surfaces arrondies, navigation par icônes et saisie basse. Contraste système et police 200 % corrigés par rapport à la première tentative. V2 conserve sa marque et son avertissement de prototype ; elle ne possède pas encore les cartes de raccourcis ni les paramètres fournisseurs/outils d’Eta. La comparaison est exécutée, sans revendiquer parité fonctionnelle ou pixel à pixel ; pas de référence exacte sombre/clavier/texte 200 % fournie."
+  }
+}

@@ -18,12 +18,20 @@ Elles documentent un run historique ; ce ne sont pas des goldens auto-approuvés
   intermittent du problème de capture. Une quatrième validation a été
   explicitement autorisée par l’utilisateur le 2026-11-12.
 
+- [Validation finale 4/4](attempt-4/report.md) : code
+  `941334bb1a4133a8a1dc385e2fc251e917fc5b56`, budget supplémentaire autorisé
+  explicitement par l’utilisateur. Build/lint, trois tests Android et dix
+  captures complètes passent ; les dix images et les deux références Eta
+  ont été réellement ouvertes. Neuf états normaux PASS, défaut volontaire
+  FAIL et détection PASS. Les lectures du nouveau transfert sont toutes
+  complètes dès le premier essai dans ce run.
+
 Les références Eta sont celles fournies par l'utilisateur, épinglées dans
 `e2e/references.json`. Les JPG restent chez leur auteur ; leurs manifestes et
 empreintes sont conservés ici. La comparaison porte sur les états communs du
 prototype et ne revendique pas une parité fonctionnelle avec Eta.
 
-Chaque tentative conserve rapport, observations signées par l'outil utilisé,
+Chaque tentative conserve rapport, observations identifiant l'outil utilisé,
 PNG originaux, résultats XML et logs expurgés. Les APK et disques AVD restent
 hors de Git. Le rapport contient l'empreinte de l'APK local réellement testé.
 Les neuf tests Python vérifient notamment qu'un PNG seul ne vaut pas revue,
