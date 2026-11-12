@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="5" failures="0" errors="0" skipped="0" time="0.000" timestamp="2026-11-12T23:00:48" hostname="localhost">
+  <testsuite name="fr.loevan.jeancalcul.v2.SmokeTest" tests="5" failures="0" errors="0" skipped="0" time="50.801" timestamp="2026-11-12T23:00:48" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5580" />
+    </properties>
+    <testcase name="settingsScreen" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="20.730" />
+    <testcase name="resetCanBeCancelledAndDraftSurvivesNavigation" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="10.991" />
+    <testcase name="initialState" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="2.407" />
+    <testcase name="composeAndReset" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="9.362" />
+    <testcase name="nativeMenuGalleryAndDialog" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="7.311" />
+  </testsuite>
+</testsuites>

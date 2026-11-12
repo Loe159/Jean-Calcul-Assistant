@@ -88,6 +88,7 @@ fun V2App() {
         var page by rememberSaveable { mutableStateOf("chat") }
         var menu by remember { mutableStateOf(false) }
         var confirmReset by remember { mutableStateOf(false) }
+        var navigationEpoch by remember { mutableIntStateOf(0) }
         val messages = remember { mutableStateListOf<String>() }
         fun navigate(destination: String) {
             keyboardController?.hide()
@@ -95,7 +96,7 @@ fun V2App() {
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             page = destination
         }
-        fun reset() { messages.clear(); draft = ""; page = "chat"; confirmReset = false }
+        fun reset() { messages.clear(); draft = ""; page = "chat"; confirmReset = false; navigationEpoch++ }
         fun send() {
             if (draft.isNotBlank()) {
                 messages.add(draft.trim()); draft = ""
@@ -104,9 +105,9 @@ fun V2App() {
         }
         BackHandler(enabled = page != "chat") { navigate(if (page == "gallery") "settings" else "chat") }
         Scaffold(
-            modifier = Modifier.fillMaxSize().imePadding(),
+            modifier = Modifier.fillMaxSize(),
             topBar = {
-                Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
+                Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp).testTag("header"),
                     verticalAlignment = Alignment.CenterVertically) {
                     if (page != "chat") ActionIcon("Retour", Icons.AutoMirrored.Filled.ArrowBack, onClick = {
                         navigate(if (page == "gallery") "settings" else "chat")
@@ -129,12 +130,15 @@ fun V2App() {
                 }
             },
             bottomBar = {
-                Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
+                Column(Modifier.fillMaxWidth().navigationBarsPadding().imePadding()) {
                     if (page == "chat") Composer(draft, { draft = it }, ::send)
                     // The keyboard gets the available height; destination controls return on dismissal.
                     val keyboard = WindowInsets.isImeVisible
-                    if (!keyboard) DestinationBar(page, messages.isNotEmpty(), { navigate(it) }) {
-                        if (messages.isEmpty() && draft.isBlank()) reset() else confirmReset = true
+                    if (!keyboard) key(page, navigationEpoch) {
+                        // Alpha7's recorded navigation layers belong to this destination/session.
+                        DestinationBar(page, messages.isNotEmpty(), { navigate(it) }) {
+                            if (messages.isEmpty() && draft.isBlank()) reset() else confirmReset = true
+                        }
                     }
                 }
             },

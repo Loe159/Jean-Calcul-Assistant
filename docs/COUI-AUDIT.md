@@ -38,3 +38,15 @@ Runtime 1.12.0, Kotlin 2.4.20 : le BOM historique de l'hôte n'impose donc pas
 à lui seul les versions résolues. La validation porte sur cette résolution.
 SHA-256 des sources Maven auditées :
 `3786ca7079d23b5cb21b7e3cf26108a59eeeb1f0249d24ead9332a45336ec4ff`.
+
+La revue réelle des captures #55 expose des couches de navigation vides après
+reset/changement de destination malgré des sémantiques présentes. Leur durée de
+vie est maintenant liée à la destination et à la session UI (`key`) : chaque
+nouveau contexte alloue ses propres ressources COUI, sans réutiliser un rendu
+précédent. Les transitions de page restent assurées par le fondu Compose.
+
+L'espace IME est réservé dans le slot bas ; la fenêtre hôte conserve sa taille.
+Sur minSdk 33, `adjustNothing` laisse la gestion des insets au Compose hôte et
+évite un déplacement automatique de la fenêtre qui masquait l'en-tête. Le test
+clavier vérifie aussi la présence visible de cet en-tête. Une vérification du
+rendu réel reste nécessaire en plus des assertions sémantiques.

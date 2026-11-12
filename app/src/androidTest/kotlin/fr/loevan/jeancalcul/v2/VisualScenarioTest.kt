@@ -88,6 +88,7 @@ class VisualScenarioTest {
                     visible
                 }
                 rule.onNodeWithTag("send").assertIsDisplayed()
+                rule.onNodeWithTag("header").assertIsDisplayed()
             }
             "regression_fixture" -> {
                 // Deliberate, test-only occlusion: native vision must flag the hidden composer.
