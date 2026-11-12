@@ -75,12 +75,7 @@ jobs:
           disable-animations: true
           script: |
             mkdir -p e2e-artifacts/captures
-            if ./gradlew --no-daemon :app:connectedDebugAndroidTest; then
-              echo PASS > e2e-artifacts/instrumentation.txt
-            else
-              echo FAIL > e2e-artifacts/instrumentation.txt
-            fi
-            adb pull /sdcard/Android/data/fr.loevan.jeancalcul.v2/files/e2e/. e2e-artifacts/captures/ || true
+            bash e2e/run_instrumentation.sh || true
             bash e2e/capture_variants.sh
       - name: Structured report and optional vision API
         if: always()

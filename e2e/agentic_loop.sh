@@ -5,9 +5,8 @@ mkdir -p e2e-artifacts/captures
 for attempt in 1 2 3; do
   echo "=== Android E2E attempt ${attempt}/3 ==="
   rm -f e2e-artifacts/captures/*.png
-  instrumentation=FAIL
-  if ./gradlew --no-daemon :app:connectedDebugAndroidTest; then instrumentation=PASS; fi
-  adb pull /sdcard/Android/data/fr.loevan.jeancalcul.v2/files/e2e/. e2e-artifacts/captures/ >/dev/null 2>&1 || true
+  bash e2e/run_instrumentation.sh || true
+  instrumentation=$(cat e2e-artifacts/instrumentation.txt)
   bash e2e/capture_variants.sh
   if python3 e2e/review.py --captures e2e-artifacts/captures --out e2e-artifacts --instrumentation "$instrumentation"; then
     echo "No detected failure; stop with the remaining NOT_RUN criteria explicit."
