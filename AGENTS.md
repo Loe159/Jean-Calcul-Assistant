@@ -1,28 +1,30 @@
-# Jean-Calcul V2 — règles pour les agents
+# Jean-Calcul V2 — règles obligatoires pour tout agent développeur
 
-Cette branche contient uniquement Jean-Calcul V2. `main` garde l'ancienne application.
-Ne PAS réintroduire les modules V1. Ne PAS copier directement le runtime Eta.
+Cette branche contient Jean-Calcul V2 uniquement. `main` conserve V1.
+Ne réintroduire aucun module V1. Ne pas copier le runtime GPL d'Eta.
 
-## Avant le code
-1. Lire `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/QUALITY.md`.
-2. Choisir une issue GitHub V2, critères d'acceptation explicites.
-3. Consulter les skills du dossier `.agents/skills/`.
-4. Réaliser une modification verticale minimale. Pas d'abstractions spéculatives.
+## Avant toute modification
+1. Lire `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/QUALITY.md` et l'issue GitHub.
+2. Charger `.agents/skills/issue-to-preview/SKILL.md` puis `.agents/skills/android-e2e/SKILL.md` et `.agents/skills/android-visual-review/SKILL.md`.
+3. Définir les scénarios fonctionnels/UX/stabilité affectés. Éditer une tranche verticale minimale.
 
-## Définition de terminé
-- `./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug` passe.
-- `./gradlew :app:connectedDebugAndroidTest` passe en émulateur.
-- Captures d'écran pertinentes et rapport PASS/FAIL/NOT_RUN. Le fait de prendre
-  une capture n'est pas une analyse visuelle par un modèle.
-- Comparer l'interface aux références Eta/COUI : navigation, saisie, insets,
-  petit écran, mode sombre, texte agrandi, retour tactile et animations réduites.
-- Présenter PR + APK du commit + preuves E2E, laisser l'utilisateur accepter/refuser.
-- PR ciblant `feature/jean-calcul-v2-foundation`, jamais `main`.
+## Boucle de validation obligatoire — exécutée PAR l'agent qui code
+1. Compiler, tester et démarrer un émulateur Android isolé, **sans données personnelles**.
+2. Exécuter `bash e2e/agentic_loop.sh run 1` (voir skill pour les dépendances).
+3. **Ouvrir réellement les PNG avec une capacité de vision/image de l'agent**. Ne pas déduire une qualité d'interface de la seule présence des fichiers, des dimensions, du lint, d'un hash ou d'un score pixel.
+4. Examiner chaque état : vide, réglages, message, reset, sombre, petit écran, police agrandie et clavier. Vérifier les insets, chevauchements, contraste, hiérarchie COUI et navigation. Vérifier que les images montrent l'application, **pas un dialogue Android d'ANR/crash**.
+5. Enregistrer chaque verdict argumenté via `python3 e2e/record_verdict.py`; générer `report.json` et `report.md` via `bash e2e/agentic_loop.sh report 1`.
+6. Si FAIL ou NOT_RUN : diagnostiquer, corriger soi-même, puis relancer l'itération 2, éventuellement 3. **Trois exécutions maximum** pour une issue; si non résolu, signaler le blocage, ne pas certifier la qualité.
+7. Recompiler l'APK du commit final. Livrer PR, APK, captures **expurgées** et rapport associé exactement au commit. L'utilisateur accepte/refuse.
 
-## Sécurité
-- Aucun secret dans Git, logs, captures ou artefacts.
-- Le modèle propose ; Android autorise ou refuse les outils.
-- Aucune dépendance obligatoire à root ou LSPosed.
-- Ne jamais simuler un outil ou une réponse IA non connecté.
-- COUI est épinglé; les adaptations Material3 actuelles sont temporaires.
-- Code Eta GPL-3.0 non copié sans décision juridique explicite.
+Si la capacité de voir les captures, l'émulateur ou les scénarios est indisponible, marquer **NOT_RUN** ; ne jamais affirmer « revue visuelle PASS ». Un test instrumenté PASS n'est pas une preuve UX. Aucune approbation ou fusion automatique.
+
+## Responsabilité de GitHub Actions
+CI = compilation, tests JVM/lint, tests instrumentés techniques, artefact APK et rapports techniques. **Pas de modèle vision, pas d'appel API LLM, pas d'agent correcteur ni de notation esthétique dans Actions.** L'agent développeur applique le skill avant soumission de PR.
+
+## Git / périmètre / sécurité
+- PR vers `feature/jean-calcul-v2-foundation`, jamais vers `main` pour les issues V2.
+- Aucun secret, donnée privée, dump système complet ou capture d'un téléphone personnel dans Git/PR.
+- Les contrôles Android sont soumis aux permissions utilisateur, sans root/LSPosed obligatoire.
+- Aucune réponse ou outil IA simulé comme fonctionnel.
+- COUI est épinglé; les contrôles Material3 restent des adaptateurs transitoires.

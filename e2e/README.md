@@ -1,30 +1,74 @@
-# Agentic Android E2E — issue #54
+# Agent-local E2E — issue #54
 
-The suite uses Android Compose instrumentation plus UI Automator, an Android 35 emulator, scenario screenshots and structured PASS/FAIL/NOT_RUN output. A screenshot is **not** a vision review.
+**Responsabilité :** l'agent qui implémente ouvre les captures, les examine
+visuellement, inscrit ses constats et corrige/reteste. GitHub Actions se
+limite à construire l'APK et aux tests techniques ; aucune clé vision,
+aucun jugement UX et aucune correction automatique dans GitHub Actions.
 
-## CI
+## Prérequis
 
-PRs targeting `feature/jean-calcul-v2-foundation` run `v2-preview.yml`. Download the APK, raw screenshots, `report.json`, and `report.md` from workflow artifacts. The tests use *only fake in-memory messages*; never run these captures against a signed-in device or import personal data.
+Java 25, SDK Android 37.0, émulateur API 35 dédié (vérifié par
+`adb get-serialno` et `ro.kernel.qemu`), `adb`, Python 3 et Pillow.
 
-Visual reviews use `OPENAI_API_KEY` (GitHub Actions secret) if configured, via OpenAI's vision-capable API. Without that secret, visual criteria are marked NOT_RUN, not PASS. Reference images are optional and must be approved, synthetic/non-private screenshots stored in `e2e/baselines/` with filenames matching the scenarios. Without a baseline, pixel comparison is NOT_RUN. A qualitative Eta/COUI checklist lives in `visual-criteria.json`; qualitative references do not imply pixel parity.
-
-## Local run
-
-```sh
-bash e2e/run_instrumentation.sh
-bash e2e/capture_variants.sh
+```bash
 python3 -m pip install -r e2e/requirements.txt
-python3 e2e/review.py --captures e2e-artifacts/e2e --out e2e-artifacts --instrumentation PASS
-```
-
-CI also captures night mode, small screen, large font and keyboard states with ADB. `review.py` can run without secrets (it still evaluates expected files, dimensions, baselines and the instrumentation result). To exercise the deterministic visual-defect detector:
-
-```sh
+./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
 python3 e2e/test_visual_diff.py
+bash e2e/agentic_loop.sh run 1
 ```
 
-## Autonomous correction
+Ce dernier script produit `e2e-artifacts/attempt-1/` avec des captures,
+`instrumentation.txt` et `instrumentation.log`. Le code de test
+instrumenté prend les captures 01–04; ADB prend 05–08 (sombre, petit
+écran, police, clavier). Elles sont **non vérifiées** à ce stade.
 
-The opt-in workflow `v2-agentic-fix.yml` runs only when an authorized maintainer applies the `agentic-repair` label to an internal V2 PR (or via workflow dispatch where supported). Remove/reapply the label to request another run. It does not start on every push. It requires `OPENAI_API_KEY`, verifies the test report after every attempt and caps the loop at **3**. The model's corrections are committed only to the selected feature branch; it never approves or merges a PR. The main preview workflow does not modify source. Treat every proposed patch as untrusted and review it before acceptance.
+## Inspection obligatoire par l'agent développeur
 
-The automation cannot certify aesthetic parity with Eta. Keep UX criteria FAIL or NOT_RUN where visual evidence is inconclusive, and do not claim a green CI is product validation.
+Lire `.agents/skills/android-visual-review/SKILL.md`. L'agent utilise
+son outil natif d'ouverture d'images pour **voir chacun des PNG**, contrôle
+les défauts réels (dont les ANR Android), puis enregistre un verdict
+motivé pour les huit critères fonctionnels et UX :
+
+```bash
+python3 e2e/record_verdict.py --list
+python3 e2e/record_verdict.py \
+  --out e2e-artifacts/attempt-1 \
+  --criterion ux.keyboard \
+  --status FAIL \
+  --reason "Le clavier couvre le champ de saisie sur 08-keyboard.png."
+bash e2e/agentic_loop.sh report 1
+```
+
+Exécuter `record_verdict.py` pour **chaque** critère; stabilité
+est calculée par les assertions instrumentées. Un PASS visuel exige
+les captures demandées, un constat argumenté et, pour les parcours
+fonctionnels, un résultat PASS des tests instrumentés. Une capture
+présente n'est **jamais** un PASS automatique. Sans inspection,
+le critère demeure NOT_RUN.
+
+Le rapport `report.json`/ `report.md` indique PASS/FAIL/NOT_RUN,
+les preuves et les constats. `report` retourne un code non nul tant
+qu'il reste un échec ou un NOT_RUN.
+
+## Correction bornée par le même agent
+
+Sur FAIL ou NOT_RUN, corriger puis réexécuter
+`bash e2e/agentic_loop.sh run 2` et `report 2`, puis au besoin
+`run 3`. Le script refuse une tentative 4, la suppression
+silencieuse d'anciennes preuves et la poursuite après PASS total.
+Il n'appelle **aucun modèle** et ne modifie ni ne publie de code :
+ce sont les décisions de l'agent développeur, puis de l'utilisateur.
+
+Le test synthétique `python3 e2e/test_visual_diff.py` prouve que
+l'alarme de comparaison de pixels détecte une obstruction volontaire ;
+il ne vaut pas revue visuelle. Les références de comparaison
+éventuelles sont placées dans `e2e/baselines/` uniquement lorsqu'elles
+ont été approuvées. L'inspiration Eta/COUI est qualitative et ne
+constitue pas une preuve de parité en l'absence d'une référence.
+
+## Confidentialité
+
+Seulement un **émulateur vierge** et du texte de test synthétique.
+Ne pas automatiser l'Android physique de l'utilisateur, ne pas utiliser
+ses comptes ni messages, ne pas envoyer d'images à une API distante,
+ne pas versionner `e2e-artifacts/` ou des journaux privés.

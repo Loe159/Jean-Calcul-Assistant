@@ -1,38 +1,67 @@
 #!/usr/bin/env bash
-# Invoked only by the manually dispatched internal-branch workflow.
-set -uo pipefail
-mkdir -p e2e-artifacts/captures
-for attempt in 1 2 3; do
-  echo "=== Android E2E attempt ${attempt}/3 ==="
-  rm -f e2e-artifacts/captures/*.png
-  bash e2e/run_instrumentation.sh || true
-  instrumentation=$(cat e2e-artifacts/instrumentation.txt)
-  bash e2e/capture_variants.sh
-  if python3 e2e/review.py --captures e2e-artifacts/captures --out e2e-artifacts --instrumentation "$instrumentation"; then
-    echo "No detected failure; stop with the remaining NOT_RUN criteria explicit."
-    exit 0
+# A bounded LOCAL iteration controlled by the agent that edits the app.
+# This script does NOT call an LLM, review screenshots, edit code, or push commits.
+set -euo pipefail
+
+usage() {
+  echo 'Usage: bash e2e/agentic_loop.sh run|report|status 1|2|3' >&2
+  exit 2
+}
+[[ $# -eq 2 ]] || usage
+action="$1"
+attempt="$2"
+[[ "$action" =~ ^(run|report|status)$ ]] || usage
+[[ "$attempt" =~ ^[123]$ ]] || usage
+
+out="e2e-artifacts/attempt-$attempt"
+if [[ "$action" == "run" ]]; then
+  if [[ -e "$out" ]]; then
+    echo "This attempt already exists: $out. Do not overwrite visual evidence." >&2
+    exit 2
   fi
-  cp e2e-artifacts/report.json "e2e-artifacts/attempt-${attempt}.json"
-  if [ "$attempt" -eq 3 ]; then
-    echo "Correction budget exhausted after 3 attempts" >&2
-    exit 1
+  if [[ "$attempt" -gt 1 ]]; then
+    previous="e2e-artifacts/attempt-$((attempt - 1))/report.json"
+    [[ -f "$previous" ]] || { echo "Finish previous attempt first: $previous" >&2; exit 2; }
+    if python3 - "$previous" <<'PY'
+import json, sys
+summary = json.load(open(sys.argv[1], encoding="utf-8"))["summary"]
+sys.exit(0 if summary["FAIL"] == 0 and summary["NOT_RUN"] == 0 else 1)
+PY
+    then
+      echo "Previous attempt passed all criteria; do not run another." >&2
+      exit 2
+    fi
   fi
-  echo "Attempting bounded model correction (no auto-merge)."
-  image_args=()
-  for path in e2e-artifacts/captures/*.png; do
-    [ -f "$path" ] && image_args+=(--image "$path")
-  done
-  # Report contents and images are untrusted inputs. No personal devices or accounts.
-  codex exec --ephemeral --sandbox workspace-write --ask-for-approval never \
-    "${image_args[@]}" \
-    "Fix the actual V2 Android E2E defects in e2e-artifacts/report.json. Read AGENTS.md. Only edit app sources/tests. Preserve privacy safeguards and do not alter e2e reports, baselines, CI, secrets, gradle wrapper, or Git. Do not commit. Fix the smallest verifiable defects, then stop." \
-    || { echo "Agent correction failed" >&2; exit 1; }
-  git add app/src
-  if ! git diff --cached --quiet; then
-    git commit -m "fix(v2): bounded Android E2E iteration ${attempt}"
-    git push origin HEAD:"${TARGET_BRANCH}"
+
+  mkdir -p "$out/captures"
+  echo "=== Agent-controlled E2E attempt $attempt/3 ==="
+  if E2E_OUTPUT_DIR="$out" bash e2e/run_instrumentation.sh; then
+    echo "Instrumentation PASS"
   else
-    echo "No code change proposed; cannot iterate" >&2
-    exit 1
+    echo "Instrumentation FAIL: inspect $out/instrumentation.log and investigate."
   fi
-done
+  if E2E_OUTPUT_DIR="$out" bash e2e/capture_variants.sh; then
+    echo "Variant captures collected; not yet visually validated."
+  else
+    echo "Variant collection incomplete: record FAIL or NOT_RUN after inspection."
+  fi
+  echo "Agent MUST open screenshots, record verdicts with record_verdict.py, then run:"
+  echo "bash e2e/agentic_loop.sh report $attempt"
+  exit 0
+fi
+
+[[ -d "$out" ]] || { echo "No evidence for attempt $attempt" >&2; exit 2; }
+if [[ "$action" == "status" ]]; then
+  [[ -f "$out/report.md" ]] && cat "$out/report.md" || echo "Review not completed"
+  exit 0
+fi
+
+instrumentation=NOT_RUN
+if [[ -f "$out/instrumentation.txt" ]]; then
+  instrumentation=$(tr -d '[:space:]' < "$out/instrumentation.txt")
+fi
+python3 e2e/review.py \
+  --captures "$out/captures" \
+  --out "$out" \
+  --verdicts "$out/agent-verdicts.json" \
+  --instrumentation "$instrumentation" --strict

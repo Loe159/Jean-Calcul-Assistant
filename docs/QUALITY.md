@@ -1,19 +1,30 @@
-# Qualité V2
+# Qualité V2 — agent développeur responsable de la revue visuelle
 
-Boucle : issue -> PR -> APK -> émulateur -> tests E2E -> captures ->
-analyse visuelle agentique -> corrections bornées -> APK -> décision utilisateur.
+Le cycle obligatoire : issue → implémentation → build/tests → émulateur **local à l'agent**
+→ captures → **inspection visuelle par cet agent** → verdicts motivés → correction
+→ re-test (3 tentatives max) → APK + PR → décision de l'utilisateur.
 
-## Déjà en place
-GitHub Actions compile l'APK Debug, exécute tests JVM et lint, lance
-l'émulateur Android 35 et produit des captures. Les jobs peuvent échouer;
-consulter le résultat réel d'un commit avant toute revendication.
+## GitHub Actions = CI technique uniquement
+GitHub Actions peut compiler et publier l'APK, exécuter JVM/lint et tests
+instrumentés sur Android. **Il ne réalise pas la revue visuelle, n'invoque
+aucun modèle/agent vision et ne corrige pas les sources.** Les artefacts de CI
+ne constituent pas une attestation de qualité visuelle.
 
-## Non disponible à ce jour
-Agent visuel autonome analysant les captures et corrigeant les régressions,
-appareil Samsung automatisé, validation dans l'APK en un clic. Ces fonctions
-restent des issues prioritaires, ne pas annoncer leur existence.
+## Skills et scripts obligatoires
+- `.agents/skills/issue-to-preview/SKILL.md` : cycle issue → PR et livraison.
+- `.agents/skills/android-e2e/SKILL.md` : instrumentation Compose/UI Automator, ADB, captures.
+- `.agents/skills/android-visual-review/SKILL.md` : revue d'images par l'agent implémenteur.
+- `e2e/agentic_loop.sh run N` : une tentative reproductible, N=1..3.
+- `e2e/record_verdict.py` : constats réellement observés, PASS/FAIL/NOT_RUN.
+- `e2e/agentic_loop.sh report N` : agrégation sans appel à une API vision.
 
-## Rapport minimal
-Issue, commit, liste des tests, API Android, captures, erreurs expurgées,
-statuts PASS/FAIL/NOT_RUN, vérification visuelle si vraiment exécutée.
-Si un critère n'a pas été testé, indiquer NOT_RUN.
+## Critères non négociables
+- Une image PNG existante, des dimensions valides ou une différence pixel ne
+  suffisent jamais pour conclure PASS visuel.
+- Captures avec dialogs Android d'ANR/crash = FAIL (non recevables).
+- Les données sont **synthétiques** sur un émulateur dédié. Pas d'uploads de
+  captures privées ou de secrets, pas de dumps système complets.
+- Absence d'émulateur, incapacité à voir les images, références manquantes :
+  NOT_RUN (ou FAIL sur un défaut avéré). Ne pas annoncer une revue faite.
+- Chaque rapport précise issue, commit, API Android, captures, statuts et
+  observations; l'utilisateur valide/refuse l'APK.
