@@ -1,0 +1,71 @@
+{
+  "empty": {
+    "status": "PASS",
+    "sha256": "54530947333970f09a167420e09bfead3113e1413c8169d4dfbc99f6e9708e64",
+    "observation": "Accueil et mention prototype entièrement lisibles. Statut sombre sur fond clair ; saisie séparée du geste Android. Titre et actions compacts visibles.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "message": {
+    "status": "PASS",
+    "sha256": "c05c4380f0ad01593341741be8cff80c15f3c63add727ef05a06204e0a0e26fd",
+    "observation": "Bulle synthétique à droite et avertissement mémoire lisibles, champ vide et bouton désactivé. Barres système distinctes du contenu.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reset": {
+    "status": "PASS",
+    "sha256": "54530947333970f09a167420e09bfead3113e1413c8169d4dfbc99f6e9708e64",
+    "observation": "Accueil vide restauré, bulle supprimée et champ remis à zéro ; contraste système et marges conservés.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "settings": {
+    "status": "PASS",
+    "sha256": "52ffc268d4502d339d893c3deefcb92d94f7d7b6aee552ba324fbacba0b292a8",
+    "observation": "Préférences et avertissement sans moteur IA lisibles ; retour au chat visible et retour système testé par SmokeTest. Pas de réglages fictifs.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "dark": {
+    "status": "PASS",
+    "sha256": "821de0dcadda4f736469208f39fe4d7336c0041f004edc79b4f971e9ff7cea08",
+    "observation": "Textes clairs et puce contrastés sur surfaces sombres, actions visibles, champ au-dessus de la navigation Android.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "small_screen": {
+    "status": "PASS",
+    "sha256": "6c5e532a65e99508429064770ff364dc4b45448a9d08a7d14b4a79c2b1c561a9",
+    "observation": "360×640 dp : titre/actions et avertissement visibles, placeholder sur deux lignes sans débordement, navigation dégagée.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "large_text": {
+    "status": "PASS",
+    "sha256": "9548cd5ab8519b3c2174abac2ea8e1164380ac40e09c1fdc4044972cf87e3735",
+    "observation": "À 200 %, titre sur une ligne et avertissement complet sur deux lignes, aucun texte tronqué. Champ/envoi accessibles et séparés du geste Android.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "keyboard": {
+    "status": "PASS",
+    "sha256": "a5cf3cd899742eaf285fb387f6f54c2b0703e5e28f42b2013e89a86d34a9ef39",
+    "observation": "Clavier système visible ; champ saisi et envoi actif au-dessus de l’IME. En-tête vérifié également par agrandissement diagnostic de la capture : titre, Nouveau et Réglages visibles.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reduced_motion": {
+    "status": "PASS",
+    "sha256": "731c860d59936ce6f713459694ceefdc2538003f1378b2fbec6a6f04e109750e",
+    "observation": "Rendu statique lisible, statut contrasté et marges système correctes avec animations désactivées. Le PNG ne valide pas la fluidité physique.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "regression_fixture": {
+    "status": "FAIL",
+    "sha256": "e5bef872041a03e5a6539937713f11aca968c72367f3e6336971b95d6c640281",
+    "observation": "FAIL volontaire : bande rouge opaque masque entièrement le champ et Envoyer sur la partie basse ; défaut visuel effectivement détecté.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "_reference_comparison": {
+    "status": "PASS",
+    "opened_with": "functions.view_image (vision native)",
+    "reference_sha256": {
+      "chat_home.jpg": "b52261d66f78b41ce5c67f6d24925a795868a37544f44163d56652de98cc9111",
+      "settings.jpg": "8578d0d1ef91036e93c7b6b7ec8433e5790c476c43ebebbe68c514e84078cb30"
+    },
+    "observation": "Comparé aux captures Eta chat_home et settings au commit épinglé : fond neutre, espaces généreux, surfaces arrondies, saisie basse et navigation par icônes cohérents pour les états communs. V2 conserve sa marque et son avertissement de prototype. Cartes de raccourcis et paramètres fournisseurs/outils Eta absents par périmètre actuel ; aucune fonctionnalité fictive ajoutée. Pas de référence exacte sombre, clavier ou police 200 % : ces variantes sont contrôlées pour lisibilité/insets, sans parité pixel à pixel."
+  }
+}

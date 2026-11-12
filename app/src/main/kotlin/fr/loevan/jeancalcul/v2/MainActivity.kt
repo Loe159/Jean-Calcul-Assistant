@@ -1,10 +1,17 @@
 package fr.loevan.jeancalcul.v2
 
 import android.os.Bundle
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.BackHandler
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,7 +29,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -35,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -43,6 +56,7 @@ import com.itos.coui.theme.CouiTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContent { V2App() }
     }
 }
@@ -50,9 +64,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun V2App() {
     val dark = isSystemInDarkTheme()
+    val focus = LocalFocusManager.current
     var draft by remember { mutableStateOf("") }
     var settings by remember { mutableStateOf(false) }
     val messages = remember { mutableStateListOf<String>() }
+    BackHandler(enabled = settings) { settings = false }
     val colors = if (dark) darkColorScheme(
         primary = Color(0xFFA9BCFF), background = Color(0xFF11121B),
         surface = Color(0xFF212431), surfaceVariant = Color(0xFF323544),
@@ -66,18 +82,23 @@ fun V2App() {
                 modifier = Modifier.fillMaxSize().imePadding(),
                 containerColor = MaterialTheme.colorScheme.background,
                 topBar = {
-                    Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Jean-Calcul", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
-                            Text(if (settings) "Paramètres" else "V2 · COUI preview", style = MaterialTheme.typography.labelMedium)
+                    Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Jean-Calcul", modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                            IconButton(onClick = { focus.clearFocus(); messages.clear(); draft = ""; settings = false }, modifier = Modifier.testTag("reset")) {
+                                Icon(Icons.Default.Add, contentDescription = "Nouveau")
+                            }
+                            IconButton(onClick = { focus.clearFocus(); settings = !settings }, modifier = Modifier.testTag("settings")) {
+                                Icon(if (settings) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Settings,
+                                    contentDescription = if (settings) "Retour au chat" else "Réglages")
+                            }
                         }
-                        TextButton(onClick = { messages.clear(); draft = ""; settings = false }, modifier = Modifier.testTag("reset")) { Text("Nouveau") }
-                        TextButton(onClick = { settings = !settings }, modifier = Modifier.testTag("settings")) { Text("Réglages") }
+                        Text(if (settings) "Paramètres" else "V2 · COUI preview", style = MaterialTheme.typography.labelMedium)
                     }
                 },
                 bottomBar = {
                     if (!settings) {
-                        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
                                 value = draft, onValueChange = { draft = it },
                                 modifier = Modifier.weight(1f).testTag("composer"),
@@ -95,23 +116,26 @@ fun V2App() {
                 },
             ) { padding ->
                 if (settings) {
-                    Column(Modifier.fillMaxSize().padding(padding).padding(24.dp)) {
+                    Column(Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(24.dp)) {
                         Text("Préférences", style = MaterialTheme.typography.headlineSmall)
                         Spacer(Modifier.height(16.dp))
                         Text("Design COUI — prototype isolé, sans moteur IA connecté.")
                     }
                 } else if (messages.isEmpty()) {
-                    Column(
-                        modifier = Modifier.fillMaxSize().padding(padding).padding(28.dp).testTag("empty"),
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize().padding(padding).testTag("empty"),
+                        contentPadding = PaddingValues(28.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Text("Un assistant, à votre façon.", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
-                        Spacer(Modifier.height(10.dp))
-                        Text("Une expérience simple, fluide et personnelle.", textAlign = TextAlign.Center)
-                        Spacer(Modifier.height(22.dp))
-                        Surface(shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
-                            Text("Prototype UI · IA non connectée", modifier = Modifier.padding(14.dp))
+                        item { Text("Un assistant, à votre façon.", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center) }
+                        item { Spacer(Modifier.height(10.dp)) }
+                        item { Text("Une expérience simple, fluide et personnelle.", textAlign = TextAlign.Center) }
+                        item { Spacer(Modifier.height(22.dp)) }
+                        item {
+                            Surface(shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                                Text("Prototype UI · IA non connectée", modifier = Modifier.padding(14.dp))
+                            }
                         }
                     }
                 } else {

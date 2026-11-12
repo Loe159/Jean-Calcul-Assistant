@@ -6,6 +6,7 @@ java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
 android {
     namespace = "fr.loevan.jeancalcul.v2"
     compileSdk = 37
+    buildToolsVersion = "37.0.0"
     defaultConfig {
         applicationId = "fr.loevan.jeancalcul.v2"
         minSdk = 33
@@ -30,12 +31,13 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.compose.material:material-icons-core")
     implementation("io.github.itoseo:coui:0.0.1-alpha7")
     debugImplementation("androidx.compose.ui:ui-tooling")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     testImplementation("junit:junit:4.13.2")
 }

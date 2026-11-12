@@ -6,7 +6,8 @@ Ne PAS réintroduire les modules V1. Ne PAS copier directement le runtime Eta.
 ## Avant le code
 1. Lire `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, `docs/QUALITY.md`.
 2. Choisir une issue GitHub V2, critères d'acceptation explicites.
-3. Consulter les skills du dossier `.agents/skills/`.
+3. Charger `.agents/skills/android-e2e/SKILL.md` et
+   `.agents/skills/android-visual-review/SKILL.md`, puis lire `e2e/README.md`.
 4. Réaliser une modification verticale minimale. Pas d'abstractions spéculatives.
 
 ## Définition de terminé
@@ -26,3 +27,9 @@ Ne PAS réintroduire les modules V1. Ne PAS copier directement le runtime Eta.
 - Ne jamais simuler un outil ou une réponse IA non connecté.
 - COUI est épinglé; les adaptations Material3 actuelles sont temporaires.
 - Code Eta GPL-3.0 non copié sans décision juridique explicite.
+
+## Boucle locale #54
+Lancer `python3 e2e/run.py --run-id <issue> --attempt 1` ; ouvrir réellement
+chaque PNG avec la vision native, renseigner `visual-review.json`, puis lancer
+`python3 e2e/report.py <dossier>`. Corriger et retester au maximum trois fois.
+Une capture seule vaut NOT_RUN pour la revue visuelle. Aucune vision en CI.

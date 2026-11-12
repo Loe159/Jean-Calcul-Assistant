@@ -19,8 +19,10 @@ jobs:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Test evidence reporting safeguards
+        run: python3 -m unittest discover -s e2e -p 'test_*.py'
       - uses: android-actions/setup-android@v4
-      - run: sdkmanager --channel=3 "platforms;android-37.0"
+      - run: sdkmanager --channel=3 "platforms;android-37.0" "build-tools;37.0.0"
       - name: Compile Android Debug APK
         run: ./gradlew --no-daemon :app:assembleDebug
       - name: Upload installable APK
@@ -42,7 +44,7 @@ jobs:
             app/build/test-results/**
           if-no-files-found: warn
   emulator:
-    name: Instrumented Android 35 tests and screenshots
+    name: Technical Android 35 E2E (no visual judgment)
     runs-on: ubuntu-latest
     timeout-minutes: 50
     steps:
@@ -52,27 +54,31 @@ jobs:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Test evidence reporting safeguards
+        run: python3 -m unittest discover -s e2e -p 'test_*.py'
       - uses: android-actions/setup-android@v4
-      - run: sdkmanager --channel=3 "platforms;android-37.0"
-      - uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          target: google_apis
-          arch: x86_64
-          profile: pixel_6
-          disable-animations: true
-          script: |
-            ./gradlew --no-daemon :app:connectedDebugAndroidTest
-            adb shell am start -n fr.loevan.jeancalcul.v2/.MainActivity
-            sleep 3
-            mkdir -p e2e-artifacts
-            adb exec-out screencap -p > e2e-artifacts/home.png
+      - run: sdkmanager --channel=3 "platforms;android-37.0" "build-tools;37.0.0"
+      - name: Install isolated emulator image
+        run: sdkmanager "platform-tools" "emulator" "build-tools;37.0.0" "system-images;android-35;google_apis;x86_64"
+      - name: Enable KVM
+        run: sudo chmod a+rw /dev/kvm
+      - name: Run deterministic technical checks and capture scenarios
+        run: python3 e2e/run.py --run-id ci --attempt 1
+      - name: Render evidence (visual review stays NOT_RUN)
+        if: always()
+        run: python3 e2e/report.py e2e-artifacts/ci/attempt-1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: V2-Android-E2E-${{ github.sha }}
           path: |
-            e2e-artifacts/**
+            e2e-artifacts/ci/attempt-1/screenshots/**
+            e2e-artifacts/ci/attempt-1/test-results/**
+            e2e-artifacts/ci/attempt-1/logs/*.txt
+            e2e-artifacts/ci/attempt-1/report.*
+            e2e-artifacts/ci/attempt-1/source-manifest.json
+            e2e-artifacts/ci/attempt-1/visual-review.json
+            e2e-artifacts/ci/attempt-1/index.html
             app/build/outputs/androidTest-results/**
             app/build/reports/androidTests/**
           if-no-files-found: warn

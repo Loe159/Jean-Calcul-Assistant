@@ -1,0 +1,90 @@
+{
+  "issue": 54,
+  "attempt": 1,
+  "created_utc": "2026-11-12T21:14:32.229397+00:00",
+  "commit": "b95a1fa2d265ae0a0a355fc20c9a69e4c69e9a0b",
+  "working_tree_dirty": true,
+  "api": 35,
+  "serial": "emulator-5580",
+  "technical": {
+    "status": "FAIL",
+    "evidence": "logs/gradle.txt",
+    "jvm_tests": "NOT_RUN",
+    "reason": "Gradle succès mais exception AssumptionViolated dans le XML connecté du scénario non sélectionné. Corrigé pour la tentative suivante."
+  },
+  "captures": {
+    "empty": {
+      "status": "PASS",
+      "path": "screenshots/empty.png",
+      "sha256": "9df2364df83066e99b585ae85dde87583ef0432bdd84ed50db7366df5c99e145",
+      "visual_status": "FAIL"
+    },
+    "message": {
+      "status": "PASS",
+      "path": "screenshots/message.png",
+      "sha256": "54da8ffaec29b7f1ca0bec1adc3e135faa3d942fb10b64b4090b549d9e025e90",
+      "visual_status": "FAIL"
+    },
+    "reset": {
+      "status": "PASS",
+      "path": "screenshots/reset.png",
+      "sha256": "8bde08abb2cce7f3529f3cb97ff7df5d536ef7cf4d700ee80c7972a9ec700cd3",
+      "visual_status": "FAIL"
+    },
+    "settings": {
+      "status": "PASS",
+      "path": "screenshots/settings.png",
+      "sha256": "befbcd968ce435b02af584da15f4664d5b1a33909b012fc587518e0667e81eea",
+      "visual_status": "FAIL"
+    },
+    "dark": {
+      "status": "PASS",
+      "path": "screenshots/dark.png",
+      "sha256": "d09701ca490f3a75b5c34b9eb726d9104213723050952af3f8530f8a3cfbca01",
+      "visual_status": "FAIL"
+    },
+    "small_screen": {
+      "status": "PASS",
+      "path": "screenshots/small_screen.png",
+      "sha256": "5756dbb8d6c0afa91e81138e8313f6ad6b36108f4101430c4fc6fc9e2e43bb03",
+      "visual_status": "FAIL"
+    },
+    "large_text": {
+      "status": "PASS",
+      "path": "screenshots/large_text.png",
+      "sha256": "2bda6614443e3e60c0f1e9fe617caedcb2be0bfaa2840d464ad97b27cdd1ee5a",
+      "visual_status": "FAIL"
+    },
+    "keyboard": {
+      "status": "PASS",
+      "path": "screenshots/keyboard.png",
+      "sha256": "7ee26cfe50ef986e714de46a7999410bcca7167645cd6ab8002b892bb5fba510",
+      "visual_status": "FAIL"
+    },
+    "reduced_motion": {
+      "status": "PASS",
+      "path": "screenshots/reduced_motion.png",
+      "sha256": "86d3854a45eb68787269119a2b26cb39eca1e95c615bf20c7063859f622bbdc8",
+      "visual_status": "FAIL"
+    },
+    "regression_fixture": {
+      "status": "PASS",
+      "path": "screenshots/regression_fixture.png",
+      "sha256": "d34cc42041b17fe43124f27bbc654d80a19a0194b3d47acbd0342d787c8db0f1",
+      "visual_status": "FAIL"
+    }
+  },
+  "visual_review": {
+    "status": "FAIL",
+    "evidence": "visual-review.json"
+  },
+  "reference_comparison": {
+    "status": "PASS",
+    "evidence": "visual-review.json"
+  },
+  "regression_detection": {
+    "status": "PASS",
+    "evidence": "visual-review.json"
+  },
+  "apk_sha256": "4f3390ae8c8f9667c9a10c874303e475a9746c8b1a6fe8cb9230a93c9811241d"
+}

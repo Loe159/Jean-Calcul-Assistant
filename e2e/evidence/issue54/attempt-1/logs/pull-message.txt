@@ -1,0 +1,1 @@
+/sdcard/Android/data/fr.loevan.jeancalcul.v2/files/e2e/message.png: 1 file pulled, 0 skipped. 31.2 MB/s (64729 bytes in 0.002s)

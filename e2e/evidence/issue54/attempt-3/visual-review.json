@@ -1,0 +1,68 @@
+{
+  "empty": {
+    "status": "PASS",
+    "sha256": "6fdde38a2e40b5a4e910d0d74ee82c5c83e27c3fc2c558b7749c94402871f4a5",
+    "observation": "Accueil lisible, statut contrasté, actions et saisie visibles avec marges système.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "message": {
+    "status": "PASS",
+    "sha256": "af6f2592b545441240c093a507e53b86e7a3a9a88d89bad040e52ed56a8ecbfc",
+    "observation": "Bulle synthétique et avertissement mémoire lisibles, saisie non masquée.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reset": {
+    "status": "NOT_RUN",
+    "sha256": "",
+    "observation": "",
+    "opened_with": ""
+  },
+  "settings": {
+    "status": "NOT_RUN",
+    "sha256": "",
+    "observation": "",
+    "opened_with": ""
+  },
+  "dark": {
+    "status": "NOT_RUN",
+    "sha256": "",
+    "observation": "",
+    "opened_with": ""
+  },
+  "small_screen": {
+    "status": "NOT_RUN",
+    "sha256": "",
+    "observation": "",
+    "opened_with": ""
+  },
+  "large_text": {
+    "status": "NOT_RUN",
+    "sha256": "",
+    "observation": "",
+    "opened_with": ""
+  },
+  "keyboard": {
+    "status": "NOT_RUN",
+    "sha256": "",
+    "observation": "",
+    "opened_with": ""
+  },
+  "reduced_motion": {
+    "status": "NOT_RUN",
+    "sha256": "",
+    "observation": "",
+    "opened_with": ""
+  },
+  "regression_fixture": {
+    "status": "NOT_RUN",
+    "sha256": "",
+    "observation": "",
+    "opened_with": ""
+  },
+  "_reference_comparison": {
+    "status": "NOT_RUN",
+    "observation": "Tentative interrompue : capture reset vide malgré succès instrumenté. Autres états non exécutés.",
+    "opened_with": "",
+    "reference_sha256": {}
+  }
+}

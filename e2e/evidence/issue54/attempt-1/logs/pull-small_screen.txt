@@ -1,0 +1,1 @@
+/sdcard/Android/data/fr.loevan.jeancalcul.v2/files/e2e/small_screen.png: 1 file pulled, 0 skipped. 16.3 MB/s (57967 bytes in 0.003s)

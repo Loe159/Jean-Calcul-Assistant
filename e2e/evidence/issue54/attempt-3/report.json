@@ -1,0 +1,76 @@
+{
+  "issue": 54,
+  "attempt": 3,
+  "created_utc": "2026-11-12T21:33:12.454381+00:00",
+  "commit": "4756432e42f437572976d43bede06c54610126cc",
+  "working_tree_dirty": false,
+  "api": 35,
+  "serial": "emulator-5580",
+  "technical": {
+    "status": "PASS",
+    "evidence": "logs/gradle.txt",
+    "jvm_tests": "NOT_RUN"
+  },
+  "captures": {
+    "empty": {
+      "status": "PASS",
+      "path": "screenshots/empty.png",
+      "sha256": "6fdde38a2e40b5a4e910d0d74ee82c5c83e27c3fc2c558b7749c94402871f4a5",
+      "visual_status": "PASS"
+    },
+    "message": {
+      "status": "PASS",
+      "path": "screenshots/message.png",
+      "sha256": "af6f2592b545441240c093a507e53b86e7a3a9a88d89bad040e52ed56a8ecbfc",
+      "visual_status": "PASS"
+    },
+    "reset": {
+      "status": "FAIL",
+      "evidence": "logs/transfer-reset.txt",
+      "visual_status": "NOT_RUN"
+    },
+    "settings": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "dark": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "small_screen": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "large_text": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "keyboard": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "reduced_motion": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "regression_fixture": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    }
+  },
+  "visual_review": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "reference_comparison": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "regression_detection": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "source_manifest": "source-manifest.json",
+  "apk_sha256": "264ddef632a07121baea2999a571bfcf1ff994f45dd5ff33e8ef38a8c045859e",
+  "error": "Invalid PNG for reset"
+}

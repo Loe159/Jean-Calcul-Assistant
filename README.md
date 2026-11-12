@@ -16,6 +16,17 @@ Prérequis : JDK 25, Android SDK 37.0 (canal preview), Gradle Wrapper inclus.
 ```
 APK local : `app/build/outputs/apk/debug/app-debug.apk`.
 
+## Tester et visualiser avec un agent
+
+Voir [le parcours local E2E](e2e/README.md). Avec les prérequis installés :
+```sh
+python3 e2e/run.py --run-id ma-modification --attempt 1
+python3 e2e/report.py e2e-artifacts/ma-modification/attempt-1
+```
+Ouvrir les PNG avec la vision native de l’agent ; `index.html` fournit une
+galerie locale. `--show-window --keep-emulator` permet de manipuler l’app.
+Sous NixOS : `nix develop` prépare les outils Android.
+
 ## Tester sans compiler
 Sur la branche V2, ouvrir [GitHub Actions](https://github.com/Loe159/Jean-Calcul-Assistant/actions/workflows/v2-preview.yml), choisir le dernier run vert, télécharger l'artefact `JeanCalcul-V2-<SHA>`, extraire le ZIP et installer l'APK. Les captures d'émulateur et résultats de tests sont séparés de l'APK.
 
