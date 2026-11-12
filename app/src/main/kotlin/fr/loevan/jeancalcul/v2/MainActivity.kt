@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -80,6 +81,7 @@ class MainActivity : ComponentActivity() {
 fun V2App() {
     JeanTheme {
         val focus = LocalFocusManager.current
+        val keyboardController = LocalSoftwareKeyboardController.current
         val haptic = LocalHapticFeedback.current
         var draft by rememberSaveable { mutableStateOf("") }
         var page by rememberSaveable { mutableStateOf("chat") }
@@ -87,6 +89,7 @@ fun V2App() {
         var confirmReset by remember { mutableStateOf(false) }
         val messages = remember { mutableStateListOf<String>() }
         fun navigate(destination: String) {
+            keyboardController?.hide()
             focus.clearFocus()
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             page = destination

@@ -3,6 +3,8 @@ package fr.loevan.jeancalcul.v2
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
@@ -30,6 +32,9 @@ class SmokeTest {
         rule.onNodeWithTag("send").assertIsNotEnabled()
         rule.onNodeWithTag("composer").performTextInput("Brouillon")
         rule.onNodeWithTag("settings").performClick()
+        rule.onNodeWithText("Préférences").assertIsDisplayed()
+        // Android's IME/window dismissal is outside the Compose test clock.
+        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle()
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack()
         rule.onNodeWithText("Brouillon").assertExists()
         rule.onNodeWithTag("reset").performClick()
@@ -43,6 +48,8 @@ class SmokeTest {
         rule.onNodeWithTag("gallery_dialog").performClick()
         rule.onNodeWithText("Dialogue COUI").assertExists()
         rule.onNodeWithText("Fermer").performClick()
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Fermer").fetchSemanticsNodes().isEmpty() }
+        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle()
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack()
         rule.onNodeWithText("Préférences").assertExists()
     }
