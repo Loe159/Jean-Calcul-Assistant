@@ -1,5 +1,8 @@
 name: Jean-Calcul V2 - Agentic repair (manual only)
 on:
+  pull_request:
+    branches: [feature/jean-calcul-v2-foundation]
+    types: [labeled]
   workflow_dispatch:
     inputs:
       target_branch:
@@ -10,10 +13,11 @@ permissions:
   contents: write
 jobs:
   bounded-repair:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.label.name == 'agentic-repair' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      TARGET_BRANCH: ${{ inputs.target_branch }}
+      TARGET_BRANCH: ${{ github.event_name == 'workflow_dispatch' && inputs.target_branch || github.event.pull_request.head.ref }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       E2E_SYNTHETIC_ONLY: 'true'
       E2E_VISION_MODEL: gpt-4.1-mini
@@ -25,7 +29,7 @@ jobs:
           [[ -n "$OPENAI_API_KEY" ]] || { echo 'OPENAI_API_KEY required'; exit 1; }
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.target_branch }}
+          ref: ${{ env.TARGET_BRANCH }}
           persist-credentials: true
           fetch-depth: 0
       - name: Refuse non-internal or modified workflow
