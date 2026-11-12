@@ -65,9 +65,22 @@ adb logcat -c || true
 adb shell am force-stop fr.loevan.jeancalcul.v2 || true
 
 # Run Compose/UI Automator tests; retain logs and screenshots even on a crash.
-adb shell am instrument -w -r \
-  fr.loevan.jeancalcul.v2.test/androidx.test.runner.AndroidJUnitRunner \
-  > "$out/instrumentation.log" 2>&1
+python3 - "$out/instrumentation.log" <<'PY'
+import subprocess
+import sys
+
+with open(sys.argv[1], "w", encoding="utf-8") as log:
+    try:
+        result = subprocess.run(
+            ["adb", "shell", "am", "instrument", "-w", "-r",
+             "fr.loevan.jeancalcul.v2.test/androidx.test.runner.AndroidJUnitRunner"],
+            stdout=log, stderr=subprocess.STDOUT, timeout=420, check=False,
+        )
+        sys.exit(result.returncode)
+    except subprocess.TimeoutExpired:
+        log.write("\nINSTRUMENTATION_TIMEOUT: 420 seconds\n")
+        sys.exit(124)
+PY
 instrumentation_exit=$?
 cat "$out/instrumentation.log"
 adb pull /sdcard/Android/data/fr.loevan.jeancalcul.v2/files/e2e/. \
