@@ -50,6 +50,7 @@ class VisualScenarioTest {
                 rule.waitForIdle()
                 if (scenario == "reset") {
                     rule.onNodeWithTag("reset").performClick()
+                    rule.onNodeWithText("Effacer").performClick()
                     rule.onNodeWithTag("empty").assertIsDisplayed()
                     rule.onNodeWithText("Bonjour V2 — test synthétique").assertDoesNotExist()
                 }
@@ -58,6 +59,12 @@ class VisualScenarioTest {
                 rule.onNodeWithTag("settings").performClick()
                 rule.onNodeWithText("Préférences").assertIsDisplayed()
                 rule.onNodeWithTag("composer").assertDoesNotExist()
+            }
+            "menu" -> rule.onNodeWithTag("options").performClick()
+            "gallery", "dialog" -> {
+                rule.onNodeWithTag("settings").performClick()
+                rule.onNodeWithTag("gallery").performClick()
+                if (scenario == "dialog") rule.onNodeWithTag("gallery_dialog").performClick()
             }
             "keyboard" -> {
                 rule.onNodeWithTag("composer").performClick().performTextInput("Clavier synthétique")

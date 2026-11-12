@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = 'fr.loevan.jeancalcul.v2'
 RUNNER = APP + '.test/androidx.test.runner.AndroidJUnitRunner'
 SCENARIOS = ('empty', 'message', 'reset', 'settings', 'dark', 'small_screen',
-             'large_text', 'keyboard', 'reduced_motion', 'regression_fixture')
+             'large_text', 'keyboard', 'reduced_motion', 'menu', 'gallery', 'dialog', 'regression_fixture')
 
 
 def redact(text):
@@ -72,7 +72,7 @@ def main():
     out.mkdir(parents=True, exist_ok=False)  # Never overwrite evidence or silently retry.
     (out / 'screenshots').mkdir()
     (out / 'logs').mkdir()
-    report = {'issue': 54, 'attempt': args.attempt,
+    report = {'issue': int(re.sub(r'\D', '', args.run_id) or '54'), 'attempt': args.attempt,
               'attempt_budget': 4 if args.attempt == 4 else 3,
               'budget_override': 'Explicit user authorization, 2026-11-12' if args.attempt == 4 else None, 'created_utc': dt.datetime.now(dt.timezone.utc).isoformat(),
               'commit': '', 'working_tree_dirty': False, 'api': 35, 'serial': f'emulator-{args.port}',

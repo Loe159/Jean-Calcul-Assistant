@@ -32,7 +32,8 @@ def render(directory):
     rows = []
     cards = []
     outcomes = {}
-    for scenario in SCENARIOS:
+    scenarios = tuple(report['captures'])
+    for scenario in scenarios:
         capture = report['captures'][scenario]
         status, observation = visual_result(directory, capture, reviews.get(scenario, {}))
         outcomes[scenario] = status
@@ -41,7 +42,7 @@ def render(directory):
             source = html.escape(capture['path'], quote=True)
             cards.append(f'<figure><a href="{source}"><img src="{source}" alt="{scenario}"></a>'
                          f'<figcaption>{scenario}: {status}<p>{html.escape(observation)}</p></figcaption></figure>')
-    normal = [outcomes[s] for s in SCENARIOS if s != 'regression_fixture']
+    normal = [outcomes[s] for s in scenarios if s != 'regression_fixture']
     visual = 'FAIL' if 'FAIL' in normal else ('PASS' if all(s == 'PASS' for s in normal) else 'NOT_RUN')
     # The deliberately bad image must FAIL visual review to prove detection.
     fixture = outcomes['regression_fixture']
@@ -64,7 +65,7 @@ def render(directory):
     for name, value in outcomes.items():
         report['captures'][name]['visual_status'] = value
     (directory / 'report.json').write_text(json.dumps(report, indent=2, ensure_ascii=False) + '\n')
-    text = f'''# Issue #54 — tentative {report['attempt']}/{report.get('attempt_budget', 3)}
+    text = f'''# Issue #{report.get('issue', 54)} — tentative {report['attempt']}/{report.get('attempt_budget', 3)}
 
 Commit : `{report['commit']}` ; modifications locales : {report['working_tree_dirty']}.
 Dérogation au budget : {report.get('budget_override') or 'aucune'}.

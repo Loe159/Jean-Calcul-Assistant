@@ -119,3 +119,11 @@ Vérification des garde-fous du rapport :
 ```sh
 python3 -m unittest discover -s e2e -p 'test_*.py'
 ```
+
+## Galerie #55
+
+Les scénarios incluent aussi le menu natif, la galerie (bulles entrante/sortante
+explicitement illustratives) et le dialogue COUI. Le numéro du rapport suit les
+chiffres du run-id (`issue55` → #55). Les rapports historiques conservent leur
+liste propre de captures. Les tests vérifient l'annulation de l'effacement,
+la conservation du brouillon en navigation et le retour système depuis la galerie.

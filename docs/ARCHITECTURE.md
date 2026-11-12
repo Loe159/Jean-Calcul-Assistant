@@ -18,3 +18,7 @@ que lorsqu'une frontière indépendante est démontrée.
 COUI est présent via `CouiTheme`. Les contrôles Material3 du prototype
 sont des adaptateurs provisoires. Remplacer progressivement par des
 composants COUI natifs avec preuves de rendu sur émulateur.
+
+Depuis #55, les contrôles applicatifs utilisent COUI natif et Foundation pour
+les API absentes en alpha7. Voir `COUI-AUDIT.md` pour les exceptions et la garde
+API 34 de la navigation flottante, `DESIGN.md` et `JeanTheme.kt` pour les tokens.
