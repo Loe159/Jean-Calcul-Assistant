@@ -16,6 +16,8 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -34,7 +36,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: JeanCalcul-V2-${{ github.sha }}
+          name: JeanCalcul-V2-${{ github.event.pull_request.head.sha || github.sha }}
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: warn
           retention-days: 21
@@ -42,7 +44,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: V2-Technical-Reports-${{ github.sha }}
+          name: V2-Technical-Reports-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             app/build/reports/**
             app/build/test-results/**
@@ -54,6 +56,8 @@ jobs:
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -74,7 +78,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: V2-Instrumentation-${{ github.sha }}
+          name: V2-Instrumentation-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             e2e-artifacts/**
             app/build/outputs/androidTest-results/**
