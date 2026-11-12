@@ -25,13 +25,16 @@ jobs:
           gradle-version: 9.7.1
       - uses: android-actions/setup-android@v4
       - run: sdkmanager --channel=3 "platforms;android-37.0"
-      - run: gradle -p v2 --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug
+      - name: Build installable V2 APK
+        run: gradle -p v2 --no-daemon :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
           name: JeanCalcul-V2-${{ github.sha }}
           path: v2/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 21
+      - name: Validate instrumentation compilation, unit tests and lint
+        run: gradle -p v2 --no-daemon :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug
   emulator:
     name: Android Emulator E2E
     runs-on: ubuntu-latest
