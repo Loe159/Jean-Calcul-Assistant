@@ -22,3 +22,25 @@ est atteint. » Cette autorisation permet le drapeau
 
 La tentative 4 complète sera ajoutée après exécution réelle. La PR reste en
 brouillon jusqu'aux résultats. Aucune fusion automatique.
+
+## Résultat de la tentative 4/4
+
+Commit testé : `01c1d381dff34e044342eb79488f280fd7471d4c` (arbre propre).
+Build et lint passent ; instrumentation **FAIL : 4/5 réussis**. Le parcours
+menu → galerie → dialogue → retour passe désormais. Le seul échec restant
+est `resetCanBeCancelledAndDraftSurvivesNavigation` : après saisie puis réglages,
+Retour système termine l'activité au lieu de restaurer le brouillon. Le log de
+cycle de vie montre PAUSED → STOPPED → DESTROYED. La fermeture explicite du
+clavier et l'attente UI Automator ne suffisent donc pas à résoudre ce défaut.
+
+L'arrêt technique empêche les treize scénarios de capture : captures, revue
+visuelle et comparaison Eta **NOT_RUN**. Les références JPG ont été ouvertes,
+mais aucune conformité visuelle n'est revendiquée sans images de l'application.
+Le défaut volontaire ne peut pas être évalué : NOT_RUN.
+
+[Rapport final](attempt-4/report.md), XML et logs expurgés sont conservés.
+Les APK réellement construits sont dans `e2e-artifacts/issue55/attempt-4/` local,
+hors Git. Empreinte APK dans `report.json`. Ils sont candidats, non validés.
+La PR #60 reste en brouillon. Aucun nouveau run n'est lancé : le budget de
+quatre tentatives accordé est épuisé. Samsung, haptique physique, fluidité,
+Android 13 et scénarios de capture restent non validés.

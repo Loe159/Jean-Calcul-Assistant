@@ -1,0 +1,90 @@
+{
+  "issue": 55,
+  "attempt": 4,
+  "attempt_budget": 4,
+  "budget_override": "Explicit user authorization, 2026-11-12",
+  "created_utc": "2026-11-12T22:38:26.767462+00:00",
+  "commit": "01c1d381dff34e044342eb79488f280fd7471d4c",
+  "working_tree_dirty": false,
+  "api": 35,
+  "serial": "emulator-5580",
+  "technical": {
+    "status": "FAIL",
+    "android_tests": {
+      "passed": 4,
+      "failed": 1,
+      "total": 5,
+      "evidence": "test-results/TEST-jc-e2e-issue55-4(AVD) - 15.xml"
+    }
+  },
+  "captures": {
+    "empty": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "message": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "reset": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "settings": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "dark": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "small_screen": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "large_text": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "keyboard": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "reduced_motion": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "menu": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "gallery": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "dialog": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "regression_fixture": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    }
+  },
+  "visual_review": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "reference_comparison": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "regression_detection": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "source_manifest": "source-manifest.json",
+  "error": "[HOME]/Projects/Jean-Calcul-Assistant/gradlew failed (1); see logs/gradle.txt",
+  "apk_sha256": "3e7f4814aa357248faca98ac5475c5ce499bf052c10e276dc9dfc9bff10589af",
+  "apk_provenance": "APK from the failed Gradle instrumentation build, archived manually after failure; not a validated APK."
+}
