@@ -17,7 +17,16 @@ Prérequis : JDK 25, Android SDK 37.0 (canal preview), Gradle Wrapper inclus.
 APK local : `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Tester sans compiler
-Sur la branche V2, ouvrir [GitHub Actions](https://github.com/Loe159/Jean-Calcul-Assistant/actions/workflows/v2-preview.yml), choisir le dernier run vert, télécharger l'artefact `JeanCalcul-V2-<SHA>`, extraire le ZIP et installer l'APK. Les captures d'émulateur et résultats de tests sont séparés de l'APK.
+Sur la branche V2, ouvrir [GitHub Actions](https://github.com/Loe159/Jean-Calcul-Assistant/actions/workflows/v2-preview.yml), choisir le dernier run vert, télécharger l'artefact `JeanCalcul-V2-<SHA>`, extraire le ZIP et installer l'APK. Les résultats instrumentés sont séparés de l'APK. Les captures doivent être revues dans l'environnement de l'agent, pas par GitHub Actions.
+
+## Validation visuelle par l'agent développeur
+
+GitHub Actions ne vérifie **pas** la qualité visuelle et n'appelle aucun modèle vision.
+L'agent qui réalise une modification doit charger `AGENTS.md` et les skills
+`android-e2e` / `android-visual-review`, lancer les tests sur son émulateur,
+**ouvrir les captures** et enregistrer des verdicts PASS/FAIL/NOT_RUN motivés,
+corriger et retester (maximum trois tentatives). Procédure :
+[e2e/README.md](e2e/README.md).
 
 ## Agents et développement
 Lire [AGENTS.md](AGENTS.md), [docs/PRODUCT.md](docs/PRODUCT.md), [docs/QUALITY.md](docs/QUALITY.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) et [docs/MASTRA-FACTORY.md](docs/MASTRA-FACTORY.md).

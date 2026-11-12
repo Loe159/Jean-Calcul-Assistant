@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "reference": "Eta/COUI visual direction (qualitative only; no Eta source or screenshots redistributed)",
+  "criteria": [
+    {
+      "id": "functional.chat",
+      "type": "functional",
+      "captures": [
+        "01-empty.png",
+        "03-message.png",
+        "04-reset.png"
+      ],
+      "description": "Composer accessible; sending creates a local demo message and reset clears it."
+    },
+    {
+      "id": "functional.settings",
+      "type": "functional",
+      "captures": [
+        "02-settings.png"
+      ],
+      "description": "Settings screen reachable; composer hidden while settings open."
+    },
+    {
+      "id": "ux.layout",
+      "type": "ux",
+      "captures": [
+        "01-empty.png",
+        "02-settings.png",
+        "03-message.png"
+      ],
+      "description": "No clipping, occlusion, overlap, unreadable typography or unsafe system insets, including small screens and large font."
+    },
+    {
+      "id": "ux.coui",
+      "type": "ux",
+      "captures": [
+        "01-empty.png",
+        "03-message.png"
+      ],
+      "description": "COUI/Eta direction: coherent rounded surfaces, clear hierarchy, generous spacing; identify provisional Material components explicitly."
+    },
+    {
+      "id": "ux.dark",
+      "type": "ux",
+      "captures": [
+        "05-dark.png"
+      ],
+      "description": "Dark mode respects contrast, background, component states and system navigation."
+    },
+    {
+      "id": "ux.small",
+      "type": "ux",
+      "captures": [
+        "06-small.png"
+      ],
+      "description": "360dp-class device shows composer and actions without clipping."
+    },
+    {
+      "id": "ux.font",
+      "type": "ux",
+      "captures": [
+        "07-large-font.png"
+      ],
+      "description": "Increased font size remains legible without hiding essential actions."
+    },
+    {
+      "id": "ux.keyboard",
+      "type": "ux",
+      "captures": [
+        "08-keyboard.png"
+      ],
+      "description": "IME open: input remains reachable and system insets are respected."
+    },
+    {
+      "id": "stability.instrumentation",
+      "type": "stability",
+      "captures": [],
+      "description": "Android instrumentation suite passed."
+    }
+  ]
+}

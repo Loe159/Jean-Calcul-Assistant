@@ -1,19 +1,23 @@
-name: Jean-Calcul V2 - APK and Android E2E
+name: Jean-Calcul V2 - APK and technical Android tests
 on:
   push:
     branches: [feature/jean-calcul-v2-foundation]
   pull_request:
     branches: [feature/jean-calcul-v2-foundation]
   workflow_dispatch:
+
 permissions:
   contents: read
+
 jobs:
   build:
-    name: Build APK, unit tests and lint
+    name: Build APK, JVM tests and lint
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -21,32 +25,40 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - uses: android-actions/setup-android@v4
       - run: sdkmanager --channel=3 "platforms;android-37.0"
-      - name: Compile Android Debug APK
-        run: ./gradlew --no-daemon :app:assembleDebug
-      - name: Upload installable APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: JeanCalcul-V2-${{ github.sha }}
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-          retention-days: 21
-      - name: Build instrumentation and run lint/unit tests
-        run: ./gradlew --no-daemon :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug
-      - name: Upload verification reports
+      - name: Validate E2E scripts and verdict protocol (synthetic unit tests only)
+        run: |
+          bash -n e2e/run_instrumentation.sh e2e/capture_variants.sh e2e/agentic_loop.sh
+          python3 -m pip install -r e2e/requirements.txt
+          python3 -m unittest discover -s e2e -p 'test_agent_protocol.py' -v
+      - name: Compile Debug APK and test code
+        run: ./gradlew --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug
+      - name: Upload APK (from this commit)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: V2-Build-Reports-${{ github.sha }}
+          name: JeanCalcul-V2-${{ github.event.pull_request.head.sha || github.sha }}
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
+          retention-days: 21
+      - name: Upload technical test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V2-Technical-Reports-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             app/build/reports/**
             app/build/test-results/**
           if-no-files-found: warn
-  emulator:
-    name: Instrumented Android 35 tests and screenshots
-    runs-on: ubuntu-latest
-    timeout-minutes: 50
+
+  instrumentation:
+    name: Instrumentation tests only (no visual review)
+    # Intel macOS supports HVF acceleration; this runner is used only for Android E2E.
+    runs-on: macos-15-intel
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -54,26 +66,31 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - uses: android-actions/setup-android@v4
       - run: sdkmanager --channel=3 "platforms;android-37.0"
-      - uses: reactivecircus/android-emulator-runner@v2
+      - name: Run Compose/UI Automator assertions on stable AOSP emulator
+        uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
-          target: google_apis
+          api-level: 34
+          target: default
           arch: x86_64
-          profile: pixel_6
+          profile: pixel_2
+          cores: 2
+          ram-size: 3072M
+          heap-size: 512M
+          disk-size: 4096M
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: |
-            ./gradlew --no-daemon :app:connectedDebugAndroidTest
-            adb shell am start -n fr.loevan.jeancalcul.v2/.MainActivity
-            sleep 3
-            mkdir -p e2e-artifacts
-            adb exec-out screencap -p > e2e-artifacts/home.png
-      - uses: actions/upload-artifact@v4
+          script: bash e2e/run_instrumentation.sh
+      - name: Upload raw technical evidence
         if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: V2-Android-E2E-${{ github.sha }}
+          name: V2-Instrumentation-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             e2e-artifacts/**
             app/build/outputs/androidTest-results/**
             app/build/reports/androidTests/**
           if-no-files-found: warn
           retention-days: 21
+
+# Visual assessment, verdict recording and corrections run ONLY in the
+# implementing agent's environment via AGENTS.md and .agents/skills.
