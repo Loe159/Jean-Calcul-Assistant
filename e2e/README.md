@@ -7,7 +7,7 @@ aucun jugement UX et aucune correction automatique dans GitHub Actions.
 
 ## Prérequis
 
-Java 25, SDK Android 37.0, émulateur API 35 dédié (vérifié par
+Java 25, SDK Android 37.0, émulateur AOSP API 34 dédié (vérifié par
 `adb get-serialno` et `ro.kernel.qemu`), `adb`, Python 3 et Pillow.
 
 ```bash
@@ -18,7 +18,7 @@ bash e2e/agentic_loop.sh run 1
 ```
 
 Ce dernier script produit `e2e-artifacts/attempt-1/` avec des captures,
-`instrumentation.txt` et `instrumentation.log`. Le code de test
+`instrumentation.txt`, `instrumentation.log` et, en cas d'échec, `android-errors.log`/captures de diagnostic. Le code de test
 instrumenté prend les captures 01–04; ADB prend 05–08 (sombre, petit
 écran, police, clavier). Elles sont **non vérifiées** à ce stade.
 
