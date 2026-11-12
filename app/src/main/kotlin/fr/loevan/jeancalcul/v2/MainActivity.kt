@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.itos.coui.dialog.CouiDialogAction
@@ -210,15 +211,25 @@ internal fun MessageBubble(text: String, outgoing: Boolean) {
 private fun DestinationBar(page: String, hasMessages: Boolean, onSelection: (String) -> Unit, onReset: () -> Unit) {
     val items = listOf(CouiNavigationItem("Chat", Icons.Default.Home, Icons.Default.Home),
         CouiNavigationItem("Réglages", Icons.Default.Settings, Icons.Default.Settings))
-    if (Build.VERSION.SDK_INT >= 34) {
+    if (Build.VERSION.SDK_INT >= 34 && androidx.compose.ui.platform.LocalDensity.current.fontScale <= 1.3f) {
         NavigationBar(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-            renderer = remember { CouiFloatingRenderer.standalone() }, items = items,
+            renderer = remember { CouiFloatingRenderer() }, items = items,
             selectedIndex = if (page == "chat") 0 else 1,
             rightIcon = Icons.Default.Add, rightDescription = "Nouvelle conversation", rightVisible = hasMessages && page == "chat",
             onRightClick = onReset, onSelection = { onSelection(if (it == 0) "chat" else "settings") })
-    } else Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+    } else Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items.forEachIndexed { index, item ->
-            ActionIcon(item.title, item.icon) { onSelection(if (index == 0) "chat" else "settings") }
+            val selected = (page == "chat") == (index == 0)
+            val source = remember { MutableInteractionSource() }
+            Column(Modifier.weight(1f).clip(JeanTokens.capsule)
+                .background(if (selected) JeanTokens.userBubble() else Color.Transparent)
+                .couiButtonFeedback(interactionSource = source)
+                .clickable(source, indication = null, role = Role.Tab) { onSelection(if (index == 0) "chat" else "settings") }
+                .semantics { this.selected = selected }
+                .heightIn(min = 48.dp).padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Image(item.icon, null, Modifier.size(24.dp), colorFilter = ColorFilter.tint(CouiTheme.colorScheme.onSurface))
+                Text(text = item.title, kind = CouiTextKind.Body)
+            }
         }
     }
 }

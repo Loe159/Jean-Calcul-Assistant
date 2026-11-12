@@ -9,7 +9,7 @@ Les sources de versions ultérieures ne définissent pas les API utilisées ici.
 | --- | --- |
 | Thème, couleurs, texte | `CouiTheme`, `CouiPresets`, `Text`, `CouiTextKind` natifs. Palette neutre, accent bleu ; contraste secondaire renforcé. |
 | Conteneur et insets | `com.itos.coui.layout.Scaffold` ; les slots gèrent leurs insets verticaux, le contenu consomme le padding. L'hôte applique `imePadding`. |
-| Navigation progressive | `NavigationBar` + `CouiFloatingRenderer.standalone()` dès API 34 ; bouton nouvelle conversation révélé après le premier message, masqué avec le clavier. Android 13 conserve deux actions Foundation avec feedback COUI. |
+| Navigation progressive | `NavigationBar` + `CouiFloatingRenderer()` dès API 34 ; bouton nouvelle conversation révélé après le premier message, masqué avec le clavier. Android 13 conserve deux actions Foundation avec feedback COUI. |
 | Réglages | `Group`, `Item`, `Divider` natifs, sans interrupteurs factices pour les fonctions non raccordées. |
 | Menu / dialogue | `Menu`, `CouiMenuItem`, `Dialog`, `CouiDialogAction` natifs. Confirmation avant effacement ; annulation et retour système. |
 | Saisie libre | Aucun TextField public généraliste dans alpha7 : `BasicTextField` Foundation avec style `rememberCouiTextStyle(Body)`, curseur accentué, capsule et insets de l'application. `InputDialog` ne convient pas à une saisie de chat. |
@@ -27,3 +27,14 @@ COUI reste en alpha7, minSdk 33 conservé ; le build/lint doit vérifier les gar
 Le package Maven contient ses notices MPL-2.0 / AndroidX / Skia. Aucune source
 COUI n'est recopiée ou modifiée ; aucune source Eta GPL n'est utilisée.
 Seules les références JPG Eta épinglées servent à la comparaison visuelle.
+
+Premier test Android : `NavigationBar` exige `CouiFloatingRenderer()` (trois
+surfaces), pas `standalone()` (une surface) ; l'assertion de la bibliothèque a
+été détectée et l'intégration corrigée sans toucher à ses sources. Les labels
+natifs sont placés dans 48 dp fixes : au-delà de fontScale 1.3, les destinations
+utilisent une variante Foundation/feedback COUI à hauteur libre et sélection
+accessible. Le POM alpha7 importe Compose BOM alpha 2026.08.01, Foundation et
+Runtime 1.12.0, Kotlin 2.4.20 : le BOM historique de l'hôte n'impose donc pas
+à lui seul les versions résolues. La validation porte sur cette résolution.
+SHA-256 des sources Maven auditées :
+`3786ca7079d23b5cb21b7e3cf26108a59eeeb1f0249d24ead9332a45336ec4ff`.
