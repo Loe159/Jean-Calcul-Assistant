@@ -1,0 +1,82 @@
+{
+  "issue": 55,
+  "attempt": 2,
+  "attempt_budget": 3,
+  "budget_override": null,
+  "created_utc": "2026-11-12T22:31:50.790644+00:00",
+  "commit": "e1e14108952af1dbfe01a5a205a24460e58c99c1",
+  "working_tree_dirty": false,
+  "api": 35,
+  "serial": "emulator-5580",
+  "technical": {
+    "status": "NOT_RUN"
+  },
+  "captures": {
+    "empty": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "message": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "reset": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "settings": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "dark": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "small_screen": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "large_text": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "keyboard": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "reduced_motion": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "menu": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "gallery": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "dialog": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "regression_fixture": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    }
+  },
+  "visual_review": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "reference_comparison": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "regression_detection": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "source_manifest": "source-manifest.json",
+  "error": "Emulator exited; see logs/emulator-local.txt"
+}
