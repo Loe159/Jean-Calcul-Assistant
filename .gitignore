@@ -1,47 +1,19 @@
-# Gradle and build outputs
+# Gradle / IDE
 .gradle/
-.kotlin/
-build/
 **/build/
-
-# Android Studio and IntelliJ IDEA
+build/
+local.properties
 .idea/
 *.iml
-*.ipr
-*.iws
-captures/
-.externalNativeBuild/
+*.log
+
+# Android
 .cxx/
-
-# Local Android SDK and signing configuration
-local.properties
-keystore.properties
-*.jks
+.externalNativeBuild/
+captures-private/
+e2e-artifacts/
 *.keystore
-*.p12
+*.jks
 
-# Native and generated files
-*.hprof
-*.apk
-*.aab
-*.ap_
-*.dex
-*.class
-*.so
-
-# OS and editor files
+# OS
 .DS_Store
-Thumbs.db
-*.swp
-*~
-
-# Local environment and secrets
-.env
-.env.*
-!.env.example
-secrets.properties
-google-services.json
-
-# Python
-__pycache__/
-*.py[cod]

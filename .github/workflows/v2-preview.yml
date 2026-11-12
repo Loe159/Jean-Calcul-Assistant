@@ -1,42 +1,48 @@
-name: V2 Preview APK and E2E
+name: Jean-Calcul V2 - APK and Android E2E
 on:
   push:
     branches: [feature/jean-calcul-v2-foundation]
-    paths: ['v2/**', '.github/workflows/v2-preview.yml']
   pull_request:
-    paths: ['v2/**', '.github/workflows/v2-preview.yml']
+    branches: [feature/jean-calcul-v2-foundation]
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   build:
-    name: APK and lint
+    name: Build APK, unit tests and lint
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
-          cache: gradle
       - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 9.7.1
       - uses: android-actions/setup-android@v4
       - run: sdkmanager --channel=3 "platforms;android-37.0"
-      - name: Build installable V2 APK
-        run: gradle -p v2 --no-daemon :app:assembleDebug
-      - uses: actions/upload-artifact@v4
+      - name: Compile Android Debug APK
+        run: ./gradlew --no-daemon :app:assembleDebug
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
         with:
           name: JeanCalcul-V2-${{ github.sha }}
-          path: v2/app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 21
-      - name: Validate instrumentation compilation, unit tests and lint
-        run: gradle -p v2 --no-daemon :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug
+      - name: Build instrumentation and run lint/unit tests
+        run: ./gradlew --no-daemon :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug
+      - name: Upload verification reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V2-Build-Reports-${{ github.sha }}
+          path: |
+            app/build/reports/**
+            app/build/test-results/**
+          if-no-files-found: warn
   emulator:
-    name: Android Emulator E2E
+    name: Instrumented Android 35 tests and screenshots
     runs-on: ubuntu-latest
     timeout-minutes: 50
     steps:
@@ -45,10 +51,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-          cache: gradle
       - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 9.7.1
       - uses: android-actions/setup-android@v4
       - run: sdkmanager --channel=3 "platforms;android-37.0"
       - uses: reactivecircus/android-emulator-runner@v2
@@ -59,18 +62,18 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
-            gradle -p v2 --no-daemon :app:connectedDebugAndroidTest
+            ./gradlew --no-daemon :app:connectedDebugAndroidTest
             adb shell am start -n fr.loevan.jeancalcul.v2/.MainActivity
             sleep 3
-            mkdir -p v2/e2e-artifacts
-            adb exec-out screencap -p > v2/e2e-artifacts/home.png
+            mkdir -p e2e-artifacts
+            adb exec-out screencap -p > e2e-artifacts/home.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: JeanCalcul-V2-E2E-${{ github.sha }}
+          name: V2-Android-E2E-${{ github.sha }}
           path: |
-            v2/e2e-artifacts/**
-            v2/app/build/outputs/androidTest-results/**
-            v2/app/build/reports/androidTests/**
+            e2e-artifacts/**
+            app/build/outputs/androidTest-results/**
+            app/build/reports/androidTests/**
           if-no-files-found: warn
           retention-days: 21
