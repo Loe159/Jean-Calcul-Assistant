@@ -1,5 +1,7 @@
 package fr.loevan.jeancalcul.v2
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.view.WindowInsets
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -19,7 +21,9 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileOutputStream
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
@@ -88,6 +92,40 @@ class VisualScenarioTest {
         // Let system insets / IME animations settle before taking a full-device capture.
         android.os.SystemClock.sleep(600)
         val directory = File(rule.activity.filesDir, "e2e").apply { mkdirs() }
-        assertTrue(device.takeScreenshot(File(directory, "$scenario.png")))
+        val destination = File(directory, "$scenario.png")
+        var captured = false
+        // UiDevice 2.3.0 ignores Bitmap.compress's boolean result. Never accept
+        // its false-positive success (observed as a zero-byte file on emulator).
+        repeat(3) { attempt ->
+            if (!captured) {
+                val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+                if (bitmap != null) {
+                    val software = bitmap.copy(Bitmap.Config.ARGB_8888, false)
+                    try {
+                        if (software != null) {
+                            val bytes = ByteArrayOutputStream()
+                            if (software.compress(Bitmap.CompressFormat.PNG, 100, bytes)) {
+                                val data = bytes.toByteArray()
+                                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                                BitmapFactory.decodeByteArray(data, 0, data.size, bounds)
+                                if (bounds.outWidth == software.width && bounds.outHeight == software.height) {
+                                    val temporary = File(directory, "$scenario.tmp")
+                                    FileOutputStream(temporary).use { stream ->
+                                        stream.write(data)
+                                        stream.fd.sync()
+                                    }
+                                    captured = temporary.renameTo(destination) && destination.length() > 0
+                                }
+                            }
+                        }
+                    } finally {
+                        software?.recycle()
+                        bitmap.recycle()
+                    }
+                }
+                if (!captured && attempt < 2) android.os.SystemClock.sleep(500)
+            }
+        }
+        assertTrue("No complete PNG after three bounded screenshot attempts: $scenario", captured)
     }
 }

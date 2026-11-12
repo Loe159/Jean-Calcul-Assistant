@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from report import visual_result, render
-from run import redact, SCENARIOS, check_instrumentation_results
+from run import redact, SCENARIOS, check_instrumentation_results, complete_png
 
 
 class EvidenceTests(unittest.TestCase):
@@ -56,6 +56,14 @@ class EvidenceTests(unittest.TestCase):
     def test_missing_device_results_cannot_pass(self):
         with self.assertRaises(RuntimeError):
             check_instrumentation_results(self.directory, 'emulator-5580')
+
+    def test_empty_or_truncated_screenshot_is_not_a_png(self):
+        import base64
+        png = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aF9sAAAAASUVORK5CYII=')
+        self.assertTrue(complete_png(png))
+        for incomplete in (b'', png[:8], png[:-1]):
+            with self.subTest(size=len(incomplete)):
+                self.assertFalse(complete_png(incomplete))
 
     def test_secret_redaction(self):
         value = redact('Bearer abc123 token=private user@example.org')

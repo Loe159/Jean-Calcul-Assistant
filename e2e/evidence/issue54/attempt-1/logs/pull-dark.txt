@@ -1,0 +1,1 @@
+/sdcard/Android/data/fr.loevan.jeancalcul.v2/files/e2e/dark.png: 1 file pulled, 0 skipped. 26.1 MB/s (79978 bytes in 0.003s)

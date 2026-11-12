@@ -1,0 +1,1 @@
+/sdcard/Android/data/fr.loevan.jeancalcul.v2/files/e2e/regression_fixture.png: 1 file pulled, 0 skipped. 23.1 MB/s (58511 bytes in 0.002s)

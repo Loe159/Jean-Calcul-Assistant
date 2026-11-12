@@ -1,0 +1,71 @@
+{
+  "empty": {
+    "status": "FAIL",
+    "sha256": "9df2364df83066e99b585ae85dde87583ef0432bdd84ed50db7366df5c99e145",
+    "observation": "État vide lisible et saisie présente ; FAIL : icônes système blanches presque invisibles sur fond clair, saisie collée au geste de navigation.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "message": {
+    "status": "FAIL",
+    "sha256": "54da8ffaec29b7f1ca0bec1adc3e135faa3d942fb10b64b4090b549d9e025e90",
+    "observation": "Bulle synthétique et avertissement mémoire visibles ; FAIL : barre de statut sans contraste et marge de navigation insuffisante.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reset": {
+    "status": "FAIL",
+    "sha256": "8bde08abb2cce7f3529f3cb97ff7df5d536ef7cf4d700ee80c7972a9ec700cd3",
+    "observation": "Message effacé et accueil restauré ; FAIL : mêmes défauts des barres système en clair.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "settings": {
+    "status": "FAIL",
+    "sha256": "befbcd968ce435b02af584da15f4664d5b1a33909b012fc587518e0667e81eea",
+    "observation": "Préférences et mention sans moteur IA visibles ; FAIL : statut blanc sur fond clair. Réglages volontairement limités au prototype.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "dark": {
+    "status": "FAIL",
+    "sha256": "d09701ca490f3a75b5c34b9eb726d9104213723050952af3f8530f8a3cfbca01",
+    "observation": "Textes, puce et actions lisibles en sombre ; FAIL : champ trop proche de la barre de geste en bas.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "small_screen": {
+    "status": "FAIL",
+    "sha256": "5756dbb8d6c0afa91e81138e8313f6ad6b36108f4101430c4fc6fc9e2e43bb03",
+    "observation": "360×640 dp : actions et texte lisibles, placeholder sur deux lignes ; FAIL : barre système sans contraste et saisie collée au geste.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "large_text": {
+    "status": "FAIL",
+    "sha256": "2bda6614443e3e60c0f1e9fe617caedcb2be0bfaa2840d464ad97b27cdd1ee5a",
+    "observation": "FAIL : à 200 %, titre et sous-titre empilés sur plusieurs lignes, avertissement « IA non connectée » coupé verticalement ; barre système claire illisible.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "keyboard": {
+    "status": "FAIL",
+    "sha256": "7ee26cfe50ef986e714de46a7999410bcca7167645cd6ab8002b892bb5fba510",
+    "observation": "Clavier réellement visible et envoi accessible au-dessus ; FAIL : statut sans contraste en clair.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reduced_motion": {
+    "status": "FAIL",
+    "sha256": "86d3854a45eb68787269119a2b26cb39eca1e95c615bf20c7063859f622bbdc8",
+    "observation": "État statique stable avec animations système désactivées ; FAIL : défauts de statut/navigation identiques à l’accueil clair. Fluidité non déduite du PNG.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "regression_fixture": {
+    "status": "FAIL",
+    "sha256": "d34cc42041b17fe43124f27bbc654d80a19a0194b3d47acbd0342d787c8db0f1",
+    "observation": "FAIL volontaire détecté : rectangle rouge opaque sur toute la largeur basse, masque entièrement champ de saisie et bouton Envoyer.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "_reference_comparison": {
+    "status": "PASS",
+    "opened_with": "functions.view_image (vision native)",
+    "reference_sha256": {
+      "chat_home.jpg": "b52261d66f78b41ce5c67f6d24925a795868a37544f44163d56652de98cc9111",
+      "settings.jpg": "8578d0d1ef91036e93c7b6b7ec8433e5790c476c43ebebbe68c514e84078cb30"
+    },
+    "observation": "Comparaison réellement effectuée avec chat_home.jpg et settings.jpg Eta. V2 conserve fond clair neutre, surfaces arrondies et saisie basse. Contrairement à Eta, contraste des barres système et agrandissement sont défectueux ; à corriger. Cartes de raccourcis, paramètres fournisseurs et outils Eta absents par périmètre du prototype, aucune commande fictive ajoutée. Pas de référence sombre/clavier/200 % exacte."
+  }
+}

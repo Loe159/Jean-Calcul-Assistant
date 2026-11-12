@@ -27,6 +27,11 @@ def redact(text):
     return text.replace(str(Path.home()), '[HOME]')
 
 
+def complete_png(data):
+    return data.startswith(b'\x89PNG\r\n\x1a\n') and data.endswith(
+        b'\x00\x00\x00\x00IEND\xaeB\x60\x82')
+
+
 def check_instrumentation_results(directory, serial, since=0):
     """Don't trust Gradle's exit code alone (UTP can leave failures in XML)."""
     matched = []
@@ -50,11 +55,15 @@ def check_instrumentation_results(directory, serial, since=0):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--run-id', default=dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ'))
-    parser.add_argument('--attempt', type=int, choices=(1, 2, 3), default=1)
+    parser.add_argument('--attempt', type=int, choices=(1, 2, 3, 4), default=1)
+    parser.add_argument('--extra-validation-authorized', action='store_true',
+                        help='Attempt 4 only: requires explicit user authorization to exceed the budget')
     parser.add_argument('--show-window', action='store_true')
     parser.add_argument('--keep-emulator', action='store_true', help='Leave the synthetic AVD open for interaction')
     parser.add_argument('--port', type=int, default=5580)
     args = parser.parse_args()
+    if args.attempt == 4 and not args.extra_validation_authorized:
+        parser.error('Attempt 4 requires explicit user authorization and --extra-validation-authorized')
     if not re.fullmatch(r'[A-Za-z0-9_-]+', args.run_id):
         parser.error('run-id must contain only letters, numbers, underscore or dash')
     if args.port < 5554 or args.port > 5682 or args.port % 2:
@@ -63,7 +72,9 @@ def main():
     out.mkdir(parents=True, exist_ok=False)  # Never overwrite evidence or silently retry.
     (out / 'screenshots').mkdir()
     (out / 'logs').mkdir()
-    report = {'issue': 54, 'attempt': args.attempt, 'created_utc': dt.datetime.now(dt.timezone.utc).isoformat(),
+    report = {'issue': 54, 'attempt': args.attempt,
+              'attempt_budget': 4 if args.attempt == 4 else 3,
+              'budget_override': 'Explicit user authorization, 2026-11-12' if args.attempt == 4 else None, 'created_utc': dt.datetime.now(dt.timezone.utc).isoformat(),
               'commit': '', 'working_tree_dirty': False, 'api': 35, 'serial': f'emulator-{args.port}',
               'technical': {'status': 'NOT_RUN'},
               'captures': {s: {'status': 'NOT_RUN'} for s in SCENARIOS},
@@ -226,16 +237,26 @@ def main():
                 save()
                 raise RuntimeError(f'Instrumentation failed for {scenario}; see logs/{scenario}.txt')
             path = out / 'screenshots' / f'{scenario}.png'
-            transfer = subprocess.run(adb + ['exec-out', 'run-as', APP, 'cat', remote],
-                cwd=ROOT, env=env, capture_output=True, timeout=30)
-            (out / 'logs' / f'transfer-{scenario}.txt').write_text(
-                f'exit={transfer.returncode} bytes={len(transfer.stdout)}\n' +
-                redact(transfer.stderr.decode(errors='replace')))
-            if transfer.returncode:
-                raise RuntimeError(f'Screenshot transfer failed for {scenario}; see logs/transfer-{scenario}.txt')
-            path.write_bytes(transfer.stdout)
-            if not path.read_bytes().startswith(b'\x89PNG\r\n\x1a\n'):
-                raise RuntimeError(f'Invalid PNG for {scenario}')
+            transfer_log = []
+            data = b''
+            # Retry reads of the same immutable file, never a failed scenario.
+            for transfer_attempt in range(1, 4):
+                transfer = subprocess.run(adb + ['exec-out', 'run-as', APP, 'cat', remote],
+                    cwd=ROOT, env=env, capture_output=True, timeout=30)
+                valid = transfer.returncode == 0 and complete_png(transfer.stdout)
+                transfer_log.append(f'try={transfer_attempt} exit={transfer.returncode} '
+                    f'bytes={len(transfer.stdout)} complete_png={valid}\n' +
+                    redact(transfer.stderr.decode(errors='replace')))
+                (out / 'logs' / f'transfer-{scenario}.txt').write_text('\n'.join(transfer_log))
+                if valid:
+                    data = transfer.stdout
+                    break
+                if transfer_attempt < 3:
+                    time.sleep(0.5)
+            if not data:
+                report['captures'][scenario] = {'status': 'FAIL', 'evidence': f'logs/transfer-{scenario}.txt'}
+                raise RuntimeError(f'No complete PNG for {scenario}; see logs/transfer-{scenario}.txt')
+            path.write_bytes(data)
             report['captures'][scenario] = {'status': 'PASS', 'path': f'screenshots/{scenario}.png',
                 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'visual_status': 'NOT_RUN'}
             save()

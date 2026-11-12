@@ -47,6 +47,11 @@ Boot limité à 240 s, build/tests à 1500 s, scénario à 120 s. Les logs enreg
 sont expurgés (chemin personnel, jetons usuels, emails) ; les inspecter avant partage.
 Pas de dump global des logs Android ni de données d'autres applications.
 
+La compression et les dimensions du PNG sont vérifiées dans le test, puis le
+fichier est écrit atomiquement et synchronisé. Les captures et lectures ADB
+ont chacune au plus trois essais techniques bornés ; un scénario en échec
+n’est jamais relancé silencieusement. Un PNG vide ou tronqué est refusé.
+
 Captures : chat vide, message, reset, réglages, sombre, 360×640 dp, police 200 %,
 clavier réellement visible, animations réduites et défaut visuel volontaire.
 Ce dernier est une surcouche rouge **dans le test uniquement**, absente de l'APK
@@ -81,7 +86,10 @@ Le rapport lie commit, modifications locales, APK et empreintes des captures.
 4. Corriger les défauts constatés puis relancer avec le même `--run-id` et
    `--attempt 2`, puis 3 si nécessaire. Chaque dossier est immuable pour le lanceur.
    Après trois tentatives, arrêter et signaler les défauts restants ; ne pas
-   contourner le budget en renommant le run.
+   contourner le budget en renommant le run. Une quatrième validation exige
+   un accord utilisateur explicite, consigné dans le rapport, puis
+   `--attempt 4 --extra-validation-authorized`. Ce drapeau n'est pas une
+   autorisation en soi ; ne jamais l'ajouter automatiquement.
 5. Fournir rapport, APK et preuves dans une PR vers
    `feature/jean-calcul-v2-foundation`. Aucune fusion ni approbation automatique.
 

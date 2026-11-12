@@ -64,9 +64,10 @@ def render(directory):
     for name, value in outcomes.items():
         report['captures'][name]['visual_status'] = value
     (directory / 'report.json').write_text(json.dumps(report, indent=2, ensure_ascii=False) + '\n')
-    text = f'''# Issue #54 — tentative {report['attempt']}/3
+    text = f'''# Issue #54 — tentative {report['attempt']}/{report.get('attempt_budget', 3)}
 
 Commit : `{report['commit']}` ; modifications locales : {report['working_tree_dirty']}.
+Dérogation au budget : {report.get('budget_override') or 'aucune'}.
 Android API {report['api']} ; émulateur `{report['serial']}` ; données synthétiques.
 
 | Critère | Statut |

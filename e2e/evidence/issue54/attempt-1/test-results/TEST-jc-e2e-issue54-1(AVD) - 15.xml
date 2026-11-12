@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="4" failures="1" errors="0" skipped="0" time="0.000" timestamp="2026-11-12T21:20:20" hostname="localhost">
+  <testsuite name="fr.loevan.jeancalcul.v2.SmokeTest" tests="3" failures="0" errors="0" skipped="0" time="11.674" timestamp="2026-11-12T21:20:20" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5580" />
+    </properties>
+    <testcase name="settingsScreen" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="5.242" />
+    <testcase name="initialState" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="1.821" />
+    <testcase name="composeAndReset" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="4.611" />
+  </testsuite>
+  <testsuite name="fr.loevan.jeancalcul.v2.VisualScenarioTest" tests="1" failures="1" errors="0" skipped="0" time="2.906" timestamp="2026-11-12T21:20:20" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5580" />
+    </properties>
+    <testcase name="capture" classname="fr.loevan.jeancalcul.v2.VisualScenarioTest" time="2.906">
+      <failure>org.junit.AssumptionViolatedException: Opt in with -e scenario
+	at org.junit.Assume.assumeTrue(Assume.java:68)
+	at fr.loevan.jeancalcul.v2.VisualScenarioTest.capture(VisualScenarioTest.kt:35)
+</failure>
+    </testcase>
+  </testsuite>
+</testsuites>
