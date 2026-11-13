@@ -42,19 +42,31 @@ class ConversationViewModel(application: Application) : AndroidViewModel(applica
         loginJob = viewModelScope.launch(Dispatchers.IO) {
             mutableSigningIn.value = true
             mutableChatGptMessage.value = "Terminez l’autorisation dans le navigateur, puis revenez ici."
+            var phase = "préparation"
             try {
                 val callback = LoopbackOAuth(); listener = callback
                 callback.use {
                     val attempt = chatGpt.attempt(callback.redirect, accountId)
+                    phase = "navigateur"
                     withContext(Dispatchers.Main) { openBrowser(attempt.authorizationUrl(chatGpt.oauth.endpoints)) }
+                    phase = "redirection"
                     val code = callback.await(attempt)
-                    chatGpt.complete(attempt, code)
-                    mutableChatGptMessage.value = "Compte autorisé. Choisissez un modèle pour commencer."
+                    phase = "validation du compte"
+                    val modelsLoaded = chatGpt.complete(attempt, code)
+                    mutableChatGptMessage.value = if (modelsLoaded)
+                        "Compte autorisé. Choisissez un modèle pour commencer."
+                    else "Compte connecté. Catalogue indisponible : actualisez les modèles."
                 }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (error: Exception) {
                 currentCoroutineContext().ensureActive()
-                mutableChatGptMessage.value = (error as? RunFailure)?.kind?.label ?: "Connexion ChatGPT interrompue ou expirée. Réessayez."
+                val reason = (error as? RunFailure)?.kind?.label ?: when (error) {
+                    is java.net.SocketException -> "Écouteur de redirection interrompu."
+                    is java.net.SocketTimeoutException -> "Délai de connexion dépassé."
+                    is java.io.IOException -> "Erreur réseau."
+                    else -> "Erreur inattendue."
+                }
+                mutableChatGptMessage.value = "Échec ($phase) : $reason"
             } finally { listener = null; mutableSigningIn.value = false }
         }
     }
