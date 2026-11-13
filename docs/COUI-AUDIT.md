@@ -50,3 +50,15 @@ Sur minSdk 33, `adjustNothing` laisse la gestion des insets au Compose hôte et
 évite un déplacement automatique de la fenêtre qui masquait l'en-tête. Le test
 clavier vérifie aussi la présence visible de cet en-tête. Une vérification du
 rendu réel reste nécessaire en plus des assertions sémantiques.
+
+## Décision finale pour la navigation
+
+La recréation des couches natives ne résout pas tous les rendus incomplets
+constatés sur les captures 5–7 : certains états n'affichent que les libellés.
+La navigation utilise donc l'adaptateur Foundation commun (API 33+, texte
+agrandi), avec `CouiNavigationItem`, palette COUI, texte COUI et feedback COUI.
+Le bouton nouvelle conversation apparaît après un message. Cette exception
+est explicite : la barre n'est pas annoncée comme un `NavigationBar` natif.
+Aucune source de la bibliothèque n'est modifiée et aucune dépendance Material3
+n'est réintroduite. Les autres conteneurs, groupes, menus et dialogues restent
+natifs. Les captures précédentes restent la preuve de la limite rencontrée.

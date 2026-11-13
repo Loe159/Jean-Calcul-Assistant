@@ -1,0 +1,101 @@
+{
+  "issue": 55,
+  "attempt": 7,
+  "attempt_budget": 7,
+  "budget_override": "User explicitly requested continuing fixes until all tests pass; see e2e/evidence/issue55/README.md",
+  "created_utc": "2026-11-12T23:05:04.856168+00:00",
+  "commit": "1e34e259990c9f28ba87ca3b8814e11bacba9f9c",
+  "working_tree_dirty": false,
+  "api": 35,
+  "serial": "emulator-5580",
+  "technical": {
+    "status": "PASS",
+    "evidence": "logs/gradle.txt",
+    "jvm_tests": "NOT_RUN"
+  },
+  "captures": {
+    "empty": {
+      "status": "PASS",
+      "path": "screenshots/empty.png",
+      "sha256": "888f028026ff30f51fc7ec06a10ced9ce87fcde5820a2baf4e7ff36d034f771f",
+      "visual_status": "PASS"
+    },
+    "message": {
+      "status": "PASS",
+      "path": "screenshots/message.png",
+      "sha256": "d3cb76a9b578154859c1a69b7c417075edb39a8893f507b07c21df8da097378e",
+      "visual_status": "PASS"
+    },
+    "reset": {
+      "status": "PASS",
+      "path": "screenshots/reset.png",
+      "sha256": "888f028026ff30f51fc7ec06a10ced9ce87fcde5820a2baf4e7ff36d034f771f",
+      "visual_status": "PASS"
+    },
+    "settings": {
+      "status": "PASS",
+      "path": "screenshots/settings.png",
+      "sha256": "cdfe9c95dd821a89f11d0bba54adc5a04e76d49b66820d975d3274606f886d3e",
+      "visual_status": "FAIL"
+    },
+    "dark": {
+      "status": "PASS",
+      "path": "screenshots/dark.png",
+      "sha256": "2c76fd132706fc9edf6641838d2c456d2c13b910ff6ee3b62230ad1ba7bbe7b0",
+      "visual_status": "PASS"
+    },
+    "small_screen": {
+      "status": "PASS",
+      "path": "screenshots/small_screen.png",
+      "sha256": "52ba211933330154c27df360da5ee963505472dabfb9fc311e7d96c25f2ada2a",
+      "visual_status": "PASS"
+    },
+    "large_text": {
+      "status": "PASS",
+      "path": "screenshots/large_text.png",
+      "sha256": "5129f5db61feedebc5d14b8a62f0dc085e911f47d2c09928bcf5412b33821b8b",
+      "visual_status": "PASS"
+    },
+    "keyboard": {
+      "status": "PASS",
+      "path": "screenshots/keyboard.png",
+      "sha256": "52d339c090d77b39f7cb2bf3207815306f02a6b7b21879e631cca1fc96102373",
+      "visual_status": "PASS"
+    },
+    "reduced_motion": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "menu": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "gallery": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "dialog": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "regression_fixture": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    }
+  },
+  "visual_review": {
+    "status": "FAIL",
+    "evidence": "visual-review.json"
+  },
+  "reference_comparison": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "regression_detection": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "source_manifest": "source-manifest.json",
+  "apk_sha256": "386d141c8594c463050e8df4dfb173fdbff9dbaf00fb0138cd698867ec9fdaa6",
+  "error": "Execution interrupted after keyboard capture; runner/emulator processes unavailable. Partial evidence retained, no full-run success claimed."
+}

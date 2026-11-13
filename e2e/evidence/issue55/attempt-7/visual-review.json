@@ -1,0 +1,80 @@
+{
+  "empty": {
+    "status": "PASS",
+    "sha256": "888f028026ff30f51fc7ec06a10ced9ce87fcde5820a2baf4e7ff36d034f771f",
+    "observation": "Accueil, saisie et navigation complets, barres système contrastées.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "message": {
+    "status": "PASS",
+    "sha256": "d3cb76a9b578154859c1a69b7c417075edb39a8893f507b07c21df8da097378e",
+    "observation": "Bulle lisible, navigation et nouveau bouton bleu visibles après fermeture IME.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reset": {
+    "status": "PASS",
+    "sha256": "888f028026ff30f51fc7ec06a10ced9ce87fcde5820a2baf4e7ff36d034f771f",
+    "observation": "Accueil restauré ; capsule de navigation et icônes complètes après reset.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "settings": {
+    "status": "FAIL",
+    "sha256": "cdfe9c95dd821a89f11d0bba54adc5a04e76d49b66820d975d3274606f886d3e",
+    "observation": "Groupes lisibles mais la navigation basse ne montre que ses libellés, sans icônes ni surface.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "dark": {
+    "status": "PASS",
+    "sha256": "2c76fd132706fc9edf6641838d2c456d2c13b910ff6ee3b62230ad1ba7bbe7b0",
+    "observation": "Texte clair lisible, surfaces sombres distinctes et navigation complète.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "small_screen": {
+    "status": "PASS",
+    "sha256": "52ba211933330154c27df360da5ee963505472dabfb9fc311e7d96c25f2ada2a",
+    "observation": "360×640 dp, titre replié sans coupure, saisie et navigation accessibles.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "large_text": {
+    "status": "PASS",
+    "sha256": "5129f5db61feedebc5d14b8a62f0dc085e911f47d2c09928bcf5412b33821b8b",
+    "observation": "Corps agrandi et navigation à hauteur libre sans coupure ; titres COUI fixes documentés.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "keyboard": {
+    "status": "PASS",
+    "sha256": "52d339c090d77b39f7cb2bf3207815306f02a6b7b21879e631cca1fc96102373",
+    "observation": "En-tête et ses actions désormais visibles ; saisie et Envoyer au-dessus du clavier, aucun recouvrement.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reduced_motion": {
+    "status": "NOT_RUN",
+    "sha256": "",
+    "observation": "",
+    "opened_with": ""
+  },
+  "menu": {
+    "status": "NOT_RUN",
+    "sha256": "",
+    "observation": "",
+    "opened_with": ""
+  },
+  "gallery": {
+    "status": "NOT_RUN",
+    "sha256": "",
+    "observation": "",
+    "opened_with": ""
+  },
+  "dialog": {
+    "status": "NOT_RUN",
+    "sha256": "",
+    "observation": "",
+    "opened_with": ""
+  },
+  "regression_fixture": {
+    "status": "NOT_RUN",
+    "sha256": "",
+    "observation": "",
+    "opened_with": ""
+  }
+}

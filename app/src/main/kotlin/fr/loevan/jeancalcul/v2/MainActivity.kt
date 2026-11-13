@@ -1,6 +1,5 @@
 package fr.loevan.jeancalcul.v2
 
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
@@ -49,13 +48,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.itos.coui.dialog.CouiDialogAction
 import com.itos.coui.dialog.Dialog
-import com.itos.coui.effect.CouiFloatingRenderer
 import com.itos.coui.effect.couiButtonFeedback
 import com.itos.coui.layout.*
 import com.itos.coui.menu.CouiMenuItem
 import com.itos.coui.menu.Menu
 import com.itos.coui.navigation.CouiNavigationItem
-import com.itos.coui.navigation.NavigationBar
 import com.itos.coui.text.CouiTextKind
 import com.itos.coui.text.Text
 import com.itos.coui.text.rememberCouiTextStyle
@@ -88,7 +85,6 @@ fun V2App() {
         var page by rememberSaveable { mutableStateOf("chat") }
         var menu by remember { mutableStateOf(false) }
         var confirmReset by remember { mutableStateOf(false) }
-        var navigationEpoch by remember { mutableIntStateOf(0) }
         val messages = remember { mutableStateListOf<String>() }
         fun navigate(destination: String) {
             keyboardController?.hide()
@@ -96,7 +92,7 @@ fun V2App() {
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             page = destination
         }
-        fun reset() { messages.clear(); draft = ""; page = "chat"; confirmReset = false; navigationEpoch++ }
+        fun reset() { messages.clear(); draft = ""; page = "chat"; confirmReset = false }
         fun send() {
             if (draft.isNotBlank()) {
                 messages.add(draft.trim()); draft = ""
@@ -134,11 +130,8 @@ fun V2App() {
                     if (page == "chat") Composer(draft, { draft = it }, ::send)
                     // The keyboard gets the available height; destination controls return on dismissal.
                     val keyboard = WindowInsets.isImeVisible
-                    if (!keyboard) key(page, navigationEpoch) {
-                        // Alpha7's recorded navigation layers belong to this destination/session.
-                        DestinationBar(page, messages.isNotEmpty(), { navigate(it) }) {
-                            if (messages.isEmpty() && draft.isBlank()) reset() else confirmReset = true
-                        }
+                    if (!keyboard) DestinationBar(page, messages.isNotEmpty(), { navigate(it) }) {
+                        if (messages.isEmpty() && draft.isBlank()) reset() else confirmReset = true
                     }
                 }
             },
@@ -219,25 +212,29 @@ internal fun MessageBubble(text: String, outgoing: Boolean) {
 private fun DestinationBar(page: String, hasMessages: Boolean, onSelection: (String) -> Unit, onReset: () -> Unit) {
     val items = listOf(CouiNavigationItem("Chat", Icons.Default.Home, Icons.Default.Home),
         CouiNavigationItem("Réglages", Icons.Default.Settings, Icons.Default.Settings))
-    if (Build.VERSION.SDK_INT >= 34 && androidx.compose.ui.platform.LocalDensity.current.fontScale <= 1.3f) {
-        NavigationBar(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).testTag("navigation"),
-            renderer = remember { CouiFloatingRenderer() }, items = items,
-            selectedIndex = if (page == "chat") 0 else 1,
-            rightIcon = Icons.Default.Add, rightDescription = "Nouvelle conversation", rightVisible = hasMessages && page == "chat",
-            onRightClick = onReset, onSelection = { onSelection(if (it == 0) "chat" else "settings") })
-    } else Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).testTag("navigation"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items.forEachIndexed { index, item ->
-            val selected = (page == "chat") == (index == 0)
-            val source = remember { MutableInteractionSource() }
-            Column(Modifier.weight(1f).clip(JeanTokens.capsule)
-                .background(if (selected) JeanTokens.userBubble() else Color.Transparent)
-                .couiButtonFeedback(interactionSource = source)
-                .clickable(source, indication = null, role = Role.Tab) { onSelection(if (index == 0) "chat" else "settings") }
-                .semantics { this.selected = selected }
-                .heightIn(min = 48.dp).padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Image(item.icon, null, Modifier.size(24.dp), colorFilter = ColorFilter.tint(CouiTheme.colorScheme.onSurface))
-                Text(text = item.title, kind = CouiTextKind.Body)
+    val largeText = androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).testTag("navigation"),
+        horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.weight(1f, fill = false).widthIn(max = if (largeText) 600.dp else 300.dp)
+            .fillMaxWidth().clip(JeanTokens.capsule).background(CouiTheme.colorScheme.card).padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            items.forEachIndexed { index, item ->
+                val selected = (page == "chat") == (index == 0)
+                val source = remember { MutableInteractionSource() }
+                Column(Modifier.weight(1f).clip(JeanTokens.capsule)
+                    .background(if (selected) JeanTokens.userBubble() else Color.Transparent)
+                    .couiButtonFeedback(interactionSource = source)
+                    .clickable(source, indication = null, role = Role.Tab) { onSelection(if (index == 0) "chat" else "settings") }
+                    .semantics { this.selected = selected }
+                    .heightIn(min = 48.dp).padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Image(item.icon, null, Modifier.size(24.dp), colorFilter = ColorFilter.tint(CouiTheme.colorScheme.onSurface))
+                    Text(text = item.title, kind = CouiTextKind.Body)
+                }
             }
+        }
+        if (hasMessages && page == "chat") {
+            Spacer(Modifier.width(8.dp))
+            ActionIcon("Nouvelle conversation", Icons.Default.Add, accent = true, onClick = onReset)
         }
     }
 }
