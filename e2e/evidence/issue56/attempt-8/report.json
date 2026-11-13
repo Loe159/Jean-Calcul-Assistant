@@ -1,0 +1,181 @@
+{
+  "issue": 56,
+  "attempt": 8,
+  "attempt_budget": 8,
+  "budget_override": "Oui, autoriser la tentative 8",
+  "created_utc": "2026-11-13T15:03:05.508264+00:00",
+  "commit": "14674ce83eec5f574aa136f61ce3a03ab8d3aced",
+  "working_tree_dirty": false,
+  "api": 35,
+  "serial": "emulator-5580",
+  "technical": {
+    "status": "PASS",
+    "evidence": "logs/gradle.txt",
+    "jvm_tests": "PASS"
+  },
+  "captures": {
+    "empty": {
+      "status": "PASS",
+      "path": "screenshots/empty.png",
+      "sha256": "3367b3319c370a2a9afd21897669351003a1e7cfab281fc7d981e278c610b28f",
+      "visual_status": "PASS"
+    },
+    "message": {
+      "status": "PASS",
+      "path": "screenshots/message.png",
+      "sha256": "047023d2441cae4d2193dcaf8617b60d0ad544be792a7dc46f0bf490b3203999",
+      "visual_status": "PASS"
+    },
+    "reset": {
+      "status": "PASS",
+      "path": "screenshots/reset.png",
+      "sha256": "da89a12faca298efacc27a64fedc85b0fe83454f18210781e6305d7fd60e580e",
+      "visual_status": "PASS"
+    },
+    "settings": {
+      "status": "PASS",
+      "path": "screenshots/settings.png",
+      "sha256": "27d8d19c47e2cd848ab3898fa3c887e18b61a658a337607ac8b71de1215ef6ae",
+      "visual_status": "PASS"
+    },
+    "provider_selection": {
+      "status": "PASS",
+      "path": "screenshots/provider_selection.png",
+      "sha256": "e7fb07d6e9f8499ff28f5300065909b54da3eefe3cd4a1c3283279fca1100a05",
+      "visual_status": "PASS"
+    },
+    "model_selection": {
+      "status": "PASS",
+      "path": "screenshots/model_selection.png",
+      "sha256": "3e5c20d526bd7586c360b7110e327feec785ca639fb246a7f9855ecc419f92c3",
+      "visual_status": "PASS"
+    },
+    "dark": {
+      "status": "PASS",
+      "path": "screenshots/dark.png",
+      "sha256": "a28bdee8206a0d3c78c70699412d7541f1ef51ff64c5da6f96e9da34fa3bfe4f",
+      "visual_status": "PASS"
+    },
+    "small_screen": {
+      "status": "PASS",
+      "path": "screenshots/small_screen.png",
+      "sha256": "f8a97f849c7b4bef7dd0213f23cf887a9dd048013aea11a1cc5a500aa4a76f54",
+      "visual_status": "PASS"
+    },
+    "large_text": {
+      "status": "PASS",
+      "path": "screenshots/large_text.png",
+      "sha256": "a8c6d0feb05d307034c97448b5fc4b20fb1c05d1c659f15a6779842df37d8229",
+      "visual_status": "PASS"
+    },
+    "keyboard": {
+      "status": "PASS",
+      "path": "screenshots/keyboard.png",
+      "sha256": "afa587afc59a1bae92a4d6f01bbd1d237acdb7250f0fe5fc9293e4fe120f33b0",
+      "visual_status": "PASS"
+    },
+    "reduced_motion": {
+      "status": "PASS",
+      "path": "screenshots/reduced_motion.png",
+      "sha256": "9c944b7680f51f1eafbc7a8699a55f30db60d41ebb3870aa703abe2a8bbb89d5",
+      "visual_status": "PASS"
+    },
+    "menu": {
+      "status": "PASS",
+      "path": "screenshots/menu.png",
+      "sha256": "2292c023546aa390e82d28d7ce8dbb8afad166967a4d3e5b76de5e1658e92b93",
+      "visual_status": "PASS"
+    },
+    "gallery": {
+      "status": "PASS",
+      "path": "screenshots/gallery.png",
+      "sha256": "de231536873e50794e316ff171b93dbb5707cc0c6fcb523551b6475b0f790372",
+      "visual_status": "PASS"
+    },
+    "dialog": {
+      "status": "PASS",
+      "path": "screenshots/dialog.png",
+      "sha256": "49ecf4acd5df6d32ee41e071acafc2e3d3417fde1a5e42dac7ace885f9cfa9ec",
+      "visual_status": "PASS"
+    },
+    "chatgpt_dark": {
+      "status": "PASS",
+      "path": "screenshots/chatgpt_dark.png",
+      "sha256": "75b50cea3d9f73d70f9127a80137e7c649a15c0b1db0f926bba82f9f04ecf87e",
+      "visual_status": "PASS"
+    },
+    "chatgpt_small_screen": {
+      "status": "PASS",
+      "path": "screenshots/chatgpt_small_screen.png",
+      "sha256": "0736988a7826572d4b2e35b2e4cfed2074dd530143c984d77bb99f85457e91a7",
+      "visual_status": "PASS"
+    },
+    "chatgpt_large_text": {
+      "status": "PASS",
+      "path": "screenshots/chatgpt_large_text.png",
+      "sha256": "b40a2d5cd0e3a08a36bdf75209b118393cb87d796c4cf11a79a65e444919293a",
+      "visual_status": "PASS"
+    },
+    "provider_dark": {
+      "status": "PASS",
+      "path": "screenshots/provider_dark.png",
+      "sha256": "2834a7033a7ae2cb614b0b850520d91b79d106086304217c43d86c8f6931eaac",
+      "visual_status": "PASS"
+    },
+    "provider_small_screen": {
+      "status": "PASS",
+      "path": "screenshots/provider_small_screen.png",
+      "sha256": "2ad40444f5c99e2663388f6c875bfbf9e24209142a711455ebb2433bc96a55f2",
+      "visual_status": "PASS"
+    },
+    "provider_large_text": {
+      "status": "PASS",
+      "path": "screenshots/provider_large_text.png",
+      "sha256": "a0e484880aa9509ddca73d93ed4299795d52a387fb022d74bf81b1f02aea27fd",
+      "visual_status": "PASS"
+    },
+    "regression_fixture": {
+      "status": "PASS",
+      "path": "screenshots/regression_fixture.png",
+      "sha256": "a20ad3e650e866536a6ef6baf69f44a7eef55e95e26aeb3564407658fa388015",
+      "visual_status": "FAIL"
+    }
+  },
+  "visual_review": {
+    "status": "PASS",
+    "evidence": "visual-review.json",
+    "scope": [
+      "empty",
+      "message",
+      "reset",
+      "settings",
+      "provider_selection",
+      "model_selection",
+      "dark",
+      "small_screen",
+      "large_text",
+      "keyboard",
+      "reduced_motion",
+      "menu",
+      "gallery",
+      "dialog",
+      "chatgpt_dark",
+      "chatgpt_small_screen",
+      "chatgpt_large_text",
+      "provider_dark",
+      "provider_small_screen",
+      "provider_large_text"
+    ],
+    "scope_reason": "Refonte de l’en-tête global, de la saisie, des options et des écrans fournisseur/modèle ; revue étendue au chat, navigation, galerie, clavier, sombre, petit écran, police 200 % et animations réduites"
+  },
+  "reference_comparison": {
+    "status": "PASS",
+    "evidence": "visual-review.json"
+  },
+  "regression_detection": {
+    "status": "PASS",
+    "evidence": "visual-review.json"
+  },
+  "source_manifest": "source-manifest.json",
+  "apk_sha256": "714f4aeb39495555092bd329d875e4de9e087a6479eac30199a595d66c1de13c"
+}

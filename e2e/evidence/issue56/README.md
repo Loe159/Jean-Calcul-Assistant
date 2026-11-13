@@ -117,3 +117,30 @@ détection NOT_RUN. [Rapport 5](attempt-5/report.md).
 Le correctif restartInput ne suffit donc pas à valider Retour. La tentative 6
 attend une IME réellement visible avant navigation et libère le viewport avant
 l’inspection du bouton de reprise ; les assertions fonctionnelles restent présentes.
+
+## Refonte visuelle Eta — validation de la tentative 8
+
+La refonte demandée ensuite a été testée sur le commit applicatif `14674ce`.
+Les tentatives locales 6 et 7 de cette refonte ont été conservées hors Git :
+la première s'est arrêtée sur un AVD temporaire déjà présent, la seconde
+avant le démarrage Android faute d'espace dans `/dev/shm`. L'utilisateur a
+autorisé explicitement les tentatives 7 puis 8. Après suppression des seuls
+AVD synthétiques inactifs, la tentative 8 a utilisé un AVD neuf.
+
+[Rapport 8](attempt-8/report.md) · [galerie](attempt-8/index.html) ·
+[revue par image](attempt-8/visual-review.json).
+
+- Build/lint, tests JVM et instrumentation Android API 35 : **PASS**.
+- Vingt captures du périmètre visuel ouvertes par l'agent implémenteur :
+  **PASS**. Le défaut rouge volontaire ouvert est **FAIL**, détection **PASS**.
+- Références Eta `chat_home.jpg` et `settings.jpg` ouvertes et comparées aux
+  états communs : **PASS**, avec écarts fonctionnels explicités dans le rapport.
+- APK Debug exact du commit testé, hors Git :
+  `e2e-artifacts/issue56/attempt-8/app-debug.apk`, SHA-256
+  `714f4aeb39495555092bd329d875e4de9e087a6479eac30199a595d66c1de13c`.
+- La variante Preview a été installée sur le Samsung autorisé ; l'utilisateur
+  a confirmé que l'interface lui convient visuellement. Haptique physique,
+  fluidité et connexion réelle dans cet AVD : **NOT_RUN**.
+
+Les JPG Eta et les APK ne sont pas redistribués dans Git. Les captures et logs
+du dossier `attempt-8` ne contiennent que des données de test synthétiques.
