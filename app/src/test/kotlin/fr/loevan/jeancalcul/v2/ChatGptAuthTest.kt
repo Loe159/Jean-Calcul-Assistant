@@ -33,6 +33,7 @@ internal class ChatGptFixture : java.io.Closeable {
     val tokenCalls = AtomicInteger()
     val requests = CopyOnWriteArrayList<RecordedRequest>()
     var claims: (JWTClaimsSet.Builder) -> JWTClaimsSet.Builder = { it }
+    var modelError: Int? = null
     var tokenError: Int? = null
     var tokenErrorCode = "invalid_grant"
     var scope = "openid email offline_access resource.invoke $PLAN_SCOPE"
@@ -68,9 +69,12 @@ internal class ChatGptFixture : java.io.Closeable {
                         JSONObject().put("access_token", "synthetic-access-$count").put("refresh_token", "synthetic-refresh-$count")
                             .put("id_token", jwt.serialize()).put("expires_in", 3600).put("scope", scope).put("token_type", "Bearer")
                     }
-                    "/v1/models" -> JSONObject().put("models", JSONArray()
+                    "/v1/models" -> {
+                        modelError?.let { return MockResponse().setResponseCode(it) }
+                        JSONObject().put("models", JSONArray()
                         .put(JSONObject().put("slug", "fixture-model").put("display_name", "Fixture Model").put("visibility", "list"))
                         .put(JSONObject().put("slug", "hidden").put("display_name", "Hidden").put("visibility", "hidden")))
+                    }
                     "/revoke" -> return MockResponse().setResponseCode(revokeStatus)
                     "/v1/responses" -> return MockResponse().setHeader("Content-Type", "text/event-stream").setBody(responseBody)
                     else -> return MockResponse().setResponseCode(404)
@@ -150,6 +154,19 @@ class ChatGptAuthTest {
             assertEquals(host, manager.attempt("http://127.0.0.1:1234/auth/callback", first.clientId).hostId)
             assertEquals(first.clientId, manager.attempt("http://127.0.0.1:1234/auth/callback", first.clientId).clientId)
             assertEquals(store.value, ChatGptRegistration.parse(store.value.json()))
+        }
+    }
+    @Test fun modelDiscoveryFailureDoesNotInvalidateSuccessfulSignIn() = runBlocking {
+        ChatGptFixture().use { fixture ->
+            fixture.modelError = 503
+            val store = ChatGptMemoryStore()
+            val manager = ChatGptAccounts(store, fixture.oauth)
+            assertFalse(manager.complete(fixture.attempt(), OAuthCode("code", fixture.clientId)))
+            assertTrue(manager.ui.value.authorized)
+            assertNotNull(store.value.accounts.single().tokens)
+            fixture.modelError = null
+            manager.loadModels()
+            assertEquals(listOf("fixture-model"), manager.ui.value.models.map { it.id })
         }
     }
     @Test fun identityWithoutPlanPermissionCannotRunInference() = runBlocking {
