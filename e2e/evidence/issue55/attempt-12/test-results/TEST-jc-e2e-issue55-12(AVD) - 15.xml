@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="6" failures="0" errors="0" skipped="0" time="0.000" timestamp="2026-11-13T08:35:23" hostname="localhost">
+  <testsuite name="fr.loevan.jeancalcul.v2.SmokeTest" tests="6" failures="0" errors="0" skipped="0" time="41.405" timestamp="2026-11-13T08:35:23" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5580" />
+    </properties>
+    <testcase name="settingsScreen" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="10.338" />
+    <testcase name="resetCanBeCancelledAndDraftSurvivesNavigation" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="13.769" />
+    <testcase name="multilineComposerDoesNotPanHeader" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="3.571" />
+    <testcase name="initialState" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="1.969" />
+    <testcase name="composeAndReset" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="3.800" />
+    <testcase name="nativeMenuGalleryAndDialog" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="7.958" />
+  </testsuite>
+</testsuites>

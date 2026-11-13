@@ -1,5 +1,16 @@
 # Issue #55 — preuves locales
 
+Résultat actuel : [tentative 12](attempt-12/report.md), commit applicatif
+`23d9529ad37dc48313405c6b9c5adcb5a38061bc`. Build/lint PASS, **6/6 tests
+Android PASS**, 13 captures examinées avec la vision native : 12 états normaux
+PASS et défaut volontaire correctement détecté. Comparaison Eta effectuée.
+Neuf tests Python passent ; tests JVM NO-SOURCE. Samsung, Android 13,
+haptique physique et fluidité NOT_RUN. Les échecs historiques ci-dessous
+sont conservés et ne décrivent pas le résultat final.
+
+[Galerie](attempt-12/index.html) · [Captures](attempt-12/screenshots)
+
+
 - Tentative 1 : FAIL, cinq tests Android échouent sur l'assertion du renderer
   COUI à une surface ; correction par le renderer natif à trois surfaces.
 - Tentative 2 : NOT_RUN, l'émulateur refuse de créer sa partition userdata
@@ -58,3 +69,20 @@ activé. La reprise active le chemin de retour Android moderne dans le manifeste
 et attend explicitement la disparition de l'IME avant d'injecter Retour.
 Les captures sont maintenant collectées même en cas d'échec des tests Smoke,
 tout en conservant le statut technique FAIL et le code de sortie non nul.
+
+## Suite des validations autorisées
+
+- 5–8 : tests techniques et captures ont exposé des couches natives manquantes,
+  notamment navigation et en-tête sous clavier ; revues et échecs conservés.
+- 9 : émulateur NOT_RUN faute d’espace ; partition temporaire désormais 4 GiB.
+- 10 : 5/6 tests Android ; défaut de retour/brouillon et en-tête encore absent.
+- 11 : 6/6 tests Android ; revue visuelle FAIL sur en-tête et indication du champ.
+- 12 : 6/6 tests Android, 13 captures, revue normale PASS et détection PASS.
+  L’hôte Foundation sans couche de fond enregistrée et l’indication superposée
+  corrigent les omissions visuelles. Champ TextFieldState et retour Android
+  moderne corrigent la conservation du brouillon. Aucun test affaibli.
+
+Les APK exacts restent hors Git dans `e2e-artifacts/issue55/attempt-12/` ;
+leurs empreintes et le SHA du code testé sont dans le rapport. Le commit de
+preuves suivant ne modifie pas le code applicatif. La PR reste à accepter ou
+refuser par l’utilisateur, sans fusion automatique.
