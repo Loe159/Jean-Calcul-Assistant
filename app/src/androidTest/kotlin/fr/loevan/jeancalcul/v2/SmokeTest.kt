@@ -37,8 +37,9 @@ class SmokeTest {
             org.junit.Assert.assertFalse(xml.contains("synthetic-key-not-a-secret"))
             settings.save(settings.config(), "")
             assertEquals("", settings.credential())
-            val session = Session(messages = listOf(ChatMessage("user", "Persisté")), status = RunStatus.RUNNING)
+            val session = Session(messages = listOf(ChatMessage("user", "Persisté"), ChatMessage("assistant", "", listOf(ToolCall("t1", "current_time", "{}"))), ChatMessage("tool", "synthetic UTC", toolCallId = "t1")), status = RunStatus.RUNNING)
             FileSessionStore(context).save(session)
+            assertEquals(session, FileSessionStore(context).load())
             assertEquals(RunStatus.INTERRUPTED, ConversationRuntime(FileSessionStore(context)).session.value.status)
         } finally {
             context.getSharedPreferences("provider", android.content.Context.MODE_PRIVATE).edit().clear().commit()

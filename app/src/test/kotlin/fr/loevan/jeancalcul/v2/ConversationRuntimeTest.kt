@@ -64,6 +64,46 @@ class ConversationRuntimeTest {
         assertFalse(AndroidToolPolicy.permits("android.shell"))
         assertFalse(runtime.session.value.events.any { it.kind.contains("Q") })
     }
+    @Test fun toolLoopRunsOnlyAllowlistedClockAndPersistsProtocol() = runTest {
+        val store = MemoryStore(); val runtime = ConversationRuntime(store)
+        var count = 0
+        val provider = object : ConversationProvider {
+            override suspend fun stream(messages: List<ChatMessage>, onText: suspend (String) -> Unit) = Unit
+            override suspend fun turn(messages: List<ChatMessage>, onText: suspend (String) -> Unit): List<ToolCall> {
+                if (count++ == 0) return listOf(ToolCall("clock1", "current_time", "{}"))
+                val result = messages.last()
+                assertEquals("tool", result.role)
+                assertEquals("clock1", result.toolCallId)
+                assertTrue(java.time.Instant.parse(result.text).isBefore(java.time.Instant.now().plusSeconds(1)))
+                onText("Réponse synthétique du fournisseur de test")
+                return emptyList()
+            }
+            override fun cancel() = Unit
+        }
+        runtime.send("Heure", provider)
+        assertEquals(2, count)
+        assertEquals(RunStatus.COMPLETED, store.value.status)
+        assertEquals("tool_completed", store.value.events[2].kind)
+        assertEquals(4, store.value.messages.size)
+    }
+    @Test fun unknownToolsAreNeverExecutedAndLoopsAreBounded() = runTest {
+        for (name in listOf("android.shell", "current_time")) {
+            val runtime = ConversationRuntime(MemoryStore())
+            var count = 0
+            val provider = object : ConversationProvider {
+                override suspend fun stream(messages: List<ChatMessage>, onText: suspend (String) -> Unit) = Unit
+                override suspend fun turn(messages: List<ChatMessage>, onText: suspend (String) -> Unit): List<ToolCall> {
+                    count++
+                    return listOf(ToolCall("call$count", name, "{}"))
+                }
+                override fun cancel() = Unit
+            }
+            runtime.send("Test", provider)
+            assertEquals(RunError.TOOL_POLICY, runtime.session.value.error)
+            assertEquals(if (name == "current_time") 4 else 1, count)
+            if (name != "current_time") assertTrue(runtime.session.value.messages.none { it.role == "tool" })
+        }
+    }
     @Test fun storageFailureIsVisible() = runTest {
         val runtime = ConversationRuntime(object : SessionStore {
             override fun load() = Session()

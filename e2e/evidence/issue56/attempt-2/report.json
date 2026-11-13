@@ -1,0 +1,130 @@
+{
+  "issue": 56,
+  "attempt": 2,
+  "attempt_budget": 3,
+  "budget_override": null,
+  "created_utc": "2026-11-13T10:26:40.935484+00:00",
+  "commit": "af75f18ecc6eac4605baa911b0abba9a5b709669",
+  "working_tree_dirty": false,
+  "api": 35,
+  "serial": "emulator-5580",
+  "technical": {
+    "status": "FAIL",
+    "evidence": "logs/gradle.txt",
+    "jvm_tests": "PASS",
+    "error": "Instrumentation XML contains a failure: TEST-jc-e2e-issue56-2(AVD) - 15.xml"
+  },
+  "captures": {
+    "empty": {
+      "status": "PASS",
+      "path": "screenshots/empty.png",
+      "sha256": "11b629aa3b70bb80be8f293808cd0393d0045c5654f54419b20c1b80f2efcfd0",
+      "visual_status": "PASS"
+    },
+    "message": {
+      "status": "PASS",
+      "path": "screenshots/message.png",
+      "sha256": "eabe5ebafdaa4e770bd86690ed044dda1e76dd18f976ebed9fb8e9a35f8f8e20",
+      "visual_status": "PASS"
+    },
+    "reset": {
+      "status": "PASS",
+      "path": "screenshots/reset.png",
+      "sha256": "1874aa3970e6625df0cb27708636058c79d38097ed94eb134de3c769daaf7585",
+      "visual_status": "PASS"
+    },
+    "settings": {
+      "status": "PASS",
+      "path": "screenshots/settings.png",
+      "sha256": "365781dc7ca956e912e02cafc45af5f97294636e53d6c67cbb86e3c9c4a11956",
+      "visual_status": "FAIL"
+    },
+    "dark": {
+      "status": "PASS",
+      "path": "screenshots/dark.png",
+      "sha256": "9504cbbdad0455aa290708de0011ffe564770e779ba99b99fc9a1c43301f7492",
+      "visual_status": "PASS"
+    },
+    "small_screen": {
+      "status": "PASS",
+      "path": "screenshots/small_screen.png",
+      "sha256": "b03cfe72ec363d344eb4e01e5525287fae27d50f8ec26a3dc75d2256ab3ef6df",
+      "visual_status": "PASS"
+    },
+    "large_text": {
+      "status": "PASS",
+      "path": "screenshots/large_text.png",
+      "sha256": "1f4ee423885a6171d6fb18b26a5939c2dc8a55261105c07ecd235dc663ce3a57",
+      "visual_status": "PASS"
+    },
+    "keyboard": {
+      "status": "PASS",
+      "path": "screenshots/keyboard.png",
+      "sha256": "3c82d45669d653ae842a675f089ed798ce1f11a0c432baf01c4e22371d084ecd",
+      "visual_status": "PASS"
+    },
+    "reduced_motion": {
+      "status": "PASS",
+      "path": "screenshots/reduced_motion.png",
+      "sha256": "d72378597e1f1c1286aa33243f3748c3b77d4fca2266565e7c3ba8a7aa3fc52a",
+      "visual_status": "PASS"
+    },
+    "menu": {
+      "status": "PASS",
+      "path": "screenshots/menu.png",
+      "sha256": "5a5491e787f84d7617d28761cc447dd63ddd58b7fe0e839f24255c80fe301645",
+      "visual_status": "PASS"
+    },
+    "gallery": {
+      "status": "PASS",
+      "path": "screenshots/gallery.png",
+      "sha256": "507a9f8a0aa3104da709f9c079f6c5a29a7e1bb3119eba0369121568e5349d39",
+      "visual_status": "PASS"
+    },
+    "dialog": {
+      "status": "PASS",
+      "path": "screenshots/dialog.png",
+      "sha256": "10a62ee03eb04e1103ebdd8482e6f760dc6d4f0f3896c35ace1bfa3d2cd54ce4",
+      "visual_status": "PASS"
+    },
+    "provider_dark": {
+      "status": "PASS",
+      "path": "screenshots/provider_dark.png",
+      "sha256": "2253227a5a1a909d530b42e55d74a5b272c246a2d5a45fbd993ed10a15b8dd29",
+      "visual_status": "FAIL"
+    },
+    "provider_small_screen": {
+      "status": "PASS",
+      "path": "screenshots/provider_small_screen.png",
+      "sha256": "252f372b41347f058632a13daabedeb7019567a99d933c2f5730437046c83f40",
+      "visual_status": "FAIL"
+    },
+    "provider_large_text": {
+      "status": "PASS",
+      "path": "screenshots/provider_large_text.png",
+      "sha256": "a03737b420f501fe32b3141699b4e1b5b91bab3320c177977460057de599e78a",
+      "visual_status": "FAIL"
+    },
+    "regression_fixture": {
+      "status": "PASS",
+      "path": "screenshots/regression_fixture.png",
+      "sha256": "2fecc4e8e69f4f2cb3364d1bd324530587b5bb0260cd3c78e369fdf05afed293",
+      "visual_status": "FAIL"
+    }
+  },
+  "visual_review": {
+    "status": "FAIL",
+    "evidence": "visual-review.json"
+  },
+  "reference_comparison": {
+    "status": "PASS",
+    "evidence": "visual-review.json"
+  },
+  "regression_detection": {
+    "status": "PASS",
+    "evidence": "visual-review.json"
+  },
+  "source_manifest": "source-manifest.json",
+  "error": "Instrumentation XML contains a failure: TEST-jc-e2e-issue56-2(AVD) - 15.xml",
+  "apk_sha256": "3323a0bba273fdab541c7aaacb7517174da746c72ad68494411c915c35e584d5"
+}

@@ -25,5 +25,6 @@ Depuis la tranche #56, `ConversationRuntime` expose session/run via StateFlow sa
 dépendance Android/UI. `ConversationViewModel` survit aux rotations ;
 `FileSessionStore` assure les écritures atomiques, `ProviderSettings` chiffre les
 credentials avec Android Keystore. `OpenAiProvider` utilise HTTPS/SSE pour les
-endpoints distants et locaux compatibles. La politique refuse tous les outils.
+endpoints distants et locaux compatibles. La politique ne permet que la lecture d’horloge UTC `current_time`, avec
+une boucle tool calling bornée ; tous les accès appareil sont refusés.
 Voir `RUNTIME.md` pour les frontières, erreurs, stop/retry et limites Codex.

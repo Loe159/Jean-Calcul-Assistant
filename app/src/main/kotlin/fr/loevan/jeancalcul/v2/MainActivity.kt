@@ -10,6 +10,10 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -225,7 +229,7 @@ private fun Conversation(session: Session, onRetry: () -> Unit) {
                     color = CouiTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             }
         } else {
-            items(messages) { if (it.text.isNotEmpty()) MessageBubble(it.text, outgoing = it.role == "user") }
+            items(messages) { if (it.role != "tool" && it.text.isNotEmpty()) MessageBubble(it.text, outgoing = it.role == "user") }
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(text = session.error?.label ?: when (session.status) {
@@ -236,7 +240,7 @@ private fun Conversation(session: Session, onRetry: () -> Unit) {
                         else -> "Prêt"
                     }, kind = CouiTextKind.Description, modifier = Modifier.testTag("run_status"))
                     if (session.status in setOf(RunStatus.FAILED, RunStatus.STOPPED, RunStatus.INTERRUPTED)) {
-                        Row(Modifier.fillMaxWidth().clickable(onClick = onRetry).heightIn(min = 48.dp)
+                        Row(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onRetry).heightIn(min = 48.dp)
                             .padding(12.dp).testTag("retry"), verticalAlignment = Alignment.CenterVertically) {
                             Text(text = "Réessayer", kind = CouiTextKind.Body)
                         }
@@ -290,9 +294,16 @@ private fun DestinationBar(page: String, hasMessages: Boolean, onSelection: (Str
 @Composable
 private fun Preferences(config: ProviderConfig, running: Boolean, settingsError: String?,
     onConfigure: (String, String, Boolean, String) -> Unit, onGallery: () -> Unit) {
+    var editing by rememberSaveable { mutableStateOf(false) }
+    val focus = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    BackHandler(enabled = editing) { focus.clearFocus(force = true); keyboard?.hide(); editing = false }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
-        Group(title = "Fournisseur IA", footer = "Historique sur cet appareil. HTTPS requis, y compris pour un serveur local. Aucun outil Android autorisé.") {
-            ProviderForm(config, running, settingsError, onConfigure)
+        Group(title = "Fournisseur IA", footer = "Historique sur cet appareil. Outil autorisé : lecture de l’heure uniquement.") {
+            Item(onClick = { editing = !editing }, modifier = Modifier.testTag("configure_provider"),
+                title = { Text(text = "Configurer le fournisseur", kind = CouiTextKind.PreferenceTitle) },
+                summary = { Text(text = config.destination, kind = CouiTextKind.PreferenceSummary) })
+            if (editing) ProviderForm(config, running, settingsError, onConfigure)
         }
         Group(title = "Apparence") {
             Item(title = { Text(text = "Thème du système", kind = CouiTextKind.PreferenceTitle) },
@@ -319,16 +330,18 @@ private fun ProviderForm(config: ProviderConfig, running: Boolean, error: String
         Text(text = "Clé API · vide pour supprimer la clé", kind = CouiTextKind.Description)
         BasicTextField(value = key, onValueChange = { key = it }, singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
             textStyle = rememberCouiTextStyle(CouiTextKind.Body).copy(color = CouiTheme.colorScheme.onSurface),
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).background(CouiTheme.colorScheme.card)
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).border(1.dp, CouiTheme.colorScheme.onSurfaceVariant, RoundedCornerShape(8.dp))
                 .padding(12.dp).testTag("provider_key").semantics { contentDescription = "Clé API" })
-        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(enabled = !running) { local = !local }
-            .padding(12.dp).semantics { contentDescription = "Destination locale déclarée"; selected = local }) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = local, enabled = !running,
+            role = Role.Checkbox, onValueChange = { local = it })
+            .padding(12.dp).semantics { contentDescription = "Destination locale déclarée" }) {
             Text(text = if (local) "✓ Serveur local déclaré" else "Serveur distant · toucher pour changer", kind = CouiTextKind.Body)
         }
-        Text(text = "Vérifiez l’hôte : le libellé local ne garantit pas son emplacement. Une requête envoie l’historique à cet hôte.", kind = CouiTextKind.Description)
+        Text(text = "HTTPS requis. Vérifiez l’hôte : le libellé local ne garantit pas son emplacement. Une requête envoie l’historique à cet hôte.", kind = CouiTextKind.Description)
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(JeanTokens.capsule)
-            .background(JeanTokens.userBubble()).clickable(enabled = !running) {
+            .background(JeanTokens.userBubble()).clickable(enabled = !running, role = Role.Button) {
                 onSave(endpoint.text.toString(), model.text.toString(), local, key); key = ""
             }.padding(12.dp).testTag("save_provider")) {
             Text(text = if (running) "Arrêtez la réponse pour modifier" else "Enregistrer le fournisseur", kind = CouiTextKind.Body)
@@ -345,7 +358,7 @@ private fun ProviderField(label: String, state: TextFieldState, tag: String) {
         BasicTextField(state = state, lineLimits = TextFieldLineLimits.SingleLine,
             textStyle = rememberCouiTextStyle(CouiTextKind.Body).copy(color = CouiTheme.colorScheme.onSurface),
             cursorBrush = SolidColor(CouiTheme.colorScheme.accent),
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).background(CouiTheme.colorScheme.card)
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).border(1.dp, CouiTheme.colorScheme.onSurfaceVariant, RoundedCornerShape(8.dp))
                 .padding(12.dp).testTag(tag).semantics { contentDescription = label })
     }
 }

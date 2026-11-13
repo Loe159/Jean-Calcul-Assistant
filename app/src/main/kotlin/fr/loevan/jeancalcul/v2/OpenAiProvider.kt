@@ -36,11 +36,26 @@ class OpenAiProvider(
     @Volatile private var call: Call? = null
     @Volatile private var cancelled = false
     override fun cancel() { cancelled = true; call?.cancel() }
-    override suspend fun stream(messages: List<ChatMessage>, onText: suspend (String) -> Unit) = withContext(Dispatchers.IO) {
+    override suspend fun stream(messages: List<ChatMessage>, onText: suspend (String) -> Unit) {
+        if (turn(messages, onText).isNotEmpty()) throw RunFailure(RunError.TOOL_POLICY)
+    }
+    override suspend fun turn(messages: List<ChatMessage>, onText: suspend (String) -> Unit): List<ToolCall> = withContext(Dispatchers.IO) {
         if (!config.validate()) throw RunFailure(RunError.CONFIGURATION)
         val history = JSONArray()
-        messages.forEach { history.put(JSONObject().put("role", it.role).put("content", it.text)) }
+        messages.forEach { message ->
+            val item = JSONObject().put("role", message.role).put("content", message.text)
+            if (message.toolCallId.isNotEmpty()) item.put("tool_call_id", message.toolCallId)
+            if (message.toolCalls.isNotEmpty()) item.put("tool_calls", JSONArray().apply {
+                message.toolCalls.forEach { call -> put(JSONObject().put("id", call.id).put("type", "function")
+                    .put("function", JSONObject().put("name", call.name).put("arguments", call.arguments))) }
+            })
+            history.put(item)
+        }
+        val tool = JSONObject().put("type", "function").put("function", JSONObject()
+            .put("name", "current_time").put("description", "Read the current UTC time. No other device access.")
+            .put("parameters", JSONObject().put("type", "object").put("properties", JSONObject()).put("additionalProperties", false)))
         val body = JSONObject().put("model", config.model).put("stream", true).put("messages", history)
+            .put("tools", JSONArray().put(tool))
         val builder = Request.Builder().url(config.endpoint.trimEnd('/') + "/chat/completions")
             .header("Accept", "text/event-stream").post(body.toString().toRequestBody("application/json".toMediaType()))
         val key = credential()
@@ -61,6 +76,8 @@ class OpenAiProvider(
                 var finished = false
                 var done = false
                 var content = false
+                var toolFinish = false
+                val calls = sortedMapOf<Int, ToolCall>()
                 val data = StringBuilder()
                 suspend fun frame() {
                     if (data.isEmpty()) return
@@ -70,15 +87,26 @@ class OpenAiProvider(
                     if (json.has("error")) throw RunFailure(RunError.PROVIDER)
                     val choice = json.optJSONArray("choices")?.optJSONObject(0) ?: return
                     val delta = choice.optJSONObject("delta")
-                    if (delta?.has("tool_calls") == true || delta?.has("function_call") == true) {
-                        // No tool schema is advertised; unsolicited calls still pass the deny policy.
-                        check(!AndroidToolPolicy.permits("unregistered"))
-                        throw RunFailure(RunError.TOOL_POLICY)
+                    if (delta?.has("function_call") == true) throw RunFailure(RunError.TOOL_POLICY)
+                    delta?.optJSONArray("tool_calls")?.let { fragments ->
+                        for (index in 0 until fragments.length()) {
+                            val fragment = fragments.getJSONObject(index)
+                            val position = fragment.getInt("index")
+                            if (position !in 0..7) throw RunFailure(RunError.PROTOCOL)
+                            val old = calls[position] ?: ToolCall("", "", "")
+                            val function = fragment.optJSONObject("function")
+                            val next = ToolCall(old.id + fragment.optString("id", ""),
+                                old.name + function?.optString("name", "").orEmpty(),
+                                old.arguments + function?.optString("arguments", "").orEmpty())
+                            if (next.arguments.length > 16_384 || next.name.length > 128 || next.id.length > 128) throw RunFailure(RunError.PROTOCOL)
+                            calls[position] = next
+                        }
                     }
                     val text = delta?.optString("content", "").orEmpty()
                     if (text.isNotEmpty()) { content = true; onText(text) }
                     if (!choice.isNull("finish_reason")) {
-                        if (choice.optString("finish_reason") != "stop") throw RunFailure(RunError.PROTOCOL)
+                        toolFinish = choice.optString("finish_reason") == "tool_calls"
+                        if (choice.optString("finish_reason") !in setOf("stop", "tool_calls")) throw RunFailure(RunError.PROTOCOL)
                         finished = true
                     }
                 }
@@ -92,8 +120,13 @@ class OpenAiProvider(
                     }
                 }
                 frame()
-                if (!finished || !done || !content) throw RunFailure(RunError.PROTOCOL)
+                if (!finished || !done || (!content && calls.isEmpty())) throw RunFailure(RunError.PROTOCOL)
+                if (toolFinish != calls.isNotEmpty() || calls.values.any { it.id.isBlank() || it.name.isBlank() } ||
+                    calls.values.map { it.id }.distinct().size != calls.size) throw RunFailure(RunError.PROTOCOL)
+                calls.values.toList()
             }
+        } catch (_: org.json.JSONException) {
+            throw RunFailure(RunError.PROTOCOL)
         } catch (failure: IOException) {
             if (cancelled) throw kotlinx.coroutines.CancellationException()
             throw RunFailure(RunError.NETWORK)

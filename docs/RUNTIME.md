@@ -34,12 +34,16 @@ comme terminée. Les délais réseau sont bornés à 15 s connexion / 60 s lectu
 
 ## Outils et limites de la tranche
 
-Aucun outil Android n’est enregistré ni annoncé. La politique explicite refuse
-toute demande, y compris `tool_calls` / `function_call` non sollicités ; le run
-échoue en TOOL_POLICY et le journal le conserve. Aucun résultat d’outil inventé
-n’est renvoyé au modèle. Le registre d’outils autorisés, les confirmations et la
-boucle après exécution relèvent de la tranche outils, pas d’un faux outil de démo.
-Il n’y a donc pas encore de boucle de tool calling avec exécution autorisée.
+La politique explicite n’autorise que `current_time` sans argument : lecture
+réelle de l’horloge UTC, sans permission Android ni service tiers. Son schéma
+est annoncé au fournisseur. Toute autre demande (Android, shell, etc.) est
+refusée avant exécution, le run échoue en TOOL_POLICY et le journal le conserve.
+Aucun résultat d’outil inventé n’est renvoyé au modèle. Le client assemble les
+fragments `tool_calls`, conserve les identifiants et les résultats dans
+l’historique, puis demande la suite au modèle. La boucle est bornée à quatre
+tours, huit appels par tour et 16 Kio d’arguments par appel. Les serveurs/modèles
+doivent accepter le paramètre OpenAI `tools`. Les confirmations et outils Android
+sensibles restent dans la tranche outils ; aucun accès appareil n’est permis ici.
 Une seule conversation courante est persistée ; « Nouveau » l’efface après
 confirmation. Il n’y a pas encore de sélecteur de conversations archivées.
 
@@ -53,6 +57,7 @@ une autre application, fichier auth.json de l’hôte, cookie ou jeton de sessio
 ChatGPT n’est réutilisé. L’interface indique cette indisponibilité.
 
 Sources consultées le 13 novembre 2026 :
+- https://developers.openai.com/siwc (client OAuth propre à l’application requis)
 - https://developers.openai.com/codex/auth/
 - https://learn.chatgpt.com/docs/app-server
 - https://developers.openai.com/api/reference/resources/chat
@@ -67,7 +72,9 @@ ou local n’a été validée par les fixtures. Ne pas clore #56 sur cette seule
 Les tests JVM du runtime couvrent flux, stockage, annulation, événements tardifs,
 retry, concurrence et reprise d’un run interrompu. Les tests transport utilisent
 un serveur HTTPS de test et des données explicitement synthétiques : requête,
-SSE, erreurs HTTP, troncature, refus d’outil et validation de configuration.
+SSE, erreurs HTTP, troncature, assemblage d’appels d’outils, renvoi de résultats, fermeture effective
+d’une socket en attente et validation de configuration. La boucle teste la lecture
+d’horloge autorisée, le refus des autres noms et la borne de quatre tours.
 Les tests Android vérifient round-trip Keystore, absence de clé en clair dans les
 préférences, suppression de clé, relecture du stockage et recréation de l’activité.
 Les scénarios de captures démarrent avec un historique synthétique effacé via

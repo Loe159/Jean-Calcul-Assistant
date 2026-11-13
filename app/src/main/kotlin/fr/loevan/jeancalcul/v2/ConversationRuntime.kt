@@ -8,7 +8,9 @@ import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 
 /** No Android/UI dependencies: the voice entry point can use the same session. */
-data class ChatMessage(val role: String, val text: String)
+data class ToolCall(val id: String, val name: String, val arguments: String)
+data class ChatMessage(val role: String, val text: String,
+    val toolCalls: List<ToolCall> = emptyList(), val toolCallId: String = "")
 enum class RunStatus { IDLE, RUNNING, COMPLETED, STOPPED, FAILED, INTERRUPTED }
 enum class RunError(val label: String) {
     CONFIGURATION("Configurez un fournisseur dans les préférences."),
@@ -33,12 +35,21 @@ data class Session(
 interface SessionStore { fun load(): Session; fun save(session: Session) }
 interface ConversationProvider {
     suspend fun stream(messages: List<ChatMessage>, onText: suspend (String) -> Unit)
+    suspend fun turn(messages: List<ChatMessage>, onText: suspend (String) -> Unit): List<ToolCall> {
+        stream(messages, onText)
+        return emptyList()
+    }
     fun cancel()
 }
 
-/** A single explicit policy: no Android tool is registered or executable in this slice. */
+/** Explicit allowlist. This read-only clock needs no Android permission or external service. */
 object AndroidToolPolicy {
-    fun permits(@Suppress("UNUSED_PARAMETER") name: String) = false
+    fun permits(name: String) = name == "current_time"
+    fun execute(call: ToolCall): String {
+        if (!permits(call.name)) throw RunFailure(RunError.TOOL_POLICY)
+        if (call.arguments.filterNot { it.isWhitespace() } != "{}") throw RunFailure(RunError.TOOL_POLICY)
+        return java.time.Instant.now().toString()
+    }
 }
 
 class ConversationRuntime(private val store: SessionStore) {
@@ -81,14 +92,35 @@ class ConversationRuntime(private val store: SessionStore) {
                 status = RunStatus.RUNNING, error = null, runId = UUID.randomUUID().toString()), "started"))
         }
         try {
-            provider.stream(request) { chunk ->
+            var context = request
+            var completed = false
+            for (round in 0 until 4) {
+                val calls = provider.turn(context) { chunk ->
+                    gate.withLock {
+                        if (token != generation) throw CancellationException()
+                        val current = mutable.value
+                        val last = current.messages.last()
+                        update(current.copy(messages = current.messages.dropLast(1) + last.copy(text = last.text + chunk)))
+                    }
+                }
+                if (calls.isEmpty()) { completed = true; break }
                 gate.withLock {
                     if (token != generation) throw CancellationException()
                     val current = mutable.value
-                    val last = current.messages.last()
-                    update(current.copy(messages = current.messages.dropLast(1) + last.copy(text = last.text + chunk)))
+                    // Journal the proposal before making any policy decision. No arguments in the journal.
+                    val proposed = event(current, "tool_proposed")
+                    update(proposed)
+                    val results = calls.map { call ->
+                        val result = AndroidToolPolicy.execute(call)
+                        ChatMessage("tool", result, toolCallId = call.id)
+                    }
+                    val assistant = current.messages.last().copy(toolCalls = calls)
+                    val next = current.messages.dropLast(1) + assistant + results
+                    update(event(proposed.copy(messages = next + ChatMessage("assistant", "")), "tool_completed"))
+                    context = next
                 }
             }
+            if (!completed) throw RunFailure(RunError.TOOL_POLICY)
             gate.withLock {
                 if (token == generation) update(event(mutable.value.copy(status = RunStatus.COMPLETED), "completed"))
             }

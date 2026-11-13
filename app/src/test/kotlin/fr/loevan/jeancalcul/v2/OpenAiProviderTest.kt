@@ -1,6 +1,7 @@
 package fr.loevan.jeancalcul.v2
 
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -37,7 +38,7 @@ class OpenAiProviderTest {
     @Test fun truncatedStreamAndToolsFailClosed() = serverTest { server, client -> runBlocking {
         for ((body, error) in listOf(
             frame("""{"choices":[{"delta":{"content":"partiel"}}]}""") to RunError.PROTOCOL,
-            frame("""{"choices":[{"delta":{"tool_calls":[{"id":"x"}]}}]}""") to RunError.TOOL_POLICY)) {
+            frame("""{"choices":[{"delta":{"tool_calls":[{"id":"x"}]}}]}""") to RunError.PROTOCOL)) {
             server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody(body))
             try {
                 OpenAiProvider(ProviderConfig(server.url("/v1").toString(), "fixture"), { "" }, client).stream(emptyList()) { }
@@ -53,6 +54,36 @@ class OpenAiProviderTest {
                 fail("Expected failure")
             } catch (failure: RunFailure) { assertEquals(error, failure.kind); assertFalse(failure.message.orEmpty().contains("sensitive")) }
         }
+    } }
+    @Test fun toolFragmentsAreAssembledAndResultIsSentBack() = serverTest { server, client -> runBlocking {
+        val first = org.json.JSONObject().put("choices", org.json.JSONArray().put(org.json.JSONObject().put("delta",
+            org.json.JSONObject().put("tool_calls", org.json.JSONArray().put(org.json.JSONObject().put("index", 0)
+                .put("id", "call1").put("function", org.json.JSONObject().put("name", "current_").put("arguments", "{")))))))
+        val second = """{"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"name":"time","arguments":"}"}}]},"finish_reason":"tool_calls"}]}"""
+        server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream")
+            .setBody(frame(first.toString()) + frame(second) + frame("[DONE]")))
+        val provider = OpenAiProvider(ProviderConfig(server.url("/v1").toString(), "fixture"), { "" }, client)
+        val calls = provider.turn(listOf(ChatMessage("user", "Heure"))) { }
+        assertEquals(listOf(ToolCall("call1", "current_time", "{}")), calls)
+        assertTrue(server.takeRequest().body.readUtf8().contains("current_time"))
+        server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody(
+            frame("""{"choices":[{"delta":{"content":"Fin"},"finish_reason":"stop"}]}""") + frame("[DONE]")))
+        provider.turn(listOf(ChatMessage("assistant", "", calls), ChatMessage("tool", "UTC synthétique", toolCallId = "call1"))) { }
+        val body = org.json.JSONObject(server.takeRequest().body.readUtf8()).getJSONArray("messages")
+        assertEquals("call1", body.getJSONObject(0).getJSONArray("tool_calls").getJSONObject(0).getString("id"))
+        assertEquals("call1", body.getJSONObject(1).getString("tool_call_id"))
+    } }
+    @Test fun cancellationClosesAnActualWaitingSocket() = serverTest { server, client -> runBlocking {
+        server.enqueue(MockResponse().setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.NO_RESPONSE))
+        val provider = OpenAiProvider(ProviderConfig(server.url("/v1").toString(), "fixture"), { "" }, client)
+        val stopped = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val job = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
+            try { provider.turn(listOf(ChatMessage("user", "Attente synthétique"))) { } }
+            catch (_: kotlinx.coroutines.CancellationException) { stopped.complete(Unit) }
+        }
+        assertNotNull(server.takeRequest(5, java.util.concurrent.TimeUnit.SECONDS))
+        provider.cancel()
+        kotlinx.coroutines.withTimeout(5_000) { stopped.await(); job.join() }
     } }
     @Test fun configRejectsPlaintextAndEmbeddedSecrets() {
         assertFalse(ProviderConfig("http://localhost:8080/v1", "model", true).validate())

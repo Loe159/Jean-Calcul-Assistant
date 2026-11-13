@@ -20,7 +20,7 @@ Les sources de versions ultérieures ne définissent pas les API utilisées ici.
 
 La galerie est accessible depuis les réglages ou le menu. Les deux directions de
 bulles y sont explicitement des exemples visuels. Le chat n'invente jamais de
-réponse IA et conserve uniquement les messages saisis, en mémoire.
+réponse IA et utilise désormais le runtime persistant documenté dans `RUNTIME.md`.
 
 Aucun import Material3 dans le code applicatif et dépendance directe supprimée.
 COUI reste en alpha7, minSdk 33 conservé ; le build/lint doit vérifier les gardes API.
@@ -86,3 +86,13 @@ et de navigation Foundation sont des exceptions explicites de cette livraison ;
 les revues historiques ne suffisent pas à attribuer un défaut à la bibliothèque.
 Le défaut technique Retour/IME, reproduit dans la suite complète, disparaît avec
 la configuration `adjustResize`, sans mise à jour de COUI ni d'Activity.
+
+## Extension #56
+
+Les champs de configuration réutilisent Foundation faute de TextField public
+alpha7, avec typographie et couleurs COUI, contours de champ explicites et
+cibles de 48 dp. La clé utilise un clavier Password sans autocorrection, masque
+sa valeur et ne la sauvegarde pas dans l’état Compose. Le formulaire s’ouvre
+uniquement après « Configurer le fournisseur » ; les réglages initiaux conservent
+les groupes COUI. Le retour système ferme d’abord l’édition avant de quitter les
+réglages. Les nouveaux écrans doivent être jugés sur les preuves #56 réelles.

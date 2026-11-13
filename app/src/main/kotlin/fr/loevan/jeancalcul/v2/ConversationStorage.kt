@@ -23,7 +23,12 @@ class FileSessionStore(context: Context) : SessionStore {
             val messages = json.getJSONArray("messages")
             val events = json.getJSONArray("events")
             return Session(json.getString("id"), (0 until messages.length()).map {
-                messages.getJSONObject(it).let { m -> ChatMessage(m.getString("role"), m.getString("text")) }
+                messages.getJSONObject(it).let { m ->
+                    val calls = m.optJSONArray("toolCalls") ?: JSONArray()
+                    ChatMessage(m.getString("role"), m.getString("text"), (0 until calls.length()).map { index ->
+                        calls.getJSONObject(index).let { call -> ToolCall(call.getString("id"), call.getString("name"), call.getString("arguments")) }
+                    }, m.optString("toolCallId", ""))
+                }
             }, RunStatus.valueOf(json.getString("status")),
                 json.optString("error").takeIf { it.isNotBlank() }?.let { RunError.valueOf(it) },
                 json.getString("runId"), (0 until events.length()).map {
@@ -33,7 +38,12 @@ class FileSessionStore(context: Context) : SessionStore {
     }
     @Synchronized override fun save(session: Session) {
         val messages = JSONArray(); val events = JSONArray()
-        session.messages.forEach { messages.put(JSONObject().put("role", it.role).put("text", it.text)) }
+        session.messages.forEach { message ->
+            val calls = JSONArray()
+            message.toolCalls.forEach { calls.put(JSONObject().put("id", it.id).put("name", it.name).put("arguments", it.arguments)) }
+            messages.put(JSONObject().put("role", message.role).put("text", message.text)
+                .put("toolCalls", calls).put("toolCallId", message.toolCallId))
+        }
         session.events.forEach { events.put(JSONObject().put("run", it.runId).put("kind", it.kind).put("time", it.time)) }
         val bytes = JSONObject().put("id", session.id).put("messages", messages)
             .put("status", session.status.name).put("error", session.error?.name.orEmpty())
