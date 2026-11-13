@@ -1,5 +1,6 @@
 package fr.loevan.jeancalcul.v2
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
@@ -56,7 +57,9 @@ internal class ChatGptAccounts(private val store: ChatGptStore, val oauth: ChatG
         models = emptyList()
         replace(account, activate = true)
         if (PLAN_SCOPE !in account.tokens!!.scopes) throw RunFailure(RunError.CHATGPT_PERMISSION)
-        runCatching { loadModelsUnlocked() }.isSuccess
+        try { loadModelsUnlocked(); true }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { false }
     }
     private fun freshUnlocked(): ChatGptAccount {
         val old = active(); val tokens = old.tokens ?: authFailed()
