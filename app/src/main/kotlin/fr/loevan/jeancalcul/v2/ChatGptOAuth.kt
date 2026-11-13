@@ -12,6 +12,17 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.IOException
+import java.io.InterruptedIOException
+import java.net.ConnectException
+import java.net.NoRouteToHostException
+import java.net.SocketException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import javax.net.ssl.SSLException
+import javax.net.ssl.SSLHandshakeException
+import javax.net.ssl.SSLPeerUnverifiedException
+import java.security.cert.CertificateException
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
@@ -21,9 +32,42 @@ import java.util.concurrent.TimeUnit
 internal const val PLAN_SCOPE = "chatgpt.tokens.use.direct"
 internal const val DYNAMIC_CLIENT = "dynamic_agent_client"
 internal const val OPENAI_RESOURCE = "https://api.openai.com/v1"
+
+/** Safe classifications. Never include token values, URLs or exception messages in the UI. */
+internal enum class OAuthNetworkStage(val label: String) {
+    TOKEN("échange du code"), DISCOVERY("configuration OpenAI"),
+    JWKS("clés de vérification"), MODELS("liste des modèles")
+}
+internal enum class OAuthNetworkIssue(val label: String) {
+    DNS("nom de domaine introuvable (DNS)"),
+    CERTIFICATE("certificat TLS non reconnu"),
+    TLS("négociation HTTPS/TLS impossible"),
+    TIMEOUT("délai réseau dépassé"),
+    CONNECT("connexion au serveur impossible"),
+    IO("connexion interrompue ou réponse réseau invalide")
+}
+internal class OAuthNetworkFailure(
+    val stage: OAuthNetworkStage, val issue: OAuthNetworkIssue,
+) : IOException() {
+    val safeMessage get() = "${stage.label} : ${issue.label}"
+    override fun toString(): String = "OAuthNetworkFailure(${stage.name}, ${issue.name})"
+}
+internal fun classifyOAuthNetwork(error: IOException): OAuthNetworkIssue {
+    // Inspect types, not exception.message, which may contain request details.
+    val chain = generateSequence<Throwable>(error) { it.cause }.take(8).toList()
+    return when {
+        chain.any { it is CertificateException || it is SSLPeerUnverifiedException } -> OAuthNetworkIssue.CERTIFICATE
+        error is SSLHandshakeException -> OAuthNetworkIssue.TLS
+        error is SSLException -> OAuthNetworkIssue.TLS
+        error is UnknownHostException -> OAuthNetworkIssue.DNS
+        error is SocketTimeoutException || error is InterruptedIOException -> OAuthNetworkIssue.TIMEOUT
+        error is ConnectException || error is NoRouteToHostException || error is SocketException -> OAuthNetworkIssue.CONNECT
+        else -> OAuthNetworkIssue.IO
+    }
+}
 internal val chatGptHttp = OkHttpClient.Builder().followRedirects(false).followSslRedirects(false)
     .connectTimeout(15, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS)
-    .callTimeout(45, TimeUnit.SECONDS).build()
+    .callTimeout(45, TimeUnit.SECONDS).retryOnConnectionFailure(false).build()
 
 /** Constructor overrides are for HTTPS fixtures, never user-editable OAuth destinations. */
 internal data class ChatGptEndpoints(
@@ -126,22 +170,27 @@ internal class ChatGptOAuth(
     val endpoints: ChatGptEndpoints = ChatGptEndpoints(),
     val http: OkHttpClient = chatGptHttp,
 ) {
-    private fun json(request: Request): JSONObject = http.newCall(request).execute().use { response ->
-        if (!response.isSuccessful) {
-            val code = runCatching { JSONObject(response.peekBody(8192).string()).optString("error") }.getOrDefault("")
-            val terminal = code in setOf("invalid_grant", "invalid_refresh_token", "token_expired", "refresh_token_expired", "refresh_token_invalidated", "refresh_token_reused")
-            throw RunFailure(when (response.code) {
-                400, 401, 403 -> RunError.CHATGPT_AUTH
-                429 -> RunError.RATE_LIMIT
-                else -> RunError.PROVIDER
-            }, terminalAuth = terminal)
+    private fun json(request: Request, stage: OAuthNetworkStage): JSONObject = try {
+        http.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val code = runCatching { JSONObject(response.peekBody(8192).string()).optString("error") }.getOrDefault("")
+                val terminal = code in setOf("invalid_grant", "invalid_refresh_token", "token_expired", "refresh_token_expired", "refresh_token_invalidated", "refresh_token_reused")
+                throw RunFailure(when (response.code) {
+                    400, 401, 403 -> RunError.CHATGPT_AUTH
+                    429 -> RunError.RATE_LIMIT
+                    else -> RunError.PROVIDER
+                }, terminalAuth = terminal)
+            }
+            val source = response.body?.source() ?: authFailed()
+            if (source.request(1_048_577)) throw RunFailure(RunError.PROTOCOL)
+            try { JSONObject(source.readUtf8()) } catch (error: IOException) { throw error }
+            catch (_: Exception) { throw RunFailure(RunError.PROTOCOL) }
         }
-        val source = response.body?.source() ?: authFailed()
-        if (source.request(1_048_577)) throw RunFailure(RunError.PROTOCOL)
-        try { JSONObject(source.readUtf8()) } catch (_: Exception) { throw RunFailure(RunError.PROTOCOL) }
+    } catch (error: IOException) {
+        throw OAuthNetworkFailure(stage, classifyOAuthNetwork(error))
     }
     private fun discovery(): JSONObject {
-        val value = json(Request.Builder().url("${endpoints.issuer}/.well-known/openid-configuration").build())
+        val value = json(Request.Builder().url("${endpoints.issuer}/.well-known/openid-configuration").build(), OAuthNetworkStage.DISCOVERY)
         if (value.getString("issuer") != endpoints.issuer) authFailed()
         return value
     }
@@ -156,21 +205,21 @@ internal class ChatGptOAuth(
         val body = FormBody.Builder().add("grant_type", "authorization_code").add("client_id", code.clientId)
             .add("code", code.code).add("code_verifier", attempt.verifier).add("redirect_uri", attempt.redirect)
             .add("resource", endpoints.api).build()
-        val response = json(Request.Builder().url(endpoints.token).post(body).build())
+        val response = json(Request.Builder().url(endpoints.token).post(body).build(), OAuthNetworkStage.TOKEN)
         return account(response, code.clientId, attempt.nonce, attempt.expectedSubject)
     }
     fun refresh(old: ChatGptAccount): ChatGptAccount {
         val tokens = old.tokens ?: authFailed()
         val body = FormBody.Builder().add("grant_type", "refresh_token").add("client_id", old.clientId)
             .add("refresh_token", tokens.refresh).add("resource", endpoints.api).build()
-        val response = json(Request.Builder().url(endpoints.token).post(body).build())
+        val response = json(Request.Builder().url(endpoints.token).post(body).build(), OAuthNetworkStage.TOKEN)
         return account(response, old.clientId, null, old.subject).copy(model = old.model, welcomed = old.welcomed)
     }
     private fun account(json: JSONObject, clientId: String, nonce: String?, subject: String?): ChatGptAccount {
         val identity = json.getString("id_token")
         val jwt = try { SignedJWT.parse(identity) } catch (_: Exception) { authFailed() }
         val discovery = discovery()
-        val keys = this.json(Request.Builder().url(trustedAuthUrl(discovery.getString("jwks_uri"))).build())
+        val keys = this.json(Request.Builder().url(trustedAuthUrl(discovery.getString("jwks_uri"))).build(), OAuthNetworkStage.JWKS)
         val jwks = JWKSet.parse(keys.toString())
         if (jwt.header.algorithm != JWSAlgorithm.RS256 || jwt.header.keyID.isNullOrBlank()) authFailed()
         val matching = jwks.keys.filterIsInstance<RSAKey>().filter { it.keyID == jwt.header.keyID && !it.isPrivate }
@@ -196,7 +245,7 @@ internal class ChatGptOAuth(
         val token = account.tokens ?: authFailed()
         if (PLAN_SCOPE !in token.scopes) throw RunFailure(RunError.CHATGPT_PERMISSION)
         val response = json(Request.Builder().url("${endpoints.api}/models")
-            .header("Authorization", "Bearer ${token.access}").build()).getJSONArray("models")
+            .header("Authorization", "Bearer ${token.access}").build(), OAuthNetworkStage.MODELS).getJSONArray("models")
         return (0 until response.length()).map { response.getJSONObject(it) }
             .filter { it.optString("visibility") == "list" }
             .map { ChatGptModel(it.getString("slug"), it.getString("display_name")) }.distinctBy { it.slug }
