@@ -1,0 +1,86 @@
+{
+  "empty": {
+    "status": "PASS",
+    "sha256": "2a45bdcd1b273095b3378c617207acd5870b7d3e39a78de2cd37414b8da98db9",
+    "observation": "Accueil et statut lisibles, capsule et navigation à deux destinations complètes, marges système respectées.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "message": {
+    "status": "PASS",
+    "sha256": "889bed3f0cbb10d23ae405cdd3199c5bfac9707f5171fb080a7782bd5f210f27",
+    "observation": "Message et avertissement mémoire lisibles ; navigation et action nouvelle conversation visibles après fermeture du clavier.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reset": {
+    "status": "PASS",
+    "sha256": "dd26ca195ebcfa102fa80235d1f8160515cdeb01f2fc77cc910207303fc4b1f3",
+    "observation": "Accueil restauré, message absent et navigation complète avec Chat sélectionné.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "settings": {
+    "status": "PASS",
+    "sha256": "d4d4b841aa9c3ea6b4b0d348db0e815ce820357ff7422cb8df33b6cbc67c43cb",
+    "observation": "Groupes natifs, résumés et séparation lisibles ; navigation complète avec Réglages sélectionné.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "dark": {
+    "status": "PASS",
+    "sha256": "b0a7182ed95fc6a9ebfdc0e871261972728b5e7a565cc829137763a6562f0daf",
+    "observation": "Surfaces sombres distinctes, texte et icônes clairs, onglet sélectionné contrasté et barres système lisibles.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "small_screen": {
+    "status": "PASS",
+    "sha256": "c89831021b9802baafae3f0589f748a45875bf320858633c219b8c8ca5981e87",
+    "observation": "360×640 dp : titre sur deux lignes sans coupure, capsule et navigation accessibles au-dessus du geste.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "large_text": {
+    "status": "PASS",
+    "sha256": "126c8713af0ad1703206c87b6b1935eb3f0c2e5022d10917e15a8f1abb63d04b",
+    "observation": "Police 200 % : corps et destinations agrandis sans coupure, navigation à hauteur libre ; titres COUI fixes documentés.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "keyboard": {
+    "status": "FAIL",
+    "sha256": "2e6c1a69885756382584dbc7c80c6c3e8240874f7e821cfd66a8877581b0c901",
+    "observation": "Le clavier et Envoyer sont visibles ; l’en-tête reste hors écran malgré la frontière de relocation, chemin de saisie legacy encore actif.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reduced_motion": {
+    "status": "PASS",
+    "sha256": "406f6cfb4116c19eeae6c47fd8637b27192a01079383a4a8ca59a5dfbc914694",
+    "observation": "État final avec animations désactivées lisible, navigation et saisie complètes ; fluidité physique non prouvée.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "menu": {
+    "status": "PASS",
+    "sha256": "cd794dc562fe66a255ee96df2026d9f024955939091ae0e4ca577672f50baf24",
+    "observation": "Menu natif ancré à droite, deux entrées lisibles ; navigation et saisie non masquées.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "gallery": {
+    "status": "PASS",
+    "sha256": "8ca0a9a03214111a9feb6006b5782ab5a527c66dc21f9bba150fa97c0ca5364e",
+    "observation": "Typographie et bulles illustratives lisibles, navigation désormais complète ; swatch blanc sur surface blanche peu distinct.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "dialog": {
+    "status": "PASS",
+    "sha256": "ebbc97a7ed2c6314c6867239bb4ff0cf1881a851cc1a2b8ceeedea0cb83e0468",
+    "observation": "Dialogue natif lisible avec action Fermer et marge au-dessus du geste ; arrière-plan assombri.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "regression_fixture": {
+    "status": "FAIL",
+    "sha256": "9d812fbdf36f25e77b7816a3bd528a0205925d61b85720f06f2382097ef7456a",
+    "observation": "Surcouche rouge en bas masquant navigation, bouton Envoyer et une partie de la capsule, défaut volontaire détecté.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "_reference_comparison": {
+    "status": "NOT_RUN",
+    "opened_with": "",
+    "observation": "",
+    "reference_sha256": {}
+  }
+}

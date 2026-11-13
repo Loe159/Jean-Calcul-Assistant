@@ -72,3 +72,9 @@ Cette décision s'appuie sur le chemin AndroidX documenté qui appelle
 `View.requestRectangleOnScreen` pour chaque déplacement du curseur :
 https://android.googlesource.com/platform/frameworks/support/+/fea5b9b3fefbe2a1a7ce6e0ae1b5362c64a725d6
 Aucun code Eta ni code COUI interne n'est copié pour ce correctif.
+
+La frontière ne suffit pas pour le champ value/onValueChange legacy : ce chemin
+contient aussi sa propre gestion IME/rectangle Android. La saisie est passée au
+champ Foundation basé sur `TextFieldState`, conservé au niveau de V2App et
+sauvegardé par `rememberTextFieldState`. Il n'y a plus deux états à synchroniser.
+Envoi et reset utilisent `clearText`, et le champ conserve son défilement interne.

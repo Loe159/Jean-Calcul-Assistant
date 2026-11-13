@@ -20,6 +20,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldDecorator
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -81,7 +86,7 @@ fun V2App() {
         val focus = LocalFocusManager.current
         val keyboardController = LocalSoftwareKeyboardController.current
         val haptic = LocalHapticFeedback.current
-        var draft by rememberSaveable { mutableStateOf("") }
+        val draft = rememberTextFieldState()
         var page by rememberSaveable { mutableStateOf("chat") }
         var menu by remember { mutableStateOf(false) }
         var confirmReset by remember { mutableStateOf(false) }
@@ -92,10 +97,10 @@ fun V2App() {
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             page = destination
         }
-        fun reset() { messages.clear(); draft = ""; page = "chat"; confirmReset = false }
+        fun reset() { messages.clear(); draft.clearText(); page = "chat"; confirmReset = false }
         fun send() {
-            if (draft.isNotBlank()) {
-                messages.add(draft.trim()); draft = ""
+            if (draft.text.isNotBlank()) {
+                messages.add(draft.text.toString().trim()); draft.clearText()
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             }
         }
@@ -113,7 +118,7 @@ fun V2App() {
                     if (page == "chat") {
                         ActionIcon("Nouveau", Icons.Default.Add, Modifier.testTag("reset")) {
                             focus.clearFocus()
-                            if (messages.isEmpty() && draft.isBlank()) reset() else confirmReset = true
+                            if (messages.isEmpty() && draft.text.isBlank()) reset() else confirmReset = true
                         }
                         ActionIcon("Réglages", Icons.Default.Settings, Modifier.testTag("settings")) { navigate("settings") }
                     }
@@ -127,11 +132,11 @@ fun V2App() {
             },
             bottomBar = {
                 Column(Modifier.fillMaxWidth().navigationBarsPadding().imePadding()) {
-                    if (page == "chat") Composer(draft, { draft = it }, ::send)
+                    if (page == "chat") Composer(draft, ::send)
                     // The keyboard gets the available height; destination controls return on dismissal.
                     val keyboard = WindowInsets.isImeVisible
                     if (!keyboard) DestinationBar(page, messages.isNotEmpty(), { navigate(it) }) {
-                        if (messages.isEmpty() && draft.isBlank()) reset() else confirmReset = true
+                        if (messages.isEmpty() && draft.text.isBlank()) reset() else confirmReset = true
                     }
                 }
             },
@@ -153,25 +158,25 @@ fun V2App() {
 }
 
 @Composable
-private fun Composer(draft: String, onChange: (String) -> Unit, onSend: () -> Unit) {
+private fun Composer(draft: TextFieldState, onSend: () -> Unit) {
     val colors = CouiTheme.colorScheme
     Column(Modifier.padding(horizontal = JeanTokens.edge, vertical = 8.dp).then(ComposerViewport)
         .shadow(JeanTokens.elevation, JeanTokens.capsule).clip(JeanTokens.capsule)
         .background(colors.surface).padding(16.dp)) {
-        BasicTextField(value = draft, onValueChange = onChange,
+        BasicTextField(state = draft,
             textStyle = rememberCouiTextStyle(CouiTextKind.Body).copy(color = colors.onSurface),
-            cursorBrush = SolidColor(colors.accent), maxLines = 4,
+            cursorBrush = SolidColor(colors.accent), lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = 4),
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("composer")
                 .semantics { contentDescription = "Message à Jean-Calcul" },
-            decorationBox = { field -> Box {
-                if (draft.isEmpty()) Text(text = "Demander à Jean-Calcul…", kind = CouiTextKind.Body, color = colors.onSurfaceVariant)
+            decorator = TextFieldDecorator { field -> Box {
+                if (draft.text.isEmpty()) Text(text = "Demander à Jean-Calcul…", kind = CouiTextKind.Body, color = colors.onSurfaceVariant)
                 field()
             } })
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(text = "IA non connectée", kind = CouiTextKind.Description,
                 color = colors.onSurfaceVariant, modifier = Modifier.weight(1f))
             ActionIcon("Envoyer", Icons.AutoMirrored.Filled.Send, Modifier.testTag("send"),
-                enabled = draft.isNotBlank(), accent = true, onClick = onSend)
+                enabled = draft.text.isNotBlank(), accent = true, onClick = onSend)
         }
     }
 }
