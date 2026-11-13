@@ -6,6 +6,7 @@ import android.net.Uri
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import androidx.lifecycle.AndroidViewModel
@@ -25,6 +26,10 @@ class ConversationViewModel(application: Application) : AndroidViewModel(applica
     val chatGptMessage = mutableChatGptMessage.asStateFlow()
     private val mutableSigningIn = MutableStateFlow(false)
     val signingIn = mutableSigningIn.asStateFlow()
+    private val oauthForeground = OAuthForegroundGate()
+    fun onAppForegroundChanged(isResumed: Boolean) {
+        if (isResumed) oauthForeground.onAppResumed() else oauthForeground.onAppPaused()
+    }
     private var loginJob: Job? = null
     @Volatile private var listener: LoopbackOAuth? = null
     init {
@@ -48,9 +53,21 @@ class ConversationViewModel(application: Application) : AndroidViewModel(applica
                 callback.use {
                     val attempt = chatGpt.attempt(callback.redirect, accountId)
                     phase = "navigateur"
-                    withContext(Dispatchers.Main) { openBrowser(attempt.authorizationUrl(chatGpt.oauth.endpoints)) }
+                    withContext(Dispatchers.Main) {
+                        oauthForeground.onAppPaused()
+                        openBrowser(attempt.authorizationUrl(chatGpt.oauth.endpoints))
+                    }
                     phase = "redirection"
                     val code = callback.await(attempt)
+                    // Samsung/Android may forbid background-network DNS. The browser
+                    // still displays our local success page until the user returns.
+                    phase = "retour dans Jean-Calcul"
+                    mutableChatGptMessage.value = "Autorisation reçue. Revenez dans Jean-Calcul pour terminer."
+                    val returned = withTimeoutOrNull((attempt.expiresAt - System.currentTimeMillis()).coerceAtLeast(1L)) {
+                        oauthForeground.awaitAppResumed()
+                        true
+                    } ?: false
+                    if (!returned) authFailed()
                     phase = "validation du compte"
                     val modelsLoaded = chatGpt.complete(attempt, code)
                     mutableChatGptMessage.value = if (modelsLoaded)
