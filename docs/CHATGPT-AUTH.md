@@ -37,9 +37,22 @@ message brut d'exception. L'échange du code à usage unique n'est pas réessay�
 automatiquement (y compris par OkHttp). Les tests HTTPS simulés vérifient la
 classification et l'absence de nouvelle requête sur un code interrompu.
 
+L'échange du code OAuth attend désormais le retour de l'activité Android au
+premier plan, car le navigateur reçoit le callback alors que Jean-Calcul est
+encore en arrière-plan. Cela évite une résolution DNS dans un état réseau
+potentiellement restreint par Android/Samsung. L'attente est bornée par la
+durée du code OAuth, sans réutiliser le code si celui-ci expire.
+
+Si le DNS système ne résout pas `auth.openai.com` ou `api.openai.com`,
+le client tente une seule résolution DNS-over-HTTPS via Cloudflare avec des IP
+de bootstrap publiques, uniquement pour ces deux noms. Cloudflare peut voir
+les noms de domaine demandés, jamais le code ni les jetons OAuth. L'échange des
+jetons reste exclusivement avec le serveur OpenAI, avec validation HTTPS
+normale. Les autres hôtes ne bénéficient d'aucun fallback.
+
 Les endpoints officiels ont été vérifiés sur l'hôte Linux, mais cela ne démontre
-pas leur accessibilité depuis le téléphone. Un diagnostic concluant nécessite
-un retour sur appareil réel, avec seulement la catégorie d'erreur affichée.
+pas leur accessibilité depuis le téléphone. Un test sur le téléphone reste
+nécessaire pour confirmer le fonctionnement de bout en bout.
 
 ## Protocole implémenté
 
