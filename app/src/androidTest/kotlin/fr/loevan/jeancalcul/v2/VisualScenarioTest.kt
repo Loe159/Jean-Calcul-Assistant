@@ -24,7 +24,10 @@ import androidx.test.uiautomator.UiDevice
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
@@ -39,6 +42,7 @@ class VisualScenarioTest {
         assumeTrue("Opt in with -e scenario", scenario != null)
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         rule.onNodeWithTag("empty").assertIsDisplayed()
+        val headerTop = rule.onNodeWithTag("header").fetchSemanticsNode().positionOnScreen.y
         when (scenario) {
             "empty", "dark", "small_screen", "large_text", "reduced_motion" -> Unit
             "message", "reset" -> {
@@ -47,9 +51,19 @@ class VisualScenarioTest {
                 rule.onNodeWithText("Bonjour V2 — test synthétique").assertIsDisplayed()
                 // Android Back belongs to the system, outside the Compose semantics tree.
                 device.pressBack()
+                rule.waitUntil(10_000) {
+                    var hidden = false
+                    rule.runOnUiThread {
+                        hidden = rule.activity.window.decorView.rootWindowInsets
+                            ?.isVisible(WindowInsets.Type.ime()) == false
+                    }
+                    hidden
+                }
                 rule.waitForIdle()
+                rule.onNodeWithTag("navigation").assertIsDisplayed()
                 if (scenario == "reset") {
                     rule.onNodeWithTag("reset").performClick()
+                    rule.onNodeWithText("Effacer").performClick()
                     rule.onNodeWithTag("empty").assertIsDisplayed()
                     rule.onNodeWithText("Bonjour V2 — test synthétique").assertDoesNotExist()
                 }
@@ -58,6 +72,12 @@ class VisualScenarioTest {
                 rule.onNodeWithTag("settings").performClick()
                 rule.onNodeWithText("Préférences").assertIsDisplayed()
                 rule.onNodeWithTag("composer").assertDoesNotExist()
+            }
+            "menu" -> rule.onNodeWithTag("options").performClick()
+            "gallery", "dialog" -> {
+                rule.onNodeWithTag("settings").performClick()
+                rule.onNodeWithTag("gallery").performClick()
+                if (scenario == "dialog") rule.onNodeWithTag("gallery_dialog").performClick()
             }
             "keyboard" -> {
                 rule.onNodeWithTag("composer").performClick().performTextInput("Clavier synthétique")
@@ -70,6 +90,7 @@ class VisualScenarioTest {
                     visible
                 }
                 rule.onNodeWithTag("send").assertIsDisplayed()
+                rule.onNodeWithTag("header").assertIsDisplayed()
             }
             "regression_fixture" -> {
                 // Deliberate, test-only occlusion: native vision must flag the hidden composer.
@@ -91,6 +112,21 @@ class VisualScenarioTest {
         device.waitForIdle()
         // Let system insets / IME animations settle before taking a full-device capture.
         android.os.SystemClock.sleep(600)
+        // Compose idleness is not a GPU presentation fence. COUI records content
+        // into graphics layers; wait for two submitted frames before reading pixels.
+        if (scenario != "dialog") repeat(2) {
+            val committed = CountDownLatch(1)
+            rule.runOnUiThread {
+                val view = rule.activity.window.decorView
+                view.viewTreeObserver.registerFrameCommitCallback { committed.countDown() }
+                view.postInvalidateOnAnimation()
+            }
+            assertTrue("No rendered frame committed before capture", committed.await(10, TimeUnit.SECONDS))
+        }
+        if (scenario == "keyboard") {
+            assertEquals("Keyboard must not pan the header off screen", headerTop,
+                rule.onNodeWithTag("header").fetchSemanticsNode().positionOnScreen.y, 1f)
+        }
         val directory = File(rule.activity.filesDir, "e2e").apply { mkdirs() }
         val destination = File(directory, "$scenario.png")
         var captured = false

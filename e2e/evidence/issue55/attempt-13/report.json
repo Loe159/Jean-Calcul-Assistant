@@ -1,0 +1,112 @@
+{
+  "issue": 55,
+  "attempt": 13,
+  "attempt_budget": 13,
+  "budget_override": "User explicitly requested continuing fixes until all tests pass; see e2e/evidence/issue55/README.md",
+  "created_utc": "2026-11-13T08:55:17.892163+00:00",
+  "commit": "0c63424ea1dc84393a477f6ccd7b825b702c3277",
+  "working_tree_dirty": false,
+  "api": 35,
+  "serial": "emulator-5580",
+  "technical": {
+    "status": "FAIL",
+    "evidence": "logs/gradle.txt",
+    "jvm_tests": "NOT_RUN",
+    "error": "Instrumentation XML contains a failure: TEST-jc-e2e-issue55-13(AVD) - 15.xml"
+  },
+  "captures": {
+    "empty": {
+      "status": "PASS",
+      "path": "screenshots/empty.png",
+      "sha256": "7bc1a44b2902599a54e3076e72b19e3b30fbe29daad8c764a85ea2d5c780def9",
+      "visual_status": "PASS"
+    },
+    "message": {
+      "status": "PASS",
+      "path": "screenshots/message.png",
+      "sha256": "635d5412eb22f155373a6677db5620660b58fcf1ba66a3c61d659f6bbda52aaf",
+      "visual_status": "PASS"
+    },
+    "reset": {
+      "status": "PASS",
+      "path": "screenshots/reset.png",
+      "sha256": "63b2d46cbc3ca4ab628ba6e3d965404fcac28164f109c00480cc1eaabf92f55b",
+      "visual_status": "PASS"
+    },
+    "settings": {
+      "status": "PASS",
+      "path": "screenshots/settings.png",
+      "sha256": "8b300e21bbf65e921b6ae8402fc382cb0dad03638a8db8d289797092e91ab68c",
+      "visual_status": "PASS"
+    },
+    "dark": {
+      "status": "PASS",
+      "path": "screenshots/dark.png",
+      "sha256": "35741db825662b9eb5907642ed981cd8e17f25de83ffac136738d70eabb10a08",
+      "visual_status": "PASS"
+    },
+    "small_screen": {
+      "status": "PASS",
+      "path": "screenshots/small_screen.png",
+      "sha256": "c061469f9c2d1ddf8c879293d4c34438191780e789eb72545c7cff1ac7b5947e",
+      "visual_status": "PASS"
+    },
+    "large_text": {
+      "status": "PASS",
+      "path": "screenshots/large_text.png",
+      "sha256": "5be4bad88d8b586c620a13ea0eac9ddadbdd7bd87588efdc006df48f135810b6",
+      "visual_status": "PASS"
+    },
+    "keyboard": {
+      "status": "PASS",
+      "path": "screenshots/keyboard.png",
+      "sha256": "81723aa7e17cddfe038ec5f3ca2e4838d947690bf966e9c3cfd8c371e62cb3a5",
+      "visual_status": "FAIL"
+    },
+    "reduced_motion": {
+      "status": "PASS",
+      "path": "screenshots/reduced_motion.png",
+      "sha256": "108a8981471672de16892f15abf5b4bab09593b25d59a46ca4cc49b87a52cf3a",
+      "visual_status": "PASS"
+    },
+    "menu": {
+      "status": "PASS",
+      "path": "screenshots/menu.png",
+      "sha256": "f76f802b2a07384c3692632c6ddcf49d68fda6d64abbced35d0267cb939a60fb",
+      "visual_status": "PASS"
+    },
+    "gallery": {
+      "status": "PASS",
+      "path": "screenshots/gallery.png",
+      "sha256": "2501c42d9285fc8f8c2535e58b81dcc04eca7ed24c832b5c14c97e908b588d2e",
+      "visual_status": "PASS"
+    },
+    "dialog": {
+      "status": "PASS",
+      "path": "screenshots/dialog.png",
+      "sha256": "85ad4be068b97eaf569d5234d40e41b8bb9ac6035c1b213add2a9dc561234050",
+      "visual_status": "PASS"
+    },
+    "regression_fixture": {
+      "status": "PASS",
+      "path": "screenshots/regression_fixture.png",
+      "sha256": "af309739fca666330d71da10279bc8692d9909862fbf9db56c1439e8191516fc",
+      "visual_status": "FAIL"
+    }
+  },
+  "visual_review": {
+    "status": "FAIL",
+    "evidence": "visual-review.json"
+  },
+  "reference_comparison": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "regression_detection": {
+    "status": "PASS",
+    "evidence": "visual-review.json"
+  },
+  "source_manifest": "source-manifest.json",
+  "error": "Instrumentation XML contains a failure: TEST-jc-e2e-issue55-13(AVD) - 15.xml",
+  "apk_sha256": "2b5b8b776687b509cb941277d2f6737c82361aa130d68c9dfca4005839dfc0d6"
+}

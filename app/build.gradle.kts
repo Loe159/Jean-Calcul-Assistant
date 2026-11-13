@@ -30,7 +30,6 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.10.0")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.foundation:foundation")
-    implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-core")
     implementation("io.github.itoseo:coui:0.0.1-alpha7")
     debugImplementation("androidx.compose.ui:ui-tooling")

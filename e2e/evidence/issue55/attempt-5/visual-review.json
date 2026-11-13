@@ -1,0 +1,89 @@
+{
+  "empty": {
+    "status": "PASS",
+    "sha256": "3563b90ebf0cd937f2b3d37eb498bc8b8ee7af661fce11b588aa6e986cfdc639",
+    "observation": "Accueil lisible, capsule et navigation présentes ; statut et barre de geste contrastés, marges système respectées.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "message": {
+    "status": "FAIL",
+    "sha256": "85826226e663c4870ff253a396f015bae7ea8b7cee97b7524bab5fdf3eb45ea3",
+    "observation": "Message et avertissement mémoire lisibles ; clavier absent mais barre de navigation attendue absente, seul le champ reste en bas.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reset": {
+    "status": "PASS",
+    "sha256": "f09e0a4fbd9194df41c7864c522ce243582ec9652b72f8f1db5498818502db69",
+    "observation": "Accueil restauré sans message ; capsule, navigation et actions supérieures visibles.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "settings": {
+    "status": "PASS",
+    "sha256": "4679d76781ace9a6198af6c0bd863bbe77dc998eebedae66ec798230ddddb4cf",
+    "observation": "Groupes COUI, résumés et séparation lisibles ; retour et navigation visibles, aucun chevauchement.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "dark": {
+    "status": "PASS",
+    "sha256": "2f7917d930e22e9356f2d98c72ac71971244dd5a22f62748640125ea7546307a",
+    "observation": "Texte et icônes clairs sur fond sombre, capsule distincte, barre système lisible et navigation présente.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "small_screen": {
+    "status": "PASS",
+    "sha256": "39afb287642f5bac818290f5200acc11b6ab903fd22c6e5d7f157a5069d1469f",
+    "observation": "360×640 dp : titre sur deux lignes sans coupure, capsule et navigation accessibles avec marge sous le geste.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "large_text": {
+    "status": "PASS",
+    "sha256": "54c48659bb3dbfcab60b79fb3098b2bdcd57be98097aebbae0b1a486c3a3c576",
+    "observation": "Police 200 % : corps et libellés agrandis non coupés, navigation à hauteur libre ; titres fixes COUI documentés.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "keyboard": {
+    "status": "FAIL",
+    "sha256": "e7f8d6c4b56bf2d6420549d9f4bb6fae3b71251b3b6015c0054f7068b2818880",
+    "observation": "Clavier et bouton Envoyer visibles, saisie lisible ; en-tête et ses actions absents au-dessus du contenu.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reduced_motion": {
+    "status": "PASS",
+    "sha256": "1c28d433d378eec4f5eebf683425c0657c2197a642aaadb9e2a0b347d35cce70",
+    "observation": "État final lisible avec animations désactivées, capsule et navigation visibles ; une capture statique ne prouve pas la fluidité.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "menu": {
+    "status": "PASS",
+    "sha256": "81c682847b8a73c7cb971a4d8f135ef6c846167367784a986c6452ec8de1e8f0",
+    "observation": "Menu natif ancré à droite, deux choix lisibles sans recouvrement de la saisie ; reste de la page visible.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "gallery": {
+    "status": "FAIL",
+    "sha256": "37c906b05d48c7be820abd62b2bcd2187429f71f86049086ac638d02f3fd9711",
+    "observation": "Typographie et bulles lisibles, exemple entrant explicitement illustratif ; icônes et surface de la navigation manquantes, seuls les libellés restent visibles. Le blanc sur blanc de la palette est une limite de présentation.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "dialog": {
+    "status": "PASS",
+    "sha256": "13df936a744665a6a187bd21fb7b668752430053a7cbd12529a56239e569bb4e",
+    "observation": "Dialogue natif en bas, titre, message et action Fermer lisibles ; marge au-dessus de la barre de geste, fond assombri.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "regression_fixture": {
+    "status": "FAIL",
+    "sha256": "a4ba439acb1005d9e2ff0b28bc4dc4a8e1b6bb32ce3a0fc1aab5d89a9dd3e353",
+    "observation": "Grande surcouche rouge en bas qui masque la navigation, le bouton Envoyer et une partie de la capsule ; défaut volontaire détecté.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "_reference_comparison": {
+    "status": "FAIL",
+    "opened_with": "functions.view_image (vision native)",
+    "reference_sha256": {
+      "chat_home.jpg": "b52261d66f78b41ce5c67f6d24925a795868a37544f44163d56652de98cc9111",
+      "settings.jpg": "8578d0d1ef91036e93c7b6b7ec8433e5790c476c43ebebbe68c514e84078cb30"
+    },
+    "observation": "Eta chat_home et settings ouverts. Fond neutre, capsule flottante et groupes arrondis communs ; V2 ajoute une navigation basse et omet les suggestions/outils non raccordés. Défauts V2 : navigation absente après message, en-tête absent avec IME et icônes manquantes en galerie. Pas de référence exacte sombre, IME ou police 200 %. Ni haptique ni fluidité physique prouvées."
+  }
+}

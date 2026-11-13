@@ -1,0 +1,89 @@
+{
+  "empty": {
+    "status": "PASS",
+    "sha256": "9b10f6dca30ed921a78345ada65cc8b243b3dc5360b963dfa2dd7a15304d65bc",
+    "observation": "En-tête complet, invitation centrée, indication de saisie visible dans la capsule blanche ; les deux destinations restent dégagées de la barre système.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "message": {
+    "status": "PASS",
+    "sha256": "7705a7bdd2a115739f076e890a6fa809dd8058a683866deeafaa7e4f04d71615",
+    "observation": "Bulle sortante bleutée et avertissement mémoire lisibles ; champ vidé avec indication visible, navigation complète et action nouvelle conversation bleue.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reset": {
+    "status": "PASS",
+    "sha256": "b62c55ce06b73bfef05ec299d6283b6e5b828c7837927bbde4c8f5db5605a9bf",
+    "observation": "Invitation restaurée après effacement ; indication du champ et destinations Chat/Réglages visibles, aucun ancien message.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "settings": {
+    "status": "PASS",
+    "sha256": "169bcbd08229b56d60f861c5b28ea8026eeabd85d53c6388d0b7d363e70f7c76",
+    "observation": "Deux groupes blancs et leurs résumés sont lisibles ; retour, menu et sélection Réglages visibles, aucun chevauchement des insets.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "dark": {
+    "status": "PASS",
+    "sha256": "ec2f65786813cc27eee1295a9707d81aa6d8358e5680674cf069b17b290f5ddb",
+    "observation": "Fond noir, surfaces anthracite, texte clair et sélection bleu sombre restent distinguables ; indication du champ et icônes présentes.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "small_screen": {
+    "status": "PASS",
+    "sha256": "4bfbb7bf6b600e5e4f6b6784cb0fefdacc00b8a93a9087fa8a8eae40f37877c5",
+    "observation": "Invitation répartie sur deux lignes sans coupe ; capsule, envoi, navigation et en-tête tiennent dans le petit écran.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "large_text": {
+    "status": "PASS",
+    "sha256": "a19fd8e58c5ebca915abdf2f80c192a745ba6476ad8e1f79f5243834c1aafcd8",
+    "observation": "Corps, indication de saisie et destinations agrandis restent lisibles sans recouvrement ; titre Toolbar/PageTitle reste fixe, limite alpha7 documentée.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "keyboard": {
+    "status": "PASS",
+    "sha256": "c7331131f0442c590ce2e62e493317c6d6d6f2d3b989434fa62094bb2227e4f2",
+    "observation": "Clavier réellement visible ; en-tête Jean-Calcul et ses trois actions restent peints. Texte saisi et envoi bleu au-dessus du clavier, sans recouvrement.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reduced_motion": {
+    "status": "PASS",
+    "sha256": "32698e866671e64c0764690a0030c5f2ddf6bc4c69fe0c345df88e3092262aae",
+    "observation": "État final complet avec indication de saisie et navigation lorsque les animations Android sont désactivées ; une image statique ne juge pas la fluidité.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "menu": {
+    "status": "PASS",
+    "sha256": "2517df3409b1c3b656258ce0c089df5b089b30f680334c60892d44937e15cc32",
+    "observation": "Menu flottant COUI blanc lisible, deux entrées distinctes ; champ et navigation restent présents en arrière-plan.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "gallery": {
+    "status": "PASS",
+    "sha256": "154bc474559488ff0930a2b8b2277d6574535a573a5fa923ad3a2fc22627c2df",
+    "observation": "Palette, typographie, deux bulles explicitement illustratives et action dialogue lisibles ; icônes de navigation présentes. Nuancier blanc peu distinct du groupe blanc, limite mineure.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "dialog": {
+    "status": "PASS",
+    "sha256": "cd7bd6ece03eb74f460a9644bb45ee1534ba90901028030eed2c7a0bdc0420a5",
+    "observation": "Dialogue COUI au-dessus du fond assombri, titre et description lisibles ; bouton Fermer large, marges inférieures respectées.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "regression_fixture": {
+    "status": "FAIL",
+    "sha256": "5c3d11c38dd3b431190e50297e8b702920577ba5ccdeac3cb285d1b3e1198227",
+    "observation": "Défaut volontaire détecté : grand rectangle rouge opaque en bas, masquant le bas de la capsule, envoi et navigation. État inutilisable.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "_reference_comparison": {
+    "status": "PASS",
+    "opened_with": "functions.view_image (vision native)",
+    "reference_sha256": {
+      "chat_home.jpg": "b52261d66f78b41ce5c67f6d24925a795868a37544f44163d56652de98cc9111",
+      "settings.jpg": "8578d0d1ef91036e93c7b6b7ec8433e5790c476c43ebebbe68c514e84078cb30"
+    },
+    "observation": "Les deux JPG Eta ont été ouverts et comparés : fond gris neutre, capsule blanche flottante à deux niveaux, accent bleu et groupes de réglages blancs arrondis repris. V2 conserve un en-tête nommé et une navigation inférieure propres, sans cartes outils ni réglages non raccordés ; prototype IA non connectée explicitement annoncé. Les états clavier, sombre, petit écran et texte agrandi restent lisibles ; absence de références Eta pour ces variantes, aucune parité pixel ou fonctionnelle revendiquée. Haptique physique, Samsung et fluidité NOT_RUN."
+  }
+}

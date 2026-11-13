@@ -1,0 +1,89 @@
+{
+  "empty": {
+    "status": "FAIL",
+    "sha256": "823c1ab2f0d9d9b3fd724bd95dbc3d2fd437f6fb06d51507ba04206c7b3ada0d",
+    "observation": "Accueil et navigation lisibles ; la zone de saisie ne montre pas son indication de champ vide.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "message": {
+    "status": "FAIL",
+    "sha256": "e6e812c070b77e36996d73437f18e0217f856fb326567013e45c03766f314aaf",
+    "observation": "Message, navigation et nouvelle conversation visibles ; indication absente dans le champ vide après envoi.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reset": {
+    "status": "PASS",
+    "sha256": "74c3fcfa2fd5527889ee518b0c4e9e333dbbef3b5050832ebbc7fa52a060ccf3",
+    "observation": "Accueil restauré sans message, indication de saisie et destinations complètes visibles.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "settings": {
+    "status": "PASS",
+    "sha256": "85e03f94e461e058283b6d741d6686ddfc13799abb48fa8add405f57ad605164",
+    "observation": "Préférences et résumés lisibles ; onglet Réglages et icônes complets.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "dark": {
+    "status": "PASS",
+    "sha256": "f0b9eae28186d34bd56f172456c80c63f28042ce08de0c6a46d69adb699b4acd",
+    "observation": "Palette sombre lisible, indication du champ et navigation complètes, statut contrasté.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "small_screen": {
+    "status": "PASS",
+    "sha256": "001ecd7a7799c010bdc2a66510d49843cf52788e4ed9e44a83dade0dcab2fedb",
+    "observation": "360×640 dp : titre sur deux lignes, champ avec indication et navigation visibles sans chevauchement.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "large_text": {
+    "status": "PASS",
+    "sha256": "99af2dcd163dacd13651e1742334a33666a2724bd83d32c247d30ca235800afa",
+    "observation": "Police 200 % : texte et onglets agrandis sans coupure, action d’envoi accessible ; titres fixes COUI documentés.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "keyboard": {
+    "status": "FAIL",
+    "sha256": "01cff3460732825bee15b2517671e65739c01229d0a3f44eb65276efc8f83c84",
+    "observation": "Saisie et envoi au-dessus du clavier mais en-tête et ses actions masqués, malgré des coordonnées sémantiques inchangées.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reduced_motion": {
+    "status": "PASS",
+    "sha256": "60ebcc22edd1e4258fa52a879f02462645f5cb82a247d6c70f1d5dd691a2905f",
+    "observation": "Rendu final lisible, indication de saisie et navigation présentes ; pas de preuve de fluidité physique.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "menu": {
+    "status": "PASS",
+    "sha256": "64a3b892b83649ae9f24c1b1f6218b0df6830c437a8ab104459476370222ac7c",
+    "observation": "Menu natif et arrière-plan lisibles, deux entrées accessibles, navigation et en-tête complets.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "gallery": {
+    "status": "PASS",
+    "sha256": "39adfef4d0d1a1e22b3cbaddad94613af8d0b37c3000b30fa5b9818c0ccd5a23",
+    "observation": "Textes, bulles illustratives et navigation complets ; blanc de la palette peu distinct sur blanc.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "dialog": {
+    "status": "PASS",
+    "sha256": "1301b4b1fa98ea32534ba3ce347bd8192c399207a4eea487b098e71df18164ab",
+    "observation": "Titre, description et Fermer lisibles avec marge système ; fond correctement assombri.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "regression_fixture": {
+    "status": "FAIL",
+    "sha256": "146aa550f9f90e8d1819181eb5d3424fff9bde5d0e5ddede78a6f84f8eca7fdf",
+    "observation": "Surcouche rouge basse masque navigation et Envoyer, défaut volontaire détecté.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "_reference_comparison": {
+    "status": "FAIL",
+    "opened_with": "functions.view_image (vision native)",
+    "reference_sha256": {
+      "chat_home.jpg": "b52261d66f78b41ce5c67f6d24925a795868a37544f44163d56652de98cc9111",
+      "settings.jpg": "8578d0d1ef91036e93c7b6b7ec8433e5790c476c43ebebbe68c514e84078cb30"
+    },
+    "observation": "Références Eta chat_home et settings ouvertes. Fond neutre, capsule et groupes arrondis communs ; V2 ajoute une navigation basse et omet les fonctions non raccordées. États incomplets : en-tête caché avec clavier et indication du champ parfois absente. Pas de référence exacte sombre/IME/police 200 %, ni preuve haptique ou fluidité physique."
+  }
+}

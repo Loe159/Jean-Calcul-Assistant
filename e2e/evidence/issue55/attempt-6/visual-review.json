@@ -1,0 +1,86 @@
+{
+  "empty": {
+    "status": "PASS",
+    "sha256": "5eb074d0c73710cdb8f2efec444e288a81338e9a7fe24c15a8fa4984b7980cf4",
+    "observation": "Accueil, capsule et navigation complets ; contraste et marges système lisibles.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "message": {
+    "status": "PASS",
+    "sha256": "baac6b9e9ff561db4aa9c31bf178da228ada70063f0a3ad1fec476b6485379a4",
+    "observation": "Message et avertissement mémoire lisibles ; navigation et bouton bleu de nouvelle conversation sont désormais visibles après fermeture du clavier.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reset": {
+    "status": "FAIL",
+    "sha256": "5eb074d0c73710cdb8f2efec444e288a81338e9a7fe24c15a8fa4984b7980cf4",
+    "observation": "Accueil restauré sans message ; la capsule de navigation est vide, icônes et libellés absents.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "settings": {
+    "status": "PASS",
+    "sha256": "0a0a772d25af31a7ea00ab7c5b561b0c5644b1ed33417ccf18839f9f25f04ded",
+    "observation": "Groupes et résumés lisibles, actions et navigation présentes, sans texte coupé.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "dark": {
+    "status": "PASS",
+    "sha256": "69f8ea832de8cdea2d547516f41919425a7832f36fa570102c8decfcad1c68f9",
+    "observation": "Surfaces sombres distinctes, textes et icônes clairs, navigation et statut lisibles.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "small_screen": {
+    "status": "PASS",
+    "sha256": "d7f6c9ec9fd4147460f93a17736e3993f44cfbf8166d0d20723ed93972650359",
+    "observation": "360×640 dp : titre replié sur deux lignes, saisie et navigation visibles sans recouvrement.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "large_text": {
+    "status": "PASS",
+    "sha256": "c95e25449b47a475d571b2f1c8a8436b919e90ad8bbbd7bda2b7cfdcc3c664cd",
+    "observation": "Police 200 % : corps agrandi, navigation à hauteur libre, aucune coupure ; titre COUI fixe documenté.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "keyboard": {
+    "status": "FAIL",
+    "sha256": "dfb7302b3767e9199d4ff9f4c9f304295a9f9fa40512a2ed4096900ec55a4c99",
+    "observation": "Texte saisi et Envoyer au-dessus du clavier ; l’en-tête et ses actions sont toujours absents.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reduced_motion": {
+    "status": "PASS",
+    "sha256": "666dd85d9cf5180ca3482d36dec91d19be84f027baef26456009e7ec9bc91842",
+    "observation": "État statique avec animations désactivées lisible et navigation complète ; fluidité non prouvée.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "menu": {
+    "status": "PASS",
+    "sha256": "48152ebb700a54c380d9d95154b81930303661262c4f6a0322ef8c5b5ffedbe3",
+    "observation": "Deux entrées natives lisibles, menu ancré à droite ; saisie et navigation restent visibles.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "gallery": {
+    "status": "FAIL",
+    "sha256": "60e9ed8d356df8aa45fb36f8611bad9f35cdb4a980a0306a0397e48660143890",
+    "observation": "Exemples et textes lisibles ; seuls les libellés Chat/Réglages sont visibles dans la navigation, sans icônes ni surface.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "dialog": {
+    "status": "PASS",
+    "sha256": "df804bf81126c3f0f030badfc3b596af52202f286f1f857155ccd7911cf5fb86",
+    "observation": "Titre, message et bouton Fermer lisibles, dialogue au-dessus du geste, fond assombri.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "regression_fixture": {
+    "status": "FAIL",
+    "sha256": "82cb79ab9e827d24b303f6f2405892df8790ca1410138f95fcb39ef0d8be6045",
+    "observation": "Surcouche rouge basse masquant navigation et action d’envoi, défaut volontaire correctement identifié.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "_reference_comparison": {
+    "status": "NOT_RUN",
+    "opened_with": "",
+    "observation": "",
+    "reference_sha256": {}
+  }
+}

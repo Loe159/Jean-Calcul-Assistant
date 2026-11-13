@@ -119,3 +119,23 @@ Vérification des garde-fous du rapport :
 ```sh
 python3 -m unittest discover -s e2e -p 'test_*.py'
 ```
+
+## Galerie #55
+
+Les scénarios incluent aussi le menu natif, la galerie (bulles entrante/sortante
+explicitement illustratives) et le dialogue COUI. Le numéro du rapport suit les
+chiffres du run-id (`issue55` → #55). Les rapports historiques conservent leur
+liste propre de captures. Les tests vérifient l'annulation de l'effacement,
+la conservation du brouillon en navigation et le retour système depuis la galerie.
+
+Une instruction utilisateur explicite peut autoriser une poursuite après la
+quatrième tentative. Conserver le même run-id et les preuves précédentes ;
+utiliser `--extra-validation-authorized --authorization-note '<instruction>'`
+pour enregistrer l'autorisation dans chaque rapport. Aucun dépassement implicite.
+Les échecs Smoke sont conservés en FAIL mais n'empêchent plus la collecte des
+scénarios visuels indépendants si les APK sont disponibles. Un build ou scénario
+inexploitable arrête toujours la collecte avec les preuves partielles.
+
+La partition de données du nouvel AVD synthétique est limitée à 4 Gio. Le profil
+Pixel 6 reste identique pour l'écran, l'API et la mémoire ; aucun compte ou
+contenu personnel n'y est installé. Les anciens AVD ne sont pas modifiés.
