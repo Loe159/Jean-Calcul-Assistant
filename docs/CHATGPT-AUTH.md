@@ -97,11 +97,13 @@ connexion ChatGPT. Elle ne doit pas être citée comme preuve du nouvel écran,
 du nouveau stockage OAuth ou d’une autorisation utilisateur réelle.
 
 Pour cette extension : consentement réel, catalogue réel et réponse réelle
-**NOT_RUN**, en attendant la connexion manuelle de l’utilisateur. Les nouveaux
-tests Android (entrée de connexion et enveloppe Keystore) et la revue visuelle
-locale restent **NOT_RUN** tant que la quatrième tentative n’a pas terminé.
-L’utilisateur a explicitement autorisé cette tentative supplémentaire :
-« Oui, autoriser la tentative 4 » ; son résultat sera consigné dans les preuves. Le budget n’est pas contourné par un nouveau run-id. Aucune capture
+**NOT_RUN**, en attendant la connexion manuelle de l’utilisateur. La tentative 4, autorisée par « Oui, autoriser la tentative 4 », a terminé :
+les nouveaux tests Android (entrée de connexion et enveloppe Keystore) passent,
+mais l’ensemble reste FAIL (9/10) sur le retour système après saisie/navigation.
+Dix-neuf captures ont été ouvertes et analysées ; les états visibles normaux
+passent et le masque rouge volontaire est détecté. Ces images ne prouvent pas
+un consentement OpenAI réel. Le correctif de fermeture de saisie préparé ensuite
+reste Android/vision NOT_RUN jusqu’à nouvelle autorisation de validation. Le budget n’est pas contourné par un nouveau run-id. Aucune capture
 personnelle et aucun jeton réel ne doivent être ajoutés aux preuves.
 
 ## Sources officielles consultées le 13 novembre 2026

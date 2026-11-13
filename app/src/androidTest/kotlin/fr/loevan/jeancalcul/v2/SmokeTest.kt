@@ -94,12 +94,13 @@ class SmokeTest {
         rule.onNodeWithTag("composer").performTextInput("Brouillon")
         rule.onNodeWithTag("settings").performClick()
         rule.onNodeWithText("Préférences").assertIsDisplayed()
-        // An idle accessibility tree does not mean that a pending IME show/hide finished.
+        // Wait for both hidden IME and the retired platform input connection, not accessibility idleness.
         rule.waitUntil(10_000) {
             var hidden = false
             rule.runOnUiThread {
                 hidden = rule.activity.window.decorView.rootWindowInsets
-                    ?.isVisible(WindowInsets.Type.ime()) == false
+                    ?.isVisible(WindowInsets.Type.ime()) == false &&
+                    !rule.activity.getSystemService(android.view.inputmethod.InputMethodManager::class.java).isAcceptingText
             }
             hidden
         }

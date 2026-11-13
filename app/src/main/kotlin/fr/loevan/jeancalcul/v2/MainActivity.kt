@@ -46,6 +46,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.platform.LocalView
+import android.view.inputmethod.InputMethodManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -89,6 +91,7 @@ class MainActivity : ComponentActivity() {
 fun V2App(model: ConversationViewModel = viewModel()) {
     JeanTheme {
         val focus = LocalFocusManager.current
+        val inputView = LocalView.current
         val keyboardController = LocalSoftwareKeyboardController.current
         val haptic = LocalHapticFeedback.current
         val draft = rememberTextFieldState()
@@ -120,6 +123,9 @@ fun V2App(model: ConversationViewModel = viewModel()) {
             if (page != "chat") {
                 withFrameNanos { }
                 focus.clearFocus(force = true)
+                // The editor was removed from the composition. Refresh the platform
+                // connection too, so the IME cannot keep consuming Back for that editor.
+                inputView.context.getSystemService(InputMethodManager::class.java).restartInput(inputView)
                 keyboardController?.hide()
             }
         }

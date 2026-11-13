@@ -104,5 +104,10 @@ COUI, les cibles Foundation de 48 dp et couiButtonFeedback. L’action de connex
 porte le libellé officiel Continue with ChatGPT, en blanc sur noir ; aucun faux
 logo n’est dessiné. Le sélecteur de compte et les actions restent défilables.
 Le consentement est dans le navigateur système, jamais une WebView embarquée.
-Les nouvelles captures et leur analyse restent NOT_RUN jusqu’au résultat de
-la quatrième tentative locale #56, explicitement autorisée par l’utilisateur.
+Les dix-neuf captures de la tentative 4 ont été ouvertes : les états normaux
+visibles sont lisibles, y compris l’entrée ChatGPT claire/sombre/petite/200 %.
+Le FAIL technique Retour/IME reste présent (9/10 Android). La correction suivante
+renouvelle la connexion via InputMethodManager.restartInput après la disparition
+du champ, puis le test attend aussi isAcceptingText=false. Ce correctif n’est pas
+validé par ces anciennes captures et requiert un nouveau run autorisé.
+Référence API : https://developer.android.com/reference/android/view/inputmethod/InputMethodManager#restartInput(android.view.View)

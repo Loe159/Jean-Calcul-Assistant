@@ -5,7 +5,8 @@ ne valide pas la nouvelle connexion ou son écran. Voir
 [CHATGPT-AUTH](../../../../docs/CHATGPT-AUTH.md) pour l’état actuel et les limites.
 La connexion dynamique officielle est maintenant implémentée ; aucune création
 préalable de client partenaire n’est requise pour ce parcours local/open source.
-Consentement réel, inférence réelle et nouveaux tests Android restent NOT_RUN.
+Consentement réel et inférence réelle restent NOT_RUN. Les nouveaux tests
+Android passent dans la tentative 4 ; l’ensemble reste FAIL (9/10), voir plus bas.
 
 Validation du commit **`b41453484e7edeb51decac23a230ce5d9068e3b4`**, arbre propre :
 [rapport tentative 3](attempt-3/report.md) · [galerie](attempt-3/index.html) ·
@@ -79,3 +80,29 @@ ne sont ni remplacées ni renommées. Le résultat sera publié après exécutio
 
 Les vérifications JVM/build seules sont archivées dans `chatgpt-preflight/` ;
 ce dossier n’est pas un run E2E et ne contient aucune validation visuelle.
+
+## Résultat réel de la tentative 4 autorisée
+
+Commit testé `51c1b53`, arbre propre : build/lint et 27 JVM PASS, Android
+**9/10 PASS, ensemble FAIL**. Les deux nouveaux tests ChatGPT passent : entrée
+de connexion visible et stockage/rotation de l’enveloppe Keystore. L’échec
+est `resetCanBeCancelledAndDraftSurvivesNavigation` : Retour après saisie puis
+réglages laisse l’activité RESUMED sur Préférences. Aucune validation verte
+globale n’est revendiquée.
+
+[Rapport 4](attempt-4/report.md) : dix-neuf captures réellement ouvertes par
+l’agent implémenteur, dix-huit vues normales PASS pour leur viewport, masque
+rouge volontaire FAIL donc détection PASS. Les références Eta sont ouvertes
+et comparées. Aucun compte réel, aucun jeton réel, aucun consentement OpenAI
+ni réponse d’abonnement réel dans ces preuves.
+
+Le correctif préparé ensuite renouvelle la connexion de saisie Android après
+disparition du champ et synchronise le test sur `isAcceptingText=false` ainsi
+que les insets IME masqués. Build/lint/27 JVM et compilation instrumentation
+PASS après ce correctif ; sa validation Android/visuelle reste NOT_RUN tant
+qu’une tentative supplémentaire n’est pas autorisée. Pas de tentative 5 implicite.
+
+APK CI avec l’authentification ChatGPT, avant ce correctif de Retour :
+https://github.com/Loe159/Jean-Calcul-Assistant/actions/runs/43423322349/artifacts/14034454574
+Il peut servir au test manuel Réglages → Continue with ChatGPT ; il ne valide
+pas la connexion utilisateur ni l’éligibilité du compte sans ce test réel.
