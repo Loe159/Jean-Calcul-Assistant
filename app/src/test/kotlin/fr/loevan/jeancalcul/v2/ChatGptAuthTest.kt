@@ -9,8 +9,11 @@ import com.nimbusds.jwt.SignedJWT
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
+import okhttp3.Dns
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -21,6 +24,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
+import java.net.InetAddress
 import java.net.Socket
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -98,6 +102,45 @@ internal class ChatGptMemoryStore(var value: ChatGptRegistration = ChatGptRegist
 }
 
 class ChatGptAuthTest {
+    @Test fun fallbackDnsIsOnlyUsedForOfficialOpenAiHosts() {
+        val ip = InetAddress.getByAddress(byteArrayOf(1, 1, 1, 1))
+        val calls = AtomicInteger()
+        val failingSystem = object : Dns {
+            override fun lookup(hostname: String): List<InetAddress> {
+                throw UnknownHostException("system resolver unavailable")
+            }
+        }
+        val encrypted = object : Dns {
+            override fun lookup(hostname: String): List<InetAddress> {
+                calls.incrementAndGet()
+                return listOf(ip)
+            }
+        }
+        val dns = FallbackOpenAiDns(failingSystem, encrypted)
+        assertEquals(listOf(ip), dns.lookup("auth.openai.com"))
+        assertEquals(listOf(ip), dns.lookup("api.openai.com"))
+        assertEquals(2, calls.get())
+        try { dns.lookup("attacker.invalid"); fail("Unexpected DNS fallback") }
+        catch (_: UnknownHostException) { }
+        assertEquals(2, calls.get())
+        val healthy = object : Dns {
+            override fun lookup(hostname: String) = listOf(ip)
+        }
+        assertEquals(listOf(ip), FallbackOpenAiDns(healthy, encrypted).lookup("auth.openai.com"))
+        assertEquals(2, calls.get())
+    }
+    @Test fun oauthCodeExchangeWaitsUntilActivityResumes() = runBlocking {
+        val foreground = OAuthForegroundGate()
+        foreground.onAppPaused()
+        val awaiting = async(Dispatchers.Default) {
+            foreground.awaitAppResumed()
+            true
+        }
+        yield()
+        assertFalse(awaiting.isCompleted)
+        foreground.onAppResumed()
+        assertTrue(withTimeout(2_000) { awaiting.await() })
+    }
     @Test fun pkceAndDynamicRegistrationUseDocumentedPublicClientParameters() {
         val verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
         val attempt = OAuthAttempt("state", "nonce", verifier, "http://127.0.0.1:3210/auth/callback", "urn:uuid:test")
