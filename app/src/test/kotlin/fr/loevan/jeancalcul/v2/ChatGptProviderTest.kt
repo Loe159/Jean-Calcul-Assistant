@@ -19,6 +19,7 @@ class ChatGptProviderTest {
     @Test fun planUsesResponsesWithStoreFalseAndRealCatalogModel() = runBlocking {
         ChatGptFixture().use { fixture ->
             val manager = manager(fixture)
+            fixture.responseContentType = false
             fixture.responseBody = frame(JSONObject().put("type", "response.output_text.delta").put("delta", "Bon")) +
                 frame(JSONObject().put("type", "response.output_text.delta").put("delta", "jour")) +
                 completed(JSONArray().put(outputText("Bonjour")))
@@ -32,6 +33,19 @@ class ChatGptProviderTest {
             assertEquals("Bearer synthetic-access-1", request.getHeader("Authorization"))
             assertEquals("current_time", body.getJSONArray("tools").getJSONObject(0).getString("name"))
             assertTrue(fixture.requests.none { it.path.orEmpty().contains("backend-api") || it.path.orEmpty().contains("chat/completions") })
+        }
+    }
+    @Test fun completedStreamCanOmitDuplicatedFinalOutput() = runBlocking {
+        ChatGptFixture().use { fixture ->
+            val manager = manager(fixture)
+            fixture.responseBody = frame(JSONObject().put("type", "response.output_text.delta").put("delta", "Bonjour")) +
+                frame(JSONObject().put("type", "response.completed")
+                    .put("response", JSONObject().put("status", "completed")))
+            val chunks = mutableListOf<String>()
+            val calls = ChatGptProvider(manager, fixture.clientId)
+                .turn(listOf(ChatMessage("user", "Bonjour"))) { chunks += it }
+            assertTrue(calls.isEmpty())
+            assertEquals(listOf("Bonjour"), chunks)
         }
     }
     @Test fun toolsPreserveCallIdsAndEncryptedReasoningAcrossStatelessTurns() = runBlocking {
@@ -64,6 +78,8 @@ class ChatGptProviderTest {
             val manager = manager(fixture)
             for ((body, expected) in listOf(
                 frame(JSONObject().put("type", "response.output_text.delta").put("delta", "Partiel")) to RunError.PROTOCOL,
+                "{\"error\":\"not an event stream\"}" to RunError.PROTOCOL,
+                completed(JSONArray()) to RunError.PROTOCOL,
                 frame(JSONObject().put("type", "response.incomplete")) to RunError.PROTOCOL,
                 frame(JSONObject().put("type", "response.failed").put("response", JSONObject().put("error", JSONObject()
                     .put("code", "subscription_sharing_usage_limit_exceeded").put("message", "sensitive diagnostic")))) to RunError.RATE_LIMIT)) {

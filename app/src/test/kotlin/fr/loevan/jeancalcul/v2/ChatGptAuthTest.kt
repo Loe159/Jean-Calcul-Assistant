@@ -47,6 +47,7 @@ internal class ChatGptFixture : java.io.Closeable {
     var scope = "openid email offline_access resource.invoke $PLAN_SCOPE"
     var revokeStatus = 200
     var responseBody = ""
+    var responseContentType = true
     var clientId = "oaiapp_fixture"
     var subject = "fixture-subject"
     var nonce = "nonce"
@@ -85,7 +86,10 @@ internal class ChatGptFixture : java.io.Closeable {
                         .put(JSONObject().put("slug", "hidden").put("display_name", "Hidden").put("visibility", "hidden")))
                     }
                     "/revoke" -> return MockResponse().setResponseCode(revokeStatus)
-                    "/v1/responses" -> return MockResponse().setHeader("Content-Type", "text/event-stream").setBody(responseBody)
+                    "/v1/responses" -> return MockResponse().apply {
+                        if (responseContentType) setHeader("Content-Type", "text/event-stream")
+                        setBody(responseBody)
+                    }
                     else -> return MockResponse().setResponseCode(404)
                 }
                 return MockResponse().setHeader("Content-Type", "application/json").setBody(value.toString())

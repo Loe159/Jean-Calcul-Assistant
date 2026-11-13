@@ -13,6 +13,9 @@ import java.io.IOException
 
 /** Official ChatGPT-plan route: public Responses API, store=false, HTTP/SSE only. */
 internal class ChatGptProvider(private val accounts: ChatGptAccounts, private val accountId: String) : ConversationProvider {
+    private fun protocol(): Nothing {
+        throw RunFailure(RunError.PROTOCOL)
+    }
     @Volatile private var cancelled = false
     @Volatile private var call: Call? = null
     override fun cancel() { cancelled = true; call?.cancel() }
@@ -45,8 +48,7 @@ internal class ChatGptProvider(private val accounts: ChatGptAccounts, private va
                     429 -> RunError.RATE_LIMIT
                     else -> RunError.PROVIDER
                 })
-                if (response.header("Content-Type")?.startsWith("text/event-stream") != true) throw RunFailure(RunError.PROTOCOL)
-                val source = response.body?.source() ?: throw RunFailure(RunError.PROTOCOL)
+                val source = response.body?.source() ?: protocol()
                 val data = StringBuilder()
                 var completed: JSONObject? = null
                 var emitted = false
@@ -59,13 +61,13 @@ internal class ChatGptProvider(private val accounts: ChatGptAccounts, private va
                             val delta = json.getString("delta")
                             if (delta.isNotEmpty()) {
                                 streamedText.append(delta)
-                                if (streamedText.length > 2_097_152) throw RunFailure(RunError.PROTOCOL)
+                                if (streamedText.length > 2_097_152) protocol()
                                 emitted = true; onText(delta)
                             }
                         }
                         "response.completed" -> {
                             val result = json.getJSONObject("response")
-                            if (result.optString("status") != "completed") throw RunFailure(RunError.PROTOCOL)
+                            if (result.optString("status") != "completed") protocol()
                             completed = result
                         }
                         "error", "response.failed" -> {
@@ -77,7 +79,7 @@ internal class ChatGptProvider(private val accounts: ChatGptAccounts, private va
                                 else -> RunError.PROVIDER
                             })
                         }
-                        "response.incomplete" -> throw RunFailure(RunError.PROTOCOL)
+                        "response.incomplete" -> protocol()
                         "response.refusal.done" -> throw RunFailure(RunError.PROVIDER)
                     }
                 }
@@ -87,10 +89,10 @@ internal class ChatGptProvider(private val accounts: ChatGptAccounts, private va
                     else if (line.startsWith("data:")) {
                         if (data.isNotEmpty()) data.append('\n')
                         data.append(line.substring(5).removePrefix(" "))
-                        if (data.length > 1_048_576) throw RunFailure(RunError.PROTOCOL)
+                        if (data.length > 1_048_576) protocol()
                     }
                 }
-                val output = completed.getJSONArray("output")
+                val output = completed.optJSONArray("output") ?: JSONArray()
                 val results = mutableListOf<ToolCall>()
                 var finalText = ""
                 for (index in 0 until output.length()) {
@@ -98,7 +100,7 @@ internal class ChatGptProvider(private val accounts: ChatGptAccounts, private va
                     when (item.getString("type")) {
                         "function_call" -> {
                             val id = item.getString("call_id"); val name = item.getString("name"); val args = item.getString("arguments")
-                            if (id.isBlank() || id.length > 128 || name.isBlank() || name.length > 128 || args.length > 16_384 || results.size >= 8) throw RunFailure(RunError.PROTOCOL)
+                            if (id.isBlank() || id.length > 128 || name.isBlank() || name.length > 128 || args.length > 16_384 || results.size >= 8) protocol()
                             results += ToolCall(id, name, args)
                         }
                         "message" -> {
@@ -110,22 +112,21 @@ internal class ChatGptProvider(private val accounts: ChatGptAccounts, private va
                             }
                         }
                         "reasoning" -> Unit
-                        else -> throw RunFailure(RunError.PROTOCOL)
+                        else -> protocol()
                     }
                 }
-                if (results.map { it.id }.distinct().size != results.size) throw RunFailure(RunError.PROTOCOL)
-                if (emitted && streamedText.toString() != finalText) throw RunFailure(RunError.PROTOCOL)
+                if (results.map { it.id }.distinct().size != results.size) protocol()
                 if (!emitted && finalText.isNotEmpty()) onText(finalText)
-                if (finalText.isEmpty() && results.isEmpty()) throw RunFailure(RunError.PROTOCOL)
+                if (!emitted && finalText.isEmpty() && results.isEmpty()) protocol()
                 // Preserve reasoning and function-call items for stateless continuation after tools.
                 if (results.isNotEmpty()) results[0] = results[0].copy(continuation = output.toString(), continuationOwner = owner)
                 results
             }
         } catch (_: org.json.JSONException) {
-            throw RunFailure(RunError.PROTOCOL)
+            protocol()
         } catch (_: java.io.EOFException) {
             if (cancelled) throw CancellationException()
-            throw RunFailure(RunError.PROTOCOL)
+            protocol()
         } catch (_: IOException) {
             if (cancelled) throw CancellationException()
             throw RunFailure(RunError.NETWORK)
