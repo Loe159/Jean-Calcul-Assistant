@@ -135,3 +135,7 @@ pour enregistrer l'autorisation dans chaque rapport. Aucun dépassement implicit
 Les échecs Smoke sont conservés en FAIL mais n'empêchent plus la collecte des
 scénarios visuels indépendants si les APK sont disponibles. Un build ou scénario
 inexploitable arrête toujours la collecte avec les preuves partielles.
+
+La partition de données du nouvel AVD synthétique est limitée à 4 Gio. Le profil
+Pixel 6 reste identique pour l'écran, l'API et la mémoire ; aucun compte ou
+contenu personnel n'y est installé. Les anciens AVD ne sont pas modifiés.

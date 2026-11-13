@@ -168,6 +168,12 @@ def main():
         image = 'system-images;android-35;google_apis;x86_64'
         run([avdmanager, 'create', 'avd', '-n', name, '-k', image, '--device', 'pixel_6'],
             'create-avd', input='no\n')
+        # Pixel 6 defaults to 12 GiB of userdata. This account-free fixture needs
+        # much less; size only our new disposable AVD, never an existing device.
+        config = out / 'avd' / f'{name}.avd' / 'config.ini'
+        config.write_text('\n'.join(line for line in config.read_text().splitlines()
+                                    if not line.startswith('disk.dataPartition.size='))
+                          + '\ndisk.dataPartition.size=4G\n')
         log = (out / 'logs/emulator-local.txt').open('w')
         cmd = [emulator_bin, '-avd', name, '-port', str(args.port), '-wipe-data', '-no-snapshot',
                '-no-audio', '-no-boot-anim', '-gpu', 'swiftshader', '-memory', '2048', '-cores', '2']
