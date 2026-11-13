@@ -15,6 +15,7 @@ import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
+import okhttp3.mockwebserver.SocketPolicy
 import okhttp3.tls.HandshakeCertificates
 import okhttp3.tls.HeldCertificate
 import org.json.JSONArray
@@ -22,6 +23,10 @@ import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
 import java.net.Socket
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import java.security.cert.CertificateException
+import javax.net.ssl.SSLHandshakeException
 import java.util.Date
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
@@ -34,6 +39,8 @@ internal class ChatGptFixture : java.io.Closeable {
     val requests = CopyOnWriteArrayList<RecordedRequest>()
     var claims: (JWTClaimsSet.Builder) -> JWTClaimsSet.Builder = { it }
     var modelError: Int? = null
+    var disconnectToken = false
+    var disconnectJwks = false
     var tokenError: Int? = null
     var tokenErrorCode = "invalid_grant"
     var scope = "openid email offline_access resource.invoke $PLAN_SCOPE"
@@ -50,16 +57,21 @@ internal class ChatGptFixture : java.io.Closeable {
         server.useHttps(serverTls.sslSocketFactory(), false); server.start()
         val issuer = server.url("/").toString().trimEnd('/')
         oauth = ChatGptOAuth(ChatGptEndpoints(issuer, "$issuer/v1"), OkHttpClient.Builder()
-            .sslSocketFactory(clientTls.sslSocketFactory(), clientTls.trustManager).followRedirects(false).build())
+            .sslSocketFactory(clientTls.sslSocketFactory(), clientTls.trustManager)
+            .followRedirects(false).retryOnConnectionFailure(false).build())
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 requests.add(request)
                 val value: JSONObject = when (request.path) {
                     "/.well-known/openid-configuration" -> JSONObject().put("issuer", issuer)
                         .put("jwks_uri", "$issuer/jwks").put("revocation_endpoint", "$issuer/revoke")
-                    "/jwks" -> JSONObject().put("keys", JSONArray().put(JSONObject(key.toPublicJWK().toJSONString())))
+                    "/jwks" -> {
+                        if (disconnectJwks) return MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START)
+                        JSONObject().put("keys", JSONArray().put(JSONObject(key.toPublicJWK().toJSONString())))
+                    }
                     "/api/accounts/oauth/token" -> {
                         val count = tokenCalls.incrementAndGet()
+                        if (disconnectToken) return MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AT_START)
                         tokenError?.let { return MockResponse().setResponseCode(it).setBody(JSONObject().put("error", tokenErrorCode).toString()) }
                         val builder = JWTClaimsSet.Builder().issuer(issuer).audience(clientId).subject(subject)
                             .issueTime(Date()).expirationTime(Date(System.currentTimeMillis() + 3_600_000))
@@ -136,6 +148,31 @@ class ChatGptAuthTest {
         val request = fixture.requests.first { it.path == "/api/accounts/oauth/token" }.body.clone().readUtf8()
         assertTrue(request.contains("client_id=oaiapp_fixture")); assertTrue(request.contains("code_verifier=verifier"))
         assertFalse(request.contains("client_secret"))
+    }
+    @Test fun failuresAreClassifiedWithoutLeakingNetworkDetailsOrSecrets() {
+        assertEquals(OAuthNetworkIssue.DNS, classifyOAuthNetwork(UnknownHostException("secret-code")))
+        assertEquals(OAuthNetworkIssue.TIMEOUT, classifyOAuthNetwork(SocketTimeoutException("secret-code")))
+        assertEquals(OAuthNetworkIssue.CERTIFICATE, classifyOAuthNetwork(
+            SSLHandshakeException("secret-code").apply { initCause(CertificateException("secret-code")) }))
+        assertEquals(OAuthNetworkIssue.TLS, classifyOAuthNetwork(SSLHandshakeException("secret-code")))
+        val failure = OAuthNetworkFailure(OAuthNetworkStage.TOKEN, OAuthNetworkIssue.DNS)
+        assertTrue(failure.safeMessage.contains("échange du code"))
+        assertFalse(failure.safeMessage.contains("secret-code"))
+        assertFalse(failure.toString().contains("secret-code"))
+    }
+    @Test fun tokenTransportFailureIsScopedAndNeverRetriesSingleUseCode() = ChatGptFixture().use { fixture ->
+        fixture.disconnectToken = true
+        val failure = try { fixture.exchange(); fail("Expected network error"); null }
+            catch (error: OAuthNetworkFailure) { error }
+        assertEquals(OAuthNetworkStage.TOKEN, failure!!.stage)
+        assertEquals(1, fixture.tokenCalls.get())
+    }
+    @Test fun jwksTransportFailureIdentifiesStepAfterCodeExchange() = ChatGptFixture().use { fixture ->
+        fixture.disconnectJwks = true
+        val failure = try { fixture.exchange(); fail("Expected network error"); null }
+            catch (error: OAuthNetworkFailure) { error }
+        assertEquals(OAuthNetworkStage.JWKS, failure!!.stage)
+        assertEquals(1, fixture.tokenCalls.get())
     }
     @Test fun registrationsStaySeparateAndNoModelIsInvented() = runBlocking {
         ChatGptFixture().use { fixture ->
