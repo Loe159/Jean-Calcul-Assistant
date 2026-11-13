@@ -1,6 +1,6 @@
 # Issue #55 — preuves locales
 
-Résultat actuel : [tentative 12](attempt-12/report.md), commit applicatif
+Résultat historique de la tentative 12 (invalidé comme conclusion finale par les échecs suivants) : [tentative 12](attempt-12/report.md), commit applicatif
 `23d9529ad37dc48313405c6b9c5adcb5a38061bc`. Build/lint PASS, **6/6 tests
 Android PASS**, 13 captures examinées avec la vision native : 12 états normaux
 PASS et défaut volontaire correctement détecté. Comparaison Eta effectuée.
@@ -86,3 +86,13 @@ Les APK exacts restent hors Git dans `e2e-artifacts/issue55/attempt-12/` ;
 leurs empreintes et le SHA du code testé sont dans le rapport. Le commit de
 preuves suivant ne modifie pas le code applicatif. La PR reste à accepter ou
 refuser par l’utilisateur, sans fusion automatique.
+
+## Régression détectée après la tentative 12
+
+Les CI 43395010632 et 43396059764 échouent au retour après saisie/navigation.
+L'attente de livraison du Retour ne suffit pas. La tentative 13 conserve 5/6
+succès techniques et un FAIL visuel clavier (en-tête absent). Le diagnostic
+ciblé révèle une activité RESUMED encore sur Préférences, non détruite.
+Après remplacement de `adjustNothing` par `adjustResize`, recommandé pour
+Compose edge-to-edge, la suite diagnostique complète passe 6/6. Une nouvelle
+validation complète est nécessaire avant de conclure.

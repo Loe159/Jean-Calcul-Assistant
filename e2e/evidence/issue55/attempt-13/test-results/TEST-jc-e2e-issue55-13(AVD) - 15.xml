@@ -1,0 +1,20 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="6" failures="1" errors="0" skipped="0" time="0.000" timestamp="2026-11-13T08:58:35" hostname="localhost">
+  <testsuite name="fr.loevan.jeancalcul.v2.SmokeTest" tests="6" failures="1" errors="0" skipped="0" time="43.233" timestamp="2026-11-13T08:58:35" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5580" />
+    </properties>
+    <testcase name="settingsScreen" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="10.566" />
+    <testcase name="resetCanBeCancelledAndDraftSurvivesNavigation" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="14.963">
+      <failure>androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 10000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:990)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:504)
+	at fr.loevan.jeancalcul.v2.SmokeTest.resetCanBeCancelledAndDraftSurvivesNavigation(SmokeTest.kt:51)
+</failure>
+    </testcase>
+    <testcase name="multilineComposerDoesNotPanHeader" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="2.777" />
+    <testcase name="initialState" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="1.696" />
+    <testcase name="composeAndReset" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="5.833" />
+    <testcase name="nativeMenuGalleryAndDialog" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="7.398" />
+  </testsuite>
+</testsuites>

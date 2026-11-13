@@ -1,0 +1,8 @@
+
+fr.loevan.jeancalcul.v2.SmokeTest:......
+
+Time: 44.368
+
+OK (6 tests)
+
+

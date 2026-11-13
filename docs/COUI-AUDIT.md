@@ -31,11 +31,13 @@ Seules les références JPG Eta épinglées servent à la comparaison visuelle.
 SHA-256 des sources Maven auditées :
 `3786ca7079d23b5cb21b7e3cf26108a59eeeb1f0249d24ead9332a45336ec4ff`.
 
-L'espace IME est réservé dans le slot bas ; la fenêtre hôte conserve sa taille.
-Sur minSdk 33, `adjustNothing` laisse la gestion des insets au Compose hôte et
-évite un déplacement automatique de la fenêtre qui masquait l'en-tête. Le test
-clavier vérifie aussi la présence visible de cet en-tête. Une vérification du
-rendu réel reste nécessaire en plus des assertions sémantiques.
+La fenêtre edge-to-edge utilise `adjustResize`, conformément à la configuration
+Compose documentée : https://developer.android.com/develop/ui/compose/system/setup-e2e
+L'espace IME est réservé dans le slot bas. Le diagnostic de la tentative 13
+montrait que l'activité restait RESUMED dans les préférences après Retour :
+`adjustNothing` ne permettait pas une gestion fiable de l'IME. Les assertions
+et la revue des pixels sont conservées ; une sémantique présente ne garantit
+pas que l'en-tête soit effectivement peint.
 
 ## Décision finale pour la navigation
 

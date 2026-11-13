@@ -1,0 +1,86 @@
+{
+  "empty": {
+    "status": "PASS",
+    "sha256": "7bc1a44b2902599a54e3076e72b19e3b30fbe29daad8c764a85ea2d5c780def9",
+    "observation": "Invitation, en-tête, indication du champ et deux destinations complets.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "message": {
+    "status": "PASS",
+    "sha256": "635d5412eb22f155373a6677db5620660b58fcf1ba66a3c61d659f6bbda52aaf",
+    "observation": "Message sortant lisible, indication de saisie restaurée et action plus bleue visible.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reset": {
+    "status": "PASS",
+    "sha256": "63b2d46cbc3ca4ab628ba6e3d965404fcac28164f109c00480cc1eaabf92f55b",
+    "observation": "État vide restauré, champ et navigation complets.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "settings": {
+    "status": "PASS",
+    "sha256": "8b300e21bbf65e921b6ae8402fc382cb0dad03638a8db8d289797092e91ab68c",
+    "observation": "Groupes et résumés complets, retour et sélection Réglages visibles.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "dark": {
+    "status": "PASS",
+    "sha256": "35741db825662b9eb5907642ed981cd8e17f25de83ffac136738d70eabb10a08",
+    "observation": "Texte clair sur surfaces sombres, indication du champ et navigation lisibles.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "small_screen": {
+    "status": "PASS",
+    "sha256": "c061469f9c2d1ddf8c879293d4c34438191780e789eb72545c7cff1ac7b5947e",
+    "observation": "Invitation sur deux lignes, capsule et navigation sans chevauchement.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "large_text": {
+    "status": "PASS",
+    "sha256": "5be4bad88d8b586c620a13ea0eac9ddadbdd7bd87588efdc006df48f135810b6",
+    "observation": "Texte agrandi lisible, destinations et champ non recouverts ; titres fixes alpha7.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "keyboard": {
+    "status": "FAIL",
+    "sha256": "81723aa7e17cddfe038ec5f3ca2e4838d947690bf966e9c3cfd8c371e62cb3a5",
+    "observation": "FAIL : texte saisi et envoi accessibles, mais en-tête Jean-Calcul et actions absents des pixels sous clavier malgré les sémantiques.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "reduced_motion": {
+    "status": "PASS",
+    "sha256": "108a8981471672de16892f15abf5b4bab09593b25d59a46ca4cc49b87a52cf3a",
+    "observation": "État final complet avec capsule, indication et destinations ; fluidité non jugeable sur image.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "menu": {
+    "status": "PASS",
+    "sha256": "f76f802b2a07384c3692632c6ddcf49d68fda6d64abbced35d0267cb939a60fb",
+    "observation": "Deux entrées COUI lisibles dans le menu blanc, navigation et champ présents.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "gallery": {
+    "status": "PASS",
+    "sha256": "2501c42d9285fc8f8c2535e58b81dcc04eca7ed24c832b5c14c97e908b588d2e",
+    "observation": "Deux bulles illustratives, palette et dialogue lisibles ; navigation complète. Nuancier blanc faiblement distinct.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "dialog": {
+    "status": "PASS",
+    "sha256": "85ad4be068b97eaf569d5234d40e41b8bb9ac6035c1b213add2a9dc561234050",
+    "observation": "Titre, explication et action Fermer lisibles sur fond assombri, marges respectées.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "regression_fixture": {
+    "status": "FAIL",
+    "sha256": "af309739fca666330d71da10279bc8692d9909862fbf9db56c1439e8191516fc",
+    "observation": "Rectangle rouge volontaire masquant envoi et navigation, défaut bloquant détecté.",
+    "opened_with": "functions.view_image (vision native)"
+  },
+  "_reference_comparison": {
+    "status": "NOT_RUN",
+    "opened_with": "",
+    "observation": "",
+    "reference_sha256": {}
+  }
+}
