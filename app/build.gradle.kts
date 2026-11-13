@@ -25,6 +25,7 @@ android {
     testOptions { animationsDisabled = true }
 }
 dependencies {
+    implementation("com.nimbusds:nimbus-jose-jwt:10.0.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")

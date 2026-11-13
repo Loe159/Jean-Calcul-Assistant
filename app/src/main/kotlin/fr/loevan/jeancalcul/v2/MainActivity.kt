@@ -98,6 +98,7 @@ fun V2App(model: ConversationViewModel = viewModel()) {
         val session by model.session.collectAsState()
         val config by model.config.collectAsState()
         val settingsError by model.settingsError.collectAsState()
+        val chatGpt by model.chatGptUi.collectAsState()
         val messages = session.messages
         val running = session.status == RunStatus.RUNNING
         fun navigate(destination: String) {
@@ -150,7 +151,10 @@ fun V2App(model: ConversationViewModel = viewModel()) {
             },
             bottomBar = {
                 Column(Modifier.fillMaxWidth().navigationBarsPadding().imePadding()) {
-                    if (page == "chat") Composer(draft, config.destination, running, model::stop, ::send)
+                    if (page == "chat") Composer(draft, if (chatGpt.usingPlan) {
+                        if (chatGpt.authorized) "Abonnement ChatGPT · api.openai.com" else "ChatGPT · connexion requise"
+                    } else config.destination, running, model::stop, ::send,
+                        if (chatGpt.usingPlan && chatGpt.authorized) model::manageChatGptUsage else null)
                     // The keyboard gets the available height; destination controls return on dismissal.
                     val keyboard = WindowInsets.isImeVisible
                     if (!keyboard) DestinationBar(page, messages.isNotEmpty(), { navigate(it) }) {
@@ -162,12 +166,16 @@ fun V2App(model: ConversationViewModel = viewModel()) {
             Crossfade(targetState = page, animationSpec = tween(180), label = "destination",
                 modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) { destination ->
                 when (destination) {
-                    "settings" -> Preferences(config, running, settingsError, model::configure) { navigate("gallery") }
+                    "settings" -> Preferences(config, running, settingsError, model::configure, model) { navigate("gallery") }
                     "gallery" -> DesignGallery()
                     else -> Conversation(session, model::retry)
                 }
             }
         }
+        Dialog(visible = chatGpt.welcome && chatGpt.usingPlan, onDismissRequest = model::acknowledgeChatGpt,
+            title = "Vous utilisez votre abonnement ChatGPT",
+            message = "Les requêtes éligibles utilisent votre abonnement ou vos crédits ChatGPT. Gérez l’utilisation et les limites dans les réglages ChatGPT.",
+            confirmAction = CouiDialogAction("D’accord", model::acknowledgeChatGpt))
         Dialog(visible = confirmReset, onDismissRequest = { confirmReset = false },
             title = "Effacer cette conversation ?", message = "Les messages enregistrés sur cet appareil et le brouillon seront supprimés.",
             confirmAction = CouiDialogAction("Effacer", { reset() }),
@@ -191,7 +199,7 @@ private fun ConversationLayout(
 }
 
 @Composable
-private fun Composer(draft: TextFieldState, destination: String, running: Boolean, onStop: () -> Unit, onSend: () -> Unit) {
+private fun Composer(draft: TextFieldState, destination: String, running: Boolean, onStop: () -> Unit, onSend: () -> Unit, onUsage: (() -> Unit)? = null) {
     val colors = CouiTheme.colorScheme
     Column(Modifier.padding(horizontal = JeanTokens.edge, vertical = 8.dp).then(ComposerViewport)
         .shadow(JeanTokens.elevation, JeanTokens.capsule).clip(JeanTokens.capsule)
@@ -211,6 +219,10 @@ private fun Composer(draft: TextFieldState, destination: String, running: Boolea
             else ActionIcon("Envoyer", Icons.AutoMirrored.Filled.Send, Modifier.testTag("send"),
                 enabled = draft.text.isNotBlank(), accent = true, onClick = onSend)
         }
+        if (onUsage != null) Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .clickable(role = Role.Button, onClick = onUsage).padding(vertical = 8.dp)) {
+            Text(text = "Gérer l’utilisation ChatGPT", kind = CouiTextKind.Description)
+        }
     }
 }
 
@@ -225,7 +237,7 @@ private fun Conversation(session: Session, onRetry: () -> Unit) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Text(text = "Comment puis-je vous aider ?", kind = CouiTextKind.PageTitle)
                 Spacer(Modifier.height(16.dp))
-                Text(text = "Choisissez un fournisseur dans les préférences.\nLes conversations restent sur cet appareil.", kind = CouiTextKind.Body,
+                Text(text = "Connectez votre compte ChatGPT dans les préférences.\nLes conversations restent sur cet appareil.", kind = CouiTextKind.Body,
                     color = CouiTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             }
         } else {
@@ -293,17 +305,21 @@ private fun DestinationBar(page: String, hasMessages: Boolean, onSelection: (Str
 
 @Composable
 private fun Preferences(config: ProviderConfig, running: Boolean, settingsError: String?,
-    onConfigure: (String, String, Boolean, String) -> Unit, onGallery: () -> Unit) {
+    onConfigure: (String, String, Boolean, String) -> Unit, model: ConversationViewModel, onGallery: () -> Unit) {
     var editing by rememberSaveable { mutableStateOf(false) }
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     BackHandler(enabled = editing) { focus.clearFocus(force = true); keyboard?.hide(); editing = false }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
-        Group(title = "Fournisseur IA", footer = "Historique sur cet appareil. Outil autorisé : lecture de l’heure uniquement.") {
+        Group(title = "Abonnement ChatGPT", footer = "Utilisez votre compte ChatGPT. Les prochains envois transmettent l’historique au fournisseur sélectionné.") {
+            ChatGptSettings(model, running)
+        }
+        Group(title = "Fournisseur API", footer = "Historique sur cet appareil. Outil autorisé : lecture de l’heure uniquement.") {
             Item(onClick = { editing = !editing }, modifier = Modifier.testTag("configure_provider"),
                 title = { Text(text = "Configurer le fournisseur", kind = CouiTextKind.PreferenceTitle) },
                 summary = { Text(text = config.destination, kind = CouiTextKind.PreferenceSummary) })
             if (editing) ProviderForm(config, running, settingsError, onConfigure)
+            Item(onClick = model::useApiProvider, title = { Text(text = "Utiliser le fournisseur API", kind = CouiTextKind.PreferenceTitle) })
         }
         Group(title = "Apparence") {
             Item(title = { Text(text = "Thème du système", kind = CouiTextKind.PreferenceTitle) },
@@ -313,6 +329,60 @@ private fun Preferences(config: ProviderConfig, running: Boolean, settingsError:
                 title = { Text(text = "Galerie COUI", kind = CouiTextKind.PreferenceTitle) },
                 summary = { Text(text = "Couleurs, typographie et composants", kind = CouiTextKind.PreferenceSummary, color = CouiTheme.colorScheme.onSurfaceVariant) })
         }
+    }
+}
+
+@Composable
+private fun ChatGptSettings(model: ConversationViewModel, running: Boolean) {
+    val account by model.chatGptUi.collectAsState()
+    val message by model.chatGptMessage.collectAsState()
+    val signingIn by model.signingIn.collectAsState()
+    var modelMenu by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(text = "Connectez votre compte pour utiliser votre abonnement ChatGPT.", kind = CouiTextKind.Body)
+        val source = remember { MutableInteractionSource() }
+        Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp))
+            .background(Color.Black).couiButtonFeedback(interactionSource = source, enabled = !running && !signingIn)
+            .clickable(source, indication = null, enabled = !running && !signingIn, role = Role.Button) { model.signInChatGpt(account.active.takeIf { it.isNotBlank() }) }
+            .padding(16.dp).testTag("chatgpt_sign_in"), contentAlignment = Alignment.Center) {
+            Text(text = "Continue with ChatGPT", kind = CouiTextKind.Body, color = Color.White)
+        }
+        if (account.accounts.isNotEmpty()) ChatGptAction("Ajouter un compte ChatGPT", { model.signInChatGpt(null) }, !running && !signingIn)
+        if (signingIn) ChatGptAction("Annuler la connexion", model::cancelChatGptSignIn)
+        account.accounts.forEach { saved ->
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .clickable(enabled = !running && !signingIn, role = Role.RadioButton) { model.selectChatGptAccount(saved.id) }
+                .semantics { selected = account.active == saved.id }.padding(12.dp)) {
+                Text(text = (if (account.active == saved.id) "✓ " else "") + saved.label +
+                    if (saved.authorized) " · autorisé" else if (saved.signedIn) " · abonnement à autoriser" else " · déconnecté", kind = CouiTextKind.Body)
+            }
+        }
+        if (account.active.isNotBlank()) {
+            Text(text = if (account.authorized) "Compte autorisé · destination distante api.openai.com" else "Autorisation ChatGPT à renouveler", kind = CouiTextKind.Description)
+            if (!account.usingPlan) ChatGptAction("Utiliser mon abonnement ChatGPT", model::useChatGpt, !running)
+            ChatGptAction("Reconnecter ce compte", { model.signInChatGpt(account.active) }, !running && !signingIn)
+            Box {
+                ChatGptAction("Modèle : " + (account.models.find { it.id == account.model }?.label
+                    ?: account.model.ifBlank { "Choisir après connexion" }), { modelMenu = true }, !running && account.models.isNotEmpty())
+                Menu(expanded = modelMenu, onDismissRequest = { modelMenu = false },
+                    items = account.models.map { CouiMenuItem(it.id, it.label) },
+                    onItemClick = { modelMenu = false; model.selectChatGptModel(it.value) })
+            }
+            if (account.authorized) ChatGptAction("Actualiser les modèles", model::refreshChatGptModels, !running)
+            ChatGptAction("Déconnecter ce compte", model::signOutChatGpt, !running)
+        }
+        message?.let { Text(text = it, kind = CouiTextKind.Description, modifier = Modifier.testTag("chatgpt_status")) }
+        ChatGptAction("Gérer l’utilisation ChatGPT", model::manageChatGptUsage)
+    }
+}
+
+@Composable
+private fun ChatGptAction(label: String, action: () -> Unit, enabled: Boolean = true) {
+    val source = remember { MutableInteractionSource() }
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(8.dp))
+        .couiButtonFeedback(interactionSource = source, enabled = enabled)
+        .clickable(source, indication = null, enabled = enabled, role = Role.Button, onClick = action).padding(12.dp)) {
+        Text(text = label, kind = CouiTextKind.Body, color = if (enabled) CouiTheme.colorScheme.onSurface else CouiTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -347,7 +417,6 @@ private fun ProviderForm(config: ProviderConfig, running: Boolean, error: String
             Text(text = if (running) "Arrêtez la réponse pour modifier" else "Enregistrer le fournisseur", kind = CouiTextKind.Body)
         }
         error?.let { Text(text = it, kind = CouiTextKind.Description) }
-        Text(text = "Codex direct : indisponible, preuve de fonctionnement et conformité requises.", kind = CouiTextKind.Description)
     }
 }
 

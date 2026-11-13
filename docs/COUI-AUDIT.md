@@ -96,3 +96,13 @@ sa valeur et ne la sauvegarde pas dans l’état Compose. Le formulaire s’ouvr
 uniquement après « Configurer le fournisseur » ; les réglages initiaux conservent
 les groupes COUI. Le retour système ferme d’abord l’édition avant de quitter les
 réglages. Les nouveaux écrans doivent être jugés sur les preuves #56 réelles.
+
+## Extension de connexion ChatGPT
+
+Le groupe ChatGPT précède le fournisseur API. Il réutilise Group, Text et Menu
+COUI, les cibles Foundation de 48 dp et couiButtonFeedback. L’action de connexion
+porte le libellé officiel Continue with ChatGPT, en blanc sur noir ; aucun faux
+logo n’est dessiné. Le sélecteur de compte et les actions restent défilables.
+Le consentement est dans le navigateur système, jamais une WebView embarquée.
+Les nouvelles captures et leur analyse restent NOT_RUN tant qu’une quatrième
+tentative locale #56 n’est pas explicitement autorisée.

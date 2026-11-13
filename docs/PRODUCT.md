@@ -18,5 +18,7 @@ système de personnages et copie du runtime Eta.
 
 Le chat persiste la conversation et accepte un fournisseur OpenAI-compatible
 HTTPS configuré par l’utilisateur, local ou distant. Aucun fournisseur n’est
-préconnecté. Codex direct et l’exécution d’outils Android ne sont pas intégrés ;
-voir `RUNTIME.md` pour les limites et validations réelles.
+préconnecté. Le parcours ChatGPT par inscription dynamique et API Responses est
+implémenté ; sa connexion réelle reste à autoriser et valider sur un compte
+utilisateur. Aucun outil d’accès Android n’est intégré. Voir `CHATGPT-AUTH.md`
+et `RUNTIME.md` pour les limites et validations réelles.

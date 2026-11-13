@@ -47,25 +47,22 @@ sensibles restent dans la tranche outils ; aucun accès appareil n’est permis 
 Une seule conversation courante est persistée ; « Nouveau » l’efface après
 confirmation. Il n’y a pas encore de sélecteur de conversations archivées.
 
-## Codex direct : NOT_RUN / non intégré
+## Authentification ChatGPT
 
-La condition de l’issue « après preuve de fonctionnement et conformité » n’est
-pas satisfaite par des tests SSE synthétiques. La documentation officielle décrit
-l’authentification Codex et l’intégration app-server ; cela ne constitue pas une
-preuve OAuth Android pour cette application. Aucun client OAuth appartenant à
-une autre application, fichier auth.json de l’hôte, cookie ou jeton de session
-ChatGPT n’est réutilisé. L’interface indique cette indisponibilité.
+L’extension documentée dans `CHATGPT-AUTH.md` ajoute le parcours officiel
+local/open source : inscription dynamique, navigateur système et PKCE, OIDC
+signé, Keystore, comptes séparés et refresh/révocation. Il n’est pas nécessaire
+de préconfigurer un client secret ou une clé partenaire pour ce parcours.
+La précédente conclusion d’indisponibilité faute d’un client OAuth enregistré
+était trop générale : elle concernait le parcours partenaire.
 
-Sources consultées le 13 novembre 2026 :
-- https://developers.openai.com/siwc (client OAuth propre à l’application requis)
-- https://developers.openai.com/codex/auth/
-- https://learn.chatgpt.com/docs/app-server
-- https://developers.openai.com/api/reference/resources/chat
-
-Pour terminer ce critère, fournir une voie d’authentification officiellement
-autorisée pour Jean-Calcul, vérifier le cycle connexion/rafraîchissement/révocation
-et effectuer un échange réel autorisé. Aucune réponse d’un modèle réel distant
-ou local n’a été validée par les fixtures. Ne pas clore #56 sur cette seule PR.
+Le fournisseur `ChatGptProvider` appelle le catalogue du compte et l’API
+Responses publique avec `store=false`, `stream=true`. Il réutilise le runtime
+conversationnel. Aucun moteur Codex app-server ni endpoint backend-api n’est
+embarqué. Le consentement utilisateur réel et l’inférence réelle restent
+NOT_RUN jusqu’au test manuel ; la validation locale de la tentative 3 précède
+cette extension et ne la valide pas. Voir `CHATGPT-AUTH.md` pour les preuves,
+le budget E2E et les étapes d’utilisation sur le téléphone.
 
 ## Vérifications
 

@@ -28,3 +28,11 @@ credentials avec Android Keystore. `OpenAiProvider` utilise HTTPS/SSE pour les
 endpoints distants et locaux compatibles. La politique ne permet que la lecture d’horloge UTC `current_time`, avec
 une boucle tool calling bornée ; tous les accès appareil sont refusés.
 Voir `RUNTIME.md` pour les frontières, erreurs, stop/retry et limites Codex.
+
+La connexion ChatGPT est prioritaire dans les préférences. `ChatGptOAuth` valide
+PKCE/OIDC et les endpoints officiels ; `LoopbackOAuth` reçoit le callback du
+navigateur système. `ChatGptAccounts` sépare les inscriptions et sérialise les
+refreshs. `ChatGptSecureStore` chiffre atomiquement avec Keystore.
+`ChatGptProvider` convertit l’historique commun vers Responses/SSE, sans
+fallback de facturation. Les éléments de continuation opaque sont liés au
+compte et au modèle. Voir `CHATGPT-AUTH.md` pour les frontières et preuves.

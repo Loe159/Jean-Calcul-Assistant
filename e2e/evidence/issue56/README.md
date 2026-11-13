@@ -1,5 +1,12 @@
 # Issue #56 — preuves locales
 
+**Attention :** la tentative 3 ci-dessous précède l’extension ChatGPT. Elle
+ne valide pas la nouvelle connexion ou son écran. Voir
+[CHATGPT-AUTH](../../../../docs/CHATGPT-AUTH.md) pour l’état actuel et les limites.
+La connexion dynamique officielle est maintenant implémentée ; aucune création
+préalable de client partenaire n’est requise pour ce parcours local/open source.
+Consentement réel, inférence réelle et nouveaux tests Android restent NOT_RUN.
+
 Validation du commit **`b41453484e7edeb51decac23a230ce5d9068e3b4`**, arbre propre :
 [rapport tentative 3](attempt-3/report.md) · [galerie](attempt-3/index.html) ·
 [captures](attempt-3/screenshots) · [revue par image](attempt-3/visual-review.json).

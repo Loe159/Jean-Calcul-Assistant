@@ -27,6 +27,28 @@ class SmokeTest {
     }
     @get:Rule(order = 1) val rule = createAndroidComposeRule<MainActivity>()
 
+    @Test fun chatGptSignInEntryIsVisibleWithoutApiConfiguration() {
+        rule.onNodeWithTag("settings").performClick()
+        rule.onNodeWithTag("chatgpt_sign_in").assertIsDisplayed()
+        rule.onNodeWithText("Continue with ChatGPT").assertIsDisplayed()
+    }
+    @Test fun chatGptAccountsAreEncryptedAndRotatedAsOneRecord() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val file = java.io.File(context.noBackupFilesDir, "chatgpt-accounts.aes")
+        try {
+            val store = ChatGptSecureStore(context)
+            val registration = ChatGptRegistration(accounts = listOf(ChatGptAccount("oaiapp_synthetic", "synthetic-subject", "synthetic@example.invalid",
+                ChatGptTokens("synthetic-access", "synthetic-refresh", "synthetic-id", 123456, setOf(PLAN_SCOPE)))), active = "oaiapp_synthetic", enabled = true)
+            store.save(registration)
+            assertEquals(registration, ChatGptSecureStore(context).load())
+            val bytes = String(file.readBytes(), Charsets.ISO_8859_1)
+            org.junit.Assert.assertFalse(bytes.contains("synthetic-access"))
+            org.junit.Assert.assertFalse(bytes.contains("synthetic-refresh"))
+            val updated = registration.copy(accounts = registration.accounts.map { it.copy(tokens = it.tokens!!.copy(access = "replacement-access", refresh = "replacement-refresh")) })
+            store.save(updated)
+            assertEquals(updated, ChatGptSecureStore(context).load())
+        } finally { file.delete(); java.io.File(file.path + ".bak").delete() }
+    }
     @Test fun keystoreCredentialsAndHistoryRoundTrip() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val settings = ProviderSettings(context)

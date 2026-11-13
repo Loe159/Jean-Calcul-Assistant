@@ -26,7 +26,7 @@ class FileSessionStore(context: Context) : SessionStore {
                 messages.getJSONObject(it).let { m ->
                     val calls = m.optJSONArray("toolCalls") ?: JSONArray()
                     ChatMessage(m.getString("role"), m.getString("text"), (0 until calls.length()).map { index ->
-                        calls.getJSONObject(index).let { call -> ToolCall(call.getString("id"), call.getString("name"), call.getString("arguments")) }
+                        calls.getJSONObject(index).let { call -> ToolCall(call.getString("id"), call.getString("name"), call.getString("arguments"), call.optString("continuation", ""), call.optString("continuationOwner", "")) }
                     }, m.optString("toolCallId", ""))
                 }
             }, RunStatus.valueOf(json.getString("status")),
@@ -40,7 +40,7 @@ class FileSessionStore(context: Context) : SessionStore {
         val messages = JSONArray(); val events = JSONArray()
         session.messages.forEach { message ->
             val calls = JSONArray()
-            message.toolCalls.forEach { calls.put(JSONObject().put("id", it.id).put("name", it.name).put("arguments", it.arguments)) }
+            message.toolCalls.forEach { calls.put(JSONObject().put("id", it.id).put("name", it.name).put("arguments", it.arguments).put("continuation", it.continuation).put("continuationOwner", it.continuationOwner)) }
             messages.put(JSONObject().put("role", message.role).put("text", message.text)
                 .put("toolCalls", calls).put("toolCallId", message.toolCallId))
         }

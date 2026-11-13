@@ -8,11 +8,14 @@ import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 
 /** No Android/UI dependencies: the voice entry point can use the same session. */
-data class ToolCall(val id: String, val name: String, val arguments: String)
+data class ToolCall(val id: String, val name: String, val arguments: String, val continuation: String = "", val continuationOwner: String = "")
 data class ChatMessage(val role: String, val text: String,
     val toolCalls: List<ToolCall> = emptyList(), val toolCallId: String = "")
 enum class RunStatus { IDLE, RUNNING, COMPLETED, STOPPED, FAILED, INTERRUPTED }
 enum class RunError(val label: String) {
+    CHATGPT_MODEL("Choisissez un modèle du compte ChatGPT dans les préférences."),
+    CHATGPT_AUTH("Connectez ou reconnectez votre compte ChatGPT dans les préférences."),
+    CHATGPT_PERMISSION("Autorisez l’utilisation de votre abonnement dans les réglages ChatGPT."),
     CONFIGURATION("Configurez un fournisseur dans les préférences."),
     AUTHENTICATION("Authentification refusée. Vérifiez la clé."),
     RATE_LIMIT("Limite du fournisseur atteinte. Réessayez plus tard."),
@@ -22,7 +25,7 @@ enum class RunError(val label: String) {
     STORAGE("Impossible d’enregistrer la conversation."),
     TOOL_POLICY("Demande d’outil refusée par la politique Android.")
 }
-class RunFailure(val kind: RunError) : Exception(kind.name)
+class RunFailure(val kind: RunError, val terminalAuth: Boolean = false) : Exception(kind.name)
 data class RunEvent(val runId: String, val kind: String, val time: Long = System.currentTimeMillis())
 data class Session(
     val id: String = UUID.randomUUID().toString(),

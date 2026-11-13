@@ -76,7 +76,7 @@ class VisualScenarioTest {
                 rule.onNodeWithTag("settings").performClick()
                 rule.onNodeWithText("Préférences").assertIsDisplayed()
                 rule.onNodeWithTag("composer").assertDoesNotExist()
-                if (scenario != "settings") rule.onNodeWithTag("configure_provider").performClick()
+                if (scenario != "settings") rule.onNodeWithTag("configure_provider").performScrollTo().performClick()
             }
             "menu" -> rule.onNodeWithTag("options").performClick()
             "gallery", "dialog" -> {
