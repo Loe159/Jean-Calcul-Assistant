@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.TextFieldLineLimits
-import androidx.compose.foundation.text.input.TextFieldDecorator
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.verticalScroll
@@ -105,7 +104,7 @@ fun V2App() {
             }
         }
         BackHandler(enabled = page != "chat") { navigate(if (page == "gallery") "settings" else "chat") }
-        Scaffold(
+        ConversationLayout(
             modifier = Modifier.fillMaxSize(),
             topBar = {
                 Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp).testTag("header"),
@@ -158,20 +157,34 @@ fun V2App() {
 }
 
 @Composable
+private fun ConversationLayout(
+    modifier: Modifier,
+    topBar: @Composable () -> Unit,
+    bottomBar: @Composable () -> Unit,
+    content: @Composable (PaddingValues) -> Unit,
+) {
+    Column(modifier.background(CouiTheme.colorScheme.background)
+        .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))) {
+        topBar()
+        Box(Modifier.weight(1f).fillMaxWidth()) { content(PaddingValues()) }
+        bottomBar()
+    }
+}
+
+@Composable
 private fun Composer(draft: TextFieldState, onSend: () -> Unit) {
     val colors = CouiTheme.colorScheme
     Column(Modifier.padding(horizontal = JeanTokens.edge, vertical = 8.dp).then(ComposerViewport)
         .shadow(JeanTokens.elevation, JeanTokens.capsule).clip(JeanTokens.capsule)
         .background(colors.surface).padding(16.dp)) {
-        BasicTextField(state = draft,
+        Box(Modifier.fillMaxWidth()) {
+          BasicTextField(state = draft,
             textStyle = rememberCouiTextStyle(CouiTextKind.Body).copy(color = colors.onSurface),
             cursorBrush = SolidColor(colors.accent), lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = 4),
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("composer")
-                .semantics { contentDescription = "Message à Jean-Calcul" },
-            decorator = TextFieldDecorator { field -> Box {
-                if (draft.text.isEmpty()) Text(text = "Demander à Jean-Calcul…", kind = CouiTextKind.Body, color = colors.onSurfaceVariant)
-                field()
-            } })
+                .semantics { contentDescription = "Message à Jean-Calcul" })
+          if (draft.text.isEmpty()) Text(text = "Demander à Jean-Calcul…", kind = CouiTextKind.Body, color = colors.onSurfaceVariant)
+        }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(text = "IA non connectée", kind = CouiTextKind.Description,
                 color = colors.onSurfaceVariant, modifier = Modifier.weight(1f))

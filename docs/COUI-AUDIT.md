@@ -78,3 +78,13 @@ contient aussi sa propre gestion IME/rectangle Android. La saisie est passée au
 champ Foundation basé sur `TextFieldState`, conservé au niveau de V2App et
 sauvegardé par `rememberTextFieldState`. Il n'y a plus deux états à synchroniser.
 Envoi et reset utilisent `clearText`, et le champ conserve son défilement interne.
+
+## Hôte final
+
+Les contrôles sont hébergés dans une colonne Foundation : en-tête, contenu
+pondéré, zone basse et insets. La couche d'enregistrement du fond du Scaffold
+COUI est retirée, aucun effet de prélèvement du fond n'étant nécessaire ici.
+Les captures précédentes conservent les défauts visuels constatés malgré des
+coordonnées sémantiques inchangées. Group/Item/Divider, Menu, Dialog et Text
+restent natifs ; hôte, saisie, actions et navigation sont les exceptions
+Foundation explicitement documentées. Aucune adaptation Material3 ne subsiste.
