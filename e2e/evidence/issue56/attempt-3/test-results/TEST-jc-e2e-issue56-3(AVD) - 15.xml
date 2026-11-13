@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="8" failures="0" errors="0" skipped="0" time="0.000" timestamp="2026-11-13T10:40:49" hostname="localhost">
+  <testsuite name="fr.loevan.jeancalcul.v2.SmokeTest" tests="8" failures="0" errors="0" skipped="0" time="42.354" timestamp="2026-11-13T10:40:49" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5580" />
+    </properties>
+    <testcase name="settingsScreen" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="9.900" />
+    <testcase name="resetCanBeCancelledAndDraftSurvivesNavigation" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="10.976" />
+    <testcase name="keystoreCredentialsAndHistoryRoundTrip" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="1.943" />
+    <testcase name="multilineComposerDoesNotPanHeader" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="2.436" />
+    <testcase name="historySurvivesRecreationAndFailureCanRetry" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="3.614" />
+    <testcase name="initialState" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="2.168" />
+    <testcase name="composeAndReset" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="4.240" />
+    <testcase name="nativeMenuGalleryAndDialog" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="7.077" />
+  </testsuite>
+</testsuites>

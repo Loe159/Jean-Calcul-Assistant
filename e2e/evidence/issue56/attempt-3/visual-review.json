@@ -1,0 +1,107 @@
+{
+  "empty": {
+    "status": "PASS",
+    "sha256": "edec597f9eb238673ca1d213a8881cdbe91fe6dec6edb905885efdcc3dc87f3a",
+    "observation": "Accueil clair : titre, consigne fournisseur et stockage local visibles ; capsule et onglets entièrement au-dessus du geste système.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "message": {
+    "status": "PASS",
+    "sha256": "4158f32ca880a1dae5df82de1fdf63ac9c1f745eeacaf7f33bda45dc306dd043",
+    "observation": "Message utilisateur synthétique affiché ; état non configuré et Réessayer explicites, aucune bulle entrante inventée. Capsule vide conservée.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "reset": {
+    "status": "PASS",
+    "sha256": "edec597f9eb238673ca1d213a8881cdbe91fe6dec6edb905885efdcc3dc87f3a",
+    "observation": "Effacement confirmé : ancien message absent, accueil et indication de saisie restaurés ; navigation Chat active.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "settings": {
+    "status": "PASS",
+    "sha256": "cdbaf18f7c3dfd85741e1b4367782181a03037ccfc9e98653469d4439f1c49dd",
+    "observation": "Réglages compacts : action Configurer le fournisseur, état IA non configurée, politique horloge et apparence lisibles. Le formulaire est replié, galerie visible.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "dark": {
+    "status": "PASS",
+    "sha256": "738fbfa5988e09754317729c99a5512696d071a347c7d6b88ad5cd3168330a30",
+    "observation": "Fond quasi noir, carte de saisie sombre, textes et icônes clairs contrastés ; onglet Chat bleu sombre distinct.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "small_screen": {
+    "status": "PASS",
+    "sha256": "56db04b9d019a3a330589a9c3cd77e0b78cf6478fec6449f76e4431d4faf6fd4",
+    "observation": "Écran 360×640 dp : titre sur deux lignes et description lisibles, capsule/envoi/navigation sans chevauchement ni débordement horizontal.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "large_text": {
+    "status": "PASS",
+    "sha256": "7ba1550df664fdbaa91cfb0eb258e51b3d2c58b72e4da008f3f1da1511eb001f",
+    "observation": "200 % : corps et navigation agrandis, retours à la ligne sans superposition ; placeholder abrégé, titre COUI encore visible et à taille fixe (alpha7).",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "keyboard": {
+    "status": "PASS",
+    "sha256": "2236251a6400e07bd8c19e6b0f13f8625fbbddbb9379c795d63c1764eb2f8fa6",
+    "observation": "Clavier présent ; brouillon, curseur et envoi restent dégagés au-dessus de l’IME. En-tête et trois actions vérifiés aussi dans inspection/keyboard-header.png ouvert nativement.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "reduced_motion": {
+    "status": "PASS",
+    "sha256": "550145a211b79f250a4a4606456d9fc79f17a1f95703e6d85f56594dba2c2a6f",
+    "observation": "Capture stable avec animations désactivées : accueil, capsule et onglets lisibles ; la capture ne mesure ni fluidité ni retour tactile.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "menu": {
+    "status": "PASS",
+    "sha256": "1a66b511041fbe036db268508a37e74049d19966d9fe02ac183a89344e22c79f",
+    "observation": "Menu natif COUI avec Galerie COUI et Préférences lisibles, ancré en haut à droite, saisie non recouverte.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "gallery": {
+    "status": "PASS",
+    "sha256": "3c0f4bf2ec29838d27121583a72c3c2bdc46bf0ee37aa6afc32de32d646c75c8",
+    "observation": "Carte typographique, palette et deux bulles illustratives distinctes ; dialogue accessible dans la zone visible, navigation séparée.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "dialog": {
+    "status": "PASS",
+    "sha256": "acfa7f9aa0f9339bf1f8c7948cc6c677998608ca14261ea9a95b6a82fe8fb57d",
+    "observation": "Dialogue au bas, titre/message/Fermer lisibles sur fond blanc ; voile de fond et barre système distincts, aucune action sous le geste système.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "provider_dark": {
+    "status": "PASS",
+    "sha256": "2a37d488d3bcfe4d7bb21cd421e8e9d734345eaa5d1e20bb09c63f038c34d8f0",
+    "observation": "Correction visible : les trois champs vides sont bordés en gris clair sur surface sombre. Libellés et avertissement HTTPS lisibles ; suite et Enregistrer sous le pli non validés par ce PNG.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "provider_small_screen": {
+    "status": "PASS",
+    "sha256": "01beb3d645408eb0b25010cec0ddea6e4cb29f453770a31969203c57ab5528ca",
+    "observation": "Correction visible en clair sur 360×640 : URL, modèle et clé ont des contours nets. Éléments visibles sans débordement horizontal ; bas de formulaire hors viewport défilable, non inspecté ici.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "provider_large_text": {
+    "status": "PASS",
+    "sha256": "4731192f02f4f8d2ffb9421dc2ec239d568d00047c148795db3281cd43b04f7c",
+    "observation": "À 200 % les champs URL et modèle conservent des bordures visibles, les libellés se réorganisent sans se chevaucher. Le champ clé et la suite sont sous le pli ; leur affichage après défilement reste NOT_RUN.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "regression_fixture": {
+    "status": "FAIL",
+    "sha256": "ec9ddf946c3668de5f5ff494e566ce596e653ce9bc84858cf625244a86377370",
+    "observation": "Défaut volontaire détecté : rectangle rouge opaque sur toute la largeur basse masque statut, envoi et navigation, et une partie de la capsule.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "_reference_comparison": {
+    "status": "PASS",
+    "opened_with": "functions.exec -> tools.view_image (vision native)",
+    "observation": "Les JPG Eta chat_home et settings de cette tentative ont été ouverts avec les captures V2. Continuité du fond neutre, de la capsule basse et des groupes arrondis avec titres/résumés. V2 conserve sa navigation Chat/Réglages, affiche la configuration réelle et ajoute des champs bordés ; aucun raccourci Eta non connecté ni réglage factice. Pas de parité pixel/fonctionnelle revendiquée. Les états sombre, clavier, 360×640 et 200 % ont été inspectés pour lisibilité/insets sans référence Eta exacte.",
+    "reference_sha256": {
+      "chat_home.jpg": "b52261d66f78b41ce5c67f6d24925a795868a37544f44163d56652de98cc9111",
+      "settings.jpg": "8578d0d1ef91036e93c7b6b7ec8433e5790c476c43ebebbe68c514e84078cb30"
+    }
+  }
+}

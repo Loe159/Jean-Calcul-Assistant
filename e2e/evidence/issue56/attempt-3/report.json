@@ -1,0 +1,128 @@
+{
+  "issue": 56,
+  "attempt": 3,
+  "attempt_budget": 3,
+  "budget_override": null,
+  "created_utc": "2026-11-13T10:38:01.656752+00:00",
+  "commit": "b41453484e7edeb51decac23a230ce5d9068e3b4",
+  "working_tree_dirty": false,
+  "api": 35,
+  "serial": "emulator-5580",
+  "technical": {
+    "status": "PASS",
+    "evidence": "logs/gradle.txt",
+    "jvm_tests": "PASS"
+  },
+  "captures": {
+    "empty": {
+      "status": "PASS",
+      "path": "screenshots/empty.png",
+      "sha256": "edec597f9eb238673ca1d213a8881cdbe91fe6dec6edb905885efdcc3dc87f3a",
+      "visual_status": "PASS"
+    },
+    "message": {
+      "status": "PASS",
+      "path": "screenshots/message.png",
+      "sha256": "4158f32ca880a1dae5df82de1fdf63ac9c1f745eeacaf7f33bda45dc306dd043",
+      "visual_status": "PASS"
+    },
+    "reset": {
+      "status": "PASS",
+      "path": "screenshots/reset.png",
+      "sha256": "edec597f9eb238673ca1d213a8881cdbe91fe6dec6edb905885efdcc3dc87f3a",
+      "visual_status": "PASS"
+    },
+    "settings": {
+      "status": "PASS",
+      "path": "screenshots/settings.png",
+      "sha256": "cdbaf18f7c3dfd85741e1b4367782181a03037ccfc9e98653469d4439f1c49dd",
+      "visual_status": "PASS"
+    },
+    "dark": {
+      "status": "PASS",
+      "path": "screenshots/dark.png",
+      "sha256": "738fbfa5988e09754317729c99a5512696d071a347c7d6b88ad5cd3168330a30",
+      "visual_status": "PASS"
+    },
+    "small_screen": {
+      "status": "PASS",
+      "path": "screenshots/small_screen.png",
+      "sha256": "56db04b9d019a3a330589a9c3cd77e0b78cf6478fec6449f76e4431d4faf6fd4",
+      "visual_status": "PASS"
+    },
+    "large_text": {
+      "status": "PASS",
+      "path": "screenshots/large_text.png",
+      "sha256": "7ba1550df664fdbaa91cfb0eb258e51b3d2c58b72e4da008f3f1da1511eb001f",
+      "visual_status": "PASS"
+    },
+    "keyboard": {
+      "status": "PASS",
+      "path": "screenshots/keyboard.png",
+      "sha256": "2236251a6400e07bd8c19e6b0f13f8625fbbddbb9379c795d63c1764eb2f8fa6",
+      "visual_status": "PASS"
+    },
+    "reduced_motion": {
+      "status": "PASS",
+      "path": "screenshots/reduced_motion.png",
+      "sha256": "550145a211b79f250a4a4606456d9fc79f17a1f95703e6d85f56594dba2c2a6f",
+      "visual_status": "PASS"
+    },
+    "menu": {
+      "status": "PASS",
+      "path": "screenshots/menu.png",
+      "sha256": "1a66b511041fbe036db268508a37e74049d19966d9fe02ac183a89344e22c79f",
+      "visual_status": "PASS"
+    },
+    "gallery": {
+      "status": "PASS",
+      "path": "screenshots/gallery.png",
+      "sha256": "3c0f4bf2ec29838d27121583a72c3c2bdc46bf0ee37aa6afc32de32d646c75c8",
+      "visual_status": "PASS"
+    },
+    "dialog": {
+      "status": "PASS",
+      "path": "screenshots/dialog.png",
+      "sha256": "acfa7f9aa0f9339bf1f8c7948cc6c677998608ca14261ea9a95b6a82fe8fb57d",
+      "visual_status": "PASS"
+    },
+    "provider_dark": {
+      "status": "PASS",
+      "path": "screenshots/provider_dark.png",
+      "sha256": "2a37d488d3bcfe4d7bb21cd421e8e9d734345eaa5d1e20bb09c63f038c34d8f0",
+      "visual_status": "PASS"
+    },
+    "provider_small_screen": {
+      "status": "PASS",
+      "path": "screenshots/provider_small_screen.png",
+      "sha256": "01beb3d645408eb0b25010cec0ddea6e4cb29f453770a31969203c57ab5528ca",
+      "visual_status": "PASS"
+    },
+    "provider_large_text": {
+      "status": "PASS",
+      "path": "screenshots/provider_large_text.png",
+      "sha256": "4731192f02f4f8d2ffb9421dc2ec239d568d00047c148795db3281cd43b04f7c",
+      "visual_status": "PASS"
+    },
+    "regression_fixture": {
+      "status": "PASS",
+      "path": "screenshots/regression_fixture.png",
+      "sha256": "ec9ddf946c3668de5f5ff494e566ce596e653ce9bc84858cf625244a86377370",
+      "visual_status": "FAIL"
+    }
+  },
+  "visual_review": {
+    "status": "PASS",
+    "evidence": "visual-review.json"
+  },
+  "reference_comparison": {
+    "status": "PASS",
+    "evidence": "visual-review.json"
+  },
+  "regression_detection": {
+    "status": "PASS",
+    "evidence": "visual-review.json"
+  },
+  "source_manifest": "source-manifest.json",
+  "apk_sha256": "a71ad2b1b8dfc2fbd23759549ca7f6159cc71968afb246e2742bca47fda567be"
+}
