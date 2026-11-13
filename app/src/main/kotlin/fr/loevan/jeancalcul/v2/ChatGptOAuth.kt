@@ -65,7 +65,7 @@ internal fun classifyOAuthNetwork(error: IOException): OAuthNetworkIssue {
         else -> OAuthNetworkIssue.IO
     }
 }
-internal val chatGptHttp = OkHttpClient.Builder().followRedirects(false).followSslRedirects(false)
+internal val chatGptHttp = OkHttpClient.Builder().dns(openAiDns()).followRedirects(false).followSslRedirects(false)
     .connectTimeout(15, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS)
     .callTimeout(45, TimeUnit.SECONDS).retryOnConnectionFailure(false).build()
 
