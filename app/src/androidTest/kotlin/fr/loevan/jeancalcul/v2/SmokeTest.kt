@@ -4,6 +4,7 @@ import android.view.WindowInsets
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -46,6 +47,8 @@ class SmokeTest {
         }
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle()
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack()
+        // UiDevice injects Back asynchronously; Compose idle alone can precede delivery.
+        rule.waitUntil(10_000) { rule.onAllNodesWithTag("composer").fetchSemanticsNodes().size == 1 }
         rule.onNodeWithText("Brouillon").assertExists()
         rule.onNodeWithTag("reset").performClick()
         rule.onNodeWithText("Annuler").performClick()
