@@ -27,6 +27,7 @@ import java.io.FileOutputStream
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
@@ -41,6 +42,7 @@ class VisualScenarioTest {
         assumeTrue("Opt in with -e scenario", scenario != null)
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         rule.onNodeWithTag("empty").assertIsDisplayed()
+        val headerTop = rule.onNodeWithTag("header").fetchSemanticsNode().positionOnScreen.y
         when (scenario) {
             "empty", "dark", "small_screen", "large_text", "reduced_motion" -> Unit
             "message", "reset" -> {
@@ -120,6 +122,10 @@ class VisualScenarioTest {
                 view.postInvalidateOnAnimation()
             }
             assertTrue("No rendered frame committed before capture", committed.await(10, TimeUnit.SECONDS))
+        }
+        if (scenario == "keyboard") {
+            assertEquals("Keyboard must not pan the header off screen", headerTop,
+                rule.onNodeWithTag("header").fetchSemanticsNode().positionOnScreen.y, 1f)
         }
         val directory = File(rule.activity.filesDir, "e2e").apply { mkdirs() }
         val destination = File(directory, "$scenario.png")

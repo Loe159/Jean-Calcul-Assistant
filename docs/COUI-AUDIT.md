@@ -62,3 +62,13 @@ est explicite : la barre n'est pas annoncée comme un `NavigationBar` natif.
 Aucune source de la bibliothèque n'est modifiée et aucune dépendance Material3
 n'est réintroduite. Les autres conteneurs, groupes, menus et dialogues restent
 natifs. Les captures précédentes restent la preuve de la limite rencontrée.
+
+Le clavier peut encore déplacer la fenêtre via les demandes de relocation du
+curseur, même avec les insets déjà réservés. La capsule intercepte maintenant
+ces demandes à sa frontière fixe : le défilement interne de BasicTextField
+reste actif, mais elles ne déclenchent plus le pan Android de toute la fenêtre.
+Le test compare la position écran réelle de l'en-tête, avec saisie multiligne.
+Cette décision s'appuie sur le chemin AndroidX documenté qui appelle
+`View.requestRectangleOnScreen` pour chaque déplacement du curseur :
+https://android.googlesource.com/platform/frameworks/support/+/fea5b9b3fefbe2a1a7ce6e0ae1b5362c64a725d6
+Aucun code Eta ni code COUI interne n'est copié pour ce correctif.

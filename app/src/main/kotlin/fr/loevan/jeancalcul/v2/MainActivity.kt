@@ -155,7 +155,7 @@ fun V2App() {
 @Composable
 private fun Composer(draft: String, onChange: (String) -> Unit, onSend: () -> Unit) {
     val colors = CouiTheme.colorScheme
-    Column(Modifier.padding(horizontal = JeanTokens.edge, vertical = 8.dp)
+    Column(Modifier.padding(horizontal = JeanTokens.edge, vertical = 8.dp).then(ComposerViewport)
         .shadow(JeanTokens.elevation, JeanTokens.capsule).clip(JeanTokens.capsule)
         .background(colors.surface).padding(16.dp)) {
         BasicTextField(value = draft, onValueChange = onChange,

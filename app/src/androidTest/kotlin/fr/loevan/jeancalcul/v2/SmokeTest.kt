@@ -13,6 +13,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
 import org.junit.Rule
 import org.junit.Test
+import org.junit.Assert.assertEquals
 
 class SmokeTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
@@ -67,5 +68,21 @@ class SmokeTest {
         rule.onNodeWithTag("composer").assertDoesNotExist()
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack()
         rule.onNodeWithTag("composer").assertExists()
+    }
+    @Test fun multilineComposerDoesNotPanHeader() {
+        val top = rule.onNodeWithTag("header").fetchSemanticsNode().positionOnScreen.y
+        rule.onNodeWithTag("composer").performTextInput((1..8).joinToString("\n") { "Ligne synthétique $it" })
+        rule.waitUntil(10_000) {
+            var shown = false
+            rule.runOnUiThread {
+                shown = rule.activity.window.decorView.rootWindowInsets
+                    ?.isVisible(WindowInsets.Type.ime()) == true
+            }
+            shown
+        }
+        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle()
+        rule.onNodeWithTag("send").assertIsDisplayed()
+        assertEquals("Multiline input must keep the header anchored", top,
+            rule.onNodeWithTag("header").fetchSemanticsNode().positionOnScreen.y, 1f)
     }
 }
