@@ -67,3 +67,15 @@ Le bas du formulaire après défilement, notamment la clé à 200 %, n’est pas
 validé par les captures initiales. Elles ne prouvent pas un envoi IA réel.
 La PR #61 reste en brouillon, l’issue #56 reste ouverte ; l’utilisateur décide
 s’il accepte cette tranche avant le raccordement OAuth. Aucune fusion automatique.
+
+## Extension ChatGPT — autorisation de la quatrième tentative
+
+Le 13 novembre 2026, après présentation du code, de l’APK et des 27 tests JVM
+PASS, l’utilisateur répond explicitement **« Oui, autoriser la tentative 4 »**
+à la demande de quatrième validation locale de cette extension. Le même run-id
+`issue56` est conservé, avec `--attempt 4 --extra-validation-authorized` et
+cette instruction enregistrée dans le rapport. Les trois tentatives précédentes
+ne sont ni remplacées ni renommées. Le résultat sera publié après exécution.
+
+Les vérifications JVM/build seules sont archivées dans `chatgpt-preflight/` ;
+ce dossier n’est pas un run E2E et ne contient aucune validation visuelle.

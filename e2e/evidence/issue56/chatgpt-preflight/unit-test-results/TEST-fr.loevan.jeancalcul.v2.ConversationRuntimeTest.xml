@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="fr.loevan.jeancalcul.v2.ConversationRuntimeTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-11-13T12:10:40.926Z" hostname="acer-nitro" time="0.165">
+  <properties/>
+  <testcase name="unknownToolsAreNeverExecutedAndLoopsAreBounded" classname="fr.loevan.jeancalcul.v2.ConversationRuntimeTest" time="0.106"/>
+  <testcase name="streamingPersistsAndReloads" classname="fr.loevan.jeancalcul.v2.ConversationRuntimeTest" time="0.005"/>
+  <testcase name="errorsAreTypedAndToolPolicyDenies" classname="fr.loevan.jeancalcul.v2.ConversationRuntimeTest" time="0.004"/>
+  <testcase name="storageFailureIsVisible" classname="fr.loevan.jeancalcul.v2.ConversationRuntimeTest" time="0.003"/>
+  <testcase name="duplicateSendWhileRunningIsIgnoredAndResetInvalidatesRun" classname="fr.loevan.jeancalcul.v2.ConversationRuntimeTest" time="0.008"/>
+  <testcase name="toolLoopRunsOnlyAllowlistedClockAndPersistsProtocol" classname="fr.loevan.jeancalcul.v2.ConversationRuntimeTest" time="0.016"/>
+  <testcase name="stopRejectsLateChunksAndRetryDoesNotDuplicateUser" classname="fr.loevan.jeancalcul.v2.ConversationRuntimeTest" time="0.014"/>
+  <testcase name="processDeathIsInterruptedAndRetryable" classname="fr.loevan.jeancalcul.v2.ConversationRuntimeTest" time="0.007"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

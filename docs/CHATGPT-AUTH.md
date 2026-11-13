@@ -99,8 +99,9 @@ du nouveau stockage OAuth ou d’une autorisation utilisateur réelle.
 Pour cette extension : consentement réel, catalogue réel et réponse réelle
 **NOT_RUN**, en attendant la connexion manuelle de l’utilisateur. Les nouveaux
 tests Android (entrée de connexion et enveloppe Keystore) et la revue visuelle
-locale sont **NOT_RUN** tant qu’une quatrième tentative n’est pas explicitement
-autorisée. Le budget n’est pas contourné par un nouveau run-id. Aucune capture
+locale restent **NOT_RUN** tant que la quatrième tentative n’a pas terminé.
+L’utilisateur a explicitement autorisé cette tentative supplémentaire :
+« Oui, autoriser la tentative 4 » ; son résultat sera consigné dans les preuves. Le budget n’est pas contourné par un nouveau run-id. Aucune capture
 personnelle et aucun jeton réel ne doivent être ajoutés aux preuves.
 
 ## Sources officielles consultées le 13 novembre 2026

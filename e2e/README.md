@@ -148,3 +148,9 @@ Si le disque est insuffisant, `--avd-root /dev/shm` crée un répertoire neuf pa
 tentative pour le seul AVD synthétique ; `avd/` dans les preuves pointe vers lui.
 Le stockage de l’AVD est jetable ; les APK, captures, logs et rapports restent
 dans `e2e-artifacts/`. Aucun AVD existant n’est réutilisé ou déplacé.
+
+Les variantes `chatgpt_dark`, `chatgpt_small_screen` et `chatgpt_large_text`
+capturent l’entrée déconnectée Continue with ChatGPT sans ouvrir le navigateur
+ni employer de compte réel. Les variantes provider défilent jusqu’au champ URL
+après ouverture du formulaire API. Ces états ne valident pas un consentement
+OpenAI réel. Le run local #56 reste soumis au même budget de tentatives.

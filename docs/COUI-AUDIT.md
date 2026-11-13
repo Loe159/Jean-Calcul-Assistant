@@ -104,5 +104,5 @@ COUI, les cibles Foundation de 48 dp et couiButtonFeedback. L’action de connex
 porte le libellé officiel Continue with ChatGPT, en blanc sur noir ; aucun faux
 logo n’est dessiné. Le sélecteur de compte et les actions restent défilables.
 Le consentement est dans le navigateur système, jamais une WebView embarquée.
-Les nouvelles captures et leur analyse restent NOT_RUN tant qu’une quatrième
-tentative locale #56 n’est pas explicitement autorisée.
+Les nouvelles captures et leur analyse restent NOT_RUN jusqu’au résultat de
+la quatrième tentative locale #56, explicitement autorisée par l’utilisateur.

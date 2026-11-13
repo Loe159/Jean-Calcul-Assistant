@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = 'fr.loevan.jeancalcul.v2'
 RUNNER = APP + '.test/androidx.test.runner.AndroidJUnitRunner'
 SCENARIOS = ('empty', 'message', 'reset', 'settings', 'dark', 'small_screen',
-             'large_text', 'keyboard', 'reduced_motion', 'menu', 'gallery', 'dialog', 'provider_dark', 'provider_small_screen', 'provider_large_text', 'regression_fixture')
+             'large_text', 'keyboard', 'reduced_motion', 'menu', 'gallery', 'dialog', 'chatgpt_dark', 'chatgpt_small_screen', 'chatgpt_large_text', 'provider_dark', 'provider_small_screen', 'provider_large_text', 'regression_fixture')
 
 
 def redact(text):
@@ -249,12 +249,12 @@ def main():
             shell('am', 'force-stop', APP)
             # Reset only synthetic private history; preserve the screenshot directory.
             shell('run-as', APP, 'rm', '-f', 'files/conversation.json', 'files/conversation.json.bak', 'files/conversation.json.new')
-            if scenario in ('dark', 'provider_dark'):
+            if scenario in ('dark', 'provider_dark', 'chatgpt_dark'):
                 shell('cmd', 'uimode', 'night', 'yes')
-            if scenario in ('small_screen', 'provider_small_screen'):
+            if scenario in ('small_screen', 'provider_small_screen', 'chatgpt_small_screen'):
                 shell('wm', 'size', '720x1280')  # 360 x 640 dp
                 shell('wm', 'density', '320')
-            if scenario in ('large_text', 'provider_large_text'):
+            if scenario in ('large_text', 'provider_large_text', 'chatgpt_large_text'):
                 shell('settings', 'put', 'system', 'font_scale', '2.0')
             remote = f'files/e2e/{scenario}.png'
             result = run(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',

@@ -72,11 +72,14 @@ class VisualScenarioTest {
                     rule.onNodeWithText("Bonjour V2 — test synthétique").assertDoesNotExist()
                 }
             }
-            "settings", "provider_dark", "provider_small_screen", "provider_large_text" -> {
+            "settings", "chatgpt_dark", "chatgpt_small_screen", "chatgpt_large_text", "provider_dark", "provider_small_screen", "provider_large_text" -> {
                 rule.onNodeWithTag("settings").performClick()
                 rule.onNodeWithText("Préférences").assertIsDisplayed()
                 rule.onNodeWithTag("composer").assertDoesNotExist()
-                if (scenario != "settings") rule.onNodeWithTag("configure_provider").performScrollTo().performClick()
+                if (scenario!!.startsWith("provider_")) {
+                    rule.onNodeWithTag("configure_provider").performScrollTo().performClick()
+                    rule.onNodeWithTag("provider_endpoint").performScrollTo().assertIsDisplayed()
+                }
             }
             "menu" -> rule.onNodeWithTag("options").performClick()
             "gallery", "dialog" -> {

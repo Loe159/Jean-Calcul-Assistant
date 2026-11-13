@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="fr.loevan.jeancalcul.v2.ChatGptAuthTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-11-13T12:10:31.791Z" hostname="acer-nitro" time="6.921">
+  <properties/>
+  <testcase name="failedRevocationClearsLocalTokensAndReportsUnconfirmedRemoteResult" classname="fr.loevan.jeancalcul.v2.ChatGptAuthTest" time="2.501"/>
+  <testcase name="pkceAndDynamicRegistrationUseDocumentedPublicClientParameters" classname="fr.loevan.jeancalcul.v2.ChatGptAuthTest" time="0.004"/>
+  <testcase name="realLoopbackListenerConsumesCallbackOnceWithoutEchoingSecrets" classname="fr.loevan.jeancalcul.v2.ChatGptAuthTest" time="0.019"/>
+  <testcase name="callbackRejectsForgedExpiredDuplicateOrWrongClientValues" classname="fr.loevan.jeancalcul.v2.ChatGptAuthTest" time="0.081"/>
+  <testcase name="rotatingRefreshIsSerializedAndSavedAtomically" classname="fr.loevan.jeancalcul.v2.ChatGptAuthTest" time="0.541"/>
+  <testcase name="signaturesIssuerAudienceExpiryNonceAndIdentityAreRequired" classname="fr.loevan.jeancalcul.v2.ChatGptAuthTest" time="1.007"/>
+  <testcase name="onlyTerminalRefreshFailureClearsTokensAndSignOutRetainsRegistration" classname="fr.loevan.jeancalcul.v2.ChatGptAuthTest" time="1.429"/>
+  <testcase name="registrationsStaySeparateAndNoModelIsInvented" classname="fr.loevan.jeancalcul.v2.ChatGptAuthTest" time="1.003"/>
+  <testcase name="identityWithoutPlanPermissionCannotRunInference" classname="fr.loevan.jeancalcul.v2.ChatGptAuthTest" time="0.321"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
