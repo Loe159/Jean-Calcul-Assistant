@@ -18,6 +18,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
@@ -48,6 +50,7 @@ class VisualScenarioTest {
             "message", "reset" -> {
                 rule.onNodeWithTag("composer").performTextInput("Bonjour V2 — test synthétique")
                 rule.onNodeWithTag("send").assertIsEnabled().performClick()
+                rule.waitUntil(5_000) { rule.onAllNodesWithTag("retry").fetchSemanticsNodes().isNotEmpty() }
                 rule.onNodeWithText("Bonjour V2 — test synthétique").assertIsDisplayed()
                 // Android Back belongs to the system, outside the Compose semantics tree.
                 device.pressBack()
@@ -64,11 +67,12 @@ class VisualScenarioTest {
                 if (scenario == "reset") {
                     rule.onNodeWithTag("reset").performClick()
                     rule.onNodeWithText("Effacer").performClick()
+                    rule.waitUntil(5_000) { rule.onAllNodesWithTag("empty").fetchSemanticsNodes().isNotEmpty() }
                     rule.onNodeWithTag("empty").assertIsDisplayed()
                     rule.onNodeWithText("Bonjour V2 — test synthétique").assertDoesNotExist()
                 }
             }
-            "settings" -> {
+            "settings", "provider_dark", "provider_small_screen", "provider_large_text" -> {
                 rule.onNodeWithTag("settings").performClick()
                 rule.onNodeWithText("Préférences").assertIsDisplayed()
                 rule.onNodeWithTag("composer").assertDoesNotExist()
@@ -76,7 +80,7 @@ class VisualScenarioTest {
             "menu" -> rule.onNodeWithTag("options").performClick()
             "gallery", "dialog" -> {
                 rule.onNodeWithTag("settings").performClick()
-                rule.onNodeWithTag("gallery").performClick()
+                rule.onNodeWithTag("gallery").performScrollTo().performClick()
                 if (scenario == "dialog") rule.onNodeWithTag("gallery_dialog").performClick()
             }
             "keyboard" -> {

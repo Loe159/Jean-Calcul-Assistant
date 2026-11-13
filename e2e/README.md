@@ -40,8 +40,8 @@ APK, actions système UI Automator/ADB, captures plein écran et hashes SHA-256.
 Les erreurs instrumentées sont détectées même si `am instrument` renvoie zéro.
 Les PNG restent dans le stockage privé de cette app debug et sont lus via
 `adb exec-out run-as` ; pas de dépendance au nettoyage asynchrone du stockage partagé.
-Chaque scénario repart d’une activité neuve après force-stop, ce qui réinitialise
-les données en mémoire du prototype (adapter cette fixture lors de l’ajout de persistance).
+Chaque scénario repart d’une activité neuve après force-stop, puis le lanceur efface uniquement le fichier d’historique privé synthétique
+via run-as. La persistance réelle est testée séparément dans SmokeTest.
 Un échec arrête la tentative et conserve les preuves partielles avec NOT_RUN.
 Boot limité à 240 s, build/tests à 1500 s, scénario à 120 s. Les logs enregistrés
 sont expurgés (chemin personnel, jetons usuels, emails) ; les inspecter avant partage.
@@ -139,3 +139,12 @@ inexploitable arrête toujours la collecte avec les preuves partielles.
 La partition de données du nouvel AVD synthétique est limitée à 4 Gio. Le profil
 Pixel 6 reste identique pour l'écran, l'API et la mémoire ; aucun compte ou
 contenu personnel n'y est installé. Les anciens AVD ne sont pas modifiés.
+
+## Fournisseur #56
+
+Les variantes `provider_dark`, `provider_small_screen` et `provider_large_text`
+inspectent le formulaire de connexion. Aucun secret n’est saisi pour les captures.
+Si le disque est insuffisant, `--avd-root /dev/shm` crée un répertoire neuf par
+tentative pour le seul AVD synthétique ; `avd/` dans les preuves pointe vers lui.
+Le stockage de l’AVD est jetable ; les APK, captures, logs et rapports restent
+dans `e2e-artifacts/`. Aucun AVD existant n’est réutilisé ou déplacé.

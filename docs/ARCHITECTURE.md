@@ -20,3 +20,10 @@ les actions et la navigation utilisent Foundation avec les styles et feedbacks
 COUI ; les exceptions de compatibilité alpha7 sont motivées dans
 `COUI-AUDIT.md`. Aucune adaptation Material3 ne subsiste. Voir `DESIGN.md`
 et `JeanTheme.kt` pour les tokens.
+
+Depuis la tranche #56, `ConversationRuntime` expose session/run via StateFlow sans
+dépendance Android/UI. `ConversationViewModel` survit aux rotations ;
+`FileSessionStore` assure les écritures atomiques, `ProviderSettings` chiffre les
+credentials avec Android Keystore. `OpenAiProvider` utilise HTTPS/SSE pour les
+endpoints distants et locaux compatibles. La politique refuse tous les outils.
+Voir `RUNTIME.md` pour les frontières, erreurs, stop/retry et limites Codex.

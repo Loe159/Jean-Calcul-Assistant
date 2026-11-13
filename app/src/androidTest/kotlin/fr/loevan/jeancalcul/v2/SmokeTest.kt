@@ -12,6 +12,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
 import org.junit.Rule
@@ -19,8 +20,40 @@ import org.junit.Test
 import org.junit.Assert.assertEquals
 
 class SmokeTest {
-    @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val fixture = object : org.junit.rules.ExternalResource() {
+        override fun before() {
+            FileSessionStore(InstrumentationRegistry.getInstrumentation().targetContext).save(Session())
+        }
+    }
+    @get:Rule(order = 1) val rule = createAndroidComposeRule<MainActivity>()
 
+    @Test fun keystoreCredentialsAndHistoryRoundTrip() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val settings = ProviderSettings(context)
+        try {
+            settings.save(ProviderConfig("https://localhost/v1", "synthetic", true), "synthetic-key-not-a-secret")
+            assertEquals("synthetic-key-not-a-secret", ProviderSettings(context).credential())
+            val xml = java.io.File(context.applicationInfo.dataDir, "shared_prefs/provider.xml").readText()
+            org.junit.Assert.assertFalse(xml.contains("synthetic-key-not-a-secret"))
+            settings.save(settings.config(), "")
+            assertEquals("", settings.credential())
+            val session = Session(messages = listOf(ChatMessage("user", "Persisté")), status = RunStatus.RUNNING)
+            FileSessionStore(context).save(session)
+            assertEquals(RunStatus.INTERRUPTED, ConversationRuntime(FileSessionStore(context)).session.value.status)
+        } finally {
+            context.getSharedPreferences("provider", android.content.Context.MODE_PRIVATE).edit().clear().commit()
+        }
+    }
+    @Test fun historySurvivesRecreationAndFailureCanRetry() {
+        rule.onNodeWithTag("composer").performTextInput("Persistance synthétique")
+        rule.onNodeWithTag("send").performClick()
+        rule.waitUntil(5_000) { rule.onAllNodesWithTag("retry").fetchSemanticsNodes().isNotEmpty() }
+        rule.activityRule.scenario.recreate()
+        rule.onNodeWithText("Persistance synthétique").assertExists()
+        rule.onNodeWithTag("retry").performScrollTo().performClick()
+        rule.waitUntil(5_000) { rule.onAllNodesWithTag("retry").fetchSemanticsNodes().isNotEmpty() }
+        assertEquals(1, rule.onAllNodesWithText("Persistance synthétique").fetchSemanticsNodes().size)
+    }
     @Test fun initialState() {
         rule.onNodeWithTag("empty").assertExists()
         rule.onNodeWithTag("composer").assertExists()
@@ -28,10 +61,10 @@ class SmokeTest {
     @Test fun composeAndReset() {
         rule.onNodeWithTag("composer").performTextInput("Bonjour V2")
         rule.onNodeWithTag("send").performClick()
-        rule.onNodeWithTag("messages").assertExists()
+        rule.waitUntil(5_000) { rule.onAllNodesWithTag("messages").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("reset").performClick()
         rule.onNodeWithText("Effacer").performClick()
-        rule.onNodeWithTag("empty").assertExists()
+        rule.waitUntil(5_000) { rule.onAllNodesWithTag("empty").fetchSemanticsNodes().isNotEmpty() }
     }
     @Test fun resetCanBeCancelledAndDraftSurvivesNavigation() {
         rule.onNodeWithTag("send").assertIsNotEnabled()

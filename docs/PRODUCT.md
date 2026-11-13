@@ -16,5 +16,7 @@ et capable de travailler avec un homelab Mastra sans en dépendre.
 Exclus du socle : root, LSPosed, hacks constructeur, terminal Linux complet,
 système de personnages et copie du runtime Eta.
 
-Le prototype actuel n'a pas de connexion IA, ne persiste pas les conversations,
-et ne doit pas être annoncé comme un assistant fonctionnel.
+Le chat persiste la conversation et accepte un fournisseur OpenAI-compatible
+HTTPS configuré par l’utilisateur, local ou distant. Aucun fournisseur n’est
+préconnecté. Codex direct et l’exécution d’outils Android ne sont pas intégrés ;
+voir `RUNTIME.md` pour les limites et validations réelles.

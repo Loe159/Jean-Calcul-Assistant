@@ -40,6 +40,8 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -80,7 +82,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
-fun V2App() {
+fun V2App(model: ConversationViewModel = viewModel()) {
     JeanTheme {
         val focus = LocalFocusManager.current
         val keyboardController = LocalSoftwareKeyboardController.current
@@ -89,17 +91,21 @@ fun V2App() {
         var page by rememberSaveable { mutableStateOf("chat") }
         var menu by remember { mutableStateOf(false) }
         var confirmReset by remember { mutableStateOf(false) }
-        val messages = remember { mutableStateListOf<String>() }
+        val session by model.session.collectAsState()
+        val config by model.config.collectAsState()
+        val settingsError by model.settingsError.collectAsState()
+        val messages = session.messages
+        val running = session.status == RunStatus.RUNNING
         fun navigate(destination: String) {
             focus.clearFocus(force = true)
             keyboardController?.hide()
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             page = destination
         }
-        fun reset() { messages.clear(); draft.clearText(); page = "chat"; confirmReset = false }
+        fun reset() { model.reset(); draft.clearText(); page = "chat"; confirmReset = false }
         fun send() {
             if (draft.text.isNotBlank()) {
-                messages.add(draft.text.toString().trim()); draft.clearText()
+                model.send(draft.text.toString().trim()); draft.clearText()
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             }
         }
@@ -140,7 +146,7 @@ fun V2App() {
             },
             bottomBar = {
                 Column(Modifier.fillMaxWidth().navigationBarsPadding().imePadding()) {
-                    if (page == "chat") Composer(draft, ::send)
+                    if (page == "chat") Composer(draft, config.destination, running, model::stop, ::send)
                     // The keyboard gets the available height; destination controls return on dismissal.
                     val keyboard = WindowInsets.isImeVisible
                     if (!keyboard) DestinationBar(page, messages.isNotEmpty(), { navigate(it) }) {
@@ -152,14 +158,14 @@ fun V2App() {
             Crossfade(targetState = page, animationSpec = tween(180), label = "destination",
                 modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) { destination ->
                 when (destination) {
-                    "settings" -> Preferences { navigate("gallery") }
+                    "settings" -> Preferences(config, running, settingsError, model::configure) { navigate("gallery") }
                     "gallery" -> DesignGallery()
-                    else -> Conversation(messages)
+                    else -> Conversation(session, model::retry)
                 }
             }
         }
         Dialog(visible = confirmReset, onDismissRequest = { confirmReset = false },
-            title = "Effacer cette conversation ?", message = "Les messages et le brouillon de cette démo seront supprimés.",
+            title = "Effacer cette conversation ?", message = "Les messages enregistrés sur cet appareil et le brouillon seront supprimés.",
             confirmAction = CouiDialogAction("Effacer", { reset() }),
             dismissAction = CouiDialogAction("Annuler", { confirmReset = false }))
     }
@@ -181,7 +187,7 @@ private fun ConversationLayout(
 }
 
 @Composable
-private fun Composer(draft: TextFieldState, onSend: () -> Unit) {
+private fun Composer(draft: TextFieldState, destination: String, running: Boolean, onStop: () -> Unit, onSend: () -> Unit) {
     val colors = CouiTheme.colorScheme
     Column(Modifier.padding(horizontal = JeanTokens.edge, vertical = 8.dp).then(ComposerViewport)
         .shadow(JeanTokens.elevation, JeanTokens.capsule).clip(JeanTokens.capsule)
@@ -195,16 +201,18 @@ private fun Composer(draft: TextFieldState, onSend: () -> Unit) {
           if (draft.text.isEmpty()) Text(text = "Demander à Jean-Calcul…", kind = CouiTextKind.Body, color = colors.onSurfaceVariant)
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "IA non connectée", kind = CouiTextKind.Description,
+            Text(text = destination, kind = CouiTextKind.Description,
                 color = colors.onSurfaceVariant, modifier = Modifier.weight(1f))
-            ActionIcon("Envoyer", Icons.AutoMirrored.Filled.Send, Modifier.testTag("send"),
+            if (running) ActionIcon("Arrêter", Icons.Default.Close, Modifier.testTag("stop"), accent = true, onClick = onStop)
+            else ActionIcon("Envoyer", Icons.AutoMirrored.Filled.Send, Modifier.testTag("send"),
                 enabled = draft.text.isNotBlank(), accent = true, onClick = onSend)
         }
     }
 }
 
 @Composable
-private fun Conversation(messages: List<String>) {
+private fun Conversation(session: Session, onRetry: () -> Unit) {
+    val messages = session.messages
     val list = rememberLazyListState()
     LaunchedEffect(messages.size) { if (messages.isNotEmpty()) list.animateScrollToItem(messages.size) }
     LazyColumn(state = list, modifier = Modifier.fillMaxSize().testTag(if (messages.isEmpty()) "empty" else "messages"),
@@ -213,14 +221,27 @@ private fun Conversation(messages: List<String>) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Text(text = "Comment puis-je vous aider ?", kind = CouiTextKind.PageTitle)
                 Spacer(Modifier.height(16.dp))
-                Text(text = "Prototype UI · IA non connectée", kind = CouiTextKind.Body,
+                Text(text = "Choisissez un fournisseur dans les préférences.\nLes conversations restent sur cet appareil.", kind = CouiTextKind.Body,
                     color = CouiTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             }
         } else {
-            items(messages) { MessageBubble(it, outgoing = true) }
+            items(messages) { if (it.text.isNotEmpty()) MessageBubble(it.text, outgoing = it.role == "user") }
             item {
-                Text(text = "Message enregistré uniquement en mémoire pour cette démo.", kind = CouiTextKind.Description,
-                    color = CouiTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("prototype_notice"))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(text = session.error?.label ?: when (session.status) {
+                        RunStatus.RUNNING -> "Réponse en cours…"
+                        RunStatus.COMPLETED -> "Réponse terminée"
+                        RunStatus.STOPPED -> "Réponse arrêtée"
+                        RunStatus.INTERRUPTED -> "Réponse interrompue à la fermeture"
+                        else -> "Prêt"
+                    }, kind = CouiTextKind.Description, modifier = Modifier.testTag("run_status"))
+                    if (session.status in setOf(RunStatus.FAILED, RunStatus.STOPPED, RunStatus.INTERRUPTED)) {
+                        Row(Modifier.fillMaxWidth().clickable(onClick = onRetry).heightIn(min = 48.dp)
+                            .padding(12.dp).testTag("retry"), verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "Réessayer", kind = CouiTextKind.Body)
+                        }
+                    }
+                }
             }
         }
     }
@@ -267,11 +288,11 @@ private fun DestinationBar(page: String, hasMessages: Boolean, onSelection: (Str
 }
 
 @Composable
-private fun Preferences(onGallery: () -> Unit) {
+private fun Preferences(config: ProviderConfig, running: Boolean, settingsError: String?,
+    onConfigure: (String, String, Boolean, String) -> Unit, onGallery: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
-        Group(title = "Conversation", footer = "Les messages restent en mémoire jusqu’à la fermeture de l’application.") {
-            Item(title = { Text(text = "Moteur IA", kind = CouiTextKind.PreferenceTitle) },
-                summary = { Text(text = "Non connecté", kind = CouiTextKind.PreferenceSummary, color = CouiTheme.colorScheme.onSurfaceVariant) })
+        Group(title = "Fournisseur IA", footer = "Historique sur cet appareil. HTTPS requis, y compris pour un serveur local. Aucun outil Android autorisé.") {
+            ProviderForm(config, running, settingsError, onConfigure)
         }
         Group(title = "Apparence") {
             Item(title = { Text(text = "Thème du système", kind = CouiTextKind.PreferenceTitle) },
@@ -281,6 +302,51 @@ private fun Preferences(onGallery: () -> Unit) {
                 title = { Text(text = "Galerie COUI", kind = CouiTextKind.PreferenceTitle) },
                 summary = { Text(text = "Couleurs, typographie et composants", kind = CouiTextKind.PreferenceSummary, color = CouiTheme.colorScheme.onSurfaceVariant) })
         }
+    }
+}
+
+@Composable
+private fun ProviderForm(config: ProviderConfig, running: Boolean, error: String?,
+    onSave: (String, String, Boolean, String) -> Unit) {
+    val endpoint = rememberTextFieldState(config.endpoint)
+    val model = rememberTextFieldState(config.model)
+    var key by remember { mutableStateOf("") }
+    var local by rememberSaveable { mutableStateOf(config.local) }
+    Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(text = config.destination, kind = CouiTextKind.Body)
+        ProviderField("URL de base (https://…/v1)", endpoint, "provider_endpoint")
+        ProviderField("Identifiant du modèle", model, "provider_model")
+        Text(text = "Clé API · vide pour supprimer la clé", kind = CouiTextKind.Description)
+        BasicTextField(value = key, onValueChange = { key = it }, singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            textStyle = rememberCouiTextStyle(CouiTextKind.Body).copy(color = CouiTheme.colorScheme.onSurface),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).background(CouiTheme.colorScheme.card)
+                .padding(12.dp).testTag("provider_key").semantics { contentDescription = "Clé API" })
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(enabled = !running) { local = !local }
+            .padding(12.dp).semantics { contentDescription = "Destination locale déclarée"; selected = local }) {
+            Text(text = if (local) "✓ Serveur local déclaré" else "Serveur distant · toucher pour changer", kind = CouiTextKind.Body)
+        }
+        Text(text = "Vérifiez l’hôte : le libellé local ne garantit pas son emplacement. Une requête envoie l’historique à cet hôte.", kind = CouiTextKind.Description)
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(JeanTokens.capsule)
+            .background(JeanTokens.userBubble()).clickable(enabled = !running) {
+                onSave(endpoint.text.toString(), model.text.toString(), local, key); key = ""
+            }.padding(12.dp).testTag("save_provider")) {
+            Text(text = if (running) "Arrêtez la réponse pour modifier" else "Enregistrer le fournisseur", kind = CouiTextKind.Body)
+        }
+        error?.let { Text(text = it, kind = CouiTextKind.Description) }
+        Text(text = "Codex direct : indisponible, preuve de fonctionnement et conformité requises.", kind = CouiTextKind.Description)
+    }
+}
+
+@Composable
+private fun ProviderField(label: String, state: TextFieldState, tag: String) {
+    Column {
+        Text(text = label, kind = CouiTextKind.Description)
+        BasicTextField(state = state, lineLimits = TextFieldLineLimits.SingleLine,
+            textStyle = rememberCouiTextStyle(CouiTextKind.Body).copy(color = CouiTheme.colorScheme.onSurface),
+            cursorBrush = SolidColor(CouiTheme.colorScheme.accent),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).background(CouiTheme.colorScheme.card)
+                .padding(12.dp).testTag(tag).semantics { contentDescription = label })
     }
 }
 
