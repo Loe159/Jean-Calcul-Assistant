@@ -15,7 +15,20 @@ android {
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-    buildTypes { getByName("release") { isMinifyEnabled = false } }
+    buildTypes {
+        getByName("debug") { manifestPlaceholders["appLabel"] = "Jean-Calcul V2" }
+        getByName("release") {
+            isMinifyEnabled = false
+            manifestPlaceholders["appLabel"] = "Jean-Calcul V2"
+        }
+        create("preview") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".preview"
+            versionNameSuffix = "-preview"
+            manifestPlaceholders["appLabel"] = "Jean-Calcul Preview"
+            matchingFallbacks += listOf("debug")
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_25
         targetCompatibility = JavaVersion.VERSION_25

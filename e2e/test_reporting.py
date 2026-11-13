@@ -46,6 +46,20 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(render(self.directory), ('PASS', 'PASS'))
         self.assertIn('NOT_RUN', (self.directory / 'report.md').read_text())
 
+    def test_scoped_review_passes_only_named_state(self):
+        report = {'attempt': 1, 'commit': 'synthetic', 'working_tree_dirty': False,
+                  'api': 35, 'serial': 'emulator-5580', 'technical': {'status': 'PASS'},
+                  'captures': {name: self.capture for name in SCENARIOS}}
+        (self.directory / 'report.json').write_text(json.dumps(report))
+        state = next(name for name in SCENARIOS if name != 'regression_fixture')
+        reviews = {'_scope': {'states': [state], 'reason': 'Only this screen changed'},
+                   state: {**self.review, 'status': 'PASS'}}
+        (self.directory / 'visual-review.json').write_text(json.dumps(reviews))
+        self.assertEqual(render(self.directory), ('PASS', 'NOT_RUN'))
+        result = json.loads((self.directory / 'report.json').read_text())
+        self.assertEqual(result['visual_review']['scope'], [state])
+        self.assertEqual(result['captures']['regression_fixture']['visual_status'], 'NOT_RUN')
+
     def test_gradle_success_cannot_mask_xml_failure(self):
         (self.directory / 'TEST-device.xml').write_text(
             '<testsuite><properties><property name="device" value="emulator-5580"/>'

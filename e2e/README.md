@@ -22,6 +22,26 @@ Le SDK Nix inclut les licences acceptées par sa configuration explicite.
 
 ## Une commande par tentative
 
+Pour obtenir d'abord un retour humain rapide sur un téléphone déjà autorisé
+par ADB, depuis la machine qui compile l'app :
+
+```sh
+python3 scripts/install-preview.py
+# Si plusieurs appareils ADB sont connectés :
+python3 scripts/install-preview.py --serial SERIAL
+```
+
+La commande construit la variante `preview`, l'installe avec `adb install -r -t`
+et ouvre **Jean-Calcul Preview** (`fr.loevan.jeancalcul.v2.preview`). Elle ne
+requiert ni push, ni GitHub Actions, ni ZIP, ni désinstallation. Cette application
+possède ses propres données ; V2 et V1 restent installées et intactes. La
+signature debug d'une même machine reste normalement stable pour les previews
+suivantes. Si Android refuse une mise à jour de Preview à cause d'une signature
+différente, la commande n'efface rien. Le retour sur téléphone est une validation
+manuelle rapide ; les preuves E2E reproductibles restent produites ci-dessous.
+
+Pour la livraison :
+
 ```sh
 python3 e2e/run.py --run-id issue54 --attempt 1
 python3 e2e/report.py e2e-artifacts/issue54/attempt-1
@@ -55,7 +75,8 @@ n’est jamais relancé silencieusement. Un PNG vide ou tronqué est refusé.
 Captures : chat vide, message, reset, réglages, sombre, 360×640 dp, police 200 %,
 clavier réellement visible, animations réduites et défaut visuel volontaire.
 Ce dernier est une surcouche rouge **dans le test uniquement**, absente de l'APK
-applicatif. Sa revue doit être FAIL et le critère de détection PASS.
+applicatif. Lorsqu'il est revu (changement des captures ou du rapport), sa revue
+doit être FAIL et le critère de détection PASS ; sinon NOT_RUN.
 
 ## Ouvrir et interagir
 
@@ -77,11 +98,20 @@ Le rapport lie commit, modifications locales, APK et empreintes des captures.
 
 ## Boucle de revue, au plus trois tentatives
 
-1. Lancer la tentative 1, ouvrir **chaque** image avec la vision native.
-2. Dans `visual-review.json`, remplir chaque état : `status` PASS/FAIL/NOT_RUN,
+1. Définir les états modifiés et les régressions plausibles de l'issue, puis
+   lancer la tentative 1. Ouvrir **chaque image de ce périmètre** avec la vision
+   native. Si le thème, la navigation globale ou un composant partagé a changé,
+   inclure les écrans affectés.
+2. Dans `visual-review.json`, renseigner `_scope.states` avec les noms des états
+   inspectés et `_scope.reason` avec le motif du choix. Remplir ces états :
+   `status` PASS/FAIL,
    `observation` concrète, `opened_with` outil utilisé. Conserver `sha256`.
-   Une image non ouverte ou une référence manquante reste NOT_RUN.
-3. Exécuter `report.py` pour produire `report.md` et `index.html`. Une preuve
+   Une image hors périmètre ou non ouverte reste NOT_RUN. Pour la comparaison
+   Eta, ouvrir seulement les références pertinentes ; si elle n'est pas faite,
+   `_reference_comparison` reste NOT_RUN. Nommer les états validés dans la PR.
+3. Exécuter `report.py` pour produire `report.md` et `index.html`. Le statut
+   de revue porte uniquement sur `_scope.states` ; les autres lignes restent
+   NOT_RUN. Un périmètre vide ou sans motif reste NOT_RUN. Une preuve
    modifiée invalide la revue correspondante. Le script ne fait aucun jugement UX.
 4. Corriger les défauts constatés puis relancer avec le même `--run-id` et
    `--attempt 2`, puis 3 si nécessaire. Chaque dossier est immuable pour le lanceur.

@@ -293,6 +293,7 @@ def main():
                       'observation': '', 'opened_with': ''} for s in SCENARIOS}
         review['_reference_comparison'] = {'status': 'NOT_RUN', 'opened_with': '',
                                             'observation': '', 'reference_sha256': {}}
+        review['_scope'] = {'states': [], 'reason': ''}
         (out / 'visual-review.json').write_text(json.dumps(review, indent=2) + '\n')
         baseline()
         shell('am', 'force-stop', APP)

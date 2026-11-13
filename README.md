@@ -16,6 +16,22 @@ Prérequis : JDK 25, Android SDK 37.0 (canal preview), Gradle Wrapper inclus.
 ```
 APK local : `app/build/outputs/apk/debug/app-debug.apk`.
 
+## Tester aussitôt sur son téléphone
+
+Activer le débogage USB ou l'appairage ADB Wi-Fi, autoriser cette machine, puis :
+
+```sh
+python3 scripts/install-preview.py
+```
+
+La commande compile `app-preview.apk`, installe ou met à jour l'application
+séparée **Jean-Calcul Preview**, puis l'ouvre. La V2 déjà installée et ses
+données restent intactes. Utiliser `--serial SERIAL` si plusieurs appareils sont connectés.
+Sous NixOS, lancer `nix develop -c python3 scripts/install-preview.py`.
+Le même ordinateur conserve normalement la même signature debug pour les
+préviews suivantes. En cas de signature incompatible, la commande s'arrête sans
+désinstaller. V1, V2 et Preview peuvent coexister.
+
 ## Tester et visualiser avec un agent
 
 Voir [le parcours local E2E](e2e/README.md). Avec les prérequis installés :
@@ -23,7 +39,7 @@ Voir [le parcours local E2E](e2e/README.md). Avec les prérequis installés :
 python3 e2e/run.py --run-id ma-modification --attempt 1
 python3 e2e/report.py e2e-artifacts/ma-modification/attempt-1
 ```
-Ouvrir les PNG avec la vision native de l’agent ; `index.html` fournit une
+Ouvrir les PNG de la fonctionnalité modifiée avec la vision native de l’agent ; `index.html` fournit une
 galerie locale. `--show-window --keep-emulator` permet de manipuler l’app.
 Sous NixOS : `nix develop` prépare les outils Android.
 

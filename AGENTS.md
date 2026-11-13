@@ -13,10 +13,13 @@ Ne PAS réintroduire les modules V1. Ne PAS copier directement le runtime Eta.
 ## Définition de terminé
 - `./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug` passe.
 - `./gradlew :app:connectedDebugAndroidTest` passe en émulateur.
-- Captures d'écran pertinentes et rapport PASS/FAIL/NOT_RUN. Le fait de prendre
+- Captures d'écran pertinentes pour la fonctionnalité modifiée et ses régressions
+  plausibles, avec rapport PASS/FAIL/NOT_RUN. Le fait de prendre
   une capture n'est pas une analyse visuelle par un modèle.
-- Comparer l'interface aux références Eta/COUI : navigation, saisie, insets,
-  petit écran, mode sombre, texte agrandi, retour tactile et animations réduites.
+- Comparer les états concernés aux références Eta/COUI et vérifier leurs
+  variantes pertinentes : navigation, saisie, insets, petit écran, mode sombre,
+  texte agrandi, retour tactile et animations réduites. Élargir si un composant
+  partagé ou le thème global change ; marquer les autres états NOT_RUN.
 - Présenter PR + APK du commit + preuves E2E, laisser l'utilisateur accepter/refuser.
 - PR ciblant `feature/jean-calcul-v2-foundation`, jamais `main`.
 
@@ -28,8 +31,17 @@ Ne PAS réintroduire les modules V1. Ne PAS copier directement le runtime Eta.
 - COUI est épinglé; les adaptations Material3 actuelles sont temporaires.
 - Code Eta GPL-3.0 non copié sans décision juridique explicite.
 
-## Boucle locale #54
+## Boucle de test rapide
+Pendant l'itération, lancer `python3 scripts/install-preview.py [--serial SERIAL]`
+sur un téléphone ADB autorisé. Cela compile et installe l'application distincte
+`fr.loevan.jeancalcul.v2.preview`, sans attendre la CI ni toucher à V2 et ses
+données. Recueillir le retour utilisateur sur la fonctionnalité en cours. Une
+signature différente peut empêcher une mise à jour de Preview : ne jamais
+désinstaller automatiquement une application.
+
+## Boucle E2E de livraison #54
 Lancer `python3 e2e/run.py --run-id <issue> --attempt 1` ; ouvrir réellement
-chaque PNG avec la vision native, renseigner `visual-review.json`, puis lancer
+les PNG du périmètre visuel de l'issue avec la vision native, renseigner
+`visual-review.json` (NOT_RUN pour les autres), puis lancer
 `python3 e2e/report.py <dossier>`. Corriger et retester au maximum trois fois.
 Une capture seule vaut NOT_RUN pour la revue visuelle. Aucune vision en CI.
