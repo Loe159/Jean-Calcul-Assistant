@@ -1,0 +1,219 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="8" failures="1" errors="0" skipped="0" time="0.000" timestamp="2026-11-13T10:30:20" hostname="localhost">
+  <testsuite name="fr.loevan.jeancalcul.v2.SmokeTest" tests="8" failures="1" errors="0" skipped="0" time="55.754" timestamp="2026-11-13T10:30:20" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5580" />
+    </properties>
+    <testcase name="settingsScreen" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="13.156" />
+    <testcase name="resetCanBeCancelledAndDraftSurvivesNavigation" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="16.248">
+      <failure>java.lang.AssertionError: After system Back: finishing=false, destroyed=false, lifecycle=RESUMED; Printing with useUnmergedTree = 'true'
+Node #110 at (l=0.0, t=0.0, r=1080.0, b=1920.0)px
+ |-Node #111 at (l=0.0, t=0.0, r=1080.0, b=1920.0)px
+   BackgroundColor = 'Color(0.96862745, 0.96862745, 0.96862745, 1.0, sRGB IEC61966-2.1)'
+   Shape = 'RectangleShape'
+    |-Node #112 at (l=42.0, t=84.0, r=1038.0, b=210.0)px, Tag: 'header'
+    |  |-Node #150 at (l=42.0, t=84.0, r=168.0, b=210.0)px
+    |  | BackgroundColor = 'Color(0.0, 0.0, 0.0, 0.0, sRGB IEC61966-2.1)'
+    |  | ContentDescription = '[Retour]'
+    |  | Focused = 'false'
+    |  | Role = 'Button'
+    |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 28.0.dp), topEnd = CornerSize(size = 28.0.dp), bottomEnd = CornerSize(size = 28.0.dp), bottomStart = CornerSize(size = 28.0.dp))'
+    |  | Actions = [OnClick, RequestFocus]
+    |  | MergeDescendants = 'true'
+    |  |  |-Node #151 at (l=74.0, t=116.0, r=137.0, b=179.0)px
+    |  |    Shape = 'RectangleShape'
+    |  |-Node #113 at (l=168.0, t=119.0, r=912.0, b=175.0)px
+    |  | Text = '[Préférences]'
+    |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |  |-Node #119 at (l=912.0, t=84.0, r=1038.0, b=210.0)px, Tag: 'options'
+    |    BackgroundColor = 'Color(0.0, 0.0, 0.0, 0.0, sRGB IEC61966-2.1)'
+    |    ContentDescription = '[Plus d’options]'
+    |    Focused = 'false'
+    |    Role = 'Button'
+    |    Shape = 'RoundedCornerShape(topStart = CornerSize(size = 28.0.dp), topEnd = CornerSize(size = 28.0.dp), bottomEnd = CornerSize(size = 28.0.dp), bottomStart = CornerSize(size = 28.0.dp))'
+    |    Actions = [OnClick, RequestFocus]
+    |    MergeDescendants = 'true'
+    |     |-Node #120 at (l=944.0, t=116.0, r=1007.0, b=179.0)px
+    |       Shape = 'RectangleShape'
+    |-Node #152 at (l=0.0, t=231.0, r=1080.0, b=1635.0)px
+    |  |-Node #153 at (l=0.0, t=231.0, r=1080.0, b=1635.0)px
+    |    IsTraversalGroup = 'true'
+    |    Shape = 'androidx.compose.foundation.VerticalScrollableClipShape@bf44950'
+    |    VerticalScrollAxisRange = 'ScrollAxisRange(value=0.0, maxValue=700.0, reverseScrolling=false)'
+    |    Actions = [ScrollBy, ScrollByOffset]
+    |     |-Node #156 at (l=84.0, t=284.0, r=996.0, b=327.0)px
+    |     | Text = '[Fournisseur IA]'
+    |     | [Heading]
+    |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |     |-Node #157 at (l=42.0, t=348.0, r=1038.0, b=1702.0)px
+    |     | BackgroundColor = 'Color(1.0, 1.0, 1.0, 1.0, sRGB IEC61966-2.1)'
+    |     | Shape = 'CouiShape(radius=24.0.dp, cornerWeight=3.0)'
+    |     |  |-Node #159 at (l=95.0, t=401.0, r=402.0, b=454.0)px
+    |     |  | Text = '[IA non configurée]'
+    |     |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |     |  |-Node #161 at (l=95.0, t=486.0, r=475.0, b=529.0)px
+    |     |  | Text = '[URL de base (https://…/v1)]'
+    |     |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |     |  |-Node #162 at (l=127.0, t=561.0, r=953.0, b=623.0)px, Tag: 'provider_endpoint'
+    |     |  | BackgroundColor = 'Color(1.0, 1.0, 1.0, 1.0, sRGB IEC61966-2.1)'
+    |     |  | ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+    |     |  | ContentDescription = '[URL de base (https://…/v1)]'
+    |     |  | EditableText = ''
+    |     |  | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@939c749'
+    |     |  | Focused = 'false'
+    |     |  | ImeAction = 'Default'
+    |     |  | InputText = ''
+    |     |  | InputTextSuggestionState = 'InputTextSuggestionState(isCommittedByInputMethodEditor=false, suggestionSelected=false)'
+    |     |  | IsEditable = 'true'
+    |     |  | Shape = 'RectangleShape'
+    |     |  | TextCompositionRange = 'null'
+    |     |  | TextSelectionRange = 'TextRange(0, 0)'
+    |     |  | Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, ScrollBy, ScrollByOffset, SetSelection, SetText]
+    |     |  | MergeDescendants = 'true'
+    |     |  |  |-Node #164 at (l=127.0, t=561.0, r=953.0, b=623.0)px
+    |     |  |    Shape = 'RectangleShape'
+    |     |  |    Actions = [MagnifierPositionInRoot]
+    |     |  |-Node #167 at (l=95.0, t=687.0, r=396.0, b=730.0)px
+    |     |  | Text = '[Identifiant du modèle]'
+    |     |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |     |  |-Node #168 at (l=127.0, t=762.0, r=953.0, b=824.0)px, Tag: 'provider_model'
+    |     |  | BackgroundColor = 'Color(1.0, 1.0, 1.0, 1.0, sRGB IEC61966-2.1)'
+    |     |  | ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+    |     |  | ContentDescription = '[Identifiant du modèle]'
+    |     |  | EditableText = ''
+    |     |  | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@3c8484e'
+    |     |  | Focused = 'false'
+    |     |  | ImeAction = 'Default'
+    |     |  | InputText = ''
+    |     |  | InputTextSuggestionState = 'InputTextSuggestionState(isCommittedByInputMethodEditor=false, suggestionSelected=false)'
+    |     |  | IsEditable = 'true'
+    |     |  | Shape = 'RectangleShape'
+    |     |  | TextCompositionRange = 'null'
+    |     |  | TextSelectionRange = 'TextRange(0, 0)'
+    |     |  | Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, ScrollBy, ScrollByOffset, SetSelection, SetText]
+    |     |  | MergeDescendants = 'true'
+    |     |  |  |-Node #170 at (l=127.0, t=762.0, r=953.0, b=824.0)px
+    |     |  |    Shape = 'RectangleShape'
+    |     |  |    Actions = [MagnifierPositionInRoot]
+    |     |  |-Node #172 at (l=95.0, t=888.0, r=592.0, b=931.0)px
+    |     |  | Text = '[Clé API · vide pour supprimer la clé]'
+    |     |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |     |  |-Node #173 at (l=127.0, t=995.0, r=953.0, b=1057.0)px, Tag: 'provider_key'
+    |     |  | BackgroundColor = 'Color(1.0, 1.0, 1.0, 1.0, sRGB IEC61966-2.1)'
+    |     |  | ContentDataType = 'AndroidContentDataType(androidAutofillType=1)'
+    |     |  | ContentDescription = '[Clé API]'
+    |     |  | EditableText = ''
+    |     |  | FillableData = 'androidx.compose.ui.autofill.AndroidFillableData@ca2bd6f'
+    |     |  | Focused = 'false'
+    |     |  | ImeAction = 'Default'
+    |     |  | InputText = ''
+    |     |  | IsEditable = 'true'
+    |     |  | IsPasswordObfuscated = 'true'
+    |     |  | Shape = 'RectangleShape'
+    |     |  | TextSelectionRange = 'TextRange(0, 0)'
+    |     |  | [Password]
+    |     |  | Actions = [GetTextLayoutResult, InsertTextAtCursor, OnClick, OnFillData, OnLongClick, PasteText, PerformImeAction, RequestFocus, SetSelection, SetText]
+    |     |  | MergeDescendants = 'true'
+    |     |  |  |-Node #175 at (l=127.0, t=995.0, r=953.0, b=1057.0)px
+    |     |  |    Shape = 'RectangleShape'
+    |     |  |-Node #177 at (l=95.0, t=1121.0, r=985.0, b=1247.0)px
+    |     |  | ContentDescription = '[Destination locale déclarée]'
+    |     |  | Focused = 'false'
+    |     |  | Selected = 'false'
+    |     |  | Actions = [OnClick, RequestFocus]
+    |     |  | MergeDescendants = 'true'
+    |     |  |  |-Node #178 at (l=127.0, t=1153.0, r=790.0, b=1206.0)px
+    |     |  |    Text = '[Serveur distant · toucher pour changer]'
+    |     |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |     |  |-Node #179 at (l=95.0, t=1279.0, r=985.0, b=1369.0)px
+    |     |  | Text = '[Vérifiez l’hôte : le libellé local ne garantit pas son emplacement. Une requête envoie l’historique à cet hôte.]'
+    |     |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |     |  |-Node #180 at (l=95.0, t=1401.0, r=985.0, b=1527.0)px, Tag: 'save_provider'
+    |     |  | BackgroundColor = 'Color(0.89411765, 0.9372549, 0.9843137, 1.0, sRGB IEC61966-2.1)'
+    |     |  | Focused = 'false'
+    |     |  | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 28.0.dp), topEnd = CornerSize(size = 28.0.dp), bottomEnd = CornerSize(size = 28.0.dp), bottomStart = CornerSize(size = 28.0.dp))'
+    |     |  | Actions = [OnClick, RequestFocus]
+    |     |  | MergeDescendants = 'true'
+    |     |  |  |-Node #181 at (l=127.0, t=1433.0, r=564.0, b=1486.0)px
+    |     |  |    Text = '[Enregistrer le fournisseur]'
+    |     |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |     |  |-Node #182 at (l=95.0, t=1559.0, r=985.0, b=1649.0)px
+    |     |    Text = '[Codex direct : indisponible, preuve de fonctionnement et conformité requises.]'
+    |     |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |     |-Node #183 at (l=84.0, t=1723.0, r=996.0, b=1813.0)px
+    |     | Text = '[Historique sur cet appareil. HTTPS requis, y compris pour un serveur local. Aucun outil Android autorisé.]'
+    |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |     |-Node #186 at (l=84.0, t=1887.0, r=996.0, b=1930.0)px
+    |     | Text = '[Apparence]'
+    |     | [Heading]
+    |     | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |     |-Node #187 at (l=42.0, t=1951.0, r=1038.0, b=2272.0)px
+    |       BackgroundColor = 'Color(1.0, 1.0, 1.0, 1.0, sRGB IEC61966-2.1)'
+    |       Shape = 'CouiShape(radius=24.0.dp, cornerWeight=3.0)'
+    |        |-Node #190 at (l=84.0, t=1977.0, r=445.0, b=2034.0)px
+    |        | Text = '[Thème du système]'
+    |        | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |-Node #191 at (l=84.0, t=2039.0, r=539.0, b=2085.0)px
+    |        | Text = '[Clair ou sombre selon Android]'
+    |        | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |        |-Node #192 at (l=84.0, t=2111.0, r=996.0, b=2112.0)px
+    |        | BackgroundColor = 'Color(0.0, 0.0, 0.0, 0.12156863, sRGB IEC61966-2.1)'
+    |        | Shape = 'RectangleShape'
+    |        |-Node #193 at (l=42.0, t=2112.0, r=1038.0, b=2272.0)px, Tag: 'gallery'
+    |          Focused = 'false'
+    |          Role = 'Button'
+    |          Actions = [OnClick, RequestFocus]
+    |          MergeDescendants = 'true'
+    |           |-Node #195 at (l=84.0, t=2138.0, r=324.0, b=2195.0)px
+    |           | Text = '[Galerie COUI]'
+    |           | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |           |-Node #196 at (l=84.0, t=2200.0, r=648.0, b=2246.0)px
+    |             Text = '[Couleurs, typographie et composants]'
+    |             Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+    |-Node #197 at (l=42.0, t=1656.0, r=1038.0, b=1836.0)px, Tag: 'navigation'
+       |-Node #198 at (l=157.0, t=1667.0, r=923.0, b=1825.0)px
+         BackgroundColor = 'Color(1.0, 1.0, 1.0, 1.0, sRGB IEC61966-2.1)'
+         Shape = 'RoundedCornerShape(topStart = CornerSize(size = 28.0.dp), topEnd = CornerSize(size = 28.0.dp), bottomEnd = CornerSize(size = 28.0.dp), bottomStart = CornerSize(size = 28.0.dp))'
+          |-Node #199 at (l=157.0, t=1667.0, r=534.0, b=1825.0)px
+          | BackgroundColor = 'Color(0.0, 0.0, 0.0, 0.0, sRGB IEC61966-2.1)'
+          | Focused = 'false'
+          | Role = 'Tab'
+          | Selected = 'false'
+          | Shape = 'RoundedCornerShape(topStart = CornerSize(size = 28.0.dp), topEnd = CornerSize(size = 28.0.dp), bottomEnd = CornerSize(size = 28.0.dp), bottomStart = CornerSize(size = 28.0.dp))'
+          | Actions = [OnClick, RequestFocus]
+          | MergeDescendants = 'true'
+          |  |-Node #200 at (l=314.0, t=1688.0, r=377.0, b=1751.0)px
+          |  | Shape = 'RectangleShape'
+          |  |-Node #201 at (l=306.0, t=1751.0, r=386.0, b=1804.0)px
+          |    Text = '[Chat]'
+          |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+          |-Node #202 at (l=545.0, t=1667.0, r=923.0, b=1825.0)px
+            BackgroundColor = 'Color(0.89411765, 0.9372549, 0.9843137, 1.0, sRGB IEC61966-2.1)'
+            Focused = 'false'
+            Role = 'Tab'
+            Selected = 'true'
+            Shape = 'RoundedCornerShape(topStart = CornerSize(size = 28.0.dp), topEnd = CornerSize(size = 28.0.dp), bottomEnd = CornerSize(size = 28.0.dp), bottomStart = CornerSize(size = 28.0.dp))'
+            Actions = [OnClick, RequestFocus]
+            MergeDescendants = 'true'
+             |-Node #203 at (l=703.0, t=1688.0, r=766.0, b=1751.0)px
+             | Shape = 'RectangleShape'
+             |-Node #204 at (l=654.0, t=1751.0, r=814.0, b=1804.0)px
+               Text = '[Réglages]'
+               Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]
+	at fr.loevan.jeancalcul.v2.SmokeTest.resetCanBeCancelledAndDraftSurvivesNavigation(SmokeTest.kt:89)
+	... 65 trimmed
+Caused by: androidx.compose.ui.test.ComposeTimeoutException: Condition still not satisfied after 10000 ms
+	at androidx.compose.ui.test.AndroidComposeUiTestEnvironment$AndroidComposeUiTestImpl.waitUntil(ComposeUiTest.android.kt:990)
+	at androidx.compose.ui.test.junit4.AndroidComposeTestRule.waitUntil(AndroidComposeTestRule.android.kt:504)
+	at fr.loevan.jeancalcul.v2.SmokeTest.resetCanBeCancelledAndDraftSurvivesNavigation(SmokeTest.kt:87)
+	... 66 more
+</failure>
+    </testcase>
+    <testcase name="keystoreCredentialsAndHistoryRoundTrip" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="2.184" />
+    <testcase name="multilineComposerDoesNotPanHeader" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="3.366" />
+    <testcase name="historySurvivesRecreationAndFailureCanRetry" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="4.817" />
+    <testcase name="initialState" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="1.980" />
+    <testcase name="composeAndReset" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="6.454" />
+    <testcase name="nativeMenuGalleryAndDialog" classname="fr.loevan.jeancalcul.v2.SmokeTest" time="7.549" />
+  </testsuite>
+</testsuites>

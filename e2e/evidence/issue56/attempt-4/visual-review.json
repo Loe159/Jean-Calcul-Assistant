@@ -1,0 +1,125 @@
+{
+  "empty": {
+    "status": "PASS",
+    "sha256": "298a9c4077557daab6984f8e720e4f6acaaeabad5aa20e736af0a1769c362305",
+    "observation": "Accueil indique de connecter le compte ChatGPT ; capsule affiche connexion requise. Titre, trois actions et navigation visibles, aucune réponse inventée.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "message": {
+    "status": "PASS",
+    "sha256": "ede249585161cd68b639293d047c73c6d8ca089a67236d8caad96d9f10927fbb",
+    "observation": "Message synthétique conservé, erreur réelle de connexion ChatGPT sur deux lignes et action Réessayer lisibles ; pas de bulle entrante fictive.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "reset": {
+    "status": "PASS",
+    "sha256": "298a9c4077557daab6984f8e720e4f6acaaeabad5aa20e736af0a1769c362305",
+    "observation": "Après effacement, accueil et saisie vide rétablis, ancien message absent et navigation Chat conservée.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "settings": {
+    "status": "PASS",
+    "sha256": "ae3878a9b7aca6b9e71bce1fc7233aee9bddb804bb2a716dcf83b87b73eb5a7d",
+    "observation": "Groupe Abonnement ChatGPT en premier, bouton noir Continue with ChatGPT lisible et action Gérer l’utilisation visible. Le fournisseur API est une option distincte plus bas ; contenu défilable.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "dark": {
+    "status": "PASS",
+    "sha256": "6b2ca9c37d20a0666ce4f6f4712a32418ab2339d4c17ba3e485bbb9e6ab58e93",
+    "observation": "Chat sombre : texte, consigne et statut connexion requise contrastés ; capsule et onglet actif identifiables, insets dégagés.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "small_screen": {
+    "status": "PASS",
+    "sha256": "4e7d04abf41d15898032e05726dd66f1746e0aa4cdd487ebc80af82bd6aa5644",
+    "observation": "360×640 dp : titre et consigne reviennent à la ligne ; capsule, état de connexion et envoi restent lisibles, navigation visible.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "large_text": {
+    "status": "PASS",
+    "sha256": "d4b3b52b8b6983c1071aa694fa79cf724a9cb0761226ef19a1846d91727989cf",
+    "observation": "200 % : texte de connexion et état du composeur se réorganisent sur plusieurs lignes sans chevauchement. Titre COUI fixe mais présent ; placeholder abrégé.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "keyboard": {
+    "status": "PASS",
+    "sha256": "d5674b3c2a517255579f5f3c443d84ebc5fe9e567cd5ce659eaf672a9058e334",
+    "observation": "Clavier visible et envoi dégagé au-dessus de l’IME ; brouillon et curseur lisibles. Recadrage inspection/keyboard-header.png ouvert nativement : titre et trois actions présents.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "reduced_motion": {
+    "status": "PASS",
+    "sha256": "c88728a77734063433daf90985f83dba251cad5c7d96e8445a69df43a3c22a22",
+    "observation": "État stable sans animation : hiérarchie accueil/saisie/navigation conservée. Capture ne prouve ni fluidité ni haptique.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "menu": {
+    "status": "PASS",
+    "sha256": "db307452f2c28d7031c056c82be4b9e54228744a760ed8f76d313450e8ee837c",
+    "observation": "Menu Galerie COUI/Préférences ancré sous les options et lisible, sans masquer le composeur.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "gallery": {
+    "status": "PASS",
+    "sha256": "462c326b349b50769ca70aeab20ae379d17a5636d5ea5f2c971e599ac24a6c87",
+    "observation": "Échantillons de palette, bulles explicitement illustratives et dialogue visibles, sans prétendre à une réponse IA connectée.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "dialog": {
+    "status": "PASS",
+    "sha256": "0c793f4755688e2c0b34911f428e54508d787e895330d425c0b6949228a2f4c3",
+    "observation": "Titre, texte et Fermer dans le dialogue blanc au-dessus du fond assombri ; barre système dégagée.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "chatgpt_dark": {
+    "status": "PASS",
+    "sha256": "4421461a815ab23cfc6edb8154867ca180c0e69d28eaf6c8ec7b5ce7d2aac15d",
+    "observation": "Entrée ChatGPT lisible en sombre : texte blanc sur bouton noir distinct de la carte anthracite ; accès usage et fournisseur API séparés, aucun compte annoncé connecté.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "chatgpt_small_screen": {
+    "status": "PASS",
+    "sha256": "f390ef0e9465f43c2aba81dbf465729b58c6a10c90bf88ca8b77d3ffd32563ab",
+    "observation": "Petit écran : Continue with ChatGPT tient sur une ligne et reste entièrement visible ; consigne et usage lisibles, fournisseur API sous le pli dans la liste défilable.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "chatgpt_large_text": {
+    "status": "PASS",
+    "sha256": "b1b32ba81b46c6cfa3826e69f6743bd6ef9a8ae082494a2242d0b03036543bc3",
+    "observation": "200 % : bouton ChatGPT et accès usage lisibles, la carte grandit avec le texte sans superposer la navigation. Suite du texte et sections plus basses hors viewport.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "provider_dark": {
+    "status": "PASS",
+    "sha256": "5370bf336670a179a02df75d7d06c0362a48a8488d397df19bfde35b6bd4e235",
+    "observation": "Après défilement, formulaire API ouvert ; libellé URL et contour du champ visibles au bas. Suite sous le pli non validée, entrée ChatGPT conservée au-dessus.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "provider_small_screen": {
+    "status": "PASS",
+    "sha256": "97f20d11aa7afbd4ce30d11692728958c98dc9d8667a9c7b895f2e2aea1db1b5",
+    "observation": "Viewport défilé : champ URL bordé visible partiellement en bas ; son étiquette est lisible. Partie supérieure de la liste hors viewport ; bas du formulaire non inspecté.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "provider_large_text": {
+    "status": "PASS",
+    "sha256": "1e439f085160217c295f39dba24f45af4592a83ffea922e23d4fcff272ca33b4",
+    "observation": "À 200 % après défilement, section API, action Configurer et étiquette URL lisibles, contour de champ identifiable en bas. Le contenu suivant nécessite de défiler ; il n’est pas validé par ce PNG.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "regression_fixture": {
+    "status": "FAIL",
+    "sha256": "f06d21a84f28f209719061c90add01969fefe7d8aa79f8cc5965f904724ea96c",
+    "observation": "FAIL volontaire : rectangle rouge opaque couvre la zone basse, masque connexion, envoi et navigation ainsi qu’une partie du composeur.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "_reference_comparison": {
+    "status": "PASS",
+    "opened_with": "functions.exec -> tools.view_image (vision native)",
+    "observation": "Les deux références Eta et les dix-neuf captures de cette tentative ont été ouvertes. Fond neutre, capsule basse et groupes arrondis/titres-résumés restent cohérents. V2 met le vrai parcours ChatGPT en premier, avec un bouton noir nommé et un état connexion requise ; elle ne reprend pas les raccourcis Eta non raccordés. Navigation Chat/Réglages propre à V2. Aucun équivalent exact Eta des états OAuth, sombre, IME ou 200 % ; pas de parité pixel/fonctionnelle revendiquée. Le FAIL fonctionnel Retour/IME dans les tests reste distinct de cette inspection statique.",
+    "reference_sha256": {
+      "chat_home.jpg": "b52261d66f78b41ce5c67f6d24925a795868a37544f44163d56652de98cc9111",
+      "settings.jpg": "8578d0d1ef91036e93c7b6b7ec8433e5790c476c43ebebbe68c514e84078cb30"
+    }
+  }
+}

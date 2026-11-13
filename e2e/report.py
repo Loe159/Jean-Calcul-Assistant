@@ -42,8 +42,22 @@ def render(directory):
             source = html.escape(capture['path'], quote=True)
             cards.append(f'<figure><a href="{source}"><img src="{source}" alt="{scenario}"></a>'
                          f'<figcaption>{scenario}: {status}<p>{html.escape(observation)}</p></figcaption></figure>')
-    normal = [outcomes[s] for s in scenarios if s != 'regression_fixture']
-    visual = 'FAIL' if 'FAIL' in normal else ('PASS' if all(s == 'PASS' for s in normal) else 'NOT_RUN')
+    scope = reviews.get('_scope')
+    if scope is None and review_path.exists():  # Historical full reviews.
+        selected = [s for s in scenarios if s != 'regression_fixture']
+        scope_reason = 'Legacy full visual review'
+    else:
+        selected = scope.get('states', []) if isinstance(scope, dict) else []
+        scope_reason = scope.get('reason', '') if isinstance(scope, dict) else ''
+        if (not isinstance(selected, list) or not selected or
+                not all(isinstance(s, str) and s in scenarios and
+                        s != 'regression_fixture' for s in selected) or
+                len(set(selected)) != len(selected) or
+                not isinstance(scope_reason, str) or not scope_reason.strip()):
+            selected = []
+            scope_reason = 'Périmètre visuel non défini'
+    normal = [outcomes[s] for s in selected]
+    visual = 'FAIL' if 'FAIL' in normal else ('PASS' if normal and all(s == 'PASS' for s in normal) else 'NOT_RUN')
     # The deliberately bad image must FAIL visual review to prove detection.
     fixture = outcomes['regression_fixture']
     regression = 'PASS' if fixture == 'FAIL' else ('FAIL' if fixture == 'PASS' else 'NOT_RUN')
@@ -57,9 +71,10 @@ def render(directory):
             path = directory / 'references' / name
             valid = valid and path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest() == digest
             valid = valid and reference.get('reference_sha256', {}).get(name) == digest
-        if valid and all(value != 'NOT_RUN' for value in normal):
+        if valid and normal and all(value != 'NOT_RUN' for value in normal):
             reference_status = reference['status']
-    report['visual_review'] = {'status': visual, 'evidence': 'visual-review.json'}
+    report['visual_review'] = {'status': visual, 'evidence': 'visual-review.json',
+                               'scope': selected, 'scope_reason': scope_reason}
     report['reference_comparison'] = {'status': reference_status, 'evidence': 'visual-review.json'}
     report['regression_detection'] = {'status': regression, 'evidence': 'visual-review.json'}
     for name, value in outcomes.items():
@@ -75,7 +90,7 @@ Android API {report['api']} ; émulateur `{report['serial']}` ; données synthé
 | --- | --- |
 | Tâches Gradle build/lint et instrumentation Compose | {report['technical']['status']} |
 | Tests JVM réellement exécutés | {report['technical'].get('jvm_tests', 'NOT_RUN')} |
-| Revue visuelle native des états normaux | {visual} |
+| Revue visuelle native du périmètre ciblé | {visual} |
 | Détection du défaut volontaire | {regression} |
 | Comparaison aux références Eta sélectionnées par l’utilisateur | {reference_status} |
 | Appareil Samsung / retour tactile physique | NOT_RUN |
@@ -86,6 +101,9 @@ La comparaison porte sur les états communs du prototype ; elle ne prouve pas
 la parité fonctionnelle avec Eta. La CI ne juge pas l'UX.
 
 Observation comparative : {reference.get('observation', 'NOT_RUN')}
+
+Périmètre visuel : {', '.join(selected) or 'NOT_RUN'}.
+Motif : {scope_reason}.
 
 | État | Capture et assertions | Revue visuelle | Observation |
 | --- | --- | --- | --- |
@@ -99,7 +117,7 @@ body{font:16px system-ui;margin:24px;background:#eee;color:#161616}
 main{display:flex;flex-wrap:wrap;gap:24px}figure{margin:0;width:300px}
 img{width:100%;height:auto}figcaption{padding:12px 0}p{max-width:70ch}
 </style><h1>Jean-Calcul — preuves E2E</h1>
-<p>Galerie locale de données synthétiques. Ouvrir chaque PNG avec la vision native de l'agent.
+<p>Galerie locale de données synthétiques. Ouvrir les PNG du périmètre visuel avec la vision native de l'agent.
 La présence d'une image n'atteste pas sa revue.</p><p><a href="report.md">Rapport</a></p><main>'''
         + ''.join(cards) + '</main></html>')
     return visual, regression

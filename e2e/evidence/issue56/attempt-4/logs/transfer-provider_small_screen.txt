@@ -1,0 +1,6 @@
+try=1 exit=0 bytes=0 complete_png=False
+
+try=2 exit=255 bytes=0 complete_png=False
+error: device 'emulator-5580' not found
+
+try=3 exit=0 bytes=69198 complete_png=True

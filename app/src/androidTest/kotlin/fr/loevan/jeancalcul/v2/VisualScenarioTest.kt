@@ -18,6 +18,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
@@ -47,8 +49,15 @@ class VisualScenarioTest {
             "empty", "dark", "small_screen", "large_text", "reduced_motion" -> Unit
             "message", "reset" -> {
                 rule.onNodeWithTag("composer").performTextInput("Bonjour V2 — test synthétique")
+                rule.waitUntil(10_000) {
+                    var visible = false
+                    rule.runOnUiThread {
+                        visible = rule.activity.window.decorView.rootWindowInsets
+                            ?.isVisible(WindowInsets.Type.ime()) == true
+                    }
+                    visible
+                }
                 rule.onNodeWithTag("send").assertIsEnabled().performClick()
-                rule.onNodeWithText("Bonjour V2 — test synthétique").assertIsDisplayed()
                 // Android Back belongs to the system, outside the Compose semantics tree.
                 device.pressBack()
                 rule.waitUntil(10_000) {
@@ -60,23 +69,40 @@ class VisualScenarioTest {
                     hidden
                 }
                 rule.waitForIdle()
-                rule.onNodeWithTag("navigation").assertIsDisplayed()
+                // The lazy conversation may not compose its footer while the IME
+                // occupies the viewport. Inspect it only after restoring that space.
+                rule.waitUntil(10_000) { rule.onAllNodesWithTag("retry").fetchSemanticsNodes().isNotEmpty() }
+                rule.onNodeWithText("Bonjour V2 — test synthétique").assertIsDisplayed()
                 if (scenario == "reset") {
-                    rule.onNodeWithTag("reset").performClick()
+                    rule.onNodeWithTag("options").performClick()
+                    rule.onNodeWithText("Nouvelle conversation").performClick()
                     rule.onNodeWithText("Effacer").performClick()
+                    rule.waitUntil(5_000) { rule.onAllNodesWithTag("empty").fetchSemanticsNodes().isNotEmpty() }
                     rule.onNodeWithTag("empty").assertIsDisplayed()
                     rule.onNodeWithText("Bonjour V2 — test synthétique").assertDoesNotExist()
                 }
             }
-            "settings" -> {
+            "settings", "chatgpt_dark", "chatgpt_small_screen", "chatgpt_large_text", "provider_dark", "provider_small_screen", "provider_large_text" -> {
                 rule.onNodeWithTag("settings").performClick()
-                rule.onNodeWithText("Préférences").assertIsDisplayed()
+                rule.onNodeWithText("Options").assertIsDisplayed()
                 rule.onNodeWithTag("composer").assertDoesNotExist()
+                if (scenario!!.startsWith("provider_")) {
+                    rule.onNodeWithTag("configure_provider").performScrollTo().performClick()
+                    rule.onNodeWithTag("provider_endpoint").performScrollTo().assertIsDisplayed()
+                } else if (scenario.startsWith("chatgpt_")) {
+                    rule.onNodeWithTag("choose_provider").performScrollTo().performClick()
+                    rule.onNodeWithTag("chatgpt_sign_in").performScrollTo().assertIsDisplayed()
+                }
+            }
+            "provider_selection", "model_selection" -> {
+                rule.onNodeWithTag("model_header").performClick()
+                rule.onNodeWithText("Fournisseurs").assertIsDisplayed()
+                if (scenario == "model_selection") rule.onNodeWithText("Choisir un modèle").performClick()
             }
             "menu" -> rule.onNodeWithTag("options").performClick()
             "gallery", "dialog" -> {
                 rule.onNodeWithTag("settings").performClick()
-                rule.onNodeWithTag("gallery").performClick()
+                rule.onNodeWithTag("gallery").performScrollTo().performClick()
                 if (scenario == "dialog") rule.onNodeWithTag("gallery_dialog").performClick()
             }
             "keyboard" -> {

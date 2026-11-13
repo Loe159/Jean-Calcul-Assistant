@@ -16,5 +16,9 @@ et capable de travailler avec un homelab Mastra sans en dépendre.
 Exclus du socle : root, LSPosed, hacks constructeur, terminal Linux complet,
 système de personnages et copie du runtime Eta.
 
-Le prototype actuel n'a pas de connexion IA, ne persiste pas les conversations,
-et ne doit pas être annoncé comme un assistant fonctionnel.
+Le chat persiste la conversation et accepte un fournisseur OpenAI-compatible
+HTTPS configuré par l’utilisateur, local ou distant. Aucun fournisseur n’est
+préconnecté. Le parcours ChatGPT par inscription dynamique et API Responses est
+implémenté ; un envoi réel a été validé manuellement sur la variante Preview
+avec un compte utilisateur. Aucun outil d’accès Android n’est intégré. Voir `CHATGPT-AUTH.md`
+et `RUNTIME.md` pour les limites et validations réelles.

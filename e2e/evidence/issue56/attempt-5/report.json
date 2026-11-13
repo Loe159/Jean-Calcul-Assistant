@@ -1,0 +1,113 @@
+{
+  "issue": 56,
+  "attempt": 5,
+  "attempt_budget": 5,
+  "budget_override": "Oui, autoriser les tentatives 5 et 6",
+  "created_utc": "2026-11-13T12:33:52.707429+00:00",
+  "commit": "11bf644c509005b51b8702d7e47c78dc442e2af5",
+  "working_tree_dirty": false,
+  "api": 35,
+  "serial": "emulator-5580",
+  "technical": {
+    "status": "FAIL",
+    "evidence": "logs/gradle.txt",
+    "jvm_tests": "PASS",
+    "error": "Instrumentation XML contains a failure: TEST-jc-e2e-issue56-5(AVD) - 15.xml"
+  },
+  "captures": {
+    "empty": {
+      "status": "PASS",
+      "path": "screenshots/empty.png",
+      "sha256": "696431691ddf3d96104706c7569d65d7e0c38d0b4c46b2ff007b4160cb0a1bab",
+      "visual_status": "PASS"
+    },
+    "message": {
+      "status": "FAIL",
+      "evidence": "logs/message.txt",
+      "visual_status": "NOT_RUN"
+    },
+    "reset": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "settings": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "dark": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "small_screen": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "large_text": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "keyboard": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "reduced_motion": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "menu": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "gallery": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "dialog": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "chatgpt_dark": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "chatgpt_small_screen": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "chatgpt_large_text": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "provider_dark": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "provider_small_screen": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "provider_large_text": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    },
+    "regression_fixture": {
+      "status": "NOT_RUN",
+      "visual_status": "NOT_RUN"
+    }
+  },
+  "visual_review": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "reference_comparison": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "regression_detection": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "source_manifest": "source-manifest.json",
+  "error": "Instrumentation failed for message; see logs/message.txt",
+  "apk_sha256": "56f72d47307ed634240cb50d8277e60bbba31fae8dd6f582a055f79a4c582712"
+}

@@ -20,7 +20,7 @@ Les sources de versions ultérieures ne définissent pas les API utilisées ici.
 
 La galerie est accessible depuis les réglages ou le menu. Les deux directions de
 bulles y sont explicitement des exemples visuels. Le chat n'invente jamais de
-réponse IA et conserve uniquement les messages saisis, en mémoire.
+réponse IA et utilise désormais le runtime persistant documenté dans `RUNTIME.md`.
 
 Aucun import Material3 dans le code applicatif et dépendance directe supprimée.
 COUI reste en alpha7, minSdk 33 conservé ; le build/lint doit vérifier les gardes API.
@@ -86,3 +86,39 @@ et de navigation Foundation sont des exceptions explicites de cette livraison ;
 les revues historiques ne suffisent pas à attribuer un défaut à la bibliothèque.
 Le défaut technique Retour/IME, reproduit dans la suite complète, disparaît avec
 la configuration `adjustResize`, sans mise à jour de COUI ni d'Activity.
+
+## Extension #56
+
+Les champs de configuration réutilisent Foundation faute de TextField public
+alpha7, avec typographie et couleurs COUI, contours de champ explicites et
+cibles de 48 dp. La clé utilise un clavier Password sans autocorrection, masque
+sa valeur et ne la sauvegarde pas dans l’état Compose. Le formulaire s’ouvre
+uniquement après « Configurer le fournisseur » ; les réglages initiaux conservent
+les groupes COUI. Le retour système ferme d’abord l’édition avant de quitter les
+réglages. Les nouveaux écrans doivent être jugés sur les preuves #56 réelles.
+
+## Extension de connexion ChatGPT
+
+Le groupe ChatGPT précède le fournisseur API. Il réutilise Group, Text et Menu
+COUI, les cibles Foundation de 48 dp et couiButtonFeedback. L’action de connexion
+porte le libellé officiel Continue with ChatGPT, en blanc sur noir ; aucun faux
+logo n’est dessiné. Le sélecteur de compte et les actions restent défilables.
+Le consentement est dans le navigateur système, jamais une WebView embarquée.
+Les dix-neuf captures de la tentative 4 ont été ouvertes : les états normaux
+visibles sont lisibles, y compris l’entrée ChatGPT claire/sombre/petite/200 %.
+Le FAIL technique Retour/IME reste présent (9/10 Android). La correction suivante
+renouvelle la connexion via InputMethodManager.restartInput après la disparition
+du champ, puis le test attend aussi isAcceptingText=false. Ce correctif n’est pas
+validé par ces anciennes captures et requiert un nouveau run autorisé.
+Référence API : https://developer.android.com/reference/android/view/inputmethod/InputMethodManager#restartInput(android.view.View)
+
+## Refonte visuelle demandée dans #56
+
+L'en-tête du chat reprend la structure Eta : options à gauche, modèle actif au
+centre, menu à trois points à droite. Le menu contient la nouvelle conversation,
+avec confirmation si un brouillon ou des messages existent. La navigation basse
+est retirée. Les réglages et la sélection fournisseur/modèle utilisent des
+groupes COUI et des lignes Foundation avec typographie et feedback COUI,
+icône colorée, résumé et chevron. Le formulaire API est isolé dans sa propre
+carte. Les commandes Eta non raccordées (outils, mémoire, permissions appareil)
+ne sont pas représentées comme utilisables. Le code Eta n'est pas utilisé.

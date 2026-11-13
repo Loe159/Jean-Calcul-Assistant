@@ -1,0 +1,107 @@
+{
+  "empty": {
+    "status": "PASS",
+    "sha256": "11b629aa3b70bb80be8f293808cd0393d0045c5654f54419b20c1b80f2efcfd0",
+    "observation": "Titre, consigne de configuration et stockage local lisibles ; capsule et navigation restent dans les insets.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "message": {
+    "status": "PASS",
+    "sha256": "eabe5ebafdaa4e770bd86690ed044dda1e76dd18f976ebed9fb8e9a35f8f8e20",
+    "observation": "Bulle sortante synthétique, erreur de configuration réelle et action Réessayer lisibles. Aucune réponse IA inventée.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "reset": {
+    "status": "PASS",
+    "sha256": "1874aa3970e6625df0cb27708636058c79d38097ed94eb134de3c769daaf7585",
+    "observation": "Accueil vide rétabli après effacement ; saisie et navigation visibles sans ancien message.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "settings": {
+    "status": "FAIL",
+    "sha256": "365781dc7ca956e912e02cafc45af5f97294636e53d6c67cbb86e3c9c4a11956",
+    "observation": "FAIL : les trois champs vides se fondent dans la carte blanche, sans contour ni repère de zone de saisie. Le formulaire monopolise les réglages.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "dark": {
+    "status": "PASS",
+    "sha256": "9504cbbdad0455aa290708de0011ffe564770e779ba99b99fc9a1c43301f7492",
+    "observation": "Texte clair et secondaire lisibles sur fond sombre ; capsule et onglet actif identifiables.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "small_screen": {
+    "status": "PASS",
+    "sha256": "b03cfe72ec363d344eb4e01e5525287fae27d50f8ec26a3dc75d2256ab3ef6df",
+    "observation": "360×640 dp : titre et description reviennent à la ligne ; saisie et navigation restent entièrement accessibles.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "large_text": {
+    "status": "PASS",
+    "sha256": "1f4ee423885a6171d6fb18b26a5939c2dc8a55261105c07ecd235dc663ce3a57",
+    "observation": "Police 200 % : corps et onglets agrandis sans chevauchement ; indication de saisie abrégée avec ellipse. Titre COUI fixe, limite alpha7.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "keyboard": {
+    "status": "PASS",
+    "sha256": "3c82d45669d653ae842a675f089ed798ce1f11a0c432baf01c4e22371d084ecd",
+    "observation": "Clavier visible, texte et envoi au-dessus de l’IME. En-tête Jean-Calcul et trois actions confirmés par ouverture native du recadrage inspection/keyboard-header.png ; aucune disparition.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "reduced_motion": {
+    "status": "PASS",
+    "sha256": "d72378597e1f1c1286aa33243f3748c3b77d4fca2266565e7c3ba8a7aa3fc52a",
+    "observation": "État stable lisible avec échelle animation à zéro ; capture ne prouve pas la fluidité ni l’haptique.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "menu": {
+    "status": "PASS",
+    "sha256": "5a5491e787f84d7617d28761cc447dd63ddd58b7fe0e839f24255c80fe301645",
+    "observation": "Menu COUI ancré sous les options, deux entrées lisibles sans recouvrir la saisie.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "gallery": {
+    "status": "PASS",
+    "sha256": "507a9f8a0aa3104da709f9c079f6c5a29a7e1bb3119eba0369121568e5349d39",
+    "observation": "Palette et bulles illustratives clairement présentées ; bouton dialogue visible et navigation dégagée.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "dialog": {
+    "status": "PASS",
+    "sha256": "10a62ee03eb04e1103ebdd8482e6f760dc6d4f0f3896c35ace1bfa3d2cd54ce4",
+    "observation": "Dialogue COUI au-dessus du fond assombri ; titre, message et bouton Fermer lisibles dans les insets.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "provider_dark": {
+    "status": "FAIL",
+    "sha256": "2253227a5a1a909d530b42e55d74a5b272c246a2d5a45fbd993ed10a15b8dd29",
+    "observation": "FAIL : champs vides sans contours sur fond de carte sombre, zones éditables peu identifiables. Bouton Enregistrer contrasté.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "provider_small_screen": {
+    "status": "FAIL",
+    "sha256": "252f372b41347f058632a13daabedeb7019567a99d933c2f5730437046c83f40",
+    "observation": "FAIL : les champs vides sans bordure sont indiscernables sur la carte. Formulaire défilable ; bouton Enregistrer plus bas, non inspecté dans cette capture.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "provider_large_text": {
+    "status": "FAIL",
+    "sha256": "a03737b420f501fe32b3141699b4e1b5b91bab3320c177977460057de599e78a",
+    "observation": "FAIL : champs vides sans délimitation ; texte agrandi lisible et non superposé, suite sous le pli défilable.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "regression_fixture": {
+    "status": "FAIL",
+    "sha256": "2fecc4e8e69f4f2cb3364d1bd324530587b5bb0260cd3c78e369fdf05afed293",
+    "observation": "FAIL volontaire : grand rectangle rouge opaque au bas masque la majorité de la capsule, l’envoi et la navigation.",
+    "opened_with": "functions.exec -> tools.view_image (vision native)"
+  },
+  "_reference_comparison": {
+    "status": "PASS",
+    "opened_with": "functions.exec -> tools.view_image (vision native)",
+    "observation": "Références Eta chat_home.jpg et settings.jpg ouvertes. Même fond neutre, capsule basse et hiérarchie de groupes arrondis. V2 ajoute navigation Chat/Réglages et indication de configuration, ne reprend pas les raccourcis/outils Eta non connectés. Le formulaire fournisseur est plus dense et ses champs vides manquent de délimitation (FAIL à corriger). Sombre, IME, petit écran et 200 % sans référence exacte ; aucune parité pixel ni fonctionnelle revendiquée.",
+    "reference_sha256": {
+      "chat_home.jpg": "b52261d66f78b41ce5c67f6d24925a795868a37544f44163d56652de98cc9111",
+      "settings.jpg": "8578d0d1ef91036e93c7b6b7ec8433e5790c476c43ebebbe68c514e84078cb30"
+    }
+  }
+}

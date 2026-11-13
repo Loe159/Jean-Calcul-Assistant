@@ -1,0 +1,19 @@
+{
+  "issue": 56,
+  "type": "build-only-preflight-not-e2e",
+  "commit": "37f1bcb3b89250c62910713ad0c4ef9f8d0becff",
+  "build": "PASS",
+  "lint": "PASS",
+  "jvm_tests": {
+    "status": "PASS",
+    "count": 27
+  },
+  "instrumentation_compilation": "PASS",
+  "android_execution": "NOT_RUN",
+  "native_visual_review": "NOT_RUN",
+  "real_openai_consent": "NOT_RUN",
+  "real_inference": "NOT_RUN",
+  "apk_sha256": "784d7cec06079cf280f72e6d6359712cf9a62a0a0127205721b38bd6ac228320",
+  "apk_local_path": "e2e-artifacts/issue56/chatgpt-preflight/app-debug.apk",
+  "e2e_budget": "3 attempts consumed; fourth pending explicit user authorization"
+}

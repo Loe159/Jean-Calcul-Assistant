@@ -17,8 +17,8 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 APP = 'fr.loevan.jeancalcul.v2'
 RUNNER = APP + '.test/androidx.test.runner.AndroidJUnitRunner'
-SCENARIOS = ('empty', 'message', 'reset', 'settings', 'dark', 'small_screen',
-             'large_text', 'keyboard', 'reduced_motion', 'menu', 'gallery', 'dialog', 'regression_fixture')
+SCENARIOS = ('empty', 'message', 'reset', 'settings', 'provider_selection', 'model_selection', 'dark', 'small_screen',
+             'large_text', 'keyboard', 'reduced_motion', 'menu', 'gallery', 'dialog', 'chatgpt_dark', 'chatgpt_small_screen', 'chatgpt_large_text', 'provider_dark', 'provider_small_screen', 'provider_large_text', 'regression_fixture')
 
 
 def redact(text):
@@ -61,6 +61,7 @@ def main():
     parser.add_argument('--authorization-note', help='Record the explicit user instruction authorizing additional attempts')
     parser.add_argument('--show-window', action='store_true')
     parser.add_argument('--keep-emulator', action='store_true', help='Leave the synthetic AVD open for interaction')
+    parser.add_argument('--avd-root', type=Path, help='Optional root for a fresh disposable AVD (e.g. tmpfs); never reuses a directory')
     parser.add_argument('--port', type=int, default=5580)
     args = parser.parse_args()
     if args.attempt < 1:
@@ -157,8 +158,10 @@ def main():
             with socket.socket() as probe:
                 if probe.connect_ex(('127.0.0.1', port)) == 0:
                     raise RuntimeError(f'Port {port} occupied; choose --port. Existing devices are never reused.')
-        avd_home = out / 'avd'
-        avd_home.mkdir()
+        avd_home = (args.avd_root.resolve() / f'jc-e2e-{args.run_id}-{args.attempt}') if args.avd_root else out / 'avd'
+        avd_home.mkdir(parents=True, exist_ok=False)
+        if args.avd_root:
+            (out / 'avd').symlink_to(avd_home, target_is_directory=True)
         env['ANDROID_AVD_HOME'] = str(avd_home)
         env['ANDROID_USER_HOME'] = str(out / 'android-user')
         env['ANDROID_EMULATOR_HOME'] = str(out / 'android-user')
@@ -244,14 +247,14 @@ def main():
             print(f'Capturing {scenario}…', flush=True)
             baseline()
             shell('am', 'force-stop', APP)
-            # The prototype stores chat only in memory: force-stop restores its empty state.
-            # Avoid pm clear: external storage cleanup can outlive that command.
-            if scenario == 'dark':
+            # Reset only synthetic private history; preserve the screenshot directory.
+            shell('run-as', APP, 'rm', '-f', 'files/conversation.json', 'files/conversation.json.bak', 'files/conversation.json.new')
+            if scenario in ('dark', 'provider_dark', 'chatgpt_dark'):
                 shell('cmd', 'uimode', 'night', 'yes')
-            if scenario == 'small_screen':
+            if scenario in ('small_screen', 'provider_small_screen', 'chatgpt_small_screen'):
                 shell('wm', 'size', '720x1280')  # 360 x 640 dp
                 shell('wm', 'density', '320')
-            if scenario == 'large_text':
+            if scenario in ('large_text', 'provider_large_text', 'chatgpt_large_text'):
                 shell('settings', 'put', 'system', 'font_scale', '2.0')
             remote = f'files/e2e/{scenario}.png'
             result = run(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
@@ -290,6 +293,7 @@ def main():
                       'observation': '', 'opened_with': ''} for s in SCENARIOS}
         review['_reference_comparison'] = {'status': 'NOT_RUN', 'opened_with': '',
                                             'observation': '', 'reference_sha256': {}}
+        review['_scope'] = {'states': [], 'reason': ''}
         (out / 'visual-review.json').write_text(json.dumps(review, indent=2) + '\n')
         baseline()
         shell('am', 'force-stop', APP)

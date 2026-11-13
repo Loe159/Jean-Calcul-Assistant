@@ -1,0 +1,148 @@
+{
+  "issue": 56,
+  "attempt": 4,
+  "attempt_budget": 4,
+  "budget_override": "Oui, autoriser la tentative 4",
+  "created_utc": "2026-11-13T12:16:28.884377+00:00",
+  "commit": "51c1b530638e8150183df4d99d924c1aba398523",
+  "working_tree_dirty": false,
+  "api": 35,
+  "serial": "emulator-5580",
+  "technical": {
+    "status": "FAIL",
+    "evidence": "logs/gradle.txt",
+    "jvm_tests": "PASS",
+    "error": "Instrumentation XML contains a failure: TEST-jc-e2e-issue56-4(AVD) - 15.xml"
+  },
+  "captures": {
+    "empty": {
+      "status": "PASS",
+      "path": "screenshots/empty.png",
+      "sha256": "298a9c4077557daab6984f8e720e4f6acaaeabad5aa20e736af0a1769c362305",
+      "visual_status": "PASS"
+    },
+    "message": {
+      "status": "PASS",
+      "path": "screenshots/message.png",
+      "sha256": "ede249585161cd68b639293d047c73c6d8ca089a67236d8caad96d9f10927fbb",
+      "visual_status": "PASS"
+    },
+    "reset": {
+      "status": "PASS",
+      "path": "screenshots/reset.png",
+      "sha256": "298a9c4077557daab6984f8e720e4f6acaaeabad5aa20e736af0a1769c362305",
+      "visual_status": "PASS"
+    },
+    "settings": {
+      "status": "PASS",
+      "path": "screenshots/settings.png",
+      "sha256": "ae3878a9b7aca6b9e71bce1fc7233aee9bddb804bb2a716dcf83b87b73eb5a7d",
+      "visual_status": "PASS"
+    },
+    "dark": {
+      "status": "PASS",
+      "path": "screenshots/dark.png",
+      "sha256": "6b2ca9c37d20a0666ce4f6f4712a32418ab2339d4c17ba3e485bbb9e6ab58e93",
+      "visual_status": "PASS"
+    },
+    "small_screen": {
+      "status": "PASS",
+      "path": "screenshots/small_screen.png",
+      "sha256": "4e7d04abf41d15898032e05726dd66f1746e0aa4cdd487ebc80af82bd6aa5644",
+      "visual_status": "PASS"
+    },
+    "large_text": {
+      "status": "PASS",
+      "path": "screenshots/large_text.png",
+      "sha256": "d4b3b52b8b6983c1071aa694fa79cf724a9cb0761226ef19a1846d91727989cf",
+      "visual_status": "PASS"
+    },
+    "keyboard": {
+      "status": "PASS",
+      "path": "screenshots/keyboard.png",
+      "sha256": "d5674b3c2a517255579f5f3c443d84ebc5fe9e567cd5ce659eaf672a9058e334",
+      "visual_status": "PASS"
+    },
+    "reduced_motion": {
+      "status": "PASS",
+      "path": "screenshots/reduced_motion.png",
+      "sha256": "c88728a77734063433daf90985f83dba251cad5c7d96e8445a69df43a3c22a22",
+      "visual_status": "PASS"
+    },
+    "menu": {
+      "status": "PASS",
+      "path": "screenshots/menu.png",
+      "sha256": "db307452f2c28d7031c056c82be4b9e54228744a760ed8f76d313450e8ee837c",
+      "visual_status": "PASS"
+    },
+    "gallery": {
+      "status": "PASS",
+      "path": "screenshots/gallery.png",
+      "sha256": "462c326b349b50769ca70aeab20ae379d17a5636d5ea5f2c971e599ac24a6c87",
+      "visual_status": "PASS"
+    },
+    "dialog": {
+      "status": "PASS",
+      "path": "screenshots/dialog.png",
+      "sha256": "0c793f4755688e2c0b34911f428e54508d787e895330d425c0b6949228a2f4c3",
+      "visual_status": "PASS"
+    },
+    "chatgpt_dark": {
+      "status": "PASS",
+      "path": "screenshots/chatgpt_dark.png",
+      "sha256": "4421461a815ab23cfc6edb8154867ca180c0e69d28eaf6c8ec7b5ce7d2aac15d",
+      "visual_status": "PASS"
+    },
+    "chatgpt_small_screen": {
+      "status": "PASS",
+      "path": "screenshots/chatgpt_small_screen.png",
+      "sha256": "f390ef0e9465f43c2aba81dbf465729b58c6a10c90bf88ca8b77d3ffd32563ab",
+      "visual_status": "PASS"
+    },
+    "chatgpt_large_text": {
+      "status": "PASS",
+      "path": "screenshots/chatgpt_large_text.png",
+      "sha256": "b1b32ba81b46c6cfa3826e69f6743bd6ef9a8ae082494a2242d0b03036543bc3",
+      "visual_status": "PASS"
+    },
+    "provider_dark": {
+      "status": "PASS",
+      "path": "screenshots/provider_dark.png",
+      "sha256": "5370bf336670a179a02df75d7d06c0362a48a8488d397df19bfde35b6bd4e235",
+      "visual_status": "PASS"
+    },
+    "provider_small_screen": {
+      "status": "PASS",
+      "path": "screenshots/provider_small_screen.png",
+      "sha256": "97f20d11aa7afbd4ce30d11692728958c98dc9d8667a9c7b895f2e2aea1db1b5",
+      "visual_status": "PASS"
+    },
+    "provider_large_text": {
+      "status": "PASS",
+      "path": "screenshots/provider_large_text.png",
+      "sha256": "1e439f085160217c295f39dba24f45af4592a83ffea922e23d4fcff272ca33b4",
+      "visual_status": "PASS"
+    },
+    "regression_fixture": {
+      "status": "PASS",
+      "path": "screenshots/regression_fixture.png",
+      "sha256": "f06d21a84f28f209719061c90add01969fefe7d8aa79f8cc5965f904724ea96c",
+      "visual_status": "FAIL"
+    }
+  },
+  "visual_review": {
+    "status": "PASS",
+    "evidence": "visual-review.json"
+  },
+  "reference_comparison": {
+    "status": "PASS",
+    "evidence": "visual-review.json"
+  },
+  "regression_detection": {
+    "status": "PASS",
+    "evidence": "visual-review.json"
+  },
+  "source_manifest": "source-manifest.json",
+  "error": "Instrumentation XML contains a failure: TEST-jc-e2e-issue56-4(AVD) - 15.xml",
+  "apk_sha256": "e3c3d4c33e0d91dd4d754b7b4aebe93e83f09a6993a1f928f2442912f771a9b9"
+}
