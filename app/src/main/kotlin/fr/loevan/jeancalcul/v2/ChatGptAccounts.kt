@@ -49,14 +49,14 @@ internal class ChatGptAccounts(private val store: ChatGptStore, val oauth: ChatG
         val existing = selected?.let { id -> registration.accounts.firstOrNull { it.clientId == id } ?: authFailed() }
         OAuthAttempt.create(redirect, registration.hostId, existing)
     }
-    suspend fun complete(attempt: OAuthAttempt, code: OAuthCode) = gate.withLock {
+    suspend fun complete(attempt: OAuthAttempt, code: OAuthCode): Boolean = gate.withLock {
         val incoming = oauth.exchange(attempt, code)
         val old = registration.accounts.firstOrNull { it.clientId == incoming.clientId }
         val account = incoming.copy(model = old?.model.orEmpty(), welcomed = old?.welcomed ?: false)
         models = emptyList()
         replace(account, activate = true)
         if (PLAN_SCOPE !in account.tokens!!.scopes) throw RunFailure(RunError.CHATGPT_PERMISSION)
-        loadModelsUnlocked()
+        runCatching { loadModelsUnlocked() }.isSuccess
     }
     private fun freshUnlocked(): ChatGptAccount {
         val old = active(); val tokens = old.tokens ?: authFailed()
