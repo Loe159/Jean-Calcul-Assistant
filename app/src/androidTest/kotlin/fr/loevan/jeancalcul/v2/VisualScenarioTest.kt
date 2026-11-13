@@ -49,9 +49,15 @@ class VisualScenarioTest {
             "empty", "dark", "small_screen", "large_text", "reduced_motion" -> Unit
             "message", "reset" -> {
                 rule.onNodeWithTag("composer").performTextInput("Bonjour V2 — test synthétique")
+                rule.waitUntil(10_000) {
+                    var visible = false
+                    rule.runOnUiThread {
+                        visible = rule.activity.window.decorView.rootWindowInsets
+                            ?.isVisible(WindowInsets.Type.ime()) == true
+                    }
+                    visible
+                }
                 rule.onNodeWithTag("send").assertIsEnabled().performClick()
-                rule.waitUntil(5_000) { rule.onAllNodesWithTag("retry").fetchSemanticsNodes().isNotEmpty() }
-                rule.onNodeWithText("Bonjour V2 — test synthétique").assertIsDisplayed()
                 // Android Back belongs to the system, outside the Compose semantics tree.
                 device.pressBack()
                 rule.waitUntil(10_000) {
@@ -63,6 +69,10 @@ class VisualScenarioTest {
                     hidden
                 }
                 rule.waitForIdle()
+                // The lazy conversation may not compose its footer while the IME
+                // occupies the viewport. Inspect it only after restoring that space.
+                rule.waitUntil(10_000) { rule.onAllNodesWithTag("retry").fetchSemanticsNodes().isNotEmpty() }
+                rule.onNodeWithText("Bonjour V2 — test synthétique").assertIsDisplayed()
                 rule.onNodeWithTag("navigation").assertIsDisplayed()
                 if (scenario == "reset") {
                     rule.onNodeWithTag("reset").performClick()

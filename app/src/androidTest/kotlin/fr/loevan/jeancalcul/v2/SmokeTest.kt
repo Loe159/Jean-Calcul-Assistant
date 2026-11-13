@@ -92,6 +92,16 @@ class SmokeTest {
     @Test fun resetCanBeCancelledAndDraftSurvivesNavigation() {
         rule.onNodeWithTag("send").assertIsNotEnabled()
         rule.onNodeWithTag("composer").performTextInput("Brouillon")
+        // Text injection can precede the platform IME show. Exercise navigation
+        // from an actually visible keyboard, rather than racing its first frame.
+        rule.waitUntil(10_000) {
+            var visible = false
+            rule.runOnUiThread {
+                visible = rule.activity.window.decorView.rootWindowInsets
+                    ?.isVisible(WindowInsets.Type.ime()) == true
+            }
+            visible
+        }
         rule.onNodeWithTag("settings").performClick()
         rule.onNodeWithText("Préférences").assertIsDisplayed()
         // Wait for both hidden IME and the retired platform input connection, not accessibility idleness.
