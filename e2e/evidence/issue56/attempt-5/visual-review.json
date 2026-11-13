@@ -1,0 +1,8 @@
+{
+  "empty": {
+    "status": "PASS",
+    "sha256": "696431691ddf3d96104706c7569d65d7e0c38d0b4c46b2ff007b4160cb0a1bab",
+    "opened_with": "functions.exec -> tools.view_image (vision native)",
+    "observation": "Titre et actions lisibles, état déconnecté explicite, saisie et navigation dégagées des barres système. Les autres scénarios ne sont pas produits après échec message."
+  }
+}

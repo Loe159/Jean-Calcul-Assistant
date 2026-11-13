@@ -106,3 +106,14 @@ APK CI avec l’authentification ChatGPT, avant ce correctif de Retour :
 https://github.com/Loe159/Jean-Calcul-Assistant/actions/runs/43423322349/artifacts/14034454574
 Il peut servir au test manuel Réglages → Continue with ChatGPT ; il ne valide
 pas la connexion utilisateur ni l’éligibilité du compte sans ce test réel.
+
+## Tentatives 5 et 6 autorisées
+
+Instruction utilisateur : « Oui, autoriser les tentatives 5 et 6 ». La tentative 5
+(commit `11bf644`) reste FAIL : 9/10 Android et collecte arrêtée sur message
+(attente du bouton de reprise pendant le clavier). Seule empty est produite
+et réellement ouverte : PASS pour cette vue ; revue globale, références et
+détection NOT_RUN. [Rapport 5](attempt-5/report.md).
+Le correctif restartInput ne suffit donc pas à valider Retour. La tentative 6
+attend une IME réellement visible avant navigation et libère le viewport avant
+l’inspection du bouton de reprise ; les assertions fonctionnelles restent présentes.
