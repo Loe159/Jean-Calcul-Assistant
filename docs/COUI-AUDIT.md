@@ -75,3 +75,14 @@ Les captures précédentes conservent les défauts visuels constatés malgré de
 coordonnées sémantiques inchangées. Group/Item/Divider, Menu, Dialog et Text
 restent natifs ; hôte, saisie, actions et navigation sont les exceptions
 Foundation explicitement documentées. Aucune adaptation Material3 ne subsiste.
+
+## Validation et limite de l'interprétation
+
+La tentative 15 passe les six tests Android et la revue des treize PNG originaux,
+avec aperçus réduits et recadrages d'inspection. Le FAIL visuel clavier de la
+revue 13 était une erreur de lecture de l'image entière : l'en-tête est présent
+sur son recadrage. Cet erratum est conservé avec les rapports. Les choix d'hôte
+et de navigation Foundation sont des exceptions explicites de cette livraison ;
+les revues historiques ne suffisent pas à attribuer un défaut à la bibliothèque.
+Le défaut technique Retour/IME, reproduit dans la suite complète, disparaît avec
+la configuration `adjustResize`, sans mise à jour de COUI ni d'Activity.

@@ -1,5 +1,13 @@
 # Issue #55 — preuves locales
 
+**Validation actuelle : [tentative 15](attempt-15/report.md)**, commit testé
+`7914e229fd781f1acb5ad782600fbeab9d20f7e8`, arbre propre. Build/lint PASS,
+6/6 tests Android PASS, 13 captures ouvertes et revues : 12 états normaux
+PASS, défaut volontaire détecté. Comparaison Eta PASS ; neuf tests Python PASS.
+JVM NO-SOURCE ; Samsung, Android 13, haptique physique et fluidité NOT_RUN.
+[Captures](attempt-15/screenshots) · [Galerie](attempt-15/index.html)
+
+
 Résultat historique de la tentative 12 (invalidé comme conclusion finale par les échecs suivants) : [tentative 12](attempt-12/report.md), commit applicatif
 `23d9529ad37dc48313405c6b9c5adcb5a38061bc`. Build/lint PASS, **6/6 tests
 Android PASS**, 13 captures examinées avec la vision native : 12 états normaux
@@ -96,3 +104,22 @@ ciblé révèle une activité RESUMED encore sur Préférences, non détruite.
 Après remplacement de `adjustNothing` par `adjustResize`, recommandé pour
 Compose edge-to-edge, la suite diagnostique complète passe 6/6. Une nouvelle
 validation complète est nécessaire avant de conclure.
+
+## Résultat 14–15 et erratum de revue
+
+14 : émulateur NOT_RUN faute d'espace, aucun test ni capture. Seuls les disques
+AVD temporaires arrêtés des tentatives 12–13 ont été supprimés ; preuves intactes.
+15 : build/lint et instrumentation 6/6 PASS ; revue native et détection PASS.
+Le commit suivant ajoute uniquement ces preuves et leur documentation.
+APK exact hors Git : `e2e-artifacts/issue55/attempt-15/app-debug.apk`, empreinte
+dans le rapport.
+
+L'observation « en-tête absent sous clavier » de la revue 13 était erronée :
+une inspection native du recadrage des pixels supérieurs du PNG original montre
+Jean-Calcul et ses trois actions. Cette ancienne revue est conservée pour audit,
+mais ce motif de FAIL est rétracté. L'affichage initial de la longue image entière
+avait induit une mauvaise lecture. La revue finale 15 ouvre aussi des aperçus
+intégraux réduits et une planche des en-têtes (`inspection/headers.png`), sans
+modifier les captures originales. Les échecs techniques de retour/brouillon
+en CI et en tentative 13 étaient réels ; ils sont corrigés avec `adjustResize`.
+Les autres conclusions visuelles historiques ne constituent pas le verdict final.

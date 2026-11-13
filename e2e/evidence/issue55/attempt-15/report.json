@@ -1,0 +1,110 @@
+{
+  "issue": 55,
+  "attempt": 15,
+  "attempt_budget": 15,
+  "budget_override": "User explicitly requested continuing fixes until all tests pass; see e2e/evidence/issue55/README.md",
+  "created_utc": "2026-11-13T09:14:46.479790+00:00",
+  "commit": "7914e229fd781f1acb5ad782600fbeab9d20f7e8",
+  "working_tree_dirty": false,
+  "api": 35,
+  "serial": "emulator-5580",
+  "technical": {
+    "status": "PASS",
+    "evidence": "logs/gradle.txt",
+    "jvm_tests": "NOT_RUN"
+  },
+  "captures": {
+    "empty": {
+      "status": "PASS",
+      "path": "screenshots/empty.png",
+      "sha256": "8c441211dd0fe0d90ee68342b77dcd5c2b31dac03c26483e16a7f1c7c544a6bf",
+      "visual_status": "PASS"
+    },
+    "message": {
+      "status": "PASS",
+      "path": "screenshots/message.png",
+      "sha256": "d231ff78f4d118b0e98fd016863d76f5d9d6c90ceea7c07adef5ad1e254cd353",
+      "visual_status": "PASS"
+    },
+    "reset": {
+      "status": "PASS",
+      "path": "screenshots/reset.png",
+      "sha256": "e86924432a476512f681b87f0ca4aeb2fb51e001153014456d34d3f8b304ad54",
+      "visual_status": "PASS"
+    },
+    "settings": {
+      "status": "PASS",
+      "path": "screenshots/settings.png",
+      "sha256": "f590d0fa9de996072234a1c3fd6c03912964bf07314bbb40bc520c56fd7c1133",
+      "visual_status": "PASS"
+    },
+    "dark": {
+      "status": "PASS",
+      "path": "screenshots/dark.png",
+      "sha256": "937a4fcce7fdc29218424aaab65afeeddb311821eb28600b6c5dd6b146c084ad",
+      "visual_status": "PASS"
+    },
+    "small_screen": {
+      "status": "PASS",
+      "path": "screenshots/small_screen.png",
+      "sha256": "c8c200068e7daf4a4e3cc5b9bbb909c447ea0db8d75833dc358e756a6b2e2999",
+      "visual_status": "PASS"
+    },
+    "large_text": {
+      "status": "PASS",
+      "path": "screenshots/large_text.png",
+      "sha256": "cbf9d84f5123808c73a877f68d784e56ac7a876203f2fceb256a403cf2ed41b4",
+      "visual_status": "PASS"
+    },
+    "keyboard": {
+      "status": "PASS",
+      "path": "screenshots/keyboard.png",
+      "sha256": "16c4f479b6c09fe35b62a3e7317a725b800e25afe45f40748ec1a031aafa4eb4",
+      "visual_status": "PASS"
+    },
+    "reduced_motion": {
+      "status": "PASS",
+      "path": "screenshots/reduced_motion.png",
+      "sha256": "4dc0da657538f6172ed2125b828e9e34c1ea91ae777d54b11709417ea90e168a",
+      "visual_status": "PASS"
+    },
+    "menu": {
+      "status": "PASS",
+      "path": "screenshots/menu.png",
+      "sha256": "040cfbc97fe415acd233a326fce3eaa6ac032777c7f742cde25452762b617c9f",
+      "visual_status": "PASS"
+    },
+    "gallery": {
+      "status": "PASS",
+      "path": "screenshots/gallery.png",
+      "sha256": "a760086f703b5331be2889d87c83189e78358e6f3c90140765aa3747734bb58a",
+      "visual_status": "PASS"
+    },
+    "dialog": {
+      "status": "PASS",
+      "path": "screenshots/dialog.png",
+      "sha256": "ca973a1d2c5a5cc25b64de63da7fa5ff32f0092ed91d2a675aac1a6a6cf415ce",
+      "visual_status": "PASS"
+    },
+    "regression_fixture": {
+      "status": "PASS",
+      "path": "screenshots/regression_fixture.png",
+      "sha256": "0bfa965f3b66058721a20f59b30bb19c91aeff0c4f55fe88bb6a33037c484235",
+      "visual_status": "FAIL"
+    }
+  },
+  "visual_review": {
+    "status": "PASS",
+    "evidence": "visual-review.json"
+  },
+  "reference_comparison": {
+    "status": "PASS",
+    "evidence": "visual-review.json"
+  },
+  "regression_detection": {
+    "status": "PASS",
+    "evidence": "visual-review.json"
+  },
+  "source_manifest": "source-manifest.json",
+  "apk_sha256": "5ecfcf98bde14e981dfc898b60317116a73a0fd0a84671ce91885025ebbd45c1"
+}

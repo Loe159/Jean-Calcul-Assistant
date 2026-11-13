@@ -1,0 +1,1 @@
+Planche dérivée pour inspection native des en-têtes, sans modifier les captures originales. Extraction des 250 premiers pixels, réduction de moitié, montage deux colonnes ; ordre alphabétique des PNG. Les empreintes de visual-review.json concernent exclusivement les originaux.
