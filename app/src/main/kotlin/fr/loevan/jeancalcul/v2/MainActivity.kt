@@ -91,8 +91,8 @@ fun V2App() {
         var confirmReset by remember { mutableStateOf(false) }
         val messages = remember { mutableStateListOf<String>() }
         fun navigate(destination: String) {
+            focus.clearFocus(force = true)
             keyboardController?.hide()
-            focus.clearFocus()
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             page = destination
         }
@@ -101,6 +101,15 @@ fun V2App() {
             if (draft.text.isNotBlank()) {
                 messages.add(draft.text.toString().trim()); draft.clearText()
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            }
+        }
+        // Dispose the chat input session before the final hide request. A pending
+        // IME show from text input can otherwise win over hide during navigation.
+        LaunchedEffect(page) {
+            if (page != "chat") {
+                withFrameNanos { }
+                focus.clearFocus(force = true)
+                keyboardController?.hide()
             }
         }
         BackHandler(enabled = page != "chat") { navigate(if (page == "gallery") "settings" else "chat") }
