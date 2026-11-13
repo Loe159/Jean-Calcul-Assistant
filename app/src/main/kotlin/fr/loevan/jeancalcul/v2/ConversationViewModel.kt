@@ -61,6 +61,7 @@ class ConversationViewModel(application: Application) : AndroidViewModel(applica
             catch (error: Exception) {
                 currentCoroutineContext().ensureActive()
                 val reason = (error as? RunFailure)?.kind?.label ?: when (error) {
+                    is OAuthNetworkFailure -> error.safeMessage
                     is java.net.SocketException -> "Écouteur de redirection interrompu."
                     is java.net.SocketTimeoutException -> "Délai de connexion dépassé."
                     is java.io.IOException -> "Erreur réseau."
