@@ -29,6 +29,7 @@ class SmokeTest {
 
     @Test fun chatGptSignInEntryIsVisibleWithoutApiConfiguration() {
         rule.onNodeWithTag("settings").performClick()
+        rule.onNodeWithTag("choose_provider").performClick()
         rule.onNodeWithTag("chatgpt_sign_in").assertIsDisplayed()
         rule.onNodeWithText("Continue with ChatGPT").assertIsDisplayed()
     }
@@ -80,12 +81,18 @@ class SmokeTest {
     @Test fun initialState() {
         rule.onNodeWithTag("empty").assertExists()
         rule.onNodeWithTag("composer").assertExists()
+        rule.onNodeWithTag("navigation").assertDoesNotExist()
+        rule.onNodeWithTag("model_header").performClick()
+        rule.onNodeWithText("Fournisseurs").assertIsDisplayed()
+        rule.onNodeWithText("Choisir un modèle").performClick()
+        rule.onNodeWithText("Modèles").assertIsDisplayed()
     }
     @Test fun composeAndReset() {
         rule.onNodeWithTag("composer").performTextInput("Bonjour V2")
         rule.onNodeWithTag("send").performClick()
         rule.waitUntil(5_000) { rule.onAllNodesWithTag("messages").fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithTag("reset").performClick()
+        rule.onNodeWithTag("options").performClick()
+        rule.onNodeWithText("Nouvelle conversation").performClick()
         rule.onNodeWithText("Effacer").performClick()
         rule.waitUntil(5_000) { rule.onAllNodesWithTag("empty").fetchSemanticsNodes().isNotEmpty() }
     }
@@ -103,7 +110,7 @@ class SmokeTest {
             visible
         }
         rule.onNodeWithTag("settings").performClick()
-        rule.onNodeWithText("Préférences").assertIsDisplayed()
+        rule.onNodeWithText("Options").assertIsDisplayed()
         // Wait for both hidden IME and the retired platform input connection, not accessibility idleness.
         rule.waitUntil(10_000) {
             var hidden = false
@@ -123,7 +130,8 @@ class SmokeTest {
             throw AssertionError("After system Back: finishing=${rule.activity.isFinishing}, destroyed=${rule.activity.isDestroyed}, lifecycle=${rule.activity.lifecycle.currentState}; ${rule.onRoot(useUnmergedTree = true).printToString()}", error)
         }
         rule.onNodeWithText("Brouillon").assertExists()
-        rule.onNodeWithTag("reset").performClick()
+        rule.onNodeWithTag("options").performClick()
+        rule.onNodeWithText("Nouvelle conversation").performClick()
         rule.onNodeWithText("Annuler").performClick()
         rule.onNodeWithText("Brouillon").assertExists()
     }
@@ -137,7 +145,7 @@ class SmokeTest {
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Fermer").fetchSemanticsNodes().isEmpty() }
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle()
         UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack()
-        rule.onNodeWithText("Préférences").assertExists()
+        rule.onNodeWithText("Options").assertExists()
     }
     @Test fun settingsScreen() {
         rule.onNodeWithTag("settings").performClick()

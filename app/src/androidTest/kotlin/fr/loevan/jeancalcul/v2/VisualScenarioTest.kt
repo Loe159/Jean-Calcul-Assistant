@@ -73,9 +73,9 @@ class VisualScenarioTest {
                 // occupies the viewport. Inspect it only after restoring that space.
                 rule.waitUntil(10_000) { rule.onAllNodesWithTag("retry").fetchSemanticsNodes().isNotEmpty() }
                 rule.onNodeWithText("Bonjour V2 — test synthétique").assertIsDisplayed()
-                rule.onNodeWithTag("navigation").assertIsDisplayed()
                 if (scenario == "reset") {
-                    rule.onNodeWithTag("reset").performClick()
+                    rule.onNodeWithTag("options").performClick()
+                    rule.onNodeWithText("Nouvelle conversation").performClick()
                     rule.onNodeWithText("Effacer").performClick()
                     rule.waitUntil(5_000) { rule.onAllNodesWithTag("empty").fetchSemanticsNodes().isNotEmpty() }
                     rule.onNodeWithTag("empty").assertIsDisplayed()
@@ -84,12 +84,20 @@ class VisualScenarioTest {
             }
             "settings", "chatgpt_dark", "chatgpt_small_screen", "chatgpt_large_text", "provider_dark", "provider_small_screen", "provider_large_text" -> {
                 rule.onNodeWithTag("settings").performClick()
-                rule.onNodeWithText("Préférences").assertIsDisplayed()
+                rule.onNodeWithText("Options").assertIsDisplayed()
                 rule.onNodeWithTag("composer").assertDoesNotExist()
                 if (scenario!!.startsWith("provider_")) {
                     rule.onNodeWithTag("configure_provider").performScrollTo().performClick()
                     rule.onNodeWithTag("provider_endpoint").performScrollTo().assertIsDisplayed()
+                } else if (scenario.startsWith("chatgpt_")) {
+                    rule.onNodeWithTag("choose_provider").performScrollTo().performClick()
+                    rule.onNodeWithTag("chatgpt_sign_in").performScrollTo().assertIsDisplayed()
                 }
+            }
+            "provider_selection", "model_selection" -> {
+                rule.onNodeWithTag("model_header").performClick()
+                rule.onNodeWithText("Fournisseurs").assertIsDisplayed()
+                if (scenario == "model_selection") rule.onNodeWithText("Choisir un modèle").performClick()
             }
             "menu" -> rule.onNodeWithTag("options").performClick()
             "gallery", "dialog" -> {

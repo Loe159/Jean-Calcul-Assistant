@@ -111,3 +111,14 @@ renouvelle la connexion via InputMethodManager.restartInput après la disparitio
 du champ, puis le test attend aussi isAcceptingText=false. Ce correctif n’est pas
 validé par ces anciennes captures et requiert un nouveau run autorisé.
 Référence API : https://developer.android.com/reference/android/view/inputmethod/InputMethodManager#restartInput(android.view.View)
+
+## Refonte visuelle demandée dans #56
+
+L'en-tête du chat reprend la structure Eta : options à gauche, modèle actif au
+centre, menu à trois points à droite. Le menu contient la nouvelle conversation,
+avec confirmation si un brouillon ou des messages existent. La navigation basse
+est retirée. Les réglages et la sélection fournisseur/modèle utilisent des
+groupes COUI et des lignes Foundation avec typographie et feedback COUI,
+icône colorée, résumé et chevron. Le formulaire API est isolé dans sa propre
+carte. Les commandes Eta non raccordées (outils, mémoire, permissions appareil)
+ne sont pas représentées comme utilisables. Le code Eta n'est pas utilisé.

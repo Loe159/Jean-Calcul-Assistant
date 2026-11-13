@@ -17,7 +17,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 APP = 'fr.loevan.jeancalcul.v2'
 RUNNER = APP + '.test/androidx.test.runner.AndroidJUnitRunner'
-SCENARIOS = ('empty', 'message', 'reset', 'settings', 'dark', 'small_screen',
+SCENARIOS = ('empty', 'message', 'reset', 'settings', 'provider_selection', 'model_selection', 'dark', 'small_screen',
              'large_text', 'keyboard', 'reduced_motion', 'menu', 'gallery', 'dialog', 'chatgpt_dark', 'chatgpt_small_screen', 'chatgpt_large_text', 'provider_dark', 'provider_small_screen', 'provider_large_text', 'regression_fixture')
 
 

@@ -13,9 +13,16 @@ accent COUI, bulle sortante #E4EFFB / #183858. Marges 16 dp, capsule 28 dp,
 Les tailles de texte viennent des rôles COUI et les cibles font au moins 48 dp.
 
 Accueil sobre, état déconnecté explicite ; capsule en deux rangées pour laisser
-la saisie grandir sans comprimer l'action d'envoi. La navigation native révèle
-l'action nouvelle conversation après saisie ; le clavier masque la navigation
-pour préserver l'espace. Les réglages et la galerie défilent sur petit écran.
+la saisie grandir sans comprimer l'action d'envoi. Le fournisseur et le modèle
+actifs sont visibles et sélectionnables en haut. Le bouton gauche ouvre les
+options ; le menu à trois points à droite contient « Nouvelle conversation ».
+Il n'y a pas de navigation basse. Les options, le choix fournisseur/modèle,
+la configuration API et la galerie défilent sur petit écran.
 La transition de destination est un fondu 180 ms utilisant l'échelle système.
-L'effacement demande confirmation, le retour système remonte galerie → réglages
-→ chat, et le brouillon survit à ces changements de page.
+L'effacement demande confirmation, le retour système remonte l'écran courant
+vers ses options puis le chat, et le brouillon survit à ces changements de page.
+
+La référence Eta impose la composition et les cartes arrondies des options.
+Seules les destinations raccordées à V2 sont affichées : compte ChatGPT,
+fournisseur API, modèle et galerie. Aucune carte d'outil Android n'est ajoutée
+tant que ces capacités ne sont pas réellement disponibles.
