@@ -26,6 +26,21 @@ contient ni code ni jeton et invite à revenir dans l’application. Un arrêt d
 processus pendant l’autorisation impose de recommencer, sans réutiliser le code.
 L’éligibilité du compte et les limites d’usage sont décidées par OpenAI.
 
+## Diagnostic de connexion réseau
+
+Une autorisation reçue dans le navigateur ne prouve pas que le client Android
+peut accéder aux endpoints HTTPS. Après le retour, l'application distingue
+les étapes **échange du code**, **configuration OpenAI** et **clés de vérification**,
+ainsi que les causes DNS, certificat TLS, négociation TLS, délai ou connexion.
+Ces catégories sont volontairement sans URL de callback, code OAuth, jeton ou
+message brut d'exception. L'échange du code à usage unique n'est pas réessayé
+automatiquement (y compris par OkHttp). Les tests HTTPS simulés vérifient la
+classification et l'absence de nouvelle requête sur un code interrompu.
+
+Les endpoints officiels ont été vérifiés sur l'hôte Linux, mais cela ne démontre
+pas leur accessibilité depuis le téléphone. Un diagnostic concluant nécessite
+un retour sur appareil réel, avec seulement la catégorie d'erreur affichée.
+
 ## Protocole implémenté
 
 - Un identifiant opaque `urn:uuid:…` est sauvegardé avant la première connexion
