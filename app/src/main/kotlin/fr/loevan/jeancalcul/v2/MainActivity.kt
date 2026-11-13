@@ -44,6 +44,9 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.platform.LocalView
@@ -90,6 +93,26 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalLayoutApi::class)
 fun V2App(model: ConversationViewModel = viewModel()) {
     JeanTheme {
+        // OAuth callback is received by the app while the browser is foreground.
+        // Defer its network exchange until this activity is resumed.
+        val lifecycleOwner = LocalLifecycleOwner.current
+        DisposableEffect(lifecycleOwner, model) {
+            val observer = LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_RESUME -> model.onAppForegroundChanged(true)
+                    Lifecycle.Event.ON_PAUSE -> model.onAppForegroundChanged(false)
+                    else -> Unit
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                model.onAppForegroundChanged(true)
+            }
+            onDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
+                model.onAppForegroundChanged(false)
+            }
+        }
         val focus = LocalFocusManager.current
         val inputView = LocalView.current
         val keyboardController = LocalSoftwareKeyboardController.current
