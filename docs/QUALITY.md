@@ -32,3 +32,10 @@ ne pas déduire une validation de la présence des scripts ou des PNG.
 Issue, commit, liste des tests, API Android, captures, erreurs expurgées,
 statuts PASS/FAIL/NOT_RUN, vérification visuelle si vraiment exécutée.
 Si un critère n'a pas été testé, indiquer NOT_RUN.
+
+## Reprise ETA du 14 novembre 2026
+
+Consulter [le résultat de validation de cette reprise](eta/VALIDATION.md) et
+[les résultats structurés](eta/validation/results.json). Les succès JVM/build
+ne valent pas validation visuelle. Les fonctionnalités copiées doivent encore être
+essayées avec les permissions, modèles et services réellement utilisés.

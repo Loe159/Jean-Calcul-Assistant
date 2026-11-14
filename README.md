@@ -11,7 +11,7 @@ Les services vocaux se configurent séparément. Root et LSPosed sont optionnels
 
 ## Périmètre et provenance
 
-[Sélection validée](docs/eta/SELECTION.md) · [Catalogue](docs/eta/FEATURES.md) · [Provenance ETA](docs/eta/UPSTREAM.md) · [Architecture](docs/ARCHITECTURE.md).
+[Sélection validée](docs/eta/SELECTION.md) · [Catalogue](docs/eta/FEATURES.md) · [Provenance ETA](docs/eta/UPSTREAM.md) · [Architecture](docs/ARCHITECTURE.md) · [Validation](docs/eta/VALIDATION.md).
 
 Pas de style Miuix sélectionnable, environnement Linux/Kimi, personnages, sauvegardes/exports ni intégrations ColorOS/constructeur/Google. Les dépendances internes et types de compatibilité amont ne sont pas des entrées produit.
 
