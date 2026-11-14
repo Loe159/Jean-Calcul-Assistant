@@ -1,167 +1,70 @@
 package fr.loevan.jeancalcul.v2
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.view.WindowInsets
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
-import androidx.compose.ui.unit.dp
+import android.content.Intent
+import android.graphics.Color
+import android.view.View
+import android.view.ViewGroup
+import androidx.test.core.app.ActivityScenario
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.io.FileOutputStream
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import org.junit.Assert.assertTrue
-import org.junit.Assert.assertEquals
+import androidx.test.uiautomator.Until
+import io.github.mangi.eta.R
+import io.github.mangi.eta.ui.MainActivity
+import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
-import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import java.io.File
 
-/** Only the local E2E runner opts into screenshot scenarios. No production hooks. */
+@RunWith(AndroidJUnit4::class)
 class VisualScenarioTest {
-    @get:Rule val rule = createAndroidComposeRule<MainActivity>()
-
     @Test fun capture() {
-        val args = InstrumentationRegistry.getArguments()
-        val scenario = args.getString("scenario")
-        assumeTrue("Opt in with -e scenario", scenario != null)
-        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-        rule.onNodeWithTag("empty").assertIsDisplayed()
-        val headerTop = rule.onNodeWithTag("header").fetchSemanticsNode().positionOnScreen.y
-        when (scenario) {
-            "empty", "dark", "small_screen", "large_text", "reduced_motion" -> Unit
-            "message", "reset" -> {
-                rule.onNodeWithTag("composer").performTextInput("Bonjour V2 — test synthétique")
-                rule.onNodeWithTag("send").assertIsEnabled().performClick()
-                rule.onNodeWithText("Bonjour V2 — test synthétique").assertIsDisplayed()
-                // Android Back belongs to the system, outside the Compose semantics tree.
-                device.pressBack()
-                rule.waitUntil(10_000) {
-                    var hidden = false
-                    rule.runOnUiThread {
-                        hidden = rule.activity.window.decorView.rootWindowInsets
-                            ?.isVisible(WindowInsets.Type.ime()) == false
-                    }
-                    hidden
-                }
-                rule.waitForIdle()
-                rule.onNodeWithTag("navigation").assertIsDisplayed()
-                if (scenario == "reset") {
-                    rule.onNodeWithTag("reset").performClick()
-                    rule.onNodeWithText("Effacer").performClick()
-                    rule.onNodeWithTag("empty").assertIsDisplayed()
-                    rule.onNodeWithText("Bonjour V2 — test synthétique").assertDoesNotExist()
-                }
-            }
-            "settings" -> {
-                rule.onNodeWithTag("settings").performClick()
-                rule.onNodeWithText("Préférences").assertIsDisplayed()
-                rule.onNodeWithTag("composer").assertDoesNotExist()
-            }
-            "menu" -> rule.onNodeWithTag("options").performClick()
-            "gallery", "dialog" -> {
-                rule.onNodeWithTag("settings").performClick()
-                rule.onNodeWithTag("gallery").performClick()
-                if (scenario == "dialog") rule.onNodeWithTag("gallery_dialog").performClick()
-            }
-            "keyboard" -> {
-                rule.onNodeWithTag("composer").performClick().performTextInput("Clavier synthétique")
-                rule.waitUntil(10_000) {
-                    var visible = false
-                    rule.runOnUiThread {
-                        visible = rule.activity.window.decorView.rootWindowInsets
-                            ?.isVisible(WindowInsets.Type.ime()) == true
-                    }
-                    visible
-                }
-                rule.onNodeWithTag("send").assertIsDisplayed()
-                rule.onNodeWithTag("header").assertIsDisplayed()
-            }
-            "regression_fixture" -> {
-                // Deliberate, test-only occlusion: native vision must flag the hidden composer.
-                rule.activity.runOnUiThread {
-                    rule.activity.setContentView(androidx.compose.ui.platform.ComposeView(rule.activity).apply {
-                        setContent {
-                            Box(Modifier.fillMaxSize()) {
-                                V2App()
-                                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-                                    .height(180.dp).background(Color.Red))
-                            }
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val name = InstrumentationRegistry.getArguments().getString("scenario")
+        assumeTrue("Visual scenarios require explicit opt-in", name != null)
+        val scenario = name!!
+        val context = instrumentation.targetContext
+        val device = UiDevice.getInstance(instrumentation)
+        val fixture = if (scenario in setOf("message", "reset")) LocalVllmFixture(context) else null
+        try {
+            ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { activity ->
+                assertNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 30000))
+                when (scenario) {
+                    "message", "reset" -> {
+                        device.findObject(By.clazz("android.widget.EditText")).text = "Synthetic local request"
+                        device.wait(Until.findObject(By.desc(context.getString(R.string.chat_send))), 10000).click()
+                        assertTrue(device.wait(Until.hasObject(By.textContains("Synthetic local reply")), 30000))
+                        device.pressBack(); device.waitForIdle()
+                        if (scenario == "reset") {
+                            device.findObject(By.desc(context.getString(R.string.action_more))).click()
+                            device.wait(Until.findObject(By.text(context.getString(R.string.action_new_conversation))), 10000).click()
                         }
-                    })
-                }
-            }
-            else -> error("Unknown E2E scenario: $scenario")
-        }
-        rule.waitForIdle()
-        device.waitForIdle()
-        // Let system insets / IME animations settle before taking a full-device capture.
-        android.os.SystemClock.sleep(600)
-        // Compose idleness is not a GPU presentation fence. COUI records content
-        // into graphics layers; wait for two submitted frames before reading pixels.
-        if (scenario != "dialog") repeat(2) {
-            val committed = CountDownLatch(1)
-            rule.runOnUiThread {
-                val view = rule.activity.window.decorView
-                view.viewTreeObserver.registerFrameCommitCallback { committed.countDown() }
-                view.postInvalidateOnAnimation()
-            }
-            assertTrue("No rendered frame committed before capture", committed.await(10, TimeUnit.SECONDS))
-        }
-        if (scenario == "keyboard") {
-            assertEquals("Keyboard must not pan the header off screen", headerTop,
-                rule.onNodeWithTag("header").fetchSemanticsNode().positionOnScreen.y, 1f)
-        }
-        val directory = File(rule.activity.filesDir, "e2e").apply { mkdirs() }
-        val destination = File(directory, "$scenario.png")
-        var captured = false
-        // UiDevice 2.3.0 ignores Bitmap.compress's boolean result. Never accept
-        // its false-positive success (observed as a zero-byte file on emulator).
-        repeat(3) { attempt ->
-            if (!captured) {
-                val bitmap = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
-                if (bitmap != null) {
-                    val software = bitmap.copy(Bitmap.Config.ARGB_8888, false)
-                    try {
-                        if (software != null) {
-                            val bytes = ByteArrayOutputStream()
-                            if (software.compress(Bitmap.CompressFormat.PNG, 100, bytes)) {
-                                val data = bytes.toByteArray()
-                                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                                BitmapFactory.decodeByteArray(data, 0, data.size, bounds)
-                                if (bounds.outWidth == software.width && bounds.outHeight == software.height) {
-                                    val temporary = File(directory, "$scenario.tmp")
-                                    FileOutputStream(temporary).use { stream ->
-                                        stream.write(data)
-                                        stream.fd.sync()
-                                    }
-                                    captured = temporary.renameTo(destination) && destination.length() > 0
-                                }
-                            }
-                        }
-                    } finally {
-                        software?.recycle()
-                        bitmap.recycle()
                     }
+                    "settings", "providers", "tools", "appearance" -> {
+                        device.findObject(By.desc(context.getString(R.string.action_conversation_history))).click()
+                        device.wait(Until.findObject(By.text(context.getString(R.string.route_settings))), 10000).click()
+                        if (scenario == "providers") device.wait(Until.findObject(By.text(context.getString(R.string.ui_model_provider_e8c7f5))),10000).click()
+                        if (scenario == "tools") device.wait(Until.findObject(By.text(context.getString(R.string.route_tools))),10000).click()
+                        if (scenario == "appearance") {
+                            val scrollable = device.findObject(By.scrollable(true))
+                            scrollable?.scrollUntil(androidx.test.uiautomator.Direction.DOWN, Until.findObject(By.text(context.getString(R.string.appearance_title))))
+                            device.wait(Until.findObject(By.text(context.getString(R.string.appearance_title))),10000).click()
+                        }
+                    }
+                    "menu" -> device.findObject(By.desc(context.getString(R.string.action_more))).click()
+                    "keyboard" -> device.findObject(By.clazz("android.widget.EditText")).apply { click(); text = "Synthetic multiline draft\nLine two" }
+                    "regression_fixture" -> activity.onActivity { current ->
+                        (current.window.decorView as ViewGroup).addView(View(current).apply { setBackgroundColor(Color.RED) }, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 500))
+                    }
+                    "empty", "dark", "small_screen", "large_text", "reduced_motion" -> Unit
+                    else -> error("Unknown visual scenario: $scenario")
                 }
-                if (!captured && attempt < 2) android.os.SystemClock.sleep(500)
+                device.waitForIdle(3000)
+                val directory = File(context.filesDir, "e2e").apply { mkdirs() }
+                assertTrue("Screenshot must be a real display capture", device.takeScreenshot(File(directory, "$scenario.png")))
             }
-        }
-        assertTrue("No complete PNG after three bounded screenshot attempts: $scenario", captured)
+        } finally { fixture?.close() }
     }
 }

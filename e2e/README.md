@@ -40,8 +40,10 @@ APK, actions système UI Automator/ADB, captures plein écran et hashes SHA-256.
 Les erreurs instrumentées sont détectées même si `am instrument` renvoie zéro.
 Les PNG restent dans le stockage privé de cette app debug et sont lus via
 `adb exec-out run-as` ; pas de dépendance au nettoyage asynchrone du stockage partagé.
-Chaque scénario repart d’une activité neuve après force-stop, ce qui réinitialise
-les données en mémoire du prototype (adapter cette fixture lors de l’ajout de persistance).
+Chaque scénario efface les données de la seule application synthétique de cet AVD
+puis amorce ses fournisseurs et conversations de test. Le test de persistance vérifie
+séparément la recréation de l’activité sans effacer Room. Le serveur vLLM de test
+répond sur la boucle locale ; aucun compte ni service d’inférence externe n’est utilisé.
 Un échec arrête la tentative et conserve les preuves partielles avec NOT_RUN.
 Boot limité à 240 s, build/tests à 1500 s, scénario à 120 s. Les logs enregistrés
 sont expurgés (chemin personnel, jetons usuels, emails) ; les inspecter avant partage.
@@ -139,3 +141,7 @@ inexploitable arrête toujours la collecte avec les preuves partielles.
 La partition de données du nouvel AVD synthétique est limitée à 4 Gio. Le profil
 Pixel 6 reste identique pour l'écran, l'API et la mémoire ; aucun compte ou
 contenu personnel n'y est installé. Les anciens AVD ne sont pas modifiés.
+
+Sans KVM, `--software-emulator` utilise l’image `system-images;android-35;aosp_atd;x86_64`
+et laisse dix minutes au démarrage. Cette solution peut rester trop lente ;
+un démarrage incomplet conserve les tests instrumentés et la revue visuelle en NOT_RUN.

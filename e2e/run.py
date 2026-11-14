@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = 'fr.loevan.jeancalcul.v2'
 RUNNER = APP + '.test/androidx.test.runner.AndroidJUnitRunner'
 SCENARIOS = ('empty', 'message', 'reset', 'settings', 'dark', 'small_screen',
-             'large_text', 'keyboard', 'reduced_motion', 'menu', 'gallery', 'dialog', 'regression_fixture')
+             'large_text', 'keyboard', 'reduced_motion', 'menu', 'providers', 'tools', 'appearance', 'regression_fixture')
 
 
 def redact(text):
@@ -59,6 +59,7 @@ def main():
     parser.add_argument('--extra-validation-authorized', action='store_true',
                         help='Attempts above 3 require explicit user authorization to exceed the budget')
     parser.add_argument('--authorization-note', help='Record the explicit user instruction authorizing additional attempts')
+    parser.add_argument('--software-emulator', action='store_true', help='Use software CPU emulation when KVM is unavailable')
     parser.add_argument('--show-window', action='store_true')
     parser.add_argument('--keep-emulator', action='store_true', help='Leave the synthetic AVD open for interaction')
     parser.add_argument('--port', type=int, default=5580)
@@ -165,7 +166,8 @@ def main():
         (out / 'android-user').mkdir()
         env['ANDROID_SERIAL'] = report['serial']
         name = f'jc-e2e-{args.run_id}-{args.attempt}'
-        image = 'system-images;android-35;google_apis;x86_64'
+        image = 'system-images;android-35;' + ('aosp_atd' if args.software_emulator else 'google_apis') + ';x86_64'
+        report['system_image'] = image
         run([avdmanager, 'create', 'avd', '-n', name, '-k', image, '--device', 'pixel_6'],
             'create-avd', input='no\n')
         # Pixel 6 defaults to 12 GiB of userdata. This account-free fixture needs
@@ -176,21 +178,28 @@ def main():
                           + '\ndisk.dataPartition.size=4G\n')
         log = (out / 'logs/emulator-local.txt').open('w')
         cmd = [emulator_bin, '-avd', name, '-port', str(args.port), '-wipe-data', '-no-snapshot',
-               '-no-audio', '-no-boot-anim', '-gpu', 'swiftshader', '-memory', '2048', '-cores', '2']
+               '-no-metrics', '-no-audio', '-no-boot-anim', '-gpu', 'swiftshader', '-memory', '2048', '-cores', '2']
+        if args.software_emulator:
+            env['ANDROID_I_WANT_MY_TCG'] = 'yes'
+            cmd += ['-accel', 'off', '-skin', '540x1200', '-feature', '-Vulkan']
         if not args.show_window:
             cmd.append('-no-window')
         emulator = subprocess.Popen(cmd, env=env, stdout=log, stderr=subprocess.STDOUT)
         adb = [adb_bin, '-s', report['serial']]
-        deadline = time.monotonic() + 240
+        deadline = time.monotonic() + (600 if args.software_emulator else 240)
         while time.monotonic() < deadline:
             if emulator.poll() is not None:
                 raise RuntimeError('Emulator exited; see logs/emulator-local.txt')
-            boot = run(adb + ['shell', 'getprop', 'sys.boot_completed'], check=False, timeout=15)
+            try:
+                boot = run(adb + ['shell', 'getprop', 'sys.boot_completed'], check=False, timeout=15)
+            except subprocess.TimeoutExpired:
+                time.sleep(1)
+                continue
             if boot.stdout.strip() == '1':
                 break
             time.sleep(2)
         else:
-            raise RuntimeError('Emulator did not boot within 240 seconds')
+            raise RuntimeError('Emulator did not finish booting within the configured deadline')
         def shell(*words):
             return run(adb + ['shell', *words])
         shell('input', 'keyevent', 'KEYCODE_WAKEUP')
@@ -210,7 +219,8 @@ def main():
         report['technical']['status'] = 'FAIL'
         save()
         build_started = time.time()
-        build = run([ROOT / 'gradlew', '--no-daemon',
+        build = run([ROOT / 'gradlew', '-Pjeancalcul.emulator=true', '--no-daemon', '--max-workers=1',
+             '-Dorg.gradle.jvmargs=-Xmx2500m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8',
              '-Pandroid.testInstrumentationRunnerArguments.class=' + APP + '.SmokeTest', ':app:assembleDebug', ':app:assembleDebugAndroidTest',
              ':app:testDebugUnitTest', ':app:lintDebug', ':app:connectedDebugAndroidTest'], 'gradle', timeout=1500, check=False)
         (out / 'test-results').mkdir()
@@ -225,7 +235,8 @@ def main():
         except RuntimeError as error:
             technical_error = redact(str(error))
         report['technical'] = {'status': 'FAIL' if technical_error else 'PASS', 'evidence': 'logs/gradle.txt',
-            'jvm_tests': 'NOT_RUN' if ':app:testDebugUnitTest NO-SOURCE' in build.stdout else 'PASS'}
+            'jvm_tests': ('FAIL' if ':app:testDebugUnitTest FAILED' in build.stdout else
+                          'PASS' if re.search(r'> Task :app:testDebugUnitTest(?: UP-TO-DATE| FROM-CACHE)?(?:\r?\n|$)', build.stdout) else 'NOT_RUN')}
         if technical_error:
             report['error'] = technical_error
             report['technical']['error'] = technical_error
@@ -242,6 +253,7 @@ def main():
         report['apk_sha256'] = hashlib.sha256((out / 'app-debug.apk').read_bytes()).hexdigest()
         for scenario in SCENARIOS:
             print(f'Capturing {scenario}…', flush=True)
+            shell('pm', 'clear', APP)
             baseline()
             shell('am', 'force-stop', APP)
             # The prototype stores chat only in memory: force-stop restores its empty state.
@@ -293,7 +305,7 @@ def main():
         (out / 'visual-review.json').write_text(json.dumps(review, indent=2) + '\n')
         baseline()
         shell('am', 'force-stop', APP)
-        shell('am', 'start', '-n', APP + '/.MainActivity')
+        shell('am', 'start', '-n', APP + '/io.github.mangi.eta.ui.MainActivity')
         success = technical_error is None
     except (OSError, RuntimeError, subprocess.TimeoutExpired, ET.ParseError) as error:
         report['error'] = redact(str(error))
