@@ -245,31 +245,31 @@ def main():
             for setting in ('window_animation_scale', 'transition_animation_scale', 'animator_duration_scale'):
                 shell('settings', 'put', 'global', setting, '0')
         baseline()
-        print('Running connected Android instrumentation…', flush=True)
+        # Gradle has exited. Keep the emulator's test phase free of another build JVM.
+        for apk in (out / 'app-debug.apk', out / 'app-debug-androidTest.apk'):
+            run(adb + ['install', '-r', apk], 'install-' + apk.stem)
+        print('Running Android instrumentation directly on the owned emulator…', flush=True)
         instrumentation_started = time.time()
-        instrumented = run(gradle_base + [
-            '-Pandroid.testInstrumentationRunnerArguments.class=' + APP + '.SmokeTest',
-            ':app:connectedDebugAndroidTest'], 'gradle-instrumentation', timeout=600, check=False)
+        instrumented = run(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
+            APP + '.SmokeTest', RUNNER], 'instrumentation-smoke', timeout=180, check=False)
         (out / 'test-results').mkdir()
-        for result in (ROOT / 'app/build/outputs/androidTest-results/connected/debug').rglob('TEST-*.xml'):
-            if result.stat().st_mtime >= instrumentation_started:
-                shutil.copy2(result, out / 'test-results' / result.name)
         technical_error = None
         try:
+            from instrumentation import write_results
+            write_results(instrumented, out / 'test-results/TEST-smoke.xml', report['serial'], {
+                (APP + '.SmokeTest', 'localVllmWithoutKeyStreamsAndPersistsARealConversation'),
+                (APP + '.SmokeTest', 'settingsShowOnlyTheSelectedConversationProviders'),
+            })
             check_instrumentation_results(out / 'test-results', report['serial'], since=instrumentation_started)
-            require_gradle_tasks(instrumented, ('connectedDebugAndroidTest',))
         except RuntimeError as error:
             technical_error = redact(str(error))
         report['technical'].update(status='FAIL' if technical_error else 'PASS',
-            instrumentation='FAIL' if technical_error else 'PASS', evidence='logs/gradle-instrumentation.txt')
+            instrumentation='FAIL' if technical_error else 'PASS', evidence='logs/instrumentation-smoke.txt')
         if technical_error:
             report['error'] = technical_error
             report['technical']['error'] = technical_error
             print('Technical failure retained; collecting visual scenarios independently…', flush=True)
         save()
-        # Build completion and APK freshness were checked before starting Android.
-        for apk in (out / 'app-debug.apk', out / 'app-debug-androidTest.apk'):
-            run(adb + ['install', '-r', apk], 'install-' + apk.stem)
         for scenario in SCENARIOS:
             print(f'Capturing {scenario}…', flush=True)
             shell('pm', 'clear', APP)

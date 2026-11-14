@@ -153,3 +153,9 @@ conserve le rendu, SystemUI et le clavier ; ATD ne permet pas cette revue visuel
 Les tests accordent POST_NOTIFICATIONS uniquement sur leur appareil synthétique,
 avant chaque lancement, pour ne pas confondre une fenêtre système avec le résultat du chat.
 Un résultat Gradle incomplet ne permet pas de réutiliser un ancien APK.
+
+Après compilation, Gradle est complètement arrêté. Smoke et captures tournent
+directement par `am instrument` pour éviter une seconde JVM pendant le rendu Android.
+Le protocole AndroidJUnitRunner alimente le XML JUnit : noms exacts attendus, codes
+de réussite par test, nombre de tests et fin normale sont tous requis. Un code de
+sortie ADB égal à zéro ne suffit pas ; échecs, tests ignorés et interruptions restent FAIL.
