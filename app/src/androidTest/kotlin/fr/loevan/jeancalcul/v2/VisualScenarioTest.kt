@@ -14,12 +14,15 @@ import io.github.mangi.eta.R
 import io.github.mangi.eta.ui.MainActivity
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class VisualScenarioTest {
+    @Before fun prepareSyntheticPermissions() = grantSyntheticNotificationPermission()
+
     @Test fun capture() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val name = InstrumentationRegistry.getArguments().getString("scenario")

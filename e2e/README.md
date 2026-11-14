@@ -142,11 +142,14 @@ La partition de données du nouvel AVD synthétique est limitée à 4 Gio. Le pr
 Pixel 6 reste identique pour l'écran, l'API et la mémoire ; aucun compte ou
 contenu personnel n'y est installé. Les anciens AVD ne sont pas modifiés.
 
-Sans KVM, `--software-emulator` utilise l’image `system-images;android-35;aosp_atd;x86_64`
-et laisse dix minutes au démarrage. Cette solution peut rester trop lente ;
+Sans KVM, `--software-emulator` utilise aussi l’image Android complète
+`system-images;android-35;google_apis;x86_64` et laisse dix minutes au démarrage. Cette solution peut rester trop lente ;
 un démarrage incomplet conserve les tests instrumentés et la revue visuelle en NOT_RUN.
 
 La compilation et les tests JVM/lint terminent avant le démarrage de l’émulateur.
-L’instrumentation seule tourne ensuite avec Android. La CI utilise l’image ATD
-(`--image-type aosp_atd`), sans services Google inutiles aux fixtures locales.
+L’instrumentation seule tourne ensuite avec Android. Une image Android complète
+conserve le rendu, SystemUI et le clavier ; ATD ne permet pas cette revue visuelle
+([limites documentées par Android](https://developer.android.com/studio/test/managed-devices#enable-atd)).
+Les tests accordent POST_NOTIFICATIONS uniquement sur leur appareil synthétique,
+avant chaque lancement, pour ne pas confondre une fenêtre système avec le résultat du chat.
 Un résultat Gradle incomplet ne permet pas de réutiliser un ancien APK.

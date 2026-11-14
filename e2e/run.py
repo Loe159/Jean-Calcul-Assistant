@@ -68,7 +68,6 @@ def main():
     parser.add_argument('--extra-validation-authorized', action='store_true',
                         help='Attempts above 3 require explicit user authorization to exceed the budget')
     parser.add_argument('--authorization-note', help='Record the explicit user instruction authorizing additional attempts')
-    parser.add_argument('--image-type', choices=('google_apis', 'aosp_atd'), help='Android image family; ATD needs no Google services')
     parser.add_argument('--software-emulator', action='store_true', help='Use software CPU emulation when KVM is unavailable')
     parser.add_argument('--show-window', action='store_true')
     parser.add_argument('--keep-emulator', action='store_true', help='Leave the synthetic AVD open for interaction')
@@ -176,8 +175,8 @@ def main():
         (out / 'android-user').mkdir()
         env['ANDROID_SERIAL'] = report['serial']
         name = f'jc-e2e-{args.run_id}-{args.attempt}'
-        image_type = args.image_type or ('aosp_atd' if args.software_emulator else 'google_apis')
-        image = f'system-images;android-35;{image_type};x86_64'
+        # Full Android includes SystemUI and IME; ATD disables rendering and cannot validate screenshots.
+        image = 'system-images;android-35;google_apis;x86_64'
         report['system_image'] = image
         run([avdmanager, 'create', 'avd', '-n', name, '-k', image, '--device', 'pixel_6'],
             'create-avd', input='no\n')

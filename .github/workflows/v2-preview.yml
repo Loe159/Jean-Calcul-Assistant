@@ -59,11 +59,11 @@ jobs:
       - uses: android-actions/setup-android@v4
       - run: sdkmanager --channel=3 "platforms;android-37.0" "build-tools;37.0.0"
       - name: Install isolated emulator image
-        run: sdkmanager "platform-tools" "emulator" "build-tools;37.0.0" "system-images;android-35;aosp_atd;x86_64"
+        run: sdkmanager "platform-tools" "emulator" "build-tools;37.0.0" "system-images;android-35;google_apis;x86_64"
       - name: Enable KVM
         run: sudo chmod a+rw /dev/kvm
       - name: Run deterministic technical checks and capture scenarios
-        run: python3 e2e/run.py --run-id ci --attempt 1 --image-type aosp_atd
+        run: python3 e2e/run.py --run-id ci --attempt 1
       - name: Render evidence (visual review stays NOT_RUN)
         if: always()
         run: python3 e2e/report.py e2e-artifacts/ci/attempt-1

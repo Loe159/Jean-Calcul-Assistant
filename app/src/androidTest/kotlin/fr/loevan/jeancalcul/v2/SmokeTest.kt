@@ -10,11 +10,14 @@ import androidx.test.uiautomator.Until
 import io.github.mangi.eta.R
 import io.github.mangi.eta.ui.MainActivity
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class SmokeTest {
+    @Before fun prepareSyntheticPermissions() = grantSyntheticNotificationPermission()
+
     @Test fun localVllmWithoutKeyStreamsAndPersistsARealConversation() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
