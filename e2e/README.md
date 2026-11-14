@@ -67,7 +67,7 @@ Pour manipuler l'application avec la fenêtre d'émulateur :
 
 ```sh
 python3 e2e/run.py --run-id interactive --show-window --keep-emulator
-adb -s emulator-5580 shell am start -n fr.loevan.jeancalcul.v2/.MainActivity
+adb -s emulator-5580 shell am start -n fr.loevan.jeancalcul.v2/io.github.mangi.eta.ui.MainActivity
 adb -s emulator-5580 exec-out screencap -p > /tmp/jean-calcul.png
 # Après inspection :
 adb -s emulator-5580 emu kill
@@ -145,3 +145,8 @@ contenu personnel n'y est installé. Les anciens AVD ne sont pas modifiés.
 Sans KVM, `--software-emulator` utilise l’image `system-images;android-35;aosp_atd;x86_64`
 et laisse dix minutes au démarrage. Cette solution peut rester trop lente ;
 un démarrage incomplet conserve les tests instrumentés et la revue visuelle en NOT_RUN.
+
+La compilation et les tests JVM/lint terminent avant le démarrage de l’émulateur.
+L’instrumentation seule tourne ensuite avec Android. La CI utilise l’image ATD
+(`--image-type aosp_atd`), sans services Google inutiles aux fixtures locales.
+Un résultat Gradle incomplet ne permet pas de réutiliser un ancien APK.

@@ -41,7 +41,7 @@ class SmokeTest {
         ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use {
             assertTrue(device.wait(Until.hasObject(By.desc(context.getString(R.string.action_conversation_history))), 30000))
             device.findObject(By.desc(context.getString(R.string.action_conversation_history))).click()
-            val settings = device.wait(Until.findObject(By.text(context.getString(R.string.route_settings))), 10000)
+            val settings = device.wait(Until.findObject(By.desc(context.getString(R.string.route_settings))), 10000)
             assertNotNull(settings); settings!!.click()
             val providers = device.wait(Until.findObject(By.text(context.getString(R.string.ui_model_provider_e8c7f5))), 10000)
             assertNotNull(providers); providers!!.click()

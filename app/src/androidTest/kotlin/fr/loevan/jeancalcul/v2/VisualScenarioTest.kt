@@ -31,6 +31,7 @@ class VisualScenarioTest {
         try {
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { activity ->
                 assertNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 30000))
+                try {
                 when (scenario) {
                     "message", "reset" -> {
                         device.findObject(By.clazz("android.widget.EditText")).text = "Synthetic local request"
@@ -42,11 +43,14 @@ class VisualScenarioTest {
                             device.wait(Until.findObject(By.text(context.getString(R.string.action_new_conversation))), 10000).click()
                         }
                     }
-                    "settings", "providers", "tools", "appearance" -> {
+                    "tools" -> {
                         device.findObject(By.desc(context.getString(R.string.action_conversation_history))).click()
-                        device.wait(Until.findObject(By.text(context.getString(R.string.route_settings))), 10000).click()
+                        device.wait(Until.findObject(By.text(context.getString(R.string.route_tools))), 10000).click()
+                    }
+                    "settings", "providers", "appearance" -> {
+                        device.findObject(By.desc(context.getString(R.string.action_conversation_history))).click()
+                        device.wait(Until.findObject(By.desc(context.getString(R.string.route_settings))), 10000).click()
                         if (scenario == "providers") device.wait(Until.findObject(By.text(context.getString(R.string.ui_model_provider_e8c7f5))),10000).click()
-                        if (scenario == "tools") device.wait(Until.findObject(By.text(context.getString(R.string.route_tools))),10000).click()
                         if (scenario == "appearance") {
                             val scrollable = device.findObject(By.scrollable(true))
                             scrollable?.scrollUntil(androidx.test.uiautomator.Direction.DOWN, Until.findObject(By.text(context.getString(R.string.appearance_title))))
@@ -64,6 +68,12 @@ class VisualScenarioTest {
                 device.waitForIdle(3000)
                 val directory = File(context.filesDir, "e2e").apply { mkdirs() }
                 assertTrue("Screenshot must be a real display capture", device.takeScreenshot(File(directory, "$scenario.png")))
+                } catch (failure: Throwable) {
+                    val diagnostics = File(context.filesDir, "e2e").apply { mkdirs() }
+                    runCatching { device.takeScreenshot(File(diagnostics, "failure-$scenario.png")) }
+                    runCatching { device.dumpWindowHierarchy(File(diagnostics, "failure-$scenario.xml")) }
+                    throw failure
+                }
             }
         } finally { fixture?.close() }
     }

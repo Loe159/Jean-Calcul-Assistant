@@ -52,6 +52,15 @@ def check_instrumentation_results(directory, serial, since=0):
     return matched
 
 
+def require_gradle_tasks(result, tasks):
+    """A started task or an old APK is not evidence of a completed build."""
+    if result.returncode:
+        raise RuntimeError(f'Gradle failed ({result.returncode}); see the build log')
+    for task in tasks:
+        if not re.search(rf'> Task :app:{re.escape(task)}(?: UP-TO-DATE| FROM-CACHE)?(?:\r?\n|$)', result.stdout):
+            raise RuntimeError(f'{task} did not complete; refusing stale evidence')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--run-id', default=dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ'))
@@ -59,6 +68,7 @@ def main():
     parser.add_argument('--extra-validation-authorized', action='store_true',
                         help='Attempts above 3 require explicit user authorization to exceed the budget')
     parser.add_argument('--authorization-note', help='Record the explicit user instruction authorizing additional attempts')
+    parser.add_argument('--image-type', choices=('google_apis', 'aosp_atd'), help='Android image family; ATD needs no Google services')
     parser.add_argument('--software-emulator', action='store_true', help='Use software CPU emulation when KVM is unavailable')
     parser.add_argument('--show-window', action='store_true')
     parser.add_argument('--keep-emulator', action='store_true', help='Leave the synthetic AVD open for interaction')
@@ -166,7 +176,8 @@ def main():
         (out / 'android-user').mkdir()
         env['ANDROID_SERIAL'] = report['serial']
         name = f'jc-e2e-{args.run_id}-{args.attempt}'
-        image = 'system-images;android-35;' + ('aosp_atd' if args.software_emulator else 'google_apis') + ';x86_64'
+        image_type = args.image_type or ('aosp_atd' if args.software_emulator else 'google_apis')
+        image = f'system-images;android-35;{image_type};x86_64'
         report['system_image'] = image
         run([avdmanager, 'create', 'avd', '-n', name, '-k', image, '--device', 'pixel_6'],
             'create-avd', input='no\n')
@@ -176,12 +187,32 @@ def main():
         config.write_text('\n'.join(line for line in config.read_text().splitlines()
                                     if not line.startswith('disk.dataPartition.size='))
                           + '\ndisk.dataPartition.size=4G\n')
+        # Compile and run JVM/lint before the emulator consumes memory. In particular,
+        # dexing/lint must not compete with Android on small CI runners.
+        print('Building APKs and running JVM/lint before starting Android…', flush=True)
+        gradle_base = [ROOT / 'gradlew', '-Pjeancalcul.emulator=true', '--no-daemon',
+            '--no-configuration-cache', '--max-workers=1',
+            '-Dorg.gradle.jvmargs=-Xmx2500m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8']
+        build_tasks = ('assembleDebug', 'assembleDebugAndroidTest', 'testDebugUnitTest', 'lintDebug')
+        report['technical'].update(status='FAIL', build='RUNNING', jvm_tests='NOT_RUN', lint='NOT_RUN')
+        save()
+        build = run(gradle_base + [':app:' + task for task in build_tasks],
+                    'gradle-build', timeout=1500, check=False)
+        require_gradle_tasks(build, build_tasks)
+        for apk in (ROOT / 'app/build/outputs/apk/debug/app-debug.apk',
+                    ROOT / 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk'):
+            shutil.copy2(apk, out / apk.name)
+        report['apk_sha256'] = hashlib.sha256((out / 'app-debug.apk').read_bytes()).hexdigest()
+        report['technical'].update(status='NOT_RUN', build='PASS', jvm_tests='PASS', lint='PASS',
+                                   evidence='logs/gradle-build.txt', instrumentation='NOT_RUN')
+        save()
         log = (out / 'logs/emulator-local.txt').open('w')
         cmd = [emulator_bin, '-avd', name, '-port', str(args.port), '-wipe-data', '-no-snapshot',
-               '-no-metrics', '-no-audio', '-no-boot-anim', '-gpu', 'swiftshader', '-memory', '2048', '-cores', '2']
+               '-no-metrics', '-no-audio', '-no-boot-anim', '-gpu', 'swiftshader',
+               '-feature', '-Vulkan', '-memory', '2048', '-cores', '2']
         if args.software_emulator:
             env['ANDROID_I_WANT_MY_TCG'] = 'yes'
-            cmd += ['-accel', 'off', '-skin', '540x1200', '-feature', '-Vulkan']
+            cmd += ['-accel', 'off', '-skin', '540x1200']
         if not args.show_window:
             cmd.append('-no-window')
         emulator = subprocess.Popen(cmd, env=env, stdout=log, stderr=subprocess.STDOUT)
@@ -215,49 +246,37 @@ def main():
             for setting in ('window_animation_scale', 'transition_animation_scale', 'animator_duration_scale'):
                 shell('settings', 'put', 'global', setting, '0')
         baseline()
-        print('Building APKs, JVM/lint and connected instrumentation…', flush=True)
-        report['technical']['status'] = 'FAIL'
-        save()
-        build_started = time.time()
-        build = run([ROOT / 'gradlew', '-Pjeancalcul.emulator=true', '--no-daemon', '--max-workers=1',
-             '-Dorg.gradle.jvmargs=-Xmx2500m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8',
-             '-Pandroid.testInstrumentationRunnerArguments.class=' + APP + '.SmokeTest', ':app:assembleDebug', ':app:assembleDebugAndroidTest',
-             ':app:testDebugUnitTest', ':app:lintDebug', ':app:connectedDebugAndroidTest'], 'gradle', timeout=1500, check=False)
+        print('Running connected Android instrumentation…', flush=True)
+        instrumentation_started = time.time()
+        instrumented = run(gradle_base + [
+            '-Pandroid.testInstrumentationRunnerArguments.class=' + APP + '.SmokeTest',
+            ':app:connectedDebugAndroidTest'], 'gradle-instrumentation', timeout=600, check=False)
         (out / 'test-results').mkdir()
         for result in (ROOT / 'app/build/outputs/androidTest-results/connected/debug').rglob('TEST-*.xml'):
-            if result.stat().st_mtime >= build_started:
+            if result.stat().st_mtime >= instrumentation_started:
                 shutil.copy2(result, out / 'test-results' / result.name)
         technical_error = None
         try:
-            check_instrumentation_results(out / 'test-results', report['serial'])
-            if build.returncode:
-                raise RuntimeError(f'Gradle failed ({build.returncode}); see logs/gradle.txt')
+            check_instrumentation_results(out / 'test-results', report['serial'], since=instrumentation_started)
+            require_gradle_tasks(instrumented, ('connectedDebugAndroidTest',))
         except RuntimeError as error:
             technical_error = redact(str(error))
-        report['technical'] = {'status': 'FAIL' if technical_error else 'PASS', 'evidence': 'logs/gradle.txt',
-            'jvm_tests': ('FAIL' if ':app:testDebugUnitTest FAILED' in build.stdout else
-                          'PASS' if re.search(r'> Task :app:testDebugUnitTest(?: UP-TO-DATE| FROM-CACHE)?(?:\r?\n|$)', build.stdout) else 'NOT_RUN')}
+        report['technical'].update(status='FAIL' if technical_error else 'PASS',
+            instrumentation='FAIL' if technical_error else 'PASS', evidence='logs/gradle-instrumentation.txt')
         if technical_error:
             report['error'] = technical_error
             report['technical']['error'] = technical_error
             print('Technical failure retained; collecting visual scenarios independently…', flush=True)
         save()
-        # Never collect stale APKs left by a previous build after a compilation failure.
-        for task in ('assembleDebug', 'assembleDebugAndroidTest'):
-            if not re.search(rf'> Task :app:{task}(?: UP-TO-DATE)?(?:\r?\n|$)', build.stdout):
-                raise RuntimeError(f'{task} did not complete; refusing to install an older APK')
-        for apk in (ROOT / 'app/build/outputs/apk/debug/app-debug.apk',
-                    ROOT / 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk'):
+        # Build completion and APK freshness were checked before starting Android.
+        for apk in (out / 'app-debug.apk', out / 'app-debug-androidTest.apk'):
             run(adb + ['install', '-r', apk], 'install-' + apk.stem)
-            shutil.copy2(apk, out / apk.name)
-        report['apk_sha256'] = hashlib.sha256((out / 'app-debug.apk').read_bytes()).hexdigest()
         for scenario in SCENARIOS:
             print(f'Capturing {scenario}…', flush=True)
             shell('pm', 'clear', APP)
             baseline()
             shell('am', 'force-stop', APP)
-            # The prototype stores chat only in memory: force-stop restores its empty state.
-            # Avoid pm clear: external storage cleanup can outlive that command.
+            # Each scenario owns fresh synthetic Room/DataStore state.
             if scenario == 'dark':
                 shell('cmd', 'uimode', 'night', 'yes')
             if scenario == 'small_screen':
@@ -272,6 +291,18 @@ def main():
             # am instrument can return zero even when a test crashes or an assertion fails.
             if not re.search(r'OK \(1 test\)', result.stdout) or 'FAILURES!!!' in result.stdout:
                 report['captures'][scenario] = {'status': 'FAIL', 'evidence': f'logs/{scenario}.txt'}
+                # Diagnostic evidence belongs to this failed scenario; it cannot pass review.
+                for suffix in ('png', 'xml'):
+                    try:
+                        diagnostic = subprocess.run(adb + ['exec-out', 'run-as', APP, 'cat',
+                            f'files/e2e/failure-{scenario}.{suffix}'], cwd=ROOT, env=env,
+                            capture_output=True, timeout=15)
+                        if diagnostic.returncode == 0 and diagnostic.stdout:
+                            target = out / 'screenshots' / f'failure-{scenario}.{suffix}'
+                            target.write_bytes(diagnostic.stdout)
+                            report['captures'][scenario]['diagnostic_' + suffix] = str(target.relative_to(out))
+                    except subprocess.TimeoutExpired:
+                        pass
                 save()
                 raise RuntimeError(f'Instrumentation failed for {scenario}; see logs/{scenario}.txt')
             path = out / 'screenshots' / f'{scenario}.png'
