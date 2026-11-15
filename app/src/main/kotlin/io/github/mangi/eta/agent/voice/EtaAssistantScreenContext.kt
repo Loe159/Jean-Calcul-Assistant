@@ -49,9 +49,12 @@ internal class EtaAssistantScreenContext(
         privateScreen = capture.sensitive
         val bitmap = capture.bitmap ?: return
         fallbackJob = scope.launch {
-            val encoded = runCatching { AgentImageCodec.fromScreenContextBitmap(bitmap, source = "jeancalcul_screen_context") }.getOrNull()
+            val encoded = runCatching {
+                capture.ready?.await()
+                AgentImageCodec.fromScreenContextBitmap(bitmap, source = "jeancalcul_screen_context")
+            }.getOrNull()
             synchronized(this@EtaAssistantScreenContext) { if (!closed) fallbackImage = encoded }
-        }.also { job -> job.invokeOnCompletion { if (!bitmap.isRecycled) bitmap.recycle() } }
+        }.also { job -> job.invokeOnCompletion { capture.release() } }
     }
 
 
@@ -113,7 +116,7 @@ internal class EtaAssistantScreenContext(
     suspend fun snapshot(): Snapshot {
         val remaining = (WAIT_MILLIS - (SystemClock.elapsedRealtime() - startedAt)).coerceAtLeast(0)
         if (remaining > 0) withTimeoutOrNull(remaining) { ready.await() }
-        withTimeoutOrNull(500) { fallbackJob?.join() }
+        withTimeoutOrNull(WAIT_MILLIS) { fallbackJob?.join() }
         return synchronized(this) {
             if (closed) return@synchronized Snapshot()
             val chosenImage = if (privateScreen) null else image ?: fallbackImage

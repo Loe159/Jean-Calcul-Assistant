@@ -102,8 +102,8 @@ internal fun ModelProviderListScreen(
                 ProviderSection(title = stringResource(R.string.ui_add_new_provider_74df54)) {
 
                     CouiPreference(
-                        title = "Ajouter un serveur vLLM",
-                        summary = "Endpoint OpenAI compatible de votre serveur local",
+                        title = "Add a vLLM server",
+                        summary = "OpenAI-compatible endpoint for your local server",
                         icon = { ProviderBrandIcon(ProviderSourceTypes.OPENAI) },
                         onClick = { onNavigate(AppRoute.ModelProviderNew(NewProviderType.OpenAiCompatible)) },
                     )
@@ -186,8 +186,8 @@ internal fun ModelProviderListScreen(
                     ProviderSection(title = stringResource(R.string.ui_add_new_provider_74df54)) {
 
                         ArrowPreference(
-                            title = "Ajouter un serveur vLLM",
-                            summary = "Endpoint OpenAI compatible de votre serveur local",
+                            title = "Add a vLLM server",
+                            summary = "OpenAI-compatible endpoint for your local server",
                             startAction = {
                                 ProviderBrandIcon(ProviderSourceTypes.OPENAI)
                             },

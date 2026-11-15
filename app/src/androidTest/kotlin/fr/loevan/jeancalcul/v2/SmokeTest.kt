@@ -69,6 +69,16 @@ class SmokeTest {
             assertNotNull(capture)
             assertEquals("Home", capture!!.screen)
             assertNotNull("Our own app must provide a fallback screenshot", capture!!.bitmap)
+            kotlinx.coroutines.runBlocking {
+                kotlinx.coroutines.withTimeout(5000) { capture!!.ready?.await() }
+            }
+            val bitmap = capture!!.bitmap!!
+            assertFalse(bitmap.isRecycled)
+            val colors = mutableSetOf<Int>()
+            for (y in 0 until bitmap.height step 8) {
+                for (x in 0 until bitmap.width step 8) colors += bitmap.getPixel(x, y)
+            }
+            assertTrue("Window capture must contain actual screen content, not a blank bitmap", colors.size > 10)
             val entry = io.github.mangi.eta.agent.voice.EtaAssistantScreenContext(0, emptyList())
             try {
                 entry.acceptOwnApp(capture!!)
@@ -94,6 +104,7 @@ class SmokeTest {
                 assertNotNull(private)
                 assertTrue(private!!.sensitive)
                 assertNull(private.bitmap)
+                assertNull(private.ready)
                 assertTrue(private.text.contains("withheld"))
             }
         }

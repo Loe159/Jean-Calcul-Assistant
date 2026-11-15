@@ -1241,7 +1241,8 @@ private fun EmptyChatState(
                     modifier = Modifier.padding(horizontal = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    suggestions.chunked(2).forEach { rowItems ->
+                    val columns = if (LocalDensity.current.fontScale >= 1.5f) 1 else 2
+                    suggestions.chunked(columns).forEach { rowItems ->
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             rowItems.forEach { item ->
                                 SuggestionCard(
@@ -1307,12 +1308,13 @@ private fun SuggestionCard(
         Spacer(modifier = Modifier.width(10.dp))
         Text(
             text = item.title,
+            modifier = Modifier.weight(1f),
             style = MiuixTheme.textStyles.body2.copy(
                 fontSize = 13.5.sp,
                 fontWeight = FontWeight.Medium,
             ),
             color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.88f),
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
     }

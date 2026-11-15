@@ -1,0 +1,98 @@
+{
+  "empty": {
+    "status": "PASS",
+    "sha256": "387bf46ddf00b2385e7d11043382b4e1d8d1e28040a36cfa55f5d0f3597fa89e",
+    "observation": "Clear Home heading, provider selector and composer; two suggestion labels use ellipses but remain identifiable.",
+    "opened_with": "functions.view_image (native vision)"
+  },
+  "message": {
+    "status": "PASS",
+    "sha256": "883c9c92fc2833bc9f459f2477faa0dbd7dcf60bc1413948c8c160792b0828ad",
+    "observation": "Synthetic request/reply and reply actions are legible, with no overlap with the composer.",
+    "opened_with": "functions.view_image (native vision)"
+  },
+  "reset": {
+    "status": "PASS",
+    "sha256": "937290fdfb4343cedbaa8a06b590bbf70f33a5f4d872863bc6ea15fa23b3faf8",
+    "observation": "Reset returns to empty Home with selected Synthetic vLLM provider and an empty composer.",
+    "opened_with": "functions.view_image (native vision)"
+  },
+  "settings": {
+    "status": "PASS",
+    "sha256": "371889e4a5deacc87a469d8d5e4e537e7bd8f3be6092ea900ae42f0f2795459b",
+    "observation": "Set up heading, enabled reasoning and context/extensions rows are legible; Tools section starts with a capital.",
+    "opened_with": "functions.view_image (native vision)"
+  },
+  "dark": {
+    "status": "PASS",
+    "sha256": "8a6c5115f2ced3562fbeb6a85a301ebe14b1d55c39df66425df039c4a9b36277",
+    "observation": "Dark background, light text and blue icons retain visible contrast; composer and navigation remain distinct.",
+    "opened_with": "functions.view_image (native vision)"
+  },
+  "small_screen": {
+    "status": "PASS",
+    "sha256": "c71de887e5f0a23dd28675032343182681eac984f8c4e6997809ad6c7f7a6b28",
+    "observation": "Home controls and composer fit the narrow display; suggestion text is shortened with ellipses.",
+    "opened_with": "functions.view_image (native vision)"
+  },
+  "large_text": {
+    "status": "FAIL",
+    "sha256": "bd52902cda80036c16842dbe29c2500c9da4d931b5ace6f9bb41b39daa67da12",
+    "observation": "At 200% text, suggestion labels collapse to Analyze ..., Open W..., Browse t..., Check m...; their actions are not sufficiently identifiable.",
+    "opened_with": "functions.view_image (native vision)"
+  },
+  "keyboard": {
+    "status": "PASS",
+    "sha256": "de0ee1d5711c13aaac40d699efd84b3a9ead78f30e0e30799e3b14c3d64ccca9",
+    "observation": "Two-line draft and blue Send button stay above the keyboard without overlap.",
+    "opened_with": "functions.view_image (native vision)"
+  },
+  "reduced_motion": {
+    "status": "PASS",
+    "sha256": "98a998c2d277f0cbd96089779f382fb4d4c0b79b321a7f9d7df161756492601d",
+    "observation": "Static reduced-motion screen is legible; a screenshot cannot verify animation behavior or haptics.",
+    "opened_with": "functions.view_image (native vision)"
+  },
+  "menu": {
+    "status": "PASS",
+    "sha256": "2aaabb3272f01c1dd2f8f15d890ce2d3c118d7b96f403a89592a45f5a36f979c",
+    "observation": "New conversation, Open terminal and Open browser popup rows are legible with distinct icons.",
+    "opened_with": "functions.view_image (native vision)"
+  },
+  "providers": {
+    "status": "FAIL",
+    "sha256": "8f693a09ec8c0a8f5877a8fb76ccd1515b869b6214ed3cc9e110454eb96e1c83",
+    "observation": "Provider selection is legible, but Add vLLM title and endpoint description remain French. English wording is prepared in the next correction.",
+    "opened_with": "functions.view_image (native vision)"
+  },
+  "tools": {
+    "status": "FAIL",
+    "sha256": "4de37338b86b67cb71d43132e09a74aa09c5576bfa45eed242bc09d7255b3d28",
+    "observation": "Tools title is capitalized, but first tool name is reduced to dots next to the long accessibility badge.",
+    "opened_with": "functions.view_image (native vision)"
+  },
+  "appearance": {
+    "status": "FAIL",
+    "sha256": "a7dcb404d46cf993c7d2398a64ce8ec8f744bf1b310eb0e15f94b9c02b62dcfb",
+    "observation": "Large Appearance & Theme page title truncates to Appearance & The..., although settings controls are legible.",
+    "opened_with": "functions.view_image (native vision)"
+  },
+  "improvements": {
+    "status": "PASS",
+    "sha256": "b416c4e2d4c1fba11f7abb01e2be2fc5e82755b27395b128ee0314f0f4da176f",
+    "observation": "New App improvements heading, Power instructions, GitHub connection field and repository-scoped token action are legible in English; remaining content continues below the viewport.",
+    "opened_with": "functions.view_image (native vision)"
+  },
+  "regression_fixture": {
+    "status": "FAIL",
+    "sha256": "88fdb75b529de6b347940fe90973c741e34f2426cc37987ff5f8ef5d40b602d3",
+    "observation": "Intentional solid red rectangle covers the upper Home area and hides the provider/header/heading.",
+    "opened_with": "functions.view_image (native vision)"
+  },
+  "_reference_comparison": {
+    "status": "NOT_RUN",
+    "opened_with": "",
+    "observation": "No approved reference for the new App improvements page; existing layout issues are reported independently. Physical Samsung interaction and haptics were not tested.",
+    "reference_sha256": {}
+  }
+}

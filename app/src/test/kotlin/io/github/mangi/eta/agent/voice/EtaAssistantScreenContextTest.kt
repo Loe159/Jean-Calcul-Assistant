@@ -72,6 +72,34 @@ class EtaAssistantScreenContextTest {
     }
 
     @Test
+    fun closingBeforeNativeCopyFinishesDefersBitmapDisposal() {
+        val copied = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val bitmap = android.graphics.Bitmap.createBitmap(4, 4, android.graphics.Bitmap.Config.ARGB_8888)
+        val capture = io.github.mangi.eta.agent.development.OwnAppScreenContext.Capture(
+            "Home", "Jean-Calcul", bitmap, false, copied,
+        )
+        capture.release()
+        assertFalse("Native copy still owns its destination", bitmap.isRecycled)
+        copied.complete(Unit)
+        assertTrue(bitmap.isRecycled)
+    }
+
+    @Test
+    fun failedNativeCopyIsDiscardedAndItsBitmapIsReleased() = runBlocking {
+        val copied = kotlinx.coroutines.CompletableDeferred<Unit>()
+        copied.completeExceptionally(IllegalStateException("Synthetic native copy failure"))
+        val bitmap = android.graphics.Bitmap.createBitmap(4, 4, android.graphics.Bitmap.Config.ARGB_8888)
+        val entry = EtaAssistantScreenContext(0, emptyList())
+        try {
+            entry.acceptOwnApp(io.github.mangi.eta.agent.development.OwnAppScreenContext.Capture(
+                "Home", "Jean-Calcul", bitmap, false, copied,
+            ))
+            assertNull(entry.snapshot().image)
+            assertTrue(bitmap.isRecycled)
+        } finally { entry.close() }
+    }
+
+    @Test
     fun flagsRequestBothChannelsAndAndroid17ScreenContent() {
         val older = AssistantContextFlags.forSdk(34)
         assertTrue(older and VoiceInteractionSession.SHOW_WITH_ASSIST != 0)

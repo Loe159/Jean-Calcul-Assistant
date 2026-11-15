@@ -139,17 +139,15 @@ internal fun ToolSwitchRow(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         CouiText(
                             text = tool.title,
                             kind = CouiTextKind.ItemTitle,
                             color = colors.title,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
                         )
                         if (requirementText != null) {
                             Box(
