@@ -23,7 +23,7 @@ internal object AgentFileResultFormatter {
                 else -> "Found $count matches"
             }
             if (count == 0) {
-                if (json.opt("partial") == true) "$label · limited scan range" else label
+                if (json.opt("partial") == true) "$label · Limited scan range" else label
             } else {
                 withScope(label, json, "More available")
             }

@@ -16,7 +16,7 @@ jobs:
       contents: write
     concurrency:
       group: preview-pr-62-${{ github.event_name }}
-      cancel-in-progress: false
+      cancel-in-progress: true
     env:
       UPDATE_CHANNEL: preview-pr-62
     steps:
@@ -63,6 +63,9 @@ jobs:
           if-no-files-found: warn
   emulator:
     name: Technical Android 35 E2E (no visual judgment)
+    concurrency:
+      group: preview-pr-62-emulator-${{ github.event_name }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 50
     steps:
