@@ -1,39 +1,23 @@
-# Jean-Calcul V2
+# Jean-Calcul Assistant
 
-Assistant Android expérimental inspiré de l'UX Eta/COUI, développé indépendamment de V1.
+Assistant Android dérivé d’[ETA](https://github.com/Mangi-11/Eta), avec son interface COUI et les fonctions sélectionnées pour Jean-Calcul.
 
-## État
-- Branche V2 autonome et distincte de `main` (qui conserve V1).
-- Application Kotlin/Compose avec thème COUI, écran de discussion et réglages en mode démonstration.
-- Aucune inférence IA ni outil Android dans le prototype initial. Les messages ne sont pas persistés.
-- `applicationId = fr.loevan.jeancalcul.v2` : installation parallèle à V1 possible.
+## Modèles
 
-## Build et tests
-Prérequis : JDK 25, Android SDK 37.0 (canal preview), Gradle Wrapper inclus.
-```sh
-./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
-./gradlew :app:connectedDebugAndroidTest
-```
-APK local : `app/build/outputs/apk/debug/app-debug.apk`.
+- **ChatGPT/Codex** : connexion avec l’abonnement dans Réglages → Fournisseurs de modèles → ChatGPT / Codex.
+- **vLLM local** : renseigner l’URL accessible du serveur, par exemple `http://adresse-du-serveur:8000/v1`, puis récupérer ou ajouter son modèle. La clé API est facultative si le serveur ne l’exige pas. `127.0.0.1` désigne le téléphone. Android 17 exige l’autorisation de réseau local.
 
-## Tester et visualiser avec un agent
+Les services vocaux se configurent séparément. Root et LSPosed sont optionnels ; les outils non disponibles sont signalés.
 
-Voir [le parcours local E2E](e2e/README.md). Avec les prérequis installés :
-```sh
-python3 e2e/run.py --run-id ma-modification --attempt 1
-python3 e2e/report.py e2e-artifacts/ma-modification/attempt-1
-```
-Ouvrir les PNG avec la vision native de l’agent ; `index.html` fournit une
-galerie locale. `--show-window --keep-emulator` permet de manipuler l’app.
-Sous NixOS : `nix develop` prépare les outils Android.
+## Périmètre et provenance
 
-## Tester sans compiler
-Sur la branche V2, ouvrir [GitHub Actions](https://github.com/Loe159/Jean-Calcul-Assistant/actions/workflows/v2-preview.yml), choisir le dernier run vert, télécharger l'artefact `JeanCalcul-V2-<SHA>`, extraire le ZIP et installer l'APK. Les captures d'émulateur et résultats de tests sont séparés de l'APK.
+[Sélection validée](docs/eta/SELECTION.md) · [Catalogue](docs/eta/FEATURES.md) · [Provenance ETA](docs/eta/UPSTREAM.md) · [Architecture](docs/ARCHITECTURE.md) · [Validation](docs/eta/VALIDATION.md).
 
-## Agents et développement
-Lire [AGENTS.md](AGENTS.md), [docs/PRODUCT.md](docs/PRODUCT.md), [docs/QUALITY.md](docs/QUALITY.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) et [docs/MASTRA-FACTORY.md](docs/MASTRA-FACTORY.md).
-Les changements doivent partir d'une issue V2 puis d'une PR **vers cette branche**.
-Pas de fusion automatique vers `main`.
+Pas de style Miuix sélectionnable, environnement Linux/Kimi, personnages, sauvegardes/exports ni intégrations ColorOS/constructeur/Google. Les dépendances internes et types de compatibilité amont ne sont pas des entrées produit.
 
-## Référence UX
-Eta (https://github.com/Mangi-11/Eta) est une inspiration visuelle et fonctionnelle, pas une dépendance applicative. Utiliser COUI-Kit selon sa licence propre et ne pas copier le runtime GPL-3.0 d'Eta sans analyse de licence.
+## Développement
+
+JDK25, SDK Android37 : `./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug`.
+APK distribué ARM64, Android13+. Identité : `fr.loevan.jeancalcul.v2`. Lire [AGENTS.md](AGENTS.md) et [la validation](docs/QUALITY.md).
+
+Licence GPL-3.0. Copyright amont © 2026 蛮吉 (Mangi-11) ; adaptations Jean-Calcul documentées dans la provenance.

@@ -3,8 +3,9 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from subprocess import CompletedProcess
 from report import visual_result, render
-from run import redact, SCENARIOS, check_instrumentation_results, complete_png
+from run import redact, SCENARIOS, check_instrumentation_results, complete_png, require_gradle_tasks
 
 
 class EvidenceTests(unittest.TestCase):
@@ -64,6 +65,21 @@ class EvidenceTests(unittest.TestCase):
         for incomplete in (b'', png[:8], png[:-1]):
             with self.subTest(size=len(incomplete)):
                 self.assertFalse(complete_png(incomplete))
+
+    def test_started_task_in_failed_build_cannot_validate_apk(self):
+        result = CompletedProcess([], 1, '> Task :app:assembleDebug\n')
+        with self.assertRaises(RuntimeError):
+            require_gradle_tasks(result, ('assembleDebug',))
+
+    def test_success_without_expected_task_cannot_use_old_apk(self):
+        result = CompletedProcess([], 0, 'BUILD SUCCESSFUL\n')
+        with self.assertRaises(RuntimeError):
+            require_gradle_tasks(result, ('assembleDebug',))
+
+    def test_completed_cached_build_tasks_are_valid_evidence(self):
+        result = CompletedProcess([], 0, '> Task :app:assembleDebug UP-TO-DATE\n'
+                                  '> Task :app:testDebugUnitTest FROM-CACHE\n')
+        require_gradle_tasks(result, ('assembleDebug', 'testDebugUnitTest'))
 
     def test_secret_redaction(self):
         value = redact('Bearer abc123 token=private user@example.org')

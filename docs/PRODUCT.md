@@ -1,20 +1,11 @@
-# Produit V2 — périmètre
+# Jean-Calcul — périmètre sélectionné
 
-Objectif : assistant Android moderne, très fortement inspiré de l'UX Eta/COUI,
-utilisable en chat, voix et appui long Power sur Samsung sans root obligatoire,
-et capable de travailler avec un homelab Mastra sans en dépendre.
+Reprise fidèle des composants COUI et des comportements ETA retenus, sous identité Jean-Calcul.
+Source : ETA 83a25e71eed1e5d8dadbd330362e3999b46595d9 (3.4.4).
 
-## Tranches verticales
-1. Build Android isolé, APK téléchargeable, émulateur et preuves E2E.
-2. Design system COUI et interface conversation soignée.
-3. Chat persistant, Codex direct et endpoints LLM locaux, streaming/stop/retry.
-4. Voix et rôle d'assistant Android raccordés à la même session.
-5. Registre d'outils, confirmations, audit, contrôles Android.
-6. GUI Agent au premier plan : accessibilité, capture, action, vérification.
-7. MCP/skills/mémoire/automatisations via Mastra si nécessaires.
+Conversations : ChatGPT/Codex via abonnement et serveurs vLLM auto-hébergés via API OpenAI compatible.
+La clé vLLM est facultative ; l’adresse doit être celle du serveur accessible depuis le téléphone, suivie de `/v1`.
+`127.0.0.1` désigne le téléphone, pas le PC. Android 17 demande l’accès réseau local pour le homelab.
 
-Exclus du socle : root, LSPosed, hacks constructeur, terminal Linux complet,
-système de personnages et copie du runtime Eta.
-
-Le prototype actuel n'a pas de connexion IA, ne persiste pas les conversations,
-et ne doit pas être annoncé comme un assistant fonctionnel.
+Voir [la sélection](eta/SELECTION.md) pour chaque bloc. Root et pont LSPosed restent optionnels pour les capacités choisies.
+Les compatibilités One UI et services vocaux se vérifient sur appareil ; aucune promesse de fonctionnement universel.

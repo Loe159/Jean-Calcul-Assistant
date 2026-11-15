@@ -24,11 +24,19 @@ Les références Eta sélectionnées par l’utilisateur sont épinglées dans
 `e2e/references.json` ; elles doivent être ouvertes et comparées réellement.
 Les variantes sans référence exacte (sombre, clavier, police agrandie) sont
 inspectées pour lisibilité/insets, sans revendiquer une conformité pixel à pixel.
-Appareil Samsung automatisé et validation APK en un clic restent
-hors du parcours disponible. Le succès réel dépend du rapport de chaque run ;
+La validation automatisée sur le Samsung reste hors du parcours disponible.
+Les APK de test se mettent désormais à jour depuis l’application via le canal
+GitHub décrit dans [PREVIEW-UPDATES.md](PREVIEW-UPDATES.md). Le succès réel dépend du rapport de chaque run ;
 ne pas déduire une validation de la présence des scripts ou des PNG.
 
 ## Rapport minimal
 Issue, commit, liste des tests, API Android, captures, erreurs expurgées,
 statuts PASS/FAIL/NOT_RUN, vérification visuelle si vraiment exécutée.
 Si un critère n'a pas été testé, indiquer NOT_RUN.
+
+## Reprise ETA du 14 novembre 2026
+
+Consulter [le résultat de validation de cette reprise](eta/VALIDATION.md) et
+[les résultats structurés](eta/validation/results.json). Les succès JVM/build
+ne valent pas validation visuelle. Les fonctionnalités copiées doivent encore être
+essayées avec les permissions, modèles et services réellement utilisés.

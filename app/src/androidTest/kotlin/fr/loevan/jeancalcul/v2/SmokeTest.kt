@@ -1,97 +1,57 @@
 package fr.loevan.jeancalcul.v2
 
-import android.view.WindowInsets
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.printToString
-import androidx.compose.ui.test.onAllNodesWithTag
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
+import android.content.Intent
+import androidx.test.core.app.ActivityScenario
+import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
-import org.junit.Rule
+import androidx.test.uiautomator.Until
+import io.github.mangi.eta.R
+import io.github.mangi.eta.ui.MainActivity
+import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Test
-import org.junit.Assert.assertEquals
+import org.junit.runner.RunWith
 
+@RunWith(AndroidJUnit4::class)
 class SmokeTest {
-    @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+    @Before fun prepareSyntheticPermissions() = grantSyntheticNotificationPermission()
 
-    @Test fun initialState() {
-        rule.onNodeWithTag("empty").assertExists()
-        rule.onNodeWithTag("composer").assertExists()
-    }
-    @Test fun composeAndReset() {
-        rule.onNodeWithTag("composer").performTextInput("Bonjour V2")
-        rule.onNodeWithTag("send").performClick()
-        rule.onNodeWithTag("messages").assertExists()
-        rule.onNodeWithTag("reset").performClick()
-        rule.onNodeWithText("Effacer").performClick()
-        rule.onNodeWithTag("empty").assertExists()
-    }
-    @Test fun resetCanBeCancelledAndDraftSurvivesNavigation() {
-        rule.onNodeWithTag("send").assertIsNotEnabled()
-        rule.onNodeWithTag("composer").performTextInput("Brouillon")
-        rule.onNodeWithTag("settings").performClick()
-        rule.onNodeWithText("Préférences").assertIsDisplayed()
-        // An idle accessibility tree does not mean that a pending IME show/hide finished.
-        rule.waitUntil(10_000) {
-            var hidden = false
-            rule.runOnUiThread {
-                hidden = rule.activity.window.decorView.rootWindowInsets
-                    ?.isVisible(WindowInsets.Type.ime()) == false
+    @Test fun localVllmWithoutKeyStreamsAndPersistsARealConversation() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val device = UiDevice.getInstance(instrumentation)
+        LocalVllmFixture(context).use { fixture ->
+            ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use {
+                val input = device.wait(Until.findObject(By.clazz("android.widget.EditText")), 30000)
+                assertNotNull("Chat input must be visible", input)
+                input!!.text = "Synthetic local request"
+                assertTrue(device.wait(Until.hasObject(By.desc(context.getString(R.string.chat_send))), 10000))
+                device.findObject(By.desc(context.getString(R.string.chat_send))).click()
+                assertTrue("Local server response must be rendered", device.wait(Until.hasObject(By.textContains("Synthetic local reply")), 30000))
+                assertTrue("The real HTTP transport must have run", fixture.requests.get() > 0)
             }
-            hidden
-        }
-        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle()
-        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack()
-        // UiDevice injects Back asynchronously; Compose idle alone can precede delivery.
-        try {
-            rule.waitUntil(10_000) { rule.onAllNodesWithTag("composer").fetchSemanticsNodes().size == 1 }
-        } catch (error: Throwable) {
-            throw AssertionError("After system Back: finishing=${rule.activity.isFinishing}, destroyed=${rule.activity.isDestroyed}, lifecycle=${rule.activity.lifecycle.currentState}; ${rule.onRoot(useUnmergedTree = true).printToString()}", error)
-        }
-        rule.onNodeWithText("Brouillon").assertExists()
-        rule.onNodeWithTag("reset").performClick()
-        rule.onNodeWithText("Annuler").performClick()
-        rule.onNodeWithText("Brouillon").assertExists()
-    }
-    @Test fun nativeMenuGalleryAndDialog() {
-        rule.onNodeWithTag("options").performClick()
-        rule.onNodeWithText("Galerie COUI").performClick()
-        rule.onNodeWithTag("design_gallery").assertExists()
-        rule.onNodeWithTag("gallery_dialog").performClick()
-        rule.onNodeWithText("Dialogue COUI").assertExists()
-        rule.onNodeWithText("Fermer").performClick()
-        rule.waitUntil(10_000) { rule.onAllNodesWithText("Fermer").fetchSemanticsNodes().isEmpty() }
-        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle()
-        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack()
-        rule.onNodeWithText("Préférences").assertExists()
-    }
-    @Test fun settingsScreen() {
-        rule.onNodeWithTag("settings").performClick()
-        rule.onNodeWithTag("composer").assertDoesNotExist()
-        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).pressBack()
-        rule.onNodeWithTag("composer").assertExists()
-    }
-    @Test fun multilineComposerDoesNotPanHeader() {
-        val top = rule.onNodeWithTag("header").fetchSemanticsNode().positionOnScreen.y
-        rule.onNodeWithTag("composer").performTextInput((1..8).joinToString("\n") { "Ligne synthétique $it" })
-        rule.waitUntil(10_000) {
-            var shown = false
-            rule.runOnUiThread {
-                shown = rule.activity.window.decorView.rootWindowInsets
-                    ?.isVisible(WindowInsets.Type.ime()) == true
+            ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use {
+                assertTrue("Reply must survive activity recreation", device.wait(Until.hasObject(By.textContains("Synthetic local reply")), 15000))
             }
-            shown
         }
-        UiDevice.getInstance(InstrumentationRegistry.getInstrumentation()).waitForIdle()
-        rule.onNodeWithTag("send").assertIsDisplayed()
-        assertEquals("Multiline input must keep the header anchored", top,
-            rule.onNodeWithTag("header").fetchSemanticsNode().positionOnScreen.y, 1f)
+    }
+    @Test fun settingsShowOnlyTheSelectedConversationProviders() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val device = UiDevice.getInstance(instrumentation)
+        ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use {
+            assertTrue(device.wait(Until.hasObject(By.desc(context.getString(R.string.action_conversation_history))), 30000))
+            device.findObject(By.desc(context.getString(R.string.action_conversation_history))).click()
+            val settings = device.wait(Until.findObject(By.desc(context.getString(R.string.route_settings))), 10000)
+            assertNotNull(settings); settings!!.click()
+            val providers = device.wait(Until.findObject(By.text(context.getString(R.string.ui_model_provider_e8c7f5))), 10000)
+            assertNotNull(providers); providers!!.click()
+            assertTrue(device.wait(Until.hasObject(By.text("ChatGPT / Codex")), 10000))
+            assertTrue(device.wait(Until.hasObject(By.text("vLLM local")), 10000))
+            assertFalse(device.hasObject(By.text("Anthropic")))
+            assertFalse(device.hasObject(By.text("Grok")))
+        }
     }
 }

@@ -1,0 +1,77 @@
+{
+  "source_commit": "8b598ae1e3d66697319c0824e9c57921b8ba4a08",
+  "source_tree": "e2177d9832b963441c6342aadea2df297415fa25",
+  "upstream_commit": "83a25e71eed1e5d8dadbd330362e3999b46595d9",
+  "jvm": {
+    "status": "PASS",
+    "tests": 2025,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "skipped_tests": [
+      "io.github.mangi.eta.agent.voice.EtaWaveShaderTest.effectCompilesWithAndroidShaderCompiler"
+    ]
+  },
+  "report_safeguards": {
+    "status": "PASS",
+    "tests": 9
+  },
+  "apk": {
+    "status": "BUILT",
+    "application_id": "fr.loevan.jeancalcul.v2",
+    "abi": "arm64-v8a",
+    "name": "JeanCalcul-ETA-selection-debug.apk",
+    "sha256": "237a534a8ddd4222e8636c3eb691297b31ca37b02577cf4ba3f4412a4b6b7d8d"
+  },
+  "instrumentation_apk": {
+    "status": "BUILT"
+  },
+  "lint": {
+    "status": "PASS",
+    "command": ":app:lintDebug --no-daemon --max-workers=1",
+    "errors": 0,
+    "warnings": 437,
+    "details": "Completed in a fresh Gradle process after earlier daemon interruptions; main and instrumentation analysis results reused."
+  },
+  "instrumentation": {
+    "status": "NOT_RUN"
+  },
+  "visual_review": {
+    "status": "NOT_RUN"
+  },
+  "reference_comparison": {
+    "status": "NOT_RUN"
+  },
+  "real_chatgpt_account": {
+    "status": "NOT_RUN"
+  },
+  "samsung_root_lsposed": {
+    "status": "NOT_RUN"
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "technical": {
+        "status": "NOT_RUN"
+      },
+      "error": "Emulator exited; see logs/emulator-local.txt",
+      "system_image": null
+    },
+    {
+      "attempt": 2,
+      "technical": {
+        "status": "NOT_RUN"
+      },
+      "error": "Command '['/workspace/scratch/android-build/sdk/platform-tools/adb', '-s', 'emulator-5580', 'shell', 'getprop', 'sys.boot_completed']' timed out after 15 seconds",
+      "system_image": null
+    },
+    {
+      "attempt": 3,
+      "technical": {
+        "status": "NOT_RUN"
+      },
+      "error": "Emulator did not finish booting within the configured deadline",
+      "system_image": "system-images;android-35;aosp_atd;x86_64"
+    }
+  ]
+}

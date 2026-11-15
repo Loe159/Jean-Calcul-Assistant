@@ -12,13 +12,14 @@ import socket
 import subprocess
 import sys
 import time
+import threading
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = 'fr.loevan.jeancalcul.v2'
 RUNNER = APP + '.test/androidx.test.runner.AndroidJUnitRunner'
 SCENARIOS = ('empty', 'message', 'reset', 'settings', 'dark', 'small_screen',
-             'large_text', 'keyboard', 'reduced_motion', 'menu', 'gallery', 'dialog', 'regression_fixture')
+             'large_text', 'keyboard', 'reduced_motion', 'menu', 'providers', 'tools', 'appearance', 'regression_fixture')
 
 
 def redact(text):
@@ -52,6 +53,15 @@ def check_instrumentation_results(directory, serial, since=0):
     return matched
 
 
+def require_gradle_tasks(result, tasks):
+    """A started task or an old APK is not evidence of a completed build."""
+    if result.returncode:
+        raise RuntimeError(f'Gradle failed ({result.returncode}); see the build log')
+    for task in tasks:
+        if not re.search(rf'> Task :app:{re.escape(task)}(?: UP-TO-DATE| FROM-CACHE)?(?:\r?\n|$)', result.stdout):
+            raise RuntimeError(f'{task} did not complete; refusing stale evidence')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--run-id', default=dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ'))
@@ -59,6 +69,7 @@ def main():
     parser.add_argument('--extra-validation-authorized', action='store_true',
                         help='Attempts above 3 require explicit user authorization to exceed the budget')
     parser.add_argument('--authorization-note', help='Record the explicit user instruction authorizing additional attempts')
+    parser.add_argument('--software-emulator', action='store_true', help='Use software CPU emulation when KVM is unavailable')
     parser.add_argument('--show-window', action='store_true')
     parser.add_argument('--keep-emulator', action='store_true', help='Leave the synthetic AVD open for interaction')
     parser.add_argument('--port', type=int, default=5580)
@@ -125,6 +136,10 @@ def main():
     log = None
     adb = None
     success = False
+    monitor_stop = threading.Event()
+    monitor_thread = None
+    app_log_process = None
+    app_log_stream = None
     save()
     try:
         report['commit'] = run(['git', 'rev-parse', 'HEAD']).stdout.strip()
@@ -165,32 +180,89 @@ def main():
         (out / 'android-user').mkdir()
         env['ANDROID_SERIAL'] = report['serial']
         name = f'jc-e2e-{args.run_id}-{args.attempt}'
+        # Full Android includes SystemUI and IME; ATD disables rendering and cannot validate screenshots.
         image = 'system-images;android-35;google_apis;x86_64'
+        report['system_image'] = image
         run([avdmanager, 'create', 'avd', '-n', name, '-k', image, '--device', 'pixel_6'],
             'create-avd', input='no\n')
         # Pixel 6 defaults to 12 GiB of userdata. This account-free fixture needs
         # much less; size only our new disposable AVD, never an existing device.
         config = out / 'avd' / f'{name}.avd' / 'config.ini'
+        display_config = {'disk.dataPartition.size': '4G', 'hw.lcd.width': '720',
+                          'hw.lcd.height': '1280', 'hw.lcd.density': '280', 'hw.ramSize': '4096'}
         config.write_text('\n'.join(line for line in config.read_text().splitlines()
-                                    if not line.startswith('disk.dataPartition.size='))
-                          + '\ndisk.dataPartition.size=4G\n')
+                                    if line.split('=', 1)[0] not in display_config)
+                          + '\n' + '\n'.join(f'{key}={value}' for key, value in display_config.items()) + '\n')
+        # Same 411 x 731 dp viewport as 1080 x 1920 @ 420 dpi, with 56% fewer pixels.
+        report['display'] = {'pixels': [720, 1280], 'density': 280, 'dp': [411, 731]}
+        report['graphics_backend'] = 'swangle'
+        # Compile and run JVM/lint before the emulator consumes memory. In particular,
+        # dexing/lint must not compete with Android on small CI runners.
+        print('Building APKs and running JVM/lint before starting Android…', flush=True)
+        gradle_base = [ROOT / 'gradlew', '-Pjeancalcul.emulator=true', '--no-daemon',
+            '--no-configuration-cache', '--max-workers=1',
+            '-Dorg.gradle.jvmargs=-Xmx2500m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8']
+        build_tasks = ('assembleDebug', 'assembleDebugAndroidTest', 'testDebugUnitTest', 'lintDebug')
+        report['technical'].update(status='FAIL', build='RUNNING', jvm_tests='NOT_RUN', lint='NOT_RUN')
+        save()
+        build = run(gradle_base + [':app:' + task for task in build_tasks],
+                    'gradle-build', timeout=1500, check=False)
+        require_gradle_tasks(build, build_tasks)
+        for apk in (ROOT / 'app/build/outputs/apk/debug/app-debug.apk',
+                    ROOT / 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk'):
+            shutil.copy2(apk, out / apk.name)
+        report['apk_sha256'] = hashlib.sha256((out / 'app-debug.apk').read_bytes()).hexdigest()
+        report['technical'].update(status='NOT_RUN', build='PASS', jvm_tests='PASS', lint='PASS',
+                                   evidence='logs/gradle-build.txt', instrumentation='NOT_RUN')
+        save()
         log = (out / 'logs/emulator-local.txt').open('w')
         cmd = [emulator_bin, '-avd', name, '-port', str(args.port), '-wipe-data', '-no-snapshot',
-               '-no-audio', '-no-boot-anim', '-gpu', 'swiftshader', '-memory', '2048', '-cores', '2']
+               '-no-metrics', '-no-audio', '-no-boot-anim', '-gpu', 'swangle',
+               '-feature', '-Vulkan', '-skin', '720x1280', '-memory', '4096', '-cores', '2']
+        if args.software_emulator:
+            env['ANDROID_I_WANT_MY_TCG'] = 'yes'
+            cmd += ['-accel', 'off']
         if not args.show_window:
             cmd.append('-no-window')
         emulator = subprocess.Popen(cmd, env=env, stdout=log, stderr=subprocess.STDOUT)
+        health = {'samples': 0, 'peak_emulator_rss_kb': 0, 'min_host_available_kb': None}
+        report['emulator_health'] = health
+        def monitor_emulator():
+            while not monitor_stop.is_set():
+                try:
+                    status = Path(f'/proc/{emulator.pid}/status').read_text()
+                    rss = re.search(r'^VmRSS:\s+(\d+)', status, re.MULTILINE)
+                    available = re.search(r'^MemAvailable:\s+(\d+)', Path('/proc/meminfo').read_text(), re.MULTILINE)
+                    health['samples'] += 1
+                    if rss:
+                        health['peak_emulator_rss_kb'] = max(health['peak_emulator_rss_kb'], int(rss.group(1)))
+                    if available:
+                        value = int(available.group(1))
+                        health['min_host_available_kb'] = value if health['min_host_available_kb'] is None else min(value, health['min_host_available_kb'])
+                except OSError:
+                    pass
+                if emulator.poll() is not None:
+                    health['unexpected_exit_code'] = emulator.returncode
+                    break
+                monitor_stop.wait(2)
+        monitor_thread = threading.Thread(target=monitor_emulator, daemon=True)
+        monitor_thread.start()
+
         adb = [adb_bin, '-s', report['serial']]
-        deadline = time.monotonic() + 240
+        deadline = time.monotonic() + (600 if args.software_emulator else 240)
         while time.monotonic() < deadline:
             if emulator.poll() is not None:
                 raise RuntimeError('Emulator exited; see logs/emulator-local.txt')
-            boot = run(adb + ['shell', 'getprop', 'sys.boot_completed'], check=False, timeout=15)
+            try:
+                boot = run(adb + ['shell', 'getprop', 'sys.boot_completed'], check=False, timeout=15)
+            except subprocess.TimeoutExpired:
+                time.sleep(1)
+                continue
             if boot.stdout.strip() == '1':
                 break
             time.sleep(2)
         else:
-            raise RuntimeError('Emulator did not boot within 240 seconds')
+            raise RuntimeError('Emulator did not finish booting within the configured deadline')
         def shell(*words):
             return run(adb + ['shell', *words])
         shell('input', 'keyevent', 'KEYCODE_WAKEUP')
@@ -199,53 +271,59 @@ def main():
         shell('cmd', 'connectivity', 'airplane-mode', 'enable')
         shell('svc', 'wifi', 'disable')
         def baseline():
-            shell('wm', 'size', '1080x1920')
-            shell('wm', 'density', '420')
+            shell('wm', 'size', '720x1280')
+            shell('wm', 'density', '280')
             shell('settings', 'put', 'system', 'font_scale', '1.0')
             shell('cmd', 'uimode', 'night', 'no')
             for setting in ('window_animation_scale', 'transition_animation_scale', 'animator_duration_scale'):
                 shell('settings', 'put', 'global', setting, '0')
         baseline()
-        print('Building APKs, JVM/lint and connected instrumentation…', flush=True)
-        report['technical']['status'] = 'FAIL'
+        # Gradle has exited. Keep the emulator's test phase free of another build JVM.
+        for apk in (out / 'app-debug.apk', out / 'app-debug-androidTest.apk'):
+            run(adb + ['install', '-r', apk], 'install-' + apk.stem)
+        # Capture only this synthetic application's UID, never global Android logs.
+        uid_output = run(adb + ['shell', 'pm', 'list', 'packages', '-U', APP],
+                         'target-app-uid', timeout=15).stdout
+        uid = re.search(r'package:' + re.escape(APP) + r'\s+uid:(\d+)', uid_output)
+        if not uid:
+            raise RuntimeError('Could not resolve the synthetic application UID for scoped diagnostics')
+        app_log_stream = (out / 'logs/app-logcat.txt').open('w')
+        app_log_process = subprocess.Popen(adb + ['logcat', '--uid=' + uid.group(1),
+            '-v', 'threadtime', '-T', '1'], cwd=ROOT, env=env,
+            stdout=app_log_stream, stderr=subprocess.STDOUT)
+        guest_memory = run(adb + ['shell', 'cat', '/proc/meminfo'], 'guest-memory', timeout=15)
+        available = re.search(r'^MemAvailable:\s+(\d+)', guest_memory.stdout, re.MULTILINE)
+        report['guest_available_kb_before_test'] = int(available.group(1)) if available else None
+        report['guest_ram_mb'] = 4096
         save()
-        build_started = time.time()
-        build = run([ROOT / 'gradlew', '--no-daemon',
-             '-Pandroid.testInstrumentationRunnerArguments.class=' + APP + '.SmokeTest', ':app:assembleDebug', ':app:assembleDebugAndroidTest',
-             ':app:testDebugUnitTest', ':app:lintDebug', ':app:connectedDebugAndroidTest'], 'gradle', timeout=1500, check=False)
+        print('Running Android instrumentation directly on the owned emulator…', flush=True)
+        instrumentation_started = time.time()
+        instrumented = run(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
+            APP + '.SmokeTest', RUNNER], 'instrumentation-smoke', timeout=180, check=False)
         (out / 'test-results').mkdir()
-        for result in (ROOT / 'app/build/outputs/androidTest-results/connected/debug').rglob('TEST-*.xml'):
-            if result.stat().st_mtime >= build_started:
-                shutil.copy2(result, out / 'test-results' / result.name)
         technical_error = None
         try:
-            check_instrumentation_results(out / 'test-results', report['serial'])
-            if build.returncode:
-                raise RuntimeError(f'Gradle failed ({build.returncode}); see logs/gradle.txt')
+            from instrumentation import write_results
+            write_results(instrumented, out / 'test-results/TEST-smoke.xml', report['serial'], {
+                (APP + '.SmokeTest', 'localVllmWithoutKeyStreamsAndPersistsARealConversation'),
+                (APP + '.SmokeTest', 'settingsShowOnlyTheSelectedConversationProviders'),
+            })
+            check_instrumentation_results(out / 'test-results', report['serial'], since=instrumentation_started)
         except RuntimeError as error:
             technical_error = redact(str(error))
-        report['technical'] = {'status': 'FAIL' if technical_error else 'PASS', 'evidence': 'logs/gradle.txt',
-            'jvm_tests': 'NOT_RUN' if ':app:testDebugUnitTest NO-SOURCE' in build.stdout else 'PASS'}
+        report['technical'].update(status='FAIL' if technical_error else 'PASS',
+            instrumentation='FAIL' if technical_error else 'PASS', evidence='logs/instrumentation-smoke.txt')
         if technical_error:
             report['error'] = technical_error
             report['technical']['error'] = technical_error
             print('Technical failure retained; collecting visual scenarios independently…', flush=True)
         save()
-        # Never collect stale APKs left by a previous build after a compilation failure.
-        for task in ('assembleDebug', 'assembleDebugAndroidTest'):
-            if not re.search(rf'> Task :app:{task}(?: UP-TO-DATE)?(?:\r?\n|$)', build.stdout):
-                raise RuntimeError(f'{task} did not complete; refusing to install an older APK')
-        for apk in (ROOT / 'app/build/outputs/apk/debug/app-debug.apk',
-                    ROOT / 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk'):
-            run(adb + ['install', '-r', apk], 'install-' + apk.stem)
-            shutil.copy2(apk, out / apk.name)
-        report['apk_sha256'] = hashlib.sha256((out / 'app-debug.apk').read_bytes()).hexdigest()
         for scenario in SCENARIOS:
             print(f'Capturing {scenario}…', flush=True)
+            shell('pm', 'clear', APP)
             baseline()
             shell('am', 'force-stop', APP)
-            # The prototype stores chat only in memory: force-stop restores its empty state.
-            # Avoid pm clear: external storage cleanup can outlive that command.
+            # Each scenario owns fresh synthetic Room/DataStore state.
             if scenario == 'dark':
                 shell('cmd', 'uimode', 'night', 'yes')
             if scenario == 'small_screen':
@@ -260,6 +338,18 @@ def main():
             # am instrument can return zero even when a test crashes or an assertion fails.
             if not re.search(r'OK \(1 test\)', result.stdout) or 'FAILURES!!!' in result.stdout:
                 report['captures'][scenario] = {'status': 'FAIL', 'evidence': f'logs/{scenario}.txt'}
+                # Diagnostic evidence belongs to this failed scenario; it cannot pass review.
+                for suffix in ('png', 'xml'):
+                    try:
+                        diagnostic = subprocess.run(adb + ['exec-out', 'run-as', APP, 'cat',
+                            f'files/e2e/failure-{scenario}.{suffix}'], cwd=ROOT, env=env,
+                            capture_output=True, timeout=15)
+                        if diagnostic.returncode == 0 and diagnostic.stdout:
+                            target = out / 'screenshots' / f'failure-{scenario}.{suffix}'
+                            target.write_bytes(diagnostic.stdout)
+                            report['captures'][scenario]['diagnostic_' + suffix] = str(target.relative_to(out))
+                    except subprocess.TimeoutExpired:
+                        pass
                 save()
                 raise RuntimeError(f'Instrumentation failed for {scenario}; see logs/{scenario}.txt')
             path = out / 'screenshots' / f'{scenario}.png'
@@ -293,12 +383,30 @@ def main():
         (out / 'visual-review.json').write_text(json.dumps(review, indent=2) + '\n')
         baseline()
         shell('am', 'force-stop', APP)
-        shell('am', 'start', '-n', APP + '/.MainActivity')
+        shell('am', 'start', '-n', APP + '/io.github.mangi.eta.ui.MainActivity')
         success = technical_error is None
     except (OSError, RuntimeError, subprocess.TimeoutExpired, ET.ParseError) as error:
         report['error'] = redact(str(error))
         print(report['error'], file=sys.stderr)
     finally:
+        if app_log_process:
+            report['app_log_exit_before_cleanup'] = app_log_process.poll()
+            if app_log_process.poll() is None:
+                app_log_process.terminate()
+                try:
+                    app_log_process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    app_log_process.kill()
+                    app_log_process.wait(timeout=5)
+        if app_log_stream:
+            app_log_stream.close()
+            app_log_path = out / 'logs/app-logcat.txt'
+            app_log_path.write_text(redact(app_log_path.read_text(errors='replace')))
+        monitor_stop.set()
+        if monitor_thread:
+            monitor_thread.join(timeout=3)
+        if emulator:
+            report['emulator_exit_before_cleanup'] = emulator.poll()
         save()
         if emulator and not (args.keep_emulator and success):
             if adb:

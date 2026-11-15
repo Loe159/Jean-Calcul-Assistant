@@ -40,8 +40,10 @@ APK, actions système UI Automator/ADB, captures plein écran et hashes SHA-256.
 Les erreurs instrumentées sont détectées même si `am instrument` renvoie zéro.
 Les PNG restent dans le stockage privé de cette app debug et sont lus via
 `adb exec-out run-as` ; pas de dépendance au nettoyage asynchrone du stockage partagé.
-Chaque scénario repart d’une activité neuve après force-stop, ce qui réinitialise
-les données en mémoire du prototype (adapter cette fixture lors de l’ajout de persistance).
+Chaque scénario efface les données de la seule application synthétique de cet AVD
+puis amorce ses fournisseurs et conversations de test. Le test de persistance vérifie
+séparément la recréation de l’activité sans effacer Room. Le serveur vLLM de test
+répond sur la boucle locale ; aucun compte ni service d’inférence externe n’est utilisé.
 Un échec arrête la tentative et conserve les preuves partielles avec NOT_RUN.
 Boot limité à 240 s, build/tests à 1500 s, scénario à 120 s. Les logs enregistrés
 sont expurgés (chemin personnel, jetons usuels, emails) ; les inspecter avant partage.
@@ -65,7 +67,7 @@ Pour manipuler l'application avec la fenêtre d'émulateur :
 
 ```sh
 python3 e2e/run.py --run-id interactive --show-window --keep-emulator
-adb -s emulator-5580 shell am start -n fr.loevan.jeancalcul.v2/.MainActivity
+adb -s emulator-5580 shell am start -n fr.loevan.jeancalcul.v2/io.github.mangi.eta.ui.MainActivity
 adb -s emulator-5580 exec-out screencap -p > /tmp/jean-calcul.png
 # Après inspection :
 adb -s emulator-5580 emu kill
@@ -139,3 +141,37 @@ inexploitable arrête toujours la collecte avec les preuves partielles.
 La partition de données du nouvel AVD synthétique est limitée à 4 Gio. Le profil
 Pixel 6 reste identique pour l'écran, l'API et la mémoire ; aucun compte ou
 contenu personnel n'y est installé. Les anciens AVD ne sont pas modifiés.
+
+Sans KVM, `--software-emulator` utilise aussi l’image Android complète
+`system-images;android-35;google_apis;x86_64` et laisse dix minutes au démarrage. Cette solution peut rester trop lente ;
+un démarrage incomplet conserve les tests instrumentés et la revue visuelle en NOT_RUN.
+
+La compilation et les tests JVM/lint terminent avant le démarrage de l’émulateur.
+L’instrumentation seule tourne ensuite avec Android. Une image Android complète
+conserve le rendu, SystemUI et le clavier ; ATD ne permet pas cette revue visuelle
+([limites documentées par Android](https://developer.android.com/studio/test/managed-devices#enable-atd)).
+Les tests accordent POST_NOTIFICATIONS uniquement sur leur appareil synthétique,
+avant chaque lancement, pour ne pas confondre une fenêtre système avec le résultat du chat.
+Un résultat Gradle incomplet ne permet pas de réutiliser un ancien APK.
+
+Après compilation, Gradle est complètement arrêté. Smoke et captures tournent
+directement par `am instrument` pour éviter une seconde JVM pendant le rendu Android.
+Le protocole AndroidJUnitRunner alimente le XML JUnit : noms exacts attendus, codes
+de réussite par test, nombre de tests et fin normale sont tous requis. Un code de
+sortie ADB égal à zéro ne suffit pas ; échecs, tests ignorés et interruptions restent FAIL.
+
+Le profil de revue utilise désormais 720×1280 à 280 dpi, soit les mêmes
+411×731 dp que 1080×1920 à 420 dpi. Le scénario petit écran reste 360×640 dp.
+Le rapport relève le pic mémoire du seul émulateur lancé par le runner, la mémoire
+disponible de son hôte et son code d’arrêt avant nettoyage ; aucune donnée personnelle
+ni journal système global n’est collecté.
+
+Le profil complet dispose de 4 Gio de RAM invitée. En diagnostic, `logcat` est
+filtré sur l’UID exact de la seule application synthétique ; aucun flux global
+ni compte personnel n’est lu. Le rapport distingue la mémoire hôte, la mémoire
+invitée disponible et la perte du transport ADB d’un arrêt du processus émulateur.
+
+Le rendu logiciel utilise désormais `swangle` (ANGLE + SwiftShader), après un
+SIGSEGV du processus émulateur dans le chemin GLES SwiftShader classique. Ce
+changement concerne le moteur de l’émulateur, sans désactiver les effets de l’app.
+[Modes documentés par Android](https://developer.android.com/studio/run/emulator-acceleration).
