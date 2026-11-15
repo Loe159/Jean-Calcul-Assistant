@@ -10,16 +10,18 @@ internal data class PreviewUpdate(
     val apkUrl: String,
     val sha256: String,
     val size: Long,
+    val commit: String = "",
 ) {
     companion object {
         const val REPOSITORY = "https://github.com/Loe159/Jean-Calcul-Assistant"
         fun parse(json: JSONObject): PreviewUpdate {
             val update = PreviewUpdate(
                 json.getLong("versionCode"), json.getString("versionName"),
-                json.getString("apkUrl"), json.getString("sha256"), json.getLong("size"),
+                json.getString("apkUrl"), json.getString("sha256"), json.getLong("size"), json.optString("commit"),
             )
             require(json.getString("applicationId") == BuildConfig.APPLICATION_ID) { "Wrong application ID" }
             require(json.getString("channel") == BuildConfig.UPDATE_CHANNEL) { "Wrong update channel" }
+            require(update.commit.isEmpty() || update.commit.matches(Regex("[0-9a-f]{40}"))) { "Invalid source commit" }
             require(update.versionCode in 1..2_100_000_000L) { "Invalid version code" }
             require(update.versionName.isNotBlank()) { "Missing version name" }
             require(update.sha256.matches(Regex("[0-9a-f]{64}"))) { "Invalid APK digest" }

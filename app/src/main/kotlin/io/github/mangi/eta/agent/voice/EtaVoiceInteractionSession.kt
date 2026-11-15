@@ -46,6 +46,13 @@ internal class EtaVoiceInteractionSession(context: Context) : VoiceInteractionSe
             showFlags,
             args?.getParcelableArrayList(KEY_FOREGROUND_ACTIVITIES, ComponentName::class.java).orEmpty(),
         )
+        val disabled = userDisabledShowContext or disabledShowContext
+        val own = io.github.mangi.eta.agent.development.OwnAppScreenContext.capture(
+            allowText = showFlags and SHOW_WITH_ASSIST != 0 && disabled and SHOW_WITH_ASSIST == 0,
+            allowScreenshot = showFlags and SHOW_WITH_SCREENSHOT != 0 && disabled and SHOW_WITH_SCREENSHOT == 0,
+        )
+        if (own != null) screenContext?.acceptOwnApp(own)
+
     }
 
     override fun onShow(args: Bundle?, showFlags: Int) {

@@ -336,6 +336,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                         run.prepared(
                             request.copy(
                                 config = AgentRuntimePolicy.constrain(request.config, permissions),
+                                appDevelopmentScreen = request.appDevelopmentScreen.takeIf { isEtaProcess }.orEmpty(),
                             ),
                         )
                         executePreparedRun(run)

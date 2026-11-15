@@ -39,6 +39,13 @@ internal object PreviewUpdates {
                 val update = withContext(Dispatchers.IO) { AppUpdateChecker.fetchPreview() }
                 @Suppress("DEPRECATION")
                 val installed = app.packageManager.getPackageInfo(app.packageName, 0).longVersionCode
+                val development = io.github.mangi.eta.agent.development.DevelopmentStore(app)
+                val proposal = development.proposal().takeIf { development.enabled }
+                val expectedCommit = proposal?.takeUnless { it.optBoolean("merged") || it.optBoolean("closed") }?.optString("head")
+                if (!expectedCommit.isNullOrBlank() && update != null && update.commit != expectedCommit) {
+                    if (manual) Toast.makeText(app, "Your improvement preview is not published yet. Check App improvements for progress.", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
                 if (update != null && update.versionCode > installed) {
                     if (manual || update.versionCode != dismissedVersion) {
                         val current = mutableState.value

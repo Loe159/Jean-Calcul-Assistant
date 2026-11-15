@@ -1,7 +1,7 @@
 name: Jean-Calcul V2 - APK and Android E2E
 on:
   push:
-    branches: [feature/jean-calcul-v2-foundation, feat/eta-selected-features]
+    branches: [feature/jean-calcul-v2-foundation, feat/eta-selected-features, self-improve/**]
   pull_request:
     branches: [feature/jean-calcul-v2-foundation]
   workflow_dispatch:
@@ -12,10 +12,12 @@ jobs:
     name: Build APK, unit tests and lint
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    outputs:
+      preview_version_code: ${{ steps.version.outputs.code }}
     permissions:
-      contents: write
+      contents: read
     concurrency:
-      group: preview-pr-62-${{ github.event_name }}
+      group: preview-pr-62-${{ github.event_name }}-${{ github.ref }}
       cancel-in-progress: true
     env:
       UPDATE_CHANNEL: preview-pr-62
@@ -31,9 +33,12 @@ jobs:
       - uses: android-actions/setup-android@v4
       - run: sdkmanager --channel=3 "platforms;android-37.0" "build-tools;37.0.0"
       - name: Set monotonic preview version
+        id: version
         run: |
           test "$GITHUB_RUN_ATTEMPT" -lt 100
-          echo "PREVIEW_VERSION_CODE=$((2030000000 + GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))" >> "$GITHUB_ENV"
+          code=$((2030000000 + GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))
+          echo "PREVIEW_VERSION_CODE=$code" >> "$GITHUB_ENV"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
       - name: Check English product text
         run: python3 scripts/check-product-text.py
       - name: Compile Android Debug APK
@@ -47,11 +52,6 @@ jobs:
           retention-days: 21
       - name: Build instrumentation and run lint/unit tests
         run: ./gradlew --no-daemon -Pjeancalcul.versionCode=$PREVIEW_VERSION_CODE :app:assembleDebugAndroidTest :app:testDebugUnitTest :app:lintDebug
-      - name: Publish verified preview for in-app updates
-        if: github.event_name == 'push' && github.ref == 'refs/heads/feat/eta-selected-features'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/publish-preview.py
       - name: Upload verification reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -64,7 +64,7 @@ jobs:
   emulator:
     name: Technical Android 35 E2E (no visual judgment)
     concurrency:
-      group: preview-pr-62-emulator-${{ github.event_name }}
+      group: preview-pr-62-emulator-${{ github.event_name }}-${{ github.ref }}
       cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 50
@@ -104,3 +104,26 @@ jobs:
             app/build/reports/androidTests/**
           if-no-files-found: warn
           retention-days: 21
+
+  publish:
+    name: Publish verified in-app update
+    needs: [build, emulator]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/feature/jean-calcul-v2-foundation' || github.ref == 'refs/heads/feat/eta-selected-features' || startsWith(github.ref, 'refs/heads/self-improve/'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: preview-channel-publish
+      cancel-in-progress: false
+    env:
+      UPDATE_CHANNEL: preview-pr-62
+      GH_TOKEN: ${{ github.token }}
+      PREVIEW_VERSION_CODE: ${{ needs.build.outputs.preview_version_code }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: JeanCalcul-V2-${{ github.sha }}
+          path: app/build/outputs/apk/debug
+      - name: Publish APK and update manifest
+        run: python3 scripts/publish-preview.py

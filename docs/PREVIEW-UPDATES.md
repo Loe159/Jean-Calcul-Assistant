@@ -9,3 +9,5 @@ The old manually distributed APK used a runner-generated debug certificate that 
 No GitHub token is embedded in the app. Release builds have this preview update channel disabled and retain separate private release signing.
 
 English resources are the only packaged app language. Upstream legal attribution, internal Kotlin/JNI names, migration strings, external data recognizers and vendor protocol IDs remain where compatibility requires them. Their presence in source does not brand the app or select Chinese UI resources.
+
+Les branches de fondation et `self-improve/**` publient aussi sur ce canal pour conserver la compatibilité des APK installés. La publication attend désormais le succès du build, des tests JVM/lint et du job Android. Le numéro de version provient de la sortie du build, y compris quand seul le job de publication est relancé. Voir [SELF-IMPROVEMENT.md](SELF-IMPROVEMENT.md).

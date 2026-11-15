@@ -151,6 +151,7 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
 
     override fun onCreate() {
         super.onCreate()
+        io.github.mangi.eta.agent.development.DevelopmentMonitor.start(this)
         activeService = this
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
@@ -501,6 +502,7 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
                     runId = runId,
                     prompt = normalized,
                     assistantScreenContext = screen.text,
+                    appDevelopmentScreen = screen.appScreen,
                     config = config.copy(supportsSearchSuggestions = true),
                     images = runImages,
                     history = conversationHistory,

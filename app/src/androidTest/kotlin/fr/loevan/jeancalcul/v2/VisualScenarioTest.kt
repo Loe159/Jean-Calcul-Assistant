@@ -56,6 +56,10 @@ class VisualScenarioTest {
                             assertTrue(device.wait(Until.gone(By.textContains("Synthetic local reply")), 10000))
                         }
                     }
+                    "improvements" -> {
+                        activity.onActivity { it.startActivity(Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_APP_IMPROVEMENTS)) }
+                        assertTrue(device.wait(Until.hasObject(By.text("Fine-grained GitHub token")), 15000))
+                    }
                     "tools" -> {
                         device.findObject(By.desc(context.getString(R.string.action_conversation_history))).click()
                         device.wait(Until.findObject(By.text(context.getString(R.string.route_tools))), 10000).click()

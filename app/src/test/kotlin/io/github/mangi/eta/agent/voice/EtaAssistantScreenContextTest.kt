@@ -55,6 +55,23 @@ class EtaAssistantScreenContextTest {
     }
 
     @Test
+    fun ownAppMetadataSurvivesAnUnavailableSystemCaptureAndPrivatePagesDiscardImages() = runBlocking {
+        val capture = EtaAssistantScreenContext(0, emptyList())
+        try {
+            capture.acceptOwnApp(io.github.mangi.eta.agent.development.OwnAppScreenContext.Capture(
+                "AppImprovements", "Jean-Calcul credentials page: contents withheld", null, true,
+            ))
+            val bitmap = android.graphics.Bitmap.createBitmap(4, 4, android.graphics.Bitmap.Config.ARGB_8888)
+            capture.acceptScreenshot(bitmap)
+            val snapshot = capture.snapshot()
+            assertNull(snapshot.image)
+            assertEquals("AppImprovements", snapshot.appScreen)
+            assertTrue(snapshot.text.contains("contents withheld"))
+            assertTrue(bitmap.isRecycled)
+        } finally { capture.close() }
+    }
+
+    @Test
     fun flagsRequestBothChannelsAndAndroid17ScreenContent() {
         val older = AssistantContextFlags.forSdk(34)
         assertTrue(older and VoiceInteractionSession.SHOW_WITH_ASSIST != 0)
