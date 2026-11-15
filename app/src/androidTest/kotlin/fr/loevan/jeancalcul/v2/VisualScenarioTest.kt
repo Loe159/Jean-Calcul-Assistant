@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsets
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -40,10 +41,18 @@ class VisualScenarioTest {
                         device.findObject(By.clazz("android.widget.EditText")).text = "Synthetic local request"
                         device.wait(Until.findObject(By.desc(context.getString(R.string.chat_send))), 10000).click()
                         assertTrue(device.wait(Until.hasObject(By.textContains("Synthetic local reply")), 30000))
-                        device.pressBack(); device.waitForIdle()
+                        activity.onActivity { current ->
+                            current.window.insetsController?.hide(WindowInsets.Type.ime())
+                            current.window.decorView.clearFocus()
+                        }
+                        device.waitForIdle()
+                        assertTrue("Hiding the keyboard must keep the conversation visible",
+                            device.wait(Until.hasObject(By.textContains("Synthetic local reply")), 10000))
                         if (scenario == "reset") {
                             device.findObject(By.desc(context.getString(R.string.action_more))).click()
                             device.wait(Until.findObject(By.text(context.getString(R.string.action_new_conversation))), 10000).click()
+                            assertNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 10000))
+                            assertTrue(device.wait(Until.gone(By.textContains("Synthetic local reply")), 10000))
                         }
                     }
                     "tools" -> {
