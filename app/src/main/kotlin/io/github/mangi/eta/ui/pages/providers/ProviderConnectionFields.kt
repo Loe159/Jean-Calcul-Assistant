@@ -205,8 +205,8 @@ internal fun ProviderConnectionFields(
             }
             if (accountMode != null) {
                 WindowSpinnerPreference(
-                    title = "认证方式",
-                    items = listOf(DropdownItem(text = "API Key"), DropdownItem(text = "账号登录")),
+                    title = "Authentication",
+                    items = listOf(DropdownItem(text = "API Key"), DropdownItem(text = "Account sign-in")),
                     selectedIndex = if (oauth) 1 else 0,
                     enabled = enabled,
                     onSelectedIndexChange = { index ->

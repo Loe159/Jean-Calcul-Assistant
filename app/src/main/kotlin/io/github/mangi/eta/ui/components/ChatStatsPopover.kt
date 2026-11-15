@@ -158,22 +158,22 @@ internal fun TurnStatsPill(
             ChatStatsPopoverPopup(onDismissRequest = { open = false }) {
                 StatsSectionHeader(
                     icon = ChatActionIcons.Gauge,
-                    title = "会话统计",
-                    value = "1 轮 $steps 步",
+                    title = "Conversation statistics",
+                    value = "1 turn $steps steps",
                 )
                 StatsSectionDivider()
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (llmMs > 0L) {
-                        StatsDetailRow(label = "模型用时", value = formatStatDuration(llmMs))
+                        StatsDetailRow(label = "Model time", value = formatStatDuration(llmMs))
                     }
                     if (toolMs > 0L) {
-                        StatsDetailRow(label = "工具调用用时", value = formatStatDuration(toolMs))
+                        StatsDetailRow(label = "Tool time", value = formatStatDuration(toolMs))
                     }
                     if (avgTtftMs != null && avgTtftMs > 0L) {
-                        StatsDetailRow(label = "首 token 平均（TTFT）", value = formatStatDuration(avgTtftMs))
+                        StatsDetailRow(label = "Average time to first token (TTFT)", value = formatStatDuration(avgTtftMs))
                     }
                     if (speedText != null) {
-                        StatsDetailRow(label = "输出速度（TPS）", value = speedText)
+                        StatsDetailRow(label = "Output speed (TPS)", value = speedText)
                     }
                 }
             }
@@ -210,7 +210,7 @@ internal fun ContextUsageStatsPopoverPopup(
     ChatStatsPopoverPopup(onDismissRequest = onDismissRequest) {
         StatsSectionHeader(
             icon = ChatActionIcons.Database,
-            title = if (stats.hasTokenUsage) "Token 用量" else stringResource(R.string.ui_contextual_usage_d12810),
+            title = if (stats.hasTokenUsage) "Token usage" else stringResource(R.string.ui_contextual_usage_d12810),
             value = if (stats.hasTokenUsage) "${formatExactTokenCount(stats.totalTokens)} tok" else null,
         )
         StatsSectionDivider()
@@ -233,21 +233,21 @@ internal fun ContextUsageStatsPopoverPopup(
             if (stats.hasTokenUsage) {
                 if (stats.promptTokens > 0 || stats.outputTokens > 0) {
                     if (cacheHit != null) {
-                        StatsDetailRow(label = "缓存命中", value = "$cacheHit%")
+                        StatsDetailRow(label = "Cache hits", value = "$cacheHit%")
                     }
                     StatsDetailRow(
-                        label = "未命中",
+                        label = "Cache misses",
                         value = "${formatExactTokenCount(stats.uncachedInputTokens)} tok",
                     )
                     if (stats.hasCacheWriteTokens || stats.cacheWriteTokens > 0) {
                         StatsDetailRow(
-                            label = "缓存写入",
+                            label = "Cache writes",
                             value = "${formatExactTokenCount(stats.cacheWriteTokens)} tok",
                         )
                     }
                     if (stats.cachedTokens > 0) {
                         StatsDetailRow(
-                            label = "缓存读取",
+                            label = "Cache reads",
                             value = "${formatExactTokenCount(stats.cachedTokens)} tok",
                         )
                     }
@@ -262,42 +262,42 @@ internal fun ContextUsageStatsPopoverPopup(
                     val lastHit = formatCacheHitPercent(lastCached, lastIn)
                     val label = when {
                         stats.compactionCount == 1 && stats.lastCompactionArchiveId.isNotBlank() ->
-                            "最近压缩（${stats.lastCompactionArchiveId}）"
-                        stats.compactionCount == 1 -> "最近压缩"
-                        else -> "压缩请求（${stats.compactionCount} 次）"
+                            "Latest compaction (${stats.lastCompactionArchiveId}）"
+                        stats.compactionCount == 1 -> "Latest compaction"
+                        else -> "Compaction requests (${stats.compactionCount} times)"
                     }
                     val detailValue = buildString {
                         append("${formatExactTokenCount(lastIn)} tok")
-                        lastHit?.let { append(" · 命中 $it%") }
+                        lastHit?.let { append(" · hits $it%") }
                     }
                     StatsDetailRow(label = label, value = detailValue)
                     if (stats.compactionCount > 1) {
                         StatsDetailRow(
-                            label = "压缩累计",
+                            label = "Total compaction",
                             value = "${formatExactTokenCount(stats.compactionPromptTokens + stats.compactionOutputTokens)} tok",
                         )
                     }
                     stats.lastCompactionPaybackTurns?.let { paybackTurns ->
                         val paybackValue = if (stats.lastCompactionPaidBack) {
-                            "已回本（已 ${stats.lastCompactionTurnsAfter} 轮）"
+                            "Break-even reached (after ${stats.lastCompactionTurnsAfter} turns)"
                         } else {
-                            "需 $paybackTurns 轮（已 ${stats.lastCompactionTurnsAfter} 轮）"
+                            "Needs $paybackTurns turns (after ${stats.lastCompactionTurnsAfter} turns)"
                         }
-                        StatsDetailRow(label = "压缩回本", value = paybackValue)
+                        StatsDetailRow(label = "Compaction break-even", value = paybackValue)
                     }
                 }
                 if (stats.subagentCount > 0) {
-                    val subLabel = if (stats.subagentCount == 1) "子智能体" else "子智能体（${stats.subagentCount} 次）"
+                    val subLabel = if (stats.subagentCount == 1) "Subagent" else "Subagents (${stats.subagentCount} times)"
                     val subHit = formatCacheHitPercent(stats.subagentCachedTokens, stats.subagentPromptTokens)
                     val subValue = buildString {
                         append("${formatExactTokenCount(stats.subagentPromptTokens)} tok")
-                        subHit?.let { append(" · 命中 $it%") }
+                        subHit?.let { append(" · hits $it%") }
                     }
                     StatsDetailRow(label = subLabel, value = subValue)
                 }
                 if (stats.ttlOrPrefixMissTokens > 5_000) {
                     StatsDetailRow(
-                        label = "非增量未命中",
+                        label = "Non-incremental misses",
                         value = "${formatExactTokenCount(stats.ttlOrPrefixMissTokens)} tok",
                     )
                 }
@@ -308,22 +308,22 @@ internal fun ContextUsageStatsPopoverPopup(
             Spacer(Modifier.height(14.dp))
             StatsSectionHeader(
                 icon = ChatActionIcons.Gauge,
-                title = "会话统计",
-                value = "${stats.turns} 轮 ${stats.steps} 步",
+                title = "Conversation statistics",
+                value = "${stats.turns} turns ${stats.steps} steps",
             )
             StatsSectionDivider()
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (stats.llmMs > 0L) {
-                    StatsDetailRow(label = "模型用时", value = formatStatDuration(stats.llmMs))
+                    StatsDetailRow(label = "Model time", value = formatStatDuration(stats.llmMs))
                 }
                 if (stats.toolMs > 0L) {
-                    StatsDetailRow(label = "工具调用用时", value = formatStatDuration(stats.toolMs))
+                    StatsDetailRow(label = "Tool time", value = formatStatDuration(stats.toolMs))
                 }
                 if (avgTtftMs != null && avgTtftMs > 0L) {
-                    StatsDetailRow(label = "首 token 平均（TTFT）", value = formatStatDuration(avgTtftMs))
+                    StatsDetailRow(label = "Average time to first token (TTFT)", value = formatStatDuration(avgTtftMs))
                 }
                 if (sessionSpeed != null) {
-                    StatsDetailRow(label = "输出速度（TPS）", value = sessionSpeed)
+                    StatsDetailRow(label = "Output speed (TPS)", value = sessionSpeed)
                 }
             }
         }
@@ -533,7 +533,7 @@ private fun StatsOutputRow(
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Text(
-            text = "输出",
+            text = "Output",
             style = MiuixTheme.textStyles.footnote1.copy(
                 fontSize = 12.sp,
                 lineHeight = 18.sp,
@@ -547,7 +547,7 @@ private fun StatsOutputRow(
             }
             if (reasoningTokens > 0) {
                 withStyle(SpanStyle(color = labelColor)) {
-                    append("（其中推理 ${formatExactTokenCount(reasoningTokens)} tok）")
+                    append(" (reasoning ${formatExactTokenCount(reasoningTokens)} tok）")
                 }
             }
         }
@@ -603,12 +603,12 @@ internal fun formatStatDuration(ms: Long): String {
         val tenths = (seconds * 10.0).roundToLong()
         val whole = tenths / 10L
         val decimal = tenths % 10L
-        return if (decimal == 0L) "${whole}秒" else "$whole.${decimal}秒"
+        return if (decimal == 0L) "${whole}s" else "$whole.${decimal}s"
     }
     val totalSeconds = seconds.roundToLong()
     val minutes = totalSeconds / 60L
     val remSeconds = totalSeconds % 60L
-    return "${minutes}分${remSeconds}秒"
+    return "${minutes}min${remSeconds}s"
 }
 
 internal fun formatTokensPerSecond(tps: Double): String {

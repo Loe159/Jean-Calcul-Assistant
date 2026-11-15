@@ -213,7 +213,7 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
         if (!Settings.canDrawOverlays(this)) {
             EtaAssistantScreenContexts.release(screenContextId)
             AndroidAgentLogger.warnThrottled("eta_assistant_overlay_permission_missing") {
-                "Eta assistant overlay permission is missing"
+                "Jean-Calcul assistant overlay permission is missing"
             }
             stopSelf()
             return
@@ -404,7 +404,7 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
         }
         runCatching { wm.addView(view, params) }.onFailure { throwable ->
             AndroidAgentLogger.warnThrottled("eta_assistant_overlay_add_failed") {
-                "Eta assistant overlay addView failed: type=${throwable.javaClass.simpleName}"
+                "Jean-Calcul assistant overlay addView failed: type=${throwable.javaClass.simpleName}"
             }
             return
         }
@@ -429,7 +429,7 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
         unregisterSystemBackCallback()
         val dispatcher = view.findOnBackInvokedDispatcher()
         if (dispatcher == null) {
-            AndroidAgentLogger.warn("Eta assistant overlay back dispatcher unavailable")
+            AndroidAgentLogger.warn("Jean-Calcul assistant overlay back dispatcher unavailable")
             return
         }
         val callback = OnBackInvokedCallback(::dismissAndStop)
@@ -747,7 +747,7 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
         }.getOrElse { throwable ->
             view.removeOnAttachStateChangeListener(attachListener)
             AndroidAgentLogger.warnThrottled("eta_assistant_overlay_remove_failed") {
-                "Eta assistant overlay removeView failed: type=${throwable.javaClass.simpleName}"
+                "Jean-Calcul assistant overlay removeView failed: type=${throwable.javaClass.simpleName}"
             }
             false
         }
@@ -789,7 +789,7 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
     private fun openConversation() {
         if (handoffInProgress || activeRunId != null || uiState.messages.isEmpty()) return
         handoffInProgress = true
-        AndroidAgentLogger.info("Eta assistant handoff requested")
+        AndroidAgentLogger.info("Jean-Calcul assistant handoff requested")
         updateSoftInput(visible = false)
         val intent = Intent(this, MainActivity::class.java)
             .setAction(ACTION_OPEN_CONVERSATION)
@@ -830,13 +830,13 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
         runCatching { pendingIntent.send(this, 0, null, null, null, null, senderOptions.toBundle()) }
             .onFailure {
                 handoffInProgress = false
-                AndroidAgentLogger.warn("Eta assistant handoff activity launch failed")
+                AndroidAgentLogger.warn("Jean-Calcul assistant handoff activity launch failed")
                 return
             }
         scope.launch(Dispatchers.Main.immediate) {
             delay(HANDOFF_TIMEOUT_MS)
             if (handoffInProgress) {
-                AndroidAgentLogger.warn("Eta assistant handoff timed out waiting for chat")
+                AndroidAgentLogger.warn("Jean-Calcul assistant handoff timed out waiting for chat")
                 handoffInProgress = false
             }
         }
@@ -845,7 +845,7 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
     private fun finishHandoff() {
         if (!handoffInProgress) return
         if (handoffExitRequested) return
-        AndroidAgentLogger.info("Eta assistant handoff chat ready")
+        AndroidAgentLogger.info("Jean-Calcul assistant handoff chat ready")
         handoffExitRequested = true
         scope.launch(Dispatchers.Main.immediate) {
             delay(HANDOFF_EXIT_DURATION_MS)
@@ -864,7 +864,7 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
         private const val HANDOFF_TIMEOUT_MS = 5_000L
         private const val HANDOFF_EXIT_DURATION_MS = 220L
         private const val HANDOFF_REQUEST_CODE = 0x455441
-        private const val LEGACY_STOPPED_ERROR = "已停止"
+        private const val LEGACY_STOPPED_ERROR = "Stopped"
         private const val SYNTHETIC_STOPPED = "eta_status:stopped"
         private const val SYNTHETIC_RUNTIME_FAILED = "eta_status:runtime_failed"
         private const val FOREGROUND_DISMISS_TIMEOUT_MS = 2_000L

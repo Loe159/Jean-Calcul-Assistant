@@ -64,7 +64,7 @@ class SkillInstallModelToolGateTest {
             return ProviderResponse(
                 JSONObject()
                     .put("role", "assistant")
-                    .put("content", "完成")
+                    .put("content", "Done")
                     .put("finish_reason", "stop"),
             )
         }

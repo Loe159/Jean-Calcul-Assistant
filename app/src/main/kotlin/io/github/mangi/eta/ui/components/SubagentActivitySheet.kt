@@ -78,13 +78,13 @@ internal fun SubagentActivityRow(
     val taskTitle = snapshot.description.ifBlank { message.argumentsSummary.ifBlank { "Subagent" } }
     val subtitle = when {
         running -> snapshot.currentAction.takeIf { it.isNotBlank() }
-            ?: if (snapshot.toolStepCount > 0) "已执行 ${snapshot.toolStepCount} 步" else "正在运行…"
+            ?: if (snapshot.toolStepCount > 0) "Completed ${snapshot.toolStepCount} steps" else "Running…"
         failed -> snapshot.error?.lineSequence()?.firstOrNull()?.takeIf { it.isNotBlank() }
             ?: message.outcomeLine()
-            ?: "执行未完成"
+            ?: "Execution incomplete"
         else -> when {
-            snapshot.toolStepCount > 0 -> "完成 · ${snapshot.toolStepCount} 次工具调用"
-            else -> message.outcomeLine() ?: "完成"
+            snapshot.toolStepCount > 0 -> "Completed · ${snapshot.toolStepCount} tool calls"
+            else -> message.outcomeLine() ?: "Done"
         }
     }
 
@@ -139,7 +139,7 @@ internal fun SubagentActivityRow(
             }
             Icon(
                 imageVector = Icons.Rounded.ChevronRight,
-                contentDescription = "查看 Subagent 详情",
+                contentDescription = "View subagent details",
                 modifier = Modifier
                     .padding(start = 6.dp, end = 8.dp)
                     .size(14.dp),
@@ -365,7 +365,7 @@ private fun SubagentInspectorContent(
                             contentAlignment = Alignment.CenterStart,
                         ) {
                             ShimmerText(
-                                text = snapshot.currentAction.ifBlank { "正在运行…" },
+                                text = snapshot.currentAction.ifBlank { "Running…" },
                                 active = true,
                                 style = MiuixTheme.textStyles.body2,
                                 color = MiuixTheme.colorScheme.onSurface,
@@ -442,7 +442,7 @@ private fun SubagentStepRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             ShimmerText(
-                text = step.title.ifBlank { step.toolName.ifBlank { "步骤" } },
+                text = step.title.ifBlank { step.toolName.ifBlank { "Steps" } },
                 active = running,
                 style = MiuixTheme.textStyles.body2,
                 color = when {

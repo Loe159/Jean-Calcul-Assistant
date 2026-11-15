@@ -91,7 +91,7 @@ class EtaVoicePanelTouchTest {
                 messages = listOf(
                     AgentMessageUi(
                         id = "reply",
-                        content = (1..lineCount).joinToString("\n") { "Eta 流式回复第 $it 行" },
+                        content = (1..lineCount).joinToString("\n") { "Jean-Calcul 流式回复第 $it 行" },
                         renderMarkdown = false,
                         isStreaming = true,
                     ),
@@ -106,7 +106,7 @@ class EtaVoicePanelTouchTest {
             messages = listOf(
                 AgentMessageUi(
                     id = "reply",
-                    content = (1..18).joinToString("\n") { "Eta 流式回复第 $it 行" },
+                    content = (1..18).joinToString("\n") { "Jean-Calcul 流式回复第 $it 行" },
                     renderMarkdown = false,
                     isStreaming = false,
                 ),
@@ -387,7 +387,7 @@ class EtaVoicePanelTouchTest {
                 messages = listOf(
                     AgentMessageUi(
                         id = "reply",
-                        content = (1..70).joinToString("\n") { "Eta 测试回复 $it" },
+                        content = (1..70).joinToString("\n") { "Jean-Calcul 测试回复 $it" },
                         renderMarkdown = false,
                     ),
                 ),

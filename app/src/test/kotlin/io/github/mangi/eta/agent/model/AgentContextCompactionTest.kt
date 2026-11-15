@@ -40,7 +40,7 @@ class AgentContextCompactionTest {
                 requests++
                 assertEquals(ProviderRequestPurpose.CHAT, request.purpose)
                 assertTrue(request.messages.toString().contains(original))
-                response("完成")
+                response("Done")
             })
         assertEquals(1, requests)
         assertNull(result.contextSnapshot)
@@ -224,7 +224,7 @@ class AgentContextCompactionTest {
                 .put("name", "device_info").put("input", JSONObject())))
         messages.put(assistant)
         messages.put(JSONObject().put("role", "tool").put("tool_call_id", "toolu_old")
-            .put("content", "完成"))
+            .put("content", "Done"))
         messages.put(JSONObject().put("role", "assistant").put("content", "查询完成"))
         messages.put(AgentConversationCodec.userTextMessage("新的问题"))
 
@@ -260,7 +260,7 @@ class AgentContextCompactionTest {
                 } else if (normalRequests++ == 0) {
                     emit(ProviderEvent.BlockDelta(AssistantBlockKind.THINKING, 0, "失败思考"))
                     throw AgentModelFailure("CONTEXT_OVERFLOW", false, "fixture")
-                } else response("完成")
+                } else response("Done")
             })
         }
         assertEquals("CONTEXT_OVERFLOW", (failure.cause as AgentModelFailure).code)

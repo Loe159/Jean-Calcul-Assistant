@@ -328,15 +328,15 @@ internal object OpenAiResponsesProvider : AgentProviderClient {
                 "response.web_search_call.in_progress",
                 "response.web_search_call.searching" -> {
                     val itemId = event.hostedToolId("web_search")
-                    startHostedTool(itemId, "网页搜索")
+                    startHostedTool(itemId, "Web search")
                 }
                 "response.web_search_call.completed" -> {
                     val itemId = event.hostedToolId("web_search")
-                    finishHostedTool(itemId, "网页搜索", success = true)
+                    finishHostedTool(itemId, "Web search", success = true)
                 }
                 "response.web_search_call.failed" -> {
                     val itemId = event.hostedToolId("web_search")
-                    finishHostedTool(itemId, "网页搜索", success = false)
+                    finishHostedTool(itemId, "Web search", success = false)
                 }
                 "response.completed", "response.done", "response.incomplete", "response.failed" -> {
                     terminal = event.optJSONObject("response") ?: event
@@ -440,7 +440,7 @@ internal object OpenAiResponsesProvider : AgentProviderClient {
             }
         }
         hostedTools.filterValues { !it }.forEach { (id, _) ->
-            onEvent(ProviderEvent.HostedToolFinished(id, "网页搜索", success = true))
+            onEvent(ProviderEvent.HostedToolFinished(id, "Web search", success = true))
         }
 
         parseUsage(finalResponse.optJSONObject("usage"))?.let { onEvent(ProviderEvent.Usage(it)) }
@@ -668,12 +668,12 @@ internal object OpenAiResponsesProvider : AgentProviderClient {
             .ifBlank { "${fallbackPrefix}_${optInt("output_index", 0)}" }
 
     private fun String.hostedToolDisplayName(): String? = when (this) {
-        "web_search_call" -> "网页搜索"
-        "file_search_call" -> "文件搜索"
-        "code_interpreter_call" -> "代码执行"
-        "computer_call" -> "计算机操作"
-        "image_generation_call" -> "图像生成"
-        "mcp_call" -> "MCP 工具"
+        "web_search_call" -> "Web search"
+        "file_search_call" -> "File search"
+        "code_interpreter_call" -> "Code execution"
+        "computer_call" -> "Computer use"
+        "image_generation_call" -> "Image generation"
+        "mcp_call" -> "MCP tools"
         else -> null
     }
 

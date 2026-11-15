@@ -249,7 +249,7 @@ internal fun ProviderModelsTab(
                 if (ProviderAuthModes.isOAuth(provider.authMode)) {
                     val sync = ModelRepository.syncRemoteCatalog(catalog)
                     RuntimeConfigRepository.syncToRemotePreferences(EtaApp.serviceInstance)
-                    message = "已同步 ${sync.fetchedCount} 个远端模型"
+                    message = "Synced ${sync.fetchedCount} remote models"
                     return@launch
                 }
                 val candidates = ModelRepository.newRemoteModels(provider.id, catalog.models)
@@ -1007,9 +1007,9 @@ private fun ModelEditDialog(
         modelId.isNotBlank() &&
         contextError == null
     val contextValue = contextWindowOverrideText.toIntOrNull()
-    val thinkingTitle = if (nativeGemini) "配置思考档位" else stringResource(R.string.ui_support_thinking_5b9e4c)
+    val thinkingTitle = if (nativeGemini) "Configure reasoning level" else stringResource(R.string.ui_support_thinking_5b9e4c)
     val thinkingSummary = if (nativeGemini) {
-        "关闭时仅使用 Default，不发送档位参数；不会关闭模型自身的思考。"
+        "When off, uses Default without sending a reasoning parameter. The model may still reason."
     } else if (reasoningOverrideActive) {
         stringResource(R.string.page_covered_model_automatic_capabilities_3fa7d4)
     } else {
@@ -1156,7 +1156,7 @@ private fun ModelEditDialog(
                                 }
                             }
                             CouiText(
-                                text = if (nativeGemini) "可手动选择档位，是否支持由服务端校验。Default 始终可用。"
+                                text = if (nativeGemini) "Select a reasoning level; support is checked by the server. Default is always available."
                                 else stringResource(R.string.ui_only_check_the_ranges_actually_supported_by_the_mode_2c343d),
                                 kind = CouiTextKind.GroupFooter,
                                 color = colors.summary,
@@ -1343,7 +1343,7 @@ private fun ModelEditDialog(
                             }
                         }
                         Text(
-                            text = if (nativeGemini) "可手动选择档位，是否支持由服务端校验。Default 始终可用。"
+                            text = if (nativeGemini) "Select a reasoning level; support is checked by the server. Default is always available."
                             else stringResource(R.string.ui_only_check_the_ranges_actually_supported_by_the_mode_2c343d),
                             style = MiuixTheme.textStyles.footnote2,
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,

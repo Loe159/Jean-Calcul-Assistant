@@ -114,5 +114,5 @@ class ConversationBranchBoundaryTest {
     private fun user(id: String) = ConversationMessage("user", "相同问题", messageId = id)
     private fun assistant(id: String, content: String = "相同回答") = ConversationMessage("assistant", content, messageId = id)
     private fun call() = ConversationMessage("assistant", toolCallsJson = """[{"id":"tool-1","type":"function","function":{"name":"observe_screen","arguments":"{}"}}]""")
-    private fun result() = ConversationMessage("tool", "完成", toolCallId = "tool-1")
+    private fun result() = ConversationMessage("tool", "Done", toolCallId = "tool-1")
 }

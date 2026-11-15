@@ -165,7 +165,7 @@ internal class WebHttpTransport(baseClient: OkHttpClient) : Closeable {
         const val MAX_RESPONSE_BYTES = 2 * 1024 * 1024
         private const val MAX_REDIRECTS = 5
         private const val DEFAULT_USER_AGENT =
-            "Mozilla/5.0 (Linux; Android) AppleWebKit/537.36 (KHTML, like Gecko) Eta/1.0 Mobile Safari/537.36"
+            "Mozilla/5.0 (Linux; Android) AppleWebKit/537.36 (KHTML, like Gecko) Jean-Calcul/1.0 Mobile Safari/537.36"
         private const val DEFAULT_ACCEPT =
             "text/html,application/xhtml+xml,text/plain,text/markdown,application/json;q=0.9,*/*;q=0.1"
         private val REDIRECT_STATUS = setOf(301, 302, 303, 307, 308)

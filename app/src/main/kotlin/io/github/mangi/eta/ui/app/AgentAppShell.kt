@@ -700,11 +700,11 @@ private fun titleForRoute(route: AppRoute?): String = when (route) {
     is AppRoute.Subagents -> "Subagent"
     is AppRoute.ConversationTitleSettings -> stringResource(R.string.conversation_title_settings_title)
     is AppRoute.AssistantOverlaySettings -> stringResource(R.string.assistant_overlay_settings_title)
-    is AppRoute.Characters -> "角色"
-    is AppRoute.CharacterDetail -> "角色详情"
-    is AppRoute.CharacterEditor -> "编辑角色"
-    is AppRoute.CharacterPersona -> "我的人设"
-    is AppRoute.CharacterMemory -> "剧情记忆"
+    is AppRoute.Characters -> "Characters"
+    is AppRoute.CharacterDetail -> "Character details"
+    is AppRoute.CharacterEditor -> "Edit character"
+    is AppRoute.CharacterPersona -> "My persona"
+    is AppRoute.CharacterMemory -> "Story memory"
     is AppRoute.Permissions -> stringResource(R.string.route_permissions)
     is AppRoute.SystemEnhance -> stringResource(R.string.route_system_enhancements)
     is AppRoute.Settings -> stringResource(R.string.route_settings)
@@ -720,8 +720,8 @@ private fun titleForRoute(route: AppRoute?): String = when (route) {
     is AppRoute.SharedFolders -> stringResource(R.string.route_shared_folders)
     is AppRoute.LinuxFiles -> stringResource(R.string.route_linux_files)
     is AppRoute.ModelProviders -> stringResource(R.string.route_model_providers)
-    is AppRoute.CommunityCatalog -> "从 models.dev 添加"
-    is AppRoute.CommunityCatalogProvider -> "选择模型"
+    is AppRoute.CommunityCatalog -> "Add from models.dev"
+    is AppRoute.CommunityCatalogProvider -> "Select model"
     is AppRoute.McpServers -> stringResource(R.string.route_mcp_servers)
     is AppRoute.McpServerDetail -> stringResource(R.string.route_mcp_server_detail)
     is AppRoute.ModelProviderDetail -> stringResource(R.string.route_provider_details)

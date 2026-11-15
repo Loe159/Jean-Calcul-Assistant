@@ -105,7 +105,7 @@ class AgentModelRetryTest {
         discardAttemptReasoning = {},
     )
 
-    private fun response() = ProviderResponse(JSONObject().put("content", "完成").put("finish_reason", "stop"))
+    private fun response() = ProviderResponse(JSONObject().put("content", "Done").put("finish_reason", "stop"))
 
     private fun provider(action: (ProviderRequest, (ProviderEvent) -> Unit) -> ProviderResponse) =
         object : AgentProviderClient {

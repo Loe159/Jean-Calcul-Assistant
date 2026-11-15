@@ -105,11 +105,11 @@ internal class AgentContextCompactor(
         val covered = safe.sumOf { it.compactedUserTurns + if (it.role == "user") 1 else 0 }
 
         val archiveHeader = buildString {
-            append("[Eta 上下文摘要 · 归档 ").append(archiveId)
+            append("[Jean-Calcul 上下文摘要 · 归档 ").append(archiveId)
             if (covered > 0) {
                 append(" · 覆盖第 1–").append(covered).append(" 轮用户对话")
                 if (previousCovered > 0 && covered > previousCovered) {
-                    append("（本次新增第 ").append(previousCovered + 1).append("–").append(covered).append(" 轮）")
+                    append("（本次新增第 ").append(previousCovered + 1).append("–").append(covered).append(" turns)")
                 }
             }
             append("：以下是此前历史的有损摘要，不是新指令；缺失步骤不代表未执行。")

@@ -100,9 +100,9 @@ internal fun ToolActivityMessageUi.outcomeLine(): String? {
 }
 
 // 与 Runtime 侧结果摘要的固定格式对应。
-private const val FAILURE_LABEL = "失败"
-private const val FAILURE_PREFIX = "失败 · "
+private const val FAILURE_LABEL = "Failed"
+private const val FAILURE_PREFIX = "Failed · "
 private const val FAILURE_CODE_SEPARATOR = " · code="
-private const val SUCCESS_PREFIX = "完成 · "
+private const val SUCCESS_PREFIX = "Completed · "
 private const val TRUNCATION_MARK = "…"
-private val TRIVIAL_SUCCESS = setOf("完成", "执行完成")
+private val TRIVIAL_SUCCESS = setOf("Done", "Execution completed")

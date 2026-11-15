@@ -12,7 +12,7 @@ class AgentTraceFormatterTest {
 
     @Test
     fun currentContextIsPresentedAsTimeAndLocationWithoutRequiringAnOkField() {
-        assertEquals("读取时间与位置", formatter.summarizeArguments(
+        assertEquals("Read time and location", formatter.summarizeArguments(
             AgentModelClient.ToolCall("context", "get_current_context", "{}"),
         ))
         assertEquals("2026-10-28 12:30 +08:00 · 系统定位已关闭", formatter.summarizeResult(
@@ -31,7 +31,7 @@ class AgentTraceFormatterTest {
             val call = AgentModelClient.ToolCall("task", name, args)
             val summary = formatter.summarizeArguments(call)
             assertFalse(summary.contains("secret-marker"))
-            val label = when (name) { "terminal_job" -> "异步命令"; "terminal_daemon" -> "后台服务"; else -> "终端" }
+            val label = when (name) { "terminal_job" -> "Background command"; "terminal_daemon" -> "Background service"; else -> "Terminal" }
             assertTrue(summary, summary.contains(label))
             assertEquals("echo secret-marker", formatter.displayCommand(call))
         }
@@ -45,7 +45,7 @@ class AgentTraceFormatterTest {
         val search = formatter.summarizeArguments(AgentModelClient.ToolCall(
             "search", "web_search", """{"query":"private-query","max_results":3}""",
         ))
-        assertEquals("搜索网页", search)
+        assertEquals("Search web", search)
         val fetch = formatter.summarizeArguments(AgentModelClient.ToolCall(
             "fetch", "fetch_url", """{"url":"https://alice:password@example.com/private-path?token=secret-query#private-fragment"}""",
         ))
@@ -53,7 +53,7 @@ class AgentTraceFormatterTest {
         val next = formatter.summarizeArguments(AgentModelClient.ToolCall(
             "next", "fetch_url", """{"document_id":"private-document-id","offset_chars":12000}""",
         ))
-        assertEquals("继续读取网页", next)
+        assertEquals("Continue reading page", next)
     }
 
     @Test
@@ -92,38 +92,38 @@ class AgentTraceFormatterTest {
                 toolName = "terminal",
                 argumentsJson =
                     """{"action":"open_and_exec","identity":"root","command":"echo bearer-secret"}""",
-                expectedParts = listOf("终端", "单次执行", "Android", "root"),
+                expectedParts = listOf("Terminal", "Run once", "Android", "root"),
                 sensitiveParts = listOf("echo bearer-secret", "bearer-secret"),
             ),
             RedactionCase(
                 toolName = "run_command",
                 argumentsJson = """{"command":"cat /data/local/tmp/private-token"}""",
-                expectedParts = listOf("执行命令", "Android"),
+                expectedParts = listOf("Run command", "Android"),
                 sensitiveParts = listOf("cat ", "/data/local/tmp/private-token", "private-token"),
             ),
             RedactionCase(
                 toolName = "write_file",
                 argumentsJson =
                     """{"path":"/data/local/tmp/secret.txt","content":"api-key-value"}""",
-                expectedParts = listOf("写入文件", "字符"),
+                expectedParts = listOf("Write file", "字符"),
                 sensitiveParts = listOf("/data/local/tmp/secret.txt", "api-key-value"),
             ),
             RedactionCase(
                 toolName = "input_text",
                 argumentsJson = """{"text":"one-time-password-123456"}""",
-                expectedParts = listOf("输入文本", "字符"),
+                expectedParts = listOf("Type text", "字符"),
                 sensitiveParts = listOf("one-time-password-123456", "123456"),
             ),
             RedactionCase(
                 toolName = "read_file",
                 argumentsJson = """{"path":"/data/user/0/example/private.xml"}""",
-                expectedParts = listOf("读取文件"),
+                expectedParts = listOf("Read file"),
                 sensitiveParts = listOf("/data/user/0/example/private.xml", "private.xml"),
             ),
             RedactionCase(
                 toolName = "list_directory",
                 argumentsJson = """{"path":"/storage/emulated/0/Private"}""",
-                expectedParts = listOf("列出目录"),
+                expectedParts = listOf("List directory"),
                 sensitiveParts = listOf("/storage/emulated/0/Private"),
             ),
             RedactionCase(
@@ -169,7 +169,7 @@ class AgentTraceFormatterTest {
         val result = AgentModelClient.ToolResult(
             content = """{"ok":false,"status":"unconfirmed","verified":false,"code":"STATE_CHANGE_UNCONFIRMED"}""",
         )
-        assertEquals("操作已提交，效果未确认", formatter.summarizeResult("set_device_state", result))
+        assertEquals("Action submitted; result unconfirmed", formatter.summarizeResult("set_device_state", result))
         assertFalse(formatter.isSuccessResult(result))
     }
 
@@ -190,11 +190,11 @@ class AgentTraceFormatterTest {
     @Test
     fun deviceStateResultRequiresVerifiedBooleanReadback() {
         listOf(
-            """{"ok":true,"verified":true,"target":"auto_rotate","expected":true}""" to "完成",
-            """{"ok":true,"verified":true,"target":"auto_rotate","after":"false"}""" to "完成",
-            """{"ok":true,"verified":true,"target":"private-target","after":true}""" to "完成",
-            """{"ok":true,"verified":false,"target":"auto_rotate","before":false,"after":true}""" to "已执行，效果未确认",
-            """{"ok":false,"status":"unconfirmed","verified":false,"target":"auto_rotate","before":false,"after":false,"expected":true}""" to "操作已提交，效果未确认",
+            """{"ok":true,"verified":true,"target":"auto_rotate","expected":true}""" to "Done",
+            """{"ok":true,"verified":true,"target":"auto_rotate","after":"false"}""" to "Done",
+            """{"ok":true,"verified":true,"target":"private-target","after":true}""" to "Done",
+            """{"ok":true,"verified":false,"target":"auto_rotate","before":false,"after":true}""" to "Executed; result unconfirmed",
+            """{"ok":false,"status":"unconfirmed","verified":false,"target":"auto_rotate","before":false,"after":false,"expected":true}""" to "Action submitted; result unconfirmed",
             """{"ok":false,"code":"ROOT_REQUIRED","target":"auto_rotate","before":false,"after":true}""" to "失败 · code=ROOT_REQUIRED",
         ).forEach { (content, expectedSummary) ->
             assertEquals(expectedSummary, formatter.summarizeResult("set_device_state", AgentModelClient.ToolResult(content)))
@@ -325,7 +325,7 @@ class AgentTraceFormatterTest {
             )
         )
 
-        assertTrue(summary.contains("终端"))
+        assertTrue(summary.contains("Terminal"))
         assertFalse(summary.contains("secret-command"))
         assertNull(
             formatter.displayCommand(
@@ -351,11 +351,11 @@ class AgentTraceFormatterTest {
             ),
         )
 
-        assertTrue(defaultSummary.contains("观察屏幕"))
-        assertTrue(defaultSummary.contains("含界面树"))
-        assertFalse(defaultSummary.contains("含截图"))
-        assertTrue(screenshotSummary.contains("含截图"))
-        assertTrue(screenshotSummary.contains("含界面树"))
+        assertTrue(defaultSummary.contains("Observe screen"))
+        assertTrue(defaultSummary.contains("with UI tree"))
+        assertFalse(defaultSummary.contains("with screenshot"))
+        assertTrue(screenshotSummary.contains("with screenshot"))
+        assertTrue(screenshotSummary.contains("with UI tree"))
     }
 
     @Test
@@ -367,7 +367,7 @@ class AgentTraceFormatterTest {
             ),
         )
 
-        assertTrue(success.contains("已打开"))
+        assertTrue(success.contains("Opened"))
         assertTrue(success.contains("example.com"))
         assertTrue(success.contains("《Example Domain》"))
         assertFalse(success.contains("ok="))
@@ -380,7 +380,7 @@ class AgentTraceFormatterTest {
             ),
         )
 
-        assertTrue(failure.startsWith("失败"))
+        assertTrue(failure.startsWith("Failed"))
         assertTrue(failure.contains("code=USER_CONTROL_ACTIVE"))
 
         val readable = formatter.summarizeResult(
@@ -390,9 +390,9 @@ class AgentTraceFormatterTest {
             ),
         )
 
-        assertTrue(readable.contains("已提取正文"))
+        assertTrue(readable.contains("Content extracted"))
         assertTrue(readable.contains("约 2.3 万字"))
-        assertTrue(readable.contains("已截断"))
+        assertTrue(readable.contains("Truncated"))
     }
 
     @Test
@@ -406,7 +406,7 @@ class AgentTraceFormatterTest {
         assertFalse(formatter.isSuccessResult(failed))
         assertTrue(formatter.isSuccessResult(noFlag))
         assertTrue(formatter.isSuccessResult(malformed))
-        assertEquals("已点击", formatter.summarizeResult("tap", ok))
+        assertEquals("Tapped", formatter.summarizeResult("tap", ok))
         assertEquals("失败 · code=X", formatter.summarizeResult("tap", failed))
     }
 
@@ -475,7 +475,7 @@ class AgentTraceFormatterTest {
                 argumentsJson = """{"query":"不应出现"}""",
             ),
         )
-        assertEquals("查看设备状态", deviceStatus)
+        assertEquals("Device status", deviceStatus)
     }
 
     @Test
@@ -505,7 +505,7 @@ class AgentTraceFormatterTest {
                 content = """{"ok":true,"tool":"search_apps","query":"不存在的应用","apps":[]}""",
             ),
         )
-        assertEquals("未找到匹配应用", empty)
+        assertEquals("No matching apps", empty)
     }
 
     @Test
@@ -540,7 +540,7 @@ class AgentTraceFormatterTest {
                 content = """{"ok":true,"tool":"run_command","exit_code":0,"stdout":"hello\nworld","stderr":"","timed_out":false}""",
             ),
         )
-        assertTrue(success.startsWith("执行完成"))
+        assertTrue(success.startsWith("Execution completed"))
         assertTrue(success.contains("hello\nworld"))
 
         val failure = formatter.summarizeResult(
@@ -558,7 +558,7 @@ class AgentTraceFormatterTest {
                 content = """{"ok":false,"tool":"run_command","exit_code":-2,"timed_out":true,"stdout":""}""",
             ),
         )
-        assertEquals("失败 · 执行超时", timedOut)
+        assertEquals("Failed · execution timed out", timedOut)
 
         // 协议错误仍保留 code= 标记
         val coded = formatter.summarizeResult(

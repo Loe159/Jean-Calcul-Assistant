@@ -68,7 +68,7 @@ internal object CommunityCatalogRepository {
             val request = Request.Builder()
                 .url(CATALOG_URL)
                 .header("Accept", "application/json")
-                .header("User-Agent", "Eta-Model-Catalog (+https://github.com/Mangi-11/Eta)")
+                .header("User-Agent", "Jean-Calcul-Model-Catalog (+https://github.com/Mangi-11/Jean-Calcul)")
                 .get()
                 .build()
             // 目录请求不读取也不转发任何已保存的模型服务 API Key。
@@ -150,7 +150,7 @@ internal object CommunityCatalogRepository {
         while (true) {
             val count = read(buffer)
             if (count < 0) break
-            if (output.size() + count > MAX_JSON_BYTES) error("模型目录超出大小限制")
+            if (output.size() + count > MAX_JSON_BYTES) error("Model catalog exceeds the size limit")
             output.write(buffer, 0, count)
         }
         return output.toString(Charsets.UTF_8.name())

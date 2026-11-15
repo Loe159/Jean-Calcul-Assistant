@@ -11,7 +11,7 @@ internal object CharacterMacros {
     private val opening = Regex("\\{\\{\\s*([^\\s:{}]+)")
 
     fun hasUnsupportedMacros(text: String, card: CharacterCard): Boolean {
-        val names = values(card, "用户", "", "").keys
+        val names = values(card, "User", "", "").keys
         return token.findAll(text).any { match ->
             val key = (match.groups[1]?.value ?: match.groups[2]?.value.orEmpty()).trim().lowercase(Locale.ROOT)
             !key.startsWith("//") && key !in names
@@ -24,7 +24,7 @@ internal object CharacterMacros {
     fun expand(
         text: String,
         card: CharacterCard,
-        userName: String = "用户",
+        userName: String = "User",
         userDescription: String = "",
         original: String = "",
     ): String {
@@ -67,7 +67,7 @@ internal object CharacterMacros {
         val now = LocalDateTime.now()
         return mapOf(
             "char" to card.nickname,
-            "user" to userName.ifBlank { "用户" },
+            "user" to userName.ifBlank { "User" },
             "bot" to card.nickname,
             "original" to original,
             "description" to card.description,
@@ -82,7 +82,7 @@ internal object CharacterMacros {
             "chardepthprompt" to card.depthPrompt?.prompt.orEmpty(),
             "group" to card.nickname,
             "charifnotgroup" to card.nickname,
-            "notchar" to userName.ifBlank { "用户" },
+            "notchar" to userName.ifBlank { "User" },
             "date" to now.format(DateTimeFormatter.ISO_LOCAL_DATE),
             "isodate" to now.format(DateTimeFormatter.ISO_LOCAL_DATE),
             "time" to now.format(DateTimeFormatter.ofPattern("HH:mm")),

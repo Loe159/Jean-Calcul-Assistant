@@ -268,7 +268,7 @@ internal class AgentAppState(
             branchingConversationId != null || runStore.hasActiveRuns || conversationsById.values.any { it.isStreaming }
         }
         if (locallyBusy) {
-            throw IllegalStateException("请先停止正在运行的 Agent 任务")
+            throw IllegalStateException("Stop the running agent task first")
         }
 
         val activeRunQuery = withContext(Dispatchers.IO) {
@@ -277,16 +277,16 @@ internal class AgentAppState(
         when (val active = activeRunQuery) {
             is AgentRuntimeClient.ActiveRunsQuery.Known -> {
                 if (active.runIds.isNotEmpty()) {
-                    throw IllegalStateException("请先停止正在运行的 Agent 任务")
+                    throw IllegalStateException("Stop the running agent task first")
                 }
             }
             AgentRuntimeClient.ActiveRunsQuery.Unavailable -> {
-                throw IllegalStateException("无法确认 Agent Runtime 状态，请稍后重试")
+                throw IllegalStateException("Could not confirm the agent state. Try again later.")
             }
         }
 
         val pendingPersistence = synchronized(persistenceLock) {
-            check(!persistencePaused && branchingConversationId == null) { "请等待会话保存完成" }
+            check(!persistencePaused && branchingConversationId == null) { "Wait for the conversation to finish saving" }
             persistencePaused = true
             persistenceJob
         }
@@ -484,7 +484,7 @@ internal class AgentAppState(
                 orphanRewrites.forEach { (conversationId, runId) ->
                     conversationsById[conversationId]?.let { state ->
                         updateConversation(conversationId, RoleplayConversationReducer.applyRewrite(state, runId,
-                            AgentRuntimeWire.RunResult(runId, false, "", "重新生成已中断，原回复已保留。",
+                            AgentRuntimeWire.RunResult(runId, false, "", "Regeneration interrupted. The original reply was kept.",
                                 operation = AgentRuntimeWire.OP_REWRITE_REPLY)))
                         stateChanged = true
                     }
@@ -547,7 +547,7 @@ internal class AgentAppState(
         if (checkpoint.operation == AgentRuntimeWire.OP_REWRITE_REPLY) {
             val restored = RoleplayConversationReducer.restorePendingRewrite(existing, runId, checkpoint.rewriteTargetMessageId)
             if (interrupted) updateConversation(conversationId, RoleplayConversationReducer.applyRewrite(
-                restored, runId, AgentRuntimeWire.RunResult(runId, false, "", "重新生成已中断，原回复已保留。",
+                restored, runId, AgentRuntimeWire.RunResult(runId, false, "", "Regeneration interrupted. The original reply was kept.",
                     operation = AgentRuntimeWire.OP_REWRITE_REPLY, rewriteTargetMessageId = checkpoint.rewriteTargetMessageId),
             )) else updateConversation(conversationId, restored)
             return interrupted || restored != existing
@@ -563,7 +563,7 @@ internal class AgentAppState(
             if (interrupted) {
                 val interruptedTools = runMessageProjector.interruptRunningTools(
                     reason = appContext.getString(R.string.system_notice_interrupted),
-                    messages = runMessageProjector.finishContextCompaction(runId, finalizedText, "上下文压缩已中断"),
+                    messages = runMessageProjector.finishContextCompaction(runId, finalizedText, "Context compaction interrupted"),
                 )
                 val noticeId = "interrupted-$runId"
                 if (interruptedTools.any { it.id == noticeId }) {
@@ -1724,7 +1724,7 @@ internal class AgentAppState(
                             }
                             persistConversations()
                         }.await()
-                        check(saved) { "无法保存角色会话设定" }
+                        check(saved) { "Could not save character conversation settings" }
                     }
                 } catch (cancelled: CancellationException) {
                     throw cancelled
@@ -1733,7 +1733,7 @@ internal class AgentAppState(
                         "Character preparation failed: type=${failure.safeLogType()}"
                     }
                     withContext(Dispatchers.Main) {
-                        applyRunResult(runId, AgentRuntimeWire.RunResult(runId, false, "", "无法读取或保存角色设定，请重试。",
+                        applyRunResult(runId, AgentRuntimeWire.RunResult(runId, false, "", "Could not read or save character settings. Try again.",
                             operation = operation, rewriteTargetMessageId = rewriteTargetMessageId))
                     }
                     return@launch
@@ -1782,7 +1782,7 @@ internal class AgentAppState(
             }
             if (withContext(Dispatchers.Main) { runStore.isStopRequested(runId) }) {
                 withContext(Dispatchers.Main) {
-                    applyRunResult(runId, AgentRuntimeWire.RunResult(runId, false, "", "已停止", operation = operation))
+                    applyRunResult(runId, AgentRuntimeWire.RunResult(runId, false, "", "Stopped", operation = operation))
                 }
                 return@launch
             }
@@ -2283,7 +2283,7 @@ internal class AgentAppState(
         updateRunTrace(runId) { messages ->
             runMessageProjector.finishContextCompaction(runId,
                 runMessageProjector.finalizeRun(runId, messages),
-                if (result.ok) "上下文压缩完成" else result.error ?: "上下文压缩已停止")
+                if (result.ok) "Context compacted" else result.error ?: "Context compaction stopped")
         }
         if (result.contextSnapshotRef.isBlank()) {
             applyConversationHistoryResult(runId, result.transcript, result.contextSnapshot, !result.ok || result.contextSnapshot != null)
@@ -2295,7 +2295,7 @@ internal class AgentAppState(
                         runId = runId,
                         messages = messages,
                         ok = result.ok,
-                        detail = if (result.ok) "上下文压缩完成" else result.error ?: "上下文压缩失败",
+                        detail = if (result.ok) "Context compacted" else result.error ?: "Context compaction failed",
                     )
                 }
             else -> {
@@ -2684,7 +2684,7 @@ internal class AgentAppState(
     private companion object {
         const val MAX_TITLE_CHARS = 24
         const val MAX_PREVIEW_CHARS = 48
-        const val LEGACY_STOPPED_ERROR = "已停止"
+        const val LEGACY_STOPPED_ERROR = "Stopped"
         const val SYNTHETIC_STATUS_STOPPED = "eta_status:stopped"
         private val SHARED_IMAGE_EXTENSIONS = setOf(
             "jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif",

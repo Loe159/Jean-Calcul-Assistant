@@ -26,10 +26,10 @@ class AgentContextRecoveryTest {
                         response("摘要")
                     } else {
                         emit(ProviderEvent.Usage(AgentTokenUsage(inputTokens = 10_000_000)))
-                        response("完成")
+                        response("Done")
                     }
                 })
-            assertEquals("完成", result.content)
+            assertEquals("Done", result.content)
             assertEquals(0, summaries)
         }
     }
@@ -48,11 +48,11 @@ class AgentContextRecoveryTest {
                     } else {
                         assertTrue(request.messages.toString().contains("长".repeat(100)))
                         emit(ProviderEvent.Usage(AgentTokenUsage(inputTokens = input, outputTokens = 800_000)))
-                        response("完成")
+                        response("Done")
                     }
                 })
             assertEquals(if (input == 765_000) 1 else 0, summaries)
-            assertEquals("完成", result.content)
+            assertEquals("Done", result.content)
             val completed = events.filterIsInstance<AgentEvent.ContextCompaction>().lastOrNull()
             if (input == 765_000) {
                 assertEquals(765_000, completed!!.tokensBefore)
@@ -72,12 +72,12 @@ class AgentContextRecoveryTest {
                 response("此前任务已完成。")
             } else {
                 emit(ProviderEvent.Usage(AgentTokenUsage(inputTokens = 850_000)))
-                response("完成")
+                response("Done")
             }
         }
         val answer = AgentModelClient.complete(disabled, "继续", AgentModelClient.ToolExecutor { error("不应执行工具") },
             history = history(), provider = provider, onEvent = events::add)
-        assertEquals("完成", answer.content)
+        assertEquals("Done", answer.content)
         assertEquals(0, summaries)
         assertTrue(events.none { it is AgentEvent.ContextCompaction })
         assertNull(answer.contextSnapshot)
@@ -165,11 +165,11 @@ class AgentContextRecoveryTest {
                     emit(ProviderEvent.Usage(AgentTokenUsage(inputTokens = 850_000)))
                     throw AgentModelFailure.incompleteStream("fixture")
                 }
-                response("完成")
+                response("Done")
             }, AgentModelClient.ToolExecutor { error("不应执行工具") }, AgentRunController(), AgentTraceFormatter(), {},
             modelRetry = AgentModelRetry { _, _ -> }, systemCount = 1,
         )
-        assertEquals("完成", loop.run().content)
+        assertEquals("Done", loop.run().content)
         assertEquals(2, requests)
         assertNull(loop.contextSnapshot())
     }

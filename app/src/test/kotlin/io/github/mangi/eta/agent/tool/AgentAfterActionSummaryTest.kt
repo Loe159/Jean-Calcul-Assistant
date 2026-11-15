@@ -42,12 +42,12 @@ class AgentAfterActionSummaryTest {
 
     @Test
     fun toggleStateAndHintAreVisibleToTheModel() {
-        val toggle = node(0, "蓝牙").copy(checked = false)
-        val field = node(1, "").copy(editable = true, hint = "搜索联系人")
+        val toggle = node(0, "Bluetooth").copy(checked = false)
+        val field = node(1, "").copy(editable = true, hint = "Search contacts")
         val nodes = summarize(null, observation("o1", "app", listOf(toggle, field)))
             .getJSONArray("ui_nodes")
         assertFalse(nodes.getJSONObject(0).getBoolean("checked"))
-        assertEquals("搜索联系人", nodes.getJSONObject(1).getString("hint"))
+        assertEquals("Search contacts", nodes.getJSONObject(1).getString("hint"))
         assertFalse(nodes.getJSONObject(1).has("checked"))
     }
 

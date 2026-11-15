@@ -26,10 +26,10 @@ class AgentDeviceResultFormatterTest {
     @Test
     fun unavailableLocationDoesNotHideValidTimeOrInventCoordinates() {
         val statuses = mapOf(
-            "permission_required" to "位置未授权",
-            "background_permission_required" to "后台位置未授权",
-            "location_disabled" to "系统定位已关闭",
-            "unavailable" to "暂无最近位置",
+            "permission_required" to "Location permission not granted",
+            "background_permission_required" to "Background location permission not granted",
+            "location_disabled" to "System location disabled",
+            "unavailable" to "No recent location",
         )
         statuses.forEach { (status, label) ->
             val json = JSONObject().put("datetime", "2026-10-28T08:30:00-05:00")
@@ -83,9 +83,9 @@ class AgentDeviceResultFormatterTest {
         assertEquals("自动息屏：15 秒 → 1 分钟", summarize("set_setting", """{"namespace":"system","key":"screen_off_timeout","before":"15000","after":"60000"}"""))
         assertEquals("省电模式：关闭 → 开启", summarize("set_setting", """{"namespace":"global","key":"low_power","before":"0","after":"1"}"""))
         assertEquals("勿扰模式：关闭 → 全部静音", summarize("set_setting", """{"namespace":"global","key":"zen_mode","before":"0","after":"2"}"""))
-        assertEquals("系统设置已修改", summarize("set_setting", """{"namespace":"secure","key":"secret-key","before":"old-secret","after":"new-secret"}"""))
-        assertEquals("系统设置未变化", summarize("set_setting", """{"namespace":"global","key":"private-key","before":"secret","after":"secret"}"""))
-        assertEquals("系统设置已修改", summarize("set_setting", """{"namespace":"secure","key":"screen_brightness_mode","before":"secret-one","after":"secret-two"}"""))
+        assertEquals("System settings changed", summarize("set_setting", """{"namespace":"secure","key":"secret-key","before":"old-secret","after":"new-secret"}"""))
+        assertEquals("System settings unchanged", summarize("set_setting", """{"namespace":"global","key":"private-key","before":"secret","after":"secret"}"""))
+        assertEquals("System settings changed", summarize("set_setting", """{"namespace":"secure","key":"screen_brightness_mode","before":"secret-one","after":"secret-two"}"""))
         assertNull(summarize("set_setting", """{"namespace":"system","key":"accelerometer_rotation","after":"secret"}"""))
     }
 
@@ -109,10 +109,10 @@ class AgentDeviceResultFormatterTest {
         assertEquals("手电筒：关闭", summarize("get_flashlight", """{"enabled":false}"""))
         assertEquals("Wi-Fi / VPN：已连接互联网", summarize("network_info", """{"connected":true,"validated":true,"transports":["wifi","vpn","private-network"],"ssid":"private-ssid"}"""))
         assertEquals("移动网络：已连接，互联网未验证", summarize("network_info", """{"connected":true,"validated":false,"transports":["cellular"]}"""))
-        assertEquals("网络：未连接", summarize("network_info", """{"connected":false,"validated":false,"transports":[]}"""))
+        assertEquals("Network: disconnected", summarize("network_info", """{"connected":false,"validated":false,"transports":[]}"""))
         assertEquals("电量 73% · 正在充电", summarize("device_status", """{"battery_percent":73,"charging":true}"""))
         assertEquals("最近位置：31.23041, 121.4737（42 秒前）", summarize("get_current_location", """{"latitude":31.23041,"longitude":121.4737,"age_ms":42000}"""))
-        assertEquals("已读取设备环境", summarize("get_device_environment", """{"interactive":true}"""))
+        assertEquals("Device context read", summarize("get_device_environment", """{"interactive":true}"""))
         assertNull(summarize("network_info", """{"connected":"true","validated":true,"transports":[]}"""))
         assertNull(summarize("device_status", """{"battery_percent":-1,"charging":true}"""))
         assertNull(summarize("device_status", """{"battery_percent":73}"""))

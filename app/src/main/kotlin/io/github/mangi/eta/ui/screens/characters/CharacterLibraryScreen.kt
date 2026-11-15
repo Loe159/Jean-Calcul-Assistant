@@ -76,18 +76,18 @@ internal fun CharacterLibraryScreen(
     when (LocalUiStyle.current) {
         AppearanceUiStyle.COUI -> {
             CouiLazyScaffoldPage(
-                title = "角色",
+                title = "Characters",
                 onBack = onBack,
                 actions = {
                     CouiTopAppBarIconButton(
                         icon = Icons.Rounded.FileUpload,
-                        contentDescription = "导入角色卡",
+                        contentDescription = "Import character card",
                         enabled = !store.busy,
                         onClick = importCard,
                     )
                     CouiTopAppBarIconButton(
                         icon = CouiIcons.Outlined.Add,
-                        contentDescription = "创建角色",
+                        contentDescription = "Create character",
                         enabled = !store.busy,
                         onClick = createCharacter,
                     )
@@ -97,7 +97,7 @@ internal fun CharacterLibraryScreen(
                     CouiSearchBarBox(
                         query = store.query,
                         onQueryChange = { store.query = it },
-                        placeholder = "搜索名称或标签",
+                        placeholder = "Search names or tags",
                     )
                 }
                 when {
@@ -114,18 +114,18 @@ internal fun CharacterLibraryScreen(
                     store.characters.isEmpty() -> {
                         item(key = "empty-library") {
                             ListEmptyState(
-                                title = "还没有角色",
-                                summary = "创建一个角色，或导入 PNG、JSON 角色卡开始对话",
+                                title = "No characters yet",
+                                summary = "Create a character or import a PNG or JSON card to start",
                                 icon = Icons.Rounded.SportsBar,
                                 action = {
                                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                         CouiButton(
-                                            text = "恢复默认角色",
+                                            text = "Restore default characters",
                                             onClick = { store.restoreDefaultCharacter() },
                                             enabled = !store.busy,
                                         )
                                         CouiButton(
-                                            text = "创建角色",
+                                            text = "Create character",
                                             onClick = createCharacter,
                                             role = CouiButtonRole.Primary,
                                         )
@@ -137,8 +137,8 @@ internal fun CharacterLibraryScreen(
                     store.filteredCharacters.isEmpty() -> {
                         item(key = "empty-search") {
                             ListEmptyState(
-                                title = "没有找到匹配的角色",
-                                summary = "换个关键词试试，搜索会匹配名称与标签",
+                                title = "No matching characters",
+                                summary = "Try another keyword. Search matches names and tags.",
                                 icon = Icons.Rounded.SearchOff,
                             )
                         }
@@ -173,10 +173,10 @@ internal fun CharacterLibraryScreen(
                     }
                 }
                 item(key = "persona") {
-                    Group(title = "我的") {
+                    Group(title = "Mine") {
                         CouiPreference(
-                            title = "我的人设",
-                            summary = "角色对你的称呼与你在故事中的身份",
+                            title = "My persona",
+                            summary = "Your name and identity in the story",
                             onClick = { onNavigate(AppRoute.CharacterPersona) },
                         )
                     }
@@ -186,14 +186,14 @@ internal fun CharacterLibraryScreen(
 
         AppearanceUiStyle.MIUIX -> {
             MiuixScaffoldPage(
-                title = "角色",
+                title = "Characters",
                 onBack = onBack,
                 actions = {
                     IconButton(onClick = importCard, enabled = !store.busy) {
-                        Icon(Icons.Rounded.FileUpload, contentDescription = "导入角色卡")
+                        Icon(Icons.Rounded.FileUpload, contentDescription = "Import character card")
                     }
                     IconButton(onClick = createCharacter, enabled = !store.busy) {
-                        Icon(Icons.Rounded.Add, contentDescription = "创建角色")
+                        Icon(Icons.Rounded.Add, contentDescription = "Create character")
                     }
                 },
             ) {
@@ -213,7 +213,7 @@ internal fun CharacterLibraryScreen(
                                 onSearch = { store.query = it },
                                 expanded = false,
                                 onExpandedChange = {},
-                                label = "搜索名称或标签",
+                                label = "Search names or tags",
                             )
                         },
                         content = {},
@@ -233,18 +233,18 @@ internal fun CharacterLibraryScreen(
                     store.characters.isEmpty() -> {
                         item(key = "empty-library") {
                             ListEmptyState(
-                                title = "还没有角色",
-                                summary = "创建一个角色，或导入 PNG、JSON 角色卡开始对话",
+                                title = "No characters yet",
+                                summary = "Create a character or import a PNG or JSON card to start",
                                 icon = Icons.Rounded.SportsBar,
                                 action = {
                                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                         TextButton(
-                                            text = "恢复默认角色",
+                                            text = "Restore default characters",
                                             onClick = { store.restoreDefaultCharacter() },
                                             enabled = !store.busy,
                                         )
                                         TextButton(
-                                            text = "创建角色",
+                                            text = "Create character",
                                             onClick = createCharacter,
                                             colors = ButtonDefaults.textButtonColorsPrimary(),
                                         )
@@ -256,8 +256,8 @@ internal fun CharacterLibraryScreen(
                     store.filteredCharacters.isEmpty() -> {
                         item(key = "empty-search") {
                             ListEmptyState(
-                                title = "没有找到匹配的角色",
-                                summary = "换个关键词试试，搜索会匹配名称与标签",
+                                title = "No matching characters",
+                                summary = "Try another keyword. Search matches names and tags.",
                                 icon = Icons.Rounded.SearchOff,
                             )
                         }
@@ -292,15 +292,15 @@ internal fun CharacterLibraryScreen(
                     }
                 }
                 item(key = "persona") {
-                    SmallTitle("我的")
+                    SmallTitle("Mine")
                     Card(
                         modifier = Modifier
                             .padding(horizontal = 12.dp)
                             .padding(bottom = 12.dp),
                     ) {
                         ArrowPreference(
-                            title = "我的人设",
-                            summary = "角色对你的称呼与你在故事中的身份",
+                            title = "My persona",
+                            summary = "Your name and identity in the story",
                             onClick = { onNavigate(AppRoute.CharacterPersona) },
                         )
                     }

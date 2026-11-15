@@ -64,6 +64,7 @@ class MainActivity : ComponentActivity() {
                     applyInterfaceScale = true,
                     onResolvedDarkModeChange = ::updateSystemBars,
                 ) {
+                    io.github.mangi.eta.ui.components.PreviewUpdateDialog()
                     AgentAppRoot(
                         assistantConversationKey = launchRequests.assistantConversationKey,
                         requestedConversationId = launchRequests.conversationId,
@@ -109,6 +110,7 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         startedInstances.add(this)
         isInForeground = true
+        io.github.mangi.eta.data.update.PreviewUpdates.check(this)
         AgentRuntimeService.onEtaUiVisibilityChanged()
     }
 

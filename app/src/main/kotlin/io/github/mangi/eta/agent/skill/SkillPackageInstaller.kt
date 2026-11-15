@@ -390,7 +390,7 @@ class SkillPackageInstaller internal constructor(
         if (description.isBlank() || description.length > MAX_SKILL_DESCRIPTION_LENGTH) {
             fail(
                 SkillInstallErrorCode.INVALID_SKILL,
-                "Skill description 必填且不能超过 $MAX_SKILL_DESCRIPTION_LENGTH 字符",
+                "Skill description 必填且不能超过 $MAX_SKILL_DESCRIPTION_LENGTH characters",
             )
         }
         return ValidatedSkillMetadata(name = name, description = description)

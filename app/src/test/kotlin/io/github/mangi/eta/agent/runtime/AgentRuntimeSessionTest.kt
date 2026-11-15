@@ -26,7 +26,7 @@ class AgentRuntimeSessionTest {
         val replay = mutableListOf<AgentEvent>()
         assertTrue(session.attach(replay::add, {}))
         assertEquals(delivered, replay)
-        assertTrue(session.cancel("已停止"))
+        assertTrue(session.cancel("Stopped"))
         assertFalse(session.emit(event.copy(round = 2)))
         assertFalse(session.attach({ error("取消后不能回放 HTML") }, {}))
     }
@@ -45,7 +45,7 @@ class AgentRuntimeSessionTest {
         val session = AgentRuntimeSession("run", resultSink = delivered::add)
         val snapshot = io.github.mangi.eta.agent.model.AgentContextSnapshot(operationId = "run", messages = emptyList())
         session.updateContext(snapshot)
-        assertTrue(session.cancel("已停止"))
+        assertTrue(session.cancel("Stopped"))
         session.updateContext(snapshot.copy(coveredUserTurns = 2))
         assertEquals(snapshot, delivered.single().contextSnapshot)
         assertEquals(snapshot, session.contextSnapshot)
@@ -78,7 +78,7 @@ class AgentRuntimeSessionTest {
             producerStarted.countDown()
             session.emit(AgentEvent.RoundStarted(round = 2, messageCount = 2))
             session.complete(
-                AgentRuntimeWire.RunResult(runId = "run-boundary", ok = true, content = "完成")
+                AgentRuntimeWire.RunResult(runId = "run-boundary", ok = true, content = "Done")
             )
         }.apply { isDaemon = true }
 
@@ -120,7 +120,7 @@ class AgentRuntimeSessionTest {
         val deliveries = mutableListOf<String>()
         val session = AgentRuntimeSession(runId = "run-terminal")
         session.complete(
-            AgentRuntimeWire.RunResult(runId = "run-terminal", ok = true, content = "完成")
+            AgentRuntimeWire.RunResult(runId = "run-terminal", ok = true, content = "Done")
         )
 
         assertFalse(
@@ -168,7 +168,7 @@ class AgentRuntimeSessionTest {
             round = 1,
             toolCallId = "call-1",
             name = "run_command",
-            resultSummary = "完成",
+            resultSummary = "Done",
             imageCount = 0,
             imageBytes = 0,
             success = true,
@@ -177,7 +177,7 @@ class AgentRuntimeSessionTest {
         val result = AgentRuntimeWire.RunResult(
             runId = "run-attach",
             ok = true,
-            content = "完成",
+            content = "Done",
         )
         session.complete(result)
 

@@ -92,7 +92,7 @@ class AnthropicMessagesProviderTest {
             .put(assistantHistory)
             .put(AgentConversationCodec.toolResultMessage(calls[0], AgentModelClient.ToolResult("设备信息")))
             .put(AgentConversationCodec.toolResultMessage(calls[1], AgentModelClient.ToolResult("当前上下文")))
-        val secondResponse = blockStart(0, JSONObject().put("type", "text").put("text", "已完成")) +
+        val secondResponse = blockStart(0, JSONObject().put("type", "text").put("text", "Completed")) +
             blockStop(0) + event("message_stop", JSONObject())
         val requestBody = AtomicReference<String>()
         withAnthropicServer(secondResponse, onRequest = requestBody::set) { baseUrl ->
@@ -225,7 +225,7 @@ class AnthropicMessagesProviderTest {
                 )
             }
         val messages = JSONArray()
-            .put(JSONObject().put("role", "system").put("content", "系统"))
+            .put(JSONObject().put("role", "system").put("content", "System"))
             .put(AgentConversationCodec.userTextMessage("问题"))
             .put(assistant)
             .put(JSONObject().put("role", "tool").put("tool_call_id", "toolu_1").put("content", "结果"))
@@ -247,12 +247,12 @@ class AnthropicMessagesProviderTest {
             event("message_delta", JSONObject().put("delta", JSONObject()
                 .put("stop_reason", "refusal")
                 .put("stop_details", JSONObject().put("type", "refusal").put("category", JSONObject.NULL)
-                    .put("explanation", "说明")))) +
+                    .put("explanation", "Description")))) +
             event("message_stop", JSONObject())
         withAnthropicServer(body) { baseUrl ->
             val response = AnthropicMessagesProvider.complete(providerRequest(baseUrl), AgentRunController())
             assertEquals(AssistantStopReason.CONTENT_FILTER, response.stopReason)
-            assertEquals("说明", response.assistantMessage.getJSONObject("stop_details").getString("explanation"))
+            assertEquals("Description", response.assistantMessage.getJSONObject("stop_details").getString("explanation"))
         }
     }
 
@@ -260,7 +260,7 @@ class AnthropicMessagesProviderTest {
     fun completedToolRoundsDoNotReplayOldThinkingSignatures() {
         fun toolAssistant(id: String, signature: String) = JSONObject()
             .put("role", "assistant")
-            .put("content", "读取")
+            .put("content", "Read")
             .put("tool_calls", JSONArray().put(JSONObject().put("id", id).put("type", "function")
                 .put("function", JSONObject().put("name", "device_info").put("arguments", "{}"))))
             .also { message ->
@@ -312,7 +312,7 @@ class AnthropicMessagesProviderTest {
                         .put("name", "device_info").put("input", JSONObject())))
             }
         val messages = JSONArray()
-            .put(JSONObject().put("role", "system").put("content", "系统"))
+            .put(JSONObject().put("role", "system").put("content", "System"))
             .put(AgentConversationCodec.userTextMessage("问题"))
             .put(toolAssistant("toolu_1", "FIRST_SIGNATURE"))
             .put(JSONObject().put("role", "tool").put("tool_call_id", "toolu_1").put("content", "结果一"))

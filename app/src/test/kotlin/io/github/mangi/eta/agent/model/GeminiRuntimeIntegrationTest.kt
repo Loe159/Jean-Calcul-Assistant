@@ -29,7 +29,7 @@ class GeminiRuntimeIntegrationTest {
         val stream = """
             data: {"event_type":"interaction.created","interaction":{"id":"fixture","status":"in_progress","usage":{"total_tokens":125,"total_input_tokens":100,"total_output_tokens":20,"total_thought_tokens":5,"total_cached_tokens":60}}}
 
-            data: {"event_type":"step.start","index":0,"step":{"type":"model_output","content":[{"type":"text","text":"完成"}]}}
+            data: {"event_type":"step.start","index":0,"step":{"type":"model_output","content":[{"type":"text","text":"Done"}]}}
 
             data: {"event_type":"step.stop","index":0}
 
@@ -65,7 +65,7 @@ class GeminiRuntimeIntegrationTest {
             if (round++ == 0) {
                 signedCall()
             } else {
-                JSONObject().put("role", "assistant").put("content", "已完成").put("finish_reason", "stop")
+                JSONObject().put("role", "assistant").put("content", "Completed").put("finish_reason", "stop")
             }
         }
         val result = AgentModelClient.complete(
@@ -122,7 +122,7 @@ class GeminiRuntimeIntegrationTest {
                         assertTrue("fetch_url" in names)
                         assertTrue("browser_use" in names)
                         assertEquals(expected, request.messages.toString().contains("托管的 google_search"))
-                        JSONObject().put("content", "完成").put("finish_reason", "stop")
+                        JSONObject().put("content", "Done").put("finish_reason", "stop")
                     })
             }
         }
@@ -134,7 +134,7 @@ class GeminiRuntimeIntegrationTest {
         AgentModelClient.complete(config, "查询", AgentModelClient.ToolExecutor { error("不应执行") },
             provider = provider { _, emit ->
                 emit(ProviderEvent.SearchSuggestions(7, "<div>搜索建议</div>"))
-                JSONObject().put("content", "完成").put("finish_reason", "stop")
+                JSONObject().put("content", "Done").put("finish_reason", "stop")
             }, onEvent = events::add)
         val event = events.filterIsInstance<AgentEvent.SearchSuggestions>().single()
         assertEquals(1, event.round)

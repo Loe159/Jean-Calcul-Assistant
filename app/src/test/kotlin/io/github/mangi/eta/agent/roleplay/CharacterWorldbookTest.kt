@@ -74,6 +74,6 @@ class CharacterWorldbookTest {
     }
 
     private fun card(book: String) = CharacterCardCodec.decodeJson(
-        """{"spec":"chara_card_v2","data":{"name":"角色","character_book":{$book}}}""",
+        """{"spec":"chara_card_v2","data":{"name":"Characters","character_book":{$book}}}""",
     )
 }

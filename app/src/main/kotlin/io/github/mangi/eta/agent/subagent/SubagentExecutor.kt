@@ -219,7 +219,7 @@ internal class SubagentExecutor(
                 childController.isCancelled ||
                 throwable is AgentRunCancelledException
             val errorMessage = if (cancelled) {
-                "已停止"
+                "Stopped"
             } else {
                 throwable.message ?: throwable.javaClass.simpleName
             }
@@ -555,7 +555,7 @@ internal class SubagentExecutor(
             status = SubagentActivitySnapshot.STATUS_COMPLETED
             finalOutput = content.trim().take(MAX_OUTPUT_CHARS)
             val tools = toolCount()
-            currentAction = if (tools > 0) "完成 · $tools 次工具调用" else "完成"
+            currentAction = if (tools > 0) "Completed · $tools tool calls" else "Done"
         }
 
         fun markFailed(error: String, partial: String) = synchronized(lock) {
@@ -563,15 +563,15 @@ internal class SubagentExecutor(
             status = SubagentActivitySnapshot.STATUS_FAILED
             errorText = error.take(1_000)
             if (partial.isNotBlank()) finalOutput = partial.take(MAX_OUTPUT_CHARS)
-            currentAction = error.lineSequence().firstOrNull()?.take(80) ?: "执行失败"
+            currentAction = error.lineSequence().firstOrNull()?.take(80) ?: "Execution failed"
         }
 
         fun markCancelled(partial: String) = synchronized(lock) {
             finishAllRunningSteps(SubagentStepSnapshot.STATUS_FAILED)
             status = SubagentActivitySnapshot.STATUS_CANCELLED
-            errorText = "已停止"
+            errorText = "Stopped"
             if (partial.isNotBlank()) finalOutput = partial.take(MAX_OUTPUT_CHARS)
-            currentAction = "已停止"
+            currentAction = "Stopped"
         }
 
         fun partialOutput(): String = synchronized(lock) {

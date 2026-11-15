@@ -38,7 +38,7 @@ internal object ConversationMarkdownExporter {
         val noticeModelRetry: String,
         val noticeRuntimeFailed: String,
         val noticeInterrupted: String,
-        val noticeContextCompaction: String = "上下文压缩",
+        val noticeContextCompaction: String = "Context compaction",
     ) {
         fun toolStatus(status: ToolActivityStatusUi): String = when (status) {
             ToolActivityStatusUi.Running -> toolStatusRunning
@@ -84,7 +84,7 @@ internal object ConversationMarkdownExporter {
             .trim()
             .ifBlank { fallback }
         val timestamp = SimpleDateFormat(FILENAME_TIMESTAMP_PATTERN, Locale.US).format(Date(nowMillis))
-        return "Eta-$sanitized-$timestamp.md"
+        return "Jean-Calcul-$sanitized-$timestamp.md"
     }
 
     private fun AgentChatMessageUi.toMarkdownBlock(labels: Labels): String? = when (this) {

@@ -70,7 +70,7 @@ class SpeechOssUploadTest {
         val upload = SpeechOssUpload(context) {}
         upload.withAudio(config, secrets, byteArrayOf(1, 2)) {
             SpeechOssUpload(context) { fail("Must not delete a live upload") }.retryPending(secrets)
-            "完成"
+            "Done"
         }
         assertTrue(pending().isEmpty())
     }

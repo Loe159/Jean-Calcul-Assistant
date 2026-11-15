@@ -84,14 +84,14 @@ private fun buildPermissionHealthState(context: Context): PermissionHealthUiStat
             ),
             localNetworkPermissionHealthItem(context),
             PermissionHealthItemUi(
-                id = "calendar", title = "日历访问", summary = "读取日程并创建、修改事件与提醒；未授权时只在已有 Root 授权下使用增强通道。",
+                id = "calendar", title = "Calendar access", summary = "Read, create and edit events and reminders. Enhanced access requires an existing root grant.",
                 status = if (io.github.mangi.eta.agent.device.CalendarPermissions.granted(context, true)) PermissionStatusUi.Available else PermissionStatusUi.Missing,
-                primaryActionLabel = if (io.github.mangi.eta.agent.device.CalendarPermissions.granted(context, true)) null else "授权",
+                primaryActionLabel = if (io.github.mangi.eta.agent.device.CalendarPermissions.granted(context, true)) null else "Grant",
             ),
             PermissionHealthItemUi(
-                id = "notification_policy", title = "勿扰访问", summary = "允许普通权限下切换静音、振动和响铃模式。",
+                id = "notification_policy", title = "Do Not Disturb access", summary = "Allow switching between silent, vibrate and ring modes.",
                 status = if (context.getSystemService(android.app.NotificationManager::class.java)?.isNotificationPolicyAccessGranted == true) PermissionStatusUi.Available else PermissionStatusUi.Missing,
-                primaryActionLabel = "设置",
+                primaryActionLabel = "Settings",
             ),
             PermissionHealthItemUi(
                 id = "location",

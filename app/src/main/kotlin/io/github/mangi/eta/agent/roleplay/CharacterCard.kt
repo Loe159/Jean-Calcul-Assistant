@@ -14,12 +14,12 @@ internal data class RoleplayBinding(
     val cardSnapshotJson: String,
     val characterName: String,
     val avatarPath: String? = null,
-    val userName: String = "用户",
+    val userName: String = "User",
     val userDescription: String = "",
 )
 
 @Serializable
-internal data class UserPersona(val name: String = "用户", val description: String = "")
+internal data class UserPersona(val name: String = "User", val description: String = "")
 
 internal enum class CharacterCardFormat { PNG, JSON }
 

@@ -144,7 +144,7 @@ internal class SpeechInputController(
                 if (error is CancellationException && error !is kotlinx.coroutines.TimeoutCancellationException) throw error
                 if (generation == session) {
                     val failure = error.speechFailure()
-                    AndroidAgentLogger.warn("Eta speech recognition failed: code=${failure.code} type=${error.javaClass.simpleName}")
+                    AndroidAgentLogger.warn("Jean-Calcul speech recognition failed: code=${failure.code} type=${error.javaClass.simpleName}")
                     cancel()
                     mutableState.value = SpeechInputState(
                         error = failure.userMessage,
@@ -170,7 +170,7 @@ internal class SpeechInputController(
         } catch (error: Exception) {
             if (error is CancellationException && error !is kotlinx.coroutines.TimeoutCancellationException) throw error
             val failure = error.speechFailure()
-            AndroidAgentLogger.warn("Eta speech refine skipped: code=${failure.code} type=${error.javaClass.simpleName}")
+            AndroidAgentLogger.warn("Jean-Calcul speech refine skipped: code=${failure.code} type=${error.javaClass.simpleName}")
             text
         }
     }

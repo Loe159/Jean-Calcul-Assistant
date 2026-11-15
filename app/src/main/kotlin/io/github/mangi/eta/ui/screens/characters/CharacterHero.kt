@@ -140,7 +140,7 @@ internal fun CharacterHero(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.PhotoCamera,
-                        contentDescription = "更换头像",
+                        contentDescription = "Change avatar",
                         modifier = Modifier.size(18.dp),
                         tint = colors.onSurface,
                     )
@@ -161,14 +161,14 @@ internal fun CharacterHero(
                 IconButton(onClick = onToggleFavorite, enabled = !busy, minWidth = 36.dp, minHeight = 36.dp) {
                     Icon(
                         imageVector = if (card.favorite) Icons.Rounded.Star else Icons.Rounded.StarOutline,
-                        contentDescription = if (card.favorite) "取消收藏" else "收藏",
+                        contentDescription = if (card.favorite) "Remove favorite" else "Favorite",
                         modifier = Modifier.size(20.dp),
                         tint = if (card.favorite) FavoriteColor else colors.onSurfaceVariantSummary,
                     )
                 }
             }
             val byline = listOfNotNull(
-                card.creator.takeIf(String::isNotBlank)?.let { "作者 $it" },
+                card.creator.takeIf(String::isNotBlank)?.let { "Author $it" },
                 card.version.takeIf(String::isNotBlank)?.let { "v$it" },
             ).joinToString(" · ")
             if (byline.isNotEmpty()) {
@@ -218,7 +218,7 @@ internal fun CharacterHero(
             Spacer(Modifier.height(20.dp))
             if (LocalUiStyle.current == AppearanceUiStyle.COUI) {
                 CouiButton(
-                    text = "开始对话",
+                    text = "Start conversation",
                     enabled = !busy,
                     onClick = onStart,
                     role = CouiButtonRole.Primary,
@@ -226,7 +226,7 @@ internal fun CharacterHero(
                 )
             } else {
                 TextButton(
-                    text = "开始对话",
+                    text = "Start conversation",
                     enabled = !busy,
                     onClick = onStart,
                     modifier = Modifier.fillMaxWidth(),
@@ -291,7 +291,7 @@ internal fun GreetingPager(
                             if (page == pagerState.settledPage) {
                                 Icon(
                                     imageVector = Icons.Rounded.Check,
-                                    contentDescription = "已选择",
+                                    contentDescription = "Selected",
                                     modifier = Modifier.size(12.dp),
                                     tint = colors.onPrimary,
                                 )
@@ -301,7 +301,7 @@ internal fun GreetingPager(
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = text.ifBlank { "没有预设开场白，由你先开口" },
+                    text = text.ifBlank { "No greeting configured. Start the conversation yourself." },
                     style = MiuixTheme.textStyles.body2,
                     color = if (text.isBlank()) colors.onSurfaceVariantSummary else colors.onSurface,
                     maxLines = 6,
@@ -310,7 +310,7 @@ internal fun GreetingPager(
                 )
                 if (text.isNotBlank()) {
                     Text(
-                        text = "阅读全文",
+                        text = "Read more",
                         style = MiuixTheme.textStyles.footnote1,
                         color = colors.primary,
                     )

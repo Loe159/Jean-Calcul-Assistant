@@ -589,7 +589,7 @@ internal fun McpServerDetailScreen(
                 val allEnabled = server.tools.isNotEmpty() && enabledCount == server.tools.size
                 item(key = "tools-header") {
                     CouiSectionTitle(
-                        text = "${stringResource(R.string.mcp_tools_count, server.tools.size)} · 已启用 $enabledCount",
+                        text = "${stringResource(R.string.mcp_tools_count, server.tools.size)} · enabled $enabledCount",
                         trailing = {
                             if (server.tools.isNotEmpty()) {
                                 GroupBatchTogglePill(
@@ -746,7 +746,7 @@ internal fun McpServerDetailScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(modifier = Modifier.weight(1f)) {
-                            SmallTitle("${stringResource(R.string.mcp_tools_count, server.tools.size)} · 已启用 $enabledCount")
+                            SmallTitle("${stringResource(R.string.mcp_tools_count, server.tools.size)} · enabled $enabledCount")
                         }
                         if (server.tools.isNotEmpty()) {
                             GroupBatchTogglePill(
@@ -1017,7 +1017,7 @@ private fun McpToolSwitchRow(
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         CouiText(
-                            text = if (expanded) "收起说明" else "展开说明",
+                            text = if (expanded) "Collapse description" else "Expand description",
                             kind = CouiTextKind.GroupFooter,
                             color = colors.accent,
                         )
@@ -1133,7 +1133,7 @@ private fun McpToolSwitchRow(
                         horizontalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         Text(
-                            text = if (expanded) "收起说明" else "展开说明",
+                            text = if (expanded) "Collapse description" else "Expand description",
                             style = MiuixTheme.textStyles.footnote1.copy(
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,

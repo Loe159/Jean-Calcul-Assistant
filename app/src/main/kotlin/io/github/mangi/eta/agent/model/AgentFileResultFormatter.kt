@@ -9,23 +9,23 @@ internal object AgentFileResultFormatter {
         "write_file" -> summarizeWrite(json)
         "read_file" -> summarizeRead(json)
         "stat_file" -> summarizeStat(json)
-        "edit_file" -> json.nonNegativeLong("replacements")?.let { "已替换 $it 处" }
+        "edit_file" -> json.nonNegativeLong("replacements")?.let { "Replaced $it occurrences" }
         "list_directory" -> json.optJSONArray("entries")?.let { entries ->
-            if (entries.length() == 0) "目录为空"
-            else withScope("已列出 ${entries.length()} 项内容", json, "还有更多")
+            if (entries.length() == 0) "Directory is empty"
+            else withScope("Listed ${entries.length()} entries", json, "More available")
         }
         "glob_files", "grep_files" -> json.optJSONArray("matches")?.let { matches ->
             val count = matches.length()
             val label = when {
-                count == 0 && toolName == "glob_files" -> "未找到匹配文件"
-                count == 0 -> "未找到匹配内容"
-                toolName == "glob_files" -> "找到 $count 个文件"
-                else -> "找到 $count 处匹配"
+                count == 0 && toolName == "glob_files" -> "No matching files"
+                count == 0 -> "No matching content"
+                toolName == "glob_files" -> "Found $count files"
+                else -> "Found $count matches"
             }
             if (count == 0) {
-                if (json.opt("partial") == true) "$label · 扫描范围有限" else label
+                if (json.opt("partial") == true) "$label · limited scan range" else label
             } else {
-                withScope(label, json, "还有更多")
+                withScope(label, json, "More available")
             }
         }
         else -> null
@@ -34,8 +34,8 @@ internal object AgentFileResultFormatter {
     private fun summarizeWrite(json: JSONObject): String? {
         val bytes = json.nonNegativeLong("bytes_written") ?: return null
         val action = when (json.optString("mode")) {
-            "append" -> "已追加"
-            "overwrite" -> "已写入"
+            "append" -> "Appended"
+            "overwrite" -> "Written"
             else -> return null
         }
         return "$action ${formatBytes(bytes)}"
@@ -45,23 +45,23 @@ internal object AgentFileResultFormatter {
         val bytes = json.nonNegativeLong("bytes_read") ?: return null
         if (json.opt("start_line_reached") == false) {
             return when (json.opt("truncated") as? Boolean) {
-                true -> "尚未到达目标行 · 可继续读取"
-                false -> "未到达目标行 · 已到文件末尾"
-                null -> "尚未到达目标行"
+                true -> "Target line not reached · continue reading"
+                false -> "Target line not reached · end of file"
+                null -> "Target line not reached"
             }
         }
         val isTruncated = json.opt("truncated") == true || json.opt("has_more") == true
-        val label = if (isTruncated) "已读前 ${formatBytes(bytes)}" else "已读取 ${formatBytes(bytes)}"
-        return withScope(label, json, "还有更多")
+        val label = if (isTruncated) "Read first ${formatBytes(bytes)}" else "Read ${formatBytes(bytes)}"
+        return withScope(label, json, "More available")
     }
 
     private fun summarizeStat(json: JSONObject): String? {
         val file = json.optJSONObject("file") ?: return null
         return when (file.optString("kind")) {
-            "file" -> file.nonNegativeLong("size_bytes")?.let { "文件 · ${formatBytes(it)}" }
-            "directory" -> "目录"
-            "symlink" -> "符号链接"
-            "other" -> "其他文件类型"
+            "file" -> file.nonNegativeLong("size_bytes")?.let { "File · ${formatBytes(it)}" }
+            "directory" -> "Directory"
+            "symlink" -> "Symbolic link"
+            "other" -> "Other file type"
             else -> null
         }
     }
@@ -71,14 +71,14 @@ internal object AgentFileResultFormatter {
             add(label)
             val hasMore = json.opt("truncated") == true || json.opt("has_more") == true
             if (hasMore) add(continuation)
-            if (json.opt("partial") == true) add("扫描范围有限")
+            if (json.opt("partial") == true) add("Limited scan range")
         }.joinToString(" · ")
 
     private fun JSONObject.nonNegativeLong(key: String): Long? =
         (opt(key) as? Number)?.toString()?.toLongOrNull()?.takeIf { it >= 0 }
 
     private fun formatBytes(bytes: Long): String {
-        if (bytes < 1024) return "$bytes 字节"
+        if (bytes < 1024) return "$bytes bytes"
         val units = listOf("KiB", "MiB", "GiB", "TiB", "PiB", "EiB")
         var size = bytes / 1024.0
         var unit = 0

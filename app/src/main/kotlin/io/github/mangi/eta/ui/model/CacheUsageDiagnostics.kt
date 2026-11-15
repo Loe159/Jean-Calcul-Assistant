@@ -94,8 +94,8 @@ internal object CacheUsageDiagnostics {
             when (message) {
                 is SystemNoticeMessageUi -> {
                     if (message.code == SystemNoticeCode.ContextCompaction && !message.running) {
-                        val isFailure = message.detail?.contains("失败") == true ||
-                            message.detail?.contains("中断") == true
+                        val isFailure = message.detail?.contains("Failed") == true ||
+                            message.detail?.contains("Interrupted") == true
                         if (!isFailure && (message.usage != null || message.archiveId.isNotBlank())) {
                             val breakdown = message.usage?.let(::resolvePromptBreakdown)
                             currentCompaction = ActiveCompaction(

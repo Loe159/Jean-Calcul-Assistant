@@ -24,7 +24,7 @@ class StreamingGfmParserTest {
         assertEquals("## 标题", snapshot.renderedSource)
         val heading = snapshot.document.blocks.single() as MarkdownHeading
         assertEquals(2, heading.level)
-        assertEquals("标题", heading.text.text)
+        assertEquals("Title", heading.text.text)
     }
 
     @Test
@@ -141,7 +141,7 @@ class StreamingGfmParserTest {
         assertTrue(blocks.any { it is MarkdownHeading && it.level == 2 })
         assertTrue(blocks.any { it is MarkdownCode && it.language == "kotlin" })
         val completion = blocks.filterIsInstance<MarkdownParagraph>().single()
-        assertTrue(completion.text.hasSpanCovering("完成") { it.fontWeight == FontWeight.Bold })
+        assertTrue(completion.text.hasSpanCovering("Done") { it.fontWeight == FontWeight.Bold })
     }
 
     @Test

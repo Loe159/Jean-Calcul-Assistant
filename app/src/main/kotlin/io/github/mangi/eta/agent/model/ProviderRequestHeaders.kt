@@ -23,10 +23,10 @@ internal object ProviderRequestHeaders {
         val profile = ProviderConnectionProfile.forAuthMode(authMode)
         if (profile != null) {
             require(customHeaders.none { isSubscriptionManagedHeader(it.name) }) {
-                "订阅连接的认证、Cookie 与路由请求头由 Eta 管理，不能自定义覆盖"
+                "订阅连接的认证、Cookie 与路由请求头由 Jean-Calcul 管理，不能自定义覆盖"
             }
         }
-        builder.set("User-Agent", "Eta")
+        builder.set("User-Agent", "Jean-Calcul")
         CustomHeaderFilter.mergeInto(builder, customHeaders)
         if (profile == ProviderConnectionProfile.XAI_GROK) {
             builder.set("X-XAI-Token-Auth", "xai-grok-cli")

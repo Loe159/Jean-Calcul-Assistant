@@ -31,7 +31,7 @@ class AgentRuntimeServiceRetentionTest {
                 history = listOf(AgentModelClient.ConversationMessage("user", "已完成的历史")),
             )
             val run = RuntimeRunRegistry.Run(request, AgentRuntimeSession(request.runId)).apply {
-                completedContext = RuntimeRunRegistry.CompletedContext(request, AgentModelClient.ModelResponse.Text("完成"))
+                completedContext = RuntimeRunRegistry.CompletedContext(request, AgentModelClient.ModelResponse.Text("Done"))
             }
             val retainedRun = AgentRuntimeService::class.java.getDeclaredField("displayedRun").apply {
                 isAccessible = true

@@ -50,14 +50,14 @@ internal fun ProviderAccountControls(
         ProviderLoginPhase.SyncingModels -> "Connecté ; récupération des modèles…"
         ProviderLoginPhase.Idle -> when {
             account == null -> if (authMode == ProviderAuthModes.OPENAI_CHATGPT) {
-                "使用 ChatGPT compte登录 Codex"
+                "Sign in to Codex with your ChatGPT account"
             } else {
-                "登录后使用 Grok 订阅额度"
+                "Sign in to use your Grok subscription"
             }
             account.needsReauthentication -> "Veuillez vous reconnecter"
-            !account.planEnabled -> "compte尚未授予模型调用权限"
+            !account.planEnabled -> "The account has not granted model access"
             authMode == ProviderAuthModes.OPENAI_CHATGPT -> "Connecté à Codex"
-            else -> "已登录 Grok"
+            else -> "Signed in to Grok"
         }
     }
 
@@ -172,5 +172,5 @@ internal fun openProviderAccountLink(context: Context, url: String): String? = t
 } catch (_: ActivityNotFoundException) {
     "Aucun navigateur disponible"
 } catch (_: SecurityException) {
-    "无法Ouvrir le navigateur，请检查系统设置"
+    "Could not open the browser. Check system settings."
 }

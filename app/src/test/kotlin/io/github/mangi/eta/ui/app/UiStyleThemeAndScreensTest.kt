@@ -183,7 +183,7 @@ class UiStyleThemeAndScreensTest {
                     id = "device",
                     title = "设备控制",
                     tools = listOf(
-                        ToolItemUi(id = "terminal", title = "终端", summary = "执行命令"),
+                        ToolItemUi(id = "terminal", title = "Terminal", summary = "Run command"),
                     ),
                 ),
             ),
@@ -206,7 +206,7 @@ class UiStyleThemeAndScreensTest {
             items = listOf(
                 PermissionHealthItemUi(
                     id = "overlay",
-                    title = "悬浮窗权限",
+                    title = "Overlay permission",
                     summary = "用于显示运行胶囊",
                     status = PermissionStatusUi.Available,
                     primaryActionLabel = "已授权",

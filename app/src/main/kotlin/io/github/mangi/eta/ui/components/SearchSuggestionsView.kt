@@ -96,9 +96,9 @@ internal class SearchSuggestionsWebView(
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         })
                     } catch (_: ActivityNotFoundException) {
-                        Toast.makeText(context, "没有可打开链接的浏览器", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "No browser available to open links", Toast.LENGTH_SHORT).show()
                     } catch (_: SecurityException) {
-                        Toast.makeText(context, "当前无法打开链接", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Cannot open this link right now", Toast.LENGTH_SHORT).show()
                     }
                 }
                 return true

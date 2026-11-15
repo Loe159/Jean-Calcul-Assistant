@@ -54,14 +54,14 @@ class AgentWorkStepsTest {
 
     @Test
     fun terminalOutcomeUsesLastOutputLine() {
-        val message = tool("t1", "run_command", resultSummary = "执行完成\nline 1\nline 2\n…")
+        val message = tool("t1", "run_command", resultSummary = "Execution completed\nline 1\nline 2\n…")
 
         assertEquals("line 2", message.outcomeLine())
     }
 
     @Test
     fun trivialSuccessHasNoOutcome() {
-        assertNull(tool("t1", "observe_screen", resultSummary = "完成").outcomeLine())
+        assertNull(tool("t1", "observe_screen", resultSummary = "Done").outcomeLine())
         assertEquals("2 张图片", tool("t2", "observe_screen", resultSummary = "完成 · 2 张图片").outcomeLine())
     }
 

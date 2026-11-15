@@ -16,22 +16,22 @@ class AgentFileResultFormatterTest {
 
     @Test
     fun statDoesNotPresentDirectoryMetadataAsItsContentSize() {
-        assertEquals("目录", summarize("stat_file", """{"file":{"kind":"directory","size_bytes":4096}}"""))
+        assertEquals("Directory", summarize("stat_file", """{"file":{"kind":"directory","size_bytes":4096}}"""))
         assertEquals("文件 · 2 MiB", summarize("stat_file", """{"file":{"kind":"file","size_bytes":2097152}}"""))
-        assertEquals("符号链接", summarize("stat_file", """{"file":{"kind":"symlink","size_bytes":42}}"""))
+        assertEquals("Symbolic link", summarize("stat_file", """{"file":{"kind":"symlink","size_bytes":42}}"""))
     }
 
     @Test
     fun readDistinguishesPaginationFromScanningBeforeTheRequestedLine() {
         assertEquals("已读前 1 KiB · 还有更多", summarize("read_file", """{"bytes_read":1024,"truncated":true,"start_line_reached":true}"""))
-        assertEquals("尚未到达目标行 · 可继续读取", summarize("read_file", """{"bytes_read":0,"truncated":true,"start_line_reached":false,"stop_reason":"scan_limit"}"""))
-        assertEquals("未到达目标行 · 已到文件末尾", summarize("read_file", """{"bytes_read":0,"truncated":false,"start_line_reached":false,"stop_reason":"eof"}"""))
+        assertEquals("Target line not reached · continue reading", summarize("read_file", """{"bytes_read":0,"truncated":true,"start_line_reached":false,"stop_reason":"scan_limit"}"""))
+        assertEquals("Target line not reached · end of file", summarize("read_file", """{"bytes_read":0,"truncated":false,"start_line_reached":false,"stop_reason":"eof"}"""))
     }
 
     @Test
     fun listingAndSearchCountOnlyReturnedResultsAndPreservePartialCoverage() {
         assertEquals("已列出 1 项内容 · 还有更多", summarize("list_directory", """{"entries":[{}],"has_more":true}"""))
-        assertEquals("目录为空", summarize("list_directory", """{"entries":[]}"""))
+        assertEquals("Directory is empty", summarize("list_directory", """{"entries":[]}"""))
         assertEquals("找到 2 个文件 · 还有更多 · 扫描范围有限", summarize("glob_files", """{"matches":[{},{}],"truncated":true,"partial":true}"""))
         assertEquals("找到 1 处匹配 · 还有更多 · 扫描范围有限", summarize("grep_files", """{"matches":[{}],"truncated":true,"partial":true,"total_skipped":2,"next_cursor":"next-page"}"""))
         assertEquals("未找到匹配内容 · 扫描范围有限", summarize("grep_files", """{"matches":[],"truncated":false,"partial":true,"total_skipped":3}"""))

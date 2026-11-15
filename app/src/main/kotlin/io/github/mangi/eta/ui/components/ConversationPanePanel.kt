@@ -947,7 +947,7 @@ private fun EmptyConversations(isSearching: Boolean) {
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                imageVector = if (isSearching) ConversationPaneIcons.Search else ConversationPaneIcons.BrandEta,
+                imageVector = if (isSearching) ConversationPaneIcons.Search else ConversationPaneIcons.BrandJeanCalcul,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
                 tint = primaryTextColor.copy(alpha = 0.72f),

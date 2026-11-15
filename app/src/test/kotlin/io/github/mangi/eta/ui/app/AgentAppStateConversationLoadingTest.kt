@@ -388,7 +388,7 @@ class AgentAppStateConversationLoadingTest {
         state.branchConversation("source", "assistant-source-1-0", "不应提交")
         assertFalse(state.isBranchingCurrentConversation)
         assertEquals(1, state.conversationPaneState.conversations.size)
-        state.completeRunForTest("running", "完成")
+        state.completeRunForTest("running", "Done")
         awaitCondition { !state.homeState.isStreaming }
     }
 

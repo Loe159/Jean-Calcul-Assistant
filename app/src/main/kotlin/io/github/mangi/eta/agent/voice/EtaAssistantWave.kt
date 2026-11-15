@@ -51,7 +51,7 @@ internal fun EtaAssistantWave(
                 EtaWaveEffect(context)
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
-                AndroidAgentLogger.warn("Eta assistant wave unavailable: type=${error.javaClass.simpleName}")
+                AndroidAgentLogger.warn("Jean-Calcul assistant wave unavailable: type=${error.javaClass.simpleName}")
                 null
             }
         }
@@ -114,7 +114,7 @@ internal fun EtaAssistantWave(
                     drawRect(it.brush)
                 } catch (error: RuntimeException) {
                     unavailable = true
-                    AndroidAgentLogger.warn("Eta assistant wave draw failed: type=${error.javaClass.simpleName}")
+                    AndroidAgentLogger.warn("Jean-Calcul assistant wave draw failed: type=${error.javaClass.simpleName}")
                 }
             }
         }

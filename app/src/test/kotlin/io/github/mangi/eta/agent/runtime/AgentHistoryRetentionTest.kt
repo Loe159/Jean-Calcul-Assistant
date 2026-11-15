@@ -85,7 +85,7 @@ class AgentHistoryRetentionTest {
         AgentRunCheckpointStore.start(context, request)
         AgentRunCheckpointStore.saveTranscript(context, request.runId, transcript)
         AgentRunCheckpointStore.saveContext(context, request.runId, snapshot)
-        val result = AgentRuntimeWire.RunResult(request.runId, true, "完成", transcript = transcript, contextSnapshot = snapshot)
+        val result = AgentRuntimeWire.RunResult(request.runId, true, "Done", transcript = transcript, contextSnapshot = snapshot)
         val completed = AgentRuntimeWire.CompletedRun(request.handoff!!, result, 1L)
         AgentRuntimeResultStore.add(context, completed)
         AgentRunArchiveStore.add(context, AgentRunArchiveStore.ArchivedRun(completed.handoff, emptyList(), result, 1L))
@@ -110,7 +110,7 @@ class AgentHistoryRetentionTest {
     @Test fun missingChunkFailsInsteadOfReturningEmptyHistory() {
         val transcript = listOf(AgentModelClient.ConversationMessage("assistant", "事实".repeat(80_000)))
         val run = AgentRuntimeWire.CompletedRun(AgentRuntimeWire.EntryHandoff("broken", "test", "c"),
-            AgentRuntimeWire.RunResult("broken", true, "完成", transcript = transcript), System.currentTimeMillis())
+            AgentRuntimeWire.RunResult("broken", true, "Done", transcript = transcript), System.currentTimeMillis())
         AgentRuntimeResultStore.add(context, run)
         EtaDatabase.get(context).openHelper.writableDatabase.execSQL("DELETE FROM agent_text_chunks WHERE chunk_index = 1")
         assertThrows(IllegalStateException::class.java) { AgentRuntimeResultStore.list(context) }

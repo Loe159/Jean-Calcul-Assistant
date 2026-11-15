@@ -73,10 +73,10 @@ internal object SpeechVoicePresets {
 
     private val mimo = listOf(
         SpeechVoicePreset("mimo_default", R.string.speech_voice_mimo_default),
-        SpeechVoicePreset("冰糖", R.string.speech_voice_mimo_bingtang, R.string.speech_voice_chinese_female),
-        SpeechVoicePreset("茉莉", R.string.speech_voice_mimo_moli, R.string.speech_voice_chinese_female),
-        SpeechVoicePreset("苏打", R.string.speech_voice_mimo_suda, R.string.speech_voice_chinese_male),
-        SpeechVoicePreset("白桦", R.string.speech_voice_mimo_baihua, R.string.speech_voice_chinese_male),
+        SpeechVoicePreset("Bingtang", R.string.speech_voice_mimo_bingtang, R.string.speech_voice_chinese_female),
+        SpeechVoicePreset("Moli", R.string.speech_voice_mimo_moli, R.string.speech_voice_chinese_female),
+        SpeechVoicePreset("Suda", R.string.speech_voice_mimo_suda, R.string.speech_voice_chinese_male),
+        SpeechVoicePreset("Baihua", R.string.speech_voice_mimo_baihua, R.string.speech_voice_chinese_male),
         SpeechVoicePreset("Mia", R.string.speech_voice_mimo_mia, R.string.speech_voice_english_female),
         SpeechVoicePreset("Chloe", R.string.speech_voice_mimo_chloe, R.string.speech_voice_english_female),
         SpeechVoicePreset("Milo", R.string.speech_voice_mimo_milo, R.string.speech_voice_english_male),

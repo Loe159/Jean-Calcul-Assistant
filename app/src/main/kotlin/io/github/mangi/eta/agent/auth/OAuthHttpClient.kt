@@ -26,7 +26,7 @@ internal class OAuthHttpClient(private val client: OkHttpClient = defaultClient(
     }
 
     private fun execute(request: Request, controller: AgentRunController): OAuthHttpResponse {
-        val call = client.newCall(request.newBuilder().header("Accept", "application/json").header("User-Agent", "Eta").build())
+        val call = client.newCall(request.newBuilder().header("Accept", "application/json").header("User-Agent", "Jean-Calcul").build())
         val binding = controller.register(call::cancel)
         try {
             controller.throwIfCancelled()

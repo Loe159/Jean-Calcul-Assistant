@@ -278,4 +278,4 @@ internal fun DataBackupScreen(
 }
 
 private fun defaultBackupFileName(): String =
-    "Eta-backup-${SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())}.eta-backup.json"
+    "Jean-Calcul-backup-${SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())}.eta-backup.json"

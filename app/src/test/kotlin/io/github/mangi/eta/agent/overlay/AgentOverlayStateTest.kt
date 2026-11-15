@@ -40,7 +40,7 @@ class AgentOverlayStateTest {
             AgentEvent.ToolStarted(2, "call-2", "swipe", "{}"),
             AgentEvent.ProviderRequestStarted(2),
         ).forEach { assertEquals(paused, paused.applyEvent(it)) }
-        assertEquals(AgentOverlayPhase.FAILED, paused.applyEvent(AgentEvent.RunFailed("已停止")).phase)
+        assertEquals(AgentOverlayPhase.FAILED, paused.applyEvent(AgentEvent.RunFailed("Stopped")).phase)
     }
 
     @Test

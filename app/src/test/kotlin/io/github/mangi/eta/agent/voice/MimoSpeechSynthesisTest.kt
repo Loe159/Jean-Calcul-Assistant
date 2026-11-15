@@ -33,7 +33,7 @@ class MimoSpeechSynthesisTest {
         assertEquals("assistant", messages.getJSONObject(1).getString("role"))
         assertEquals(text, messages.getJSONObject(1).getString("content"))
         assertEquals("pcm16", body.getJSONObject("audio").getString("format"))
-        assertEquals("茉莉", body.getJSONObject("audio").getString("voice"))
+        assertEquals("Moli", body.getJSONObject("audio").getString("voice"))
 
         val plain = body(mimoTtsRequest(MimoTtsConfig(style = " \n"), "test-key", text))
         assertEquals(1, plain.getJSONArray("messages").length())

@@ -91,12 +91,12 @@ internal fun CommunityCatalogScreen(
         AppearanceUiStyle.COUI -> {
             val colors = CouiPageDefaults.themeColors()
             CouiLazyScaffoldPage(
-                title = "从 models.dev 添加",
+                title = "Add from models.dev",
                 onBack = onBack,
                 actions = {
                     CouiTopAppBarIconButton(
                         icon = Icons.Rounded.Refresh,
-                        contentDescription = "刷新模型目录",
+                        contentDescription = "Refresh model catalog",
                         enabled = !store.loading && !store.refreshing,
                         onClick = store::refresh,
                     )
@@ -106,58 +106,58 @@ internal fun CommunityCatalogScreen(
                     CouiSearchBarBox(
                         query = query,
                         onQueryChange = { query = it },
-                        placeholder = "搜索提供商",
+                        placeholder = "Search providers",
                     )
                 }
 
                 item(key = "catalog_status") {
-                    ProviderSection(title = "目录状态") {
+                    ProviderSection(title = "Catalog status") {
                         CouiPreference(
-                            title = "models.dev 社区目录",
-                            summary = "读取目录不会上传 Eta 的 API Key",
+                            title = "models.dev community catalog",
+                            summary = "Reading the catalog does not upload your API key",
                             showChevron = false,
                         )
                         Divider()
                         CouiPreference(
-                            title = "模型是社区候选条目",
-                            summary = "能否调用以服务商账号权限和实际接口为准",
+                            title = "Models are community suggestions",
+                            summary = "Availability depends on your provider account and API",
                             showChevron = false,
                         )
                         Divider()
                         CouiPreference(
-                            title = catalog?.sourceLabel() ?: if (store.loading) "正在读取本地目录" else "目录暂不可用",
+                            title = catalog?.sourceLabel() ?: if (store.loading) "Reading local catalog" else "Catalog unavailable",
                             summary = catalog?.let(::catalogSummary),
                             showChevron = false,
                         )
                         if (store.refreshing) {
                             Divider()
-                            CouiPreference(title = "正在更新在线目录", showChevron = false)
+                            CouiPreference(title = "Updating online catalog", showChevron = false)
                         }
                         store.refreshError?.let { error ->
                             Divider()
                             CouiPreference(
-                                title = "在线更新失败",
-                                summary = if (catalog != null) "$error；仍可使用当前目录" else error,
+                                title = "Online update failed",
+                                summary = if (catalog != null) "$error; the current catalog is still available" else error,
                                 showChevron = false,
                             )
                         }
                         if (store.loadError && catalog == null) {
                             Divider()
-                            CouiPreference(title = "本地目录读取失败", summary = "请重试或检查应用安装包", showChevron = false)
+                            CouiPreference(title = "Could not read local catalog", summary = "Try again or check the app installation", showChevron = false)
                         }
                     }
                 }
 
                 item(key = "results_title") {
-                    CouiSectionTitle(text = "可导入提供商（${providers.size}）")
+                    CouiSectionTitle(text = "Available providers (${providers.size}）")
                 }
                 if (catalog == null && store.loading) {
                     item(key = "loading") { CatalogLoadingState() }
                 } else if (providers.isEmpty()) {
                     item(key = "empty") {
                         ListEmptyState(
-                            title = if (catalog == null) "没有可用的目录" else "没有找到匹配的提供商",
-                            summary = if (catalog == null) "点击右上角刷新后重试" else "试试其他名称或地址",
+                            title = if (catalog == null) "No catalog available" else "No matching providers",
+                            summary = if (catalog == null) "Tap refresh in the top right and try again" else "Try another name or address",
                             icon = if (catalog == null) Icons.Rounded.CloudOff else Icons.Rounded.SearchOff,
                         )
                     }
@@ -169,7 +169,7 @@ internal fun CommunityCatalogScreen(
                         ) {
                             CouiPreference(
                                 title = provider.name,
-                                summary = "${provider.baseUrl}\n${provider.models.size} 个可导入模型",
+                                summary = "${provider.baseUrl}\n${provider.models.size} available models",
                                 onClick = { onNavigate(AppRoute.CommunityCatalogProvider(provider.id)) },
                             )
                         }
@@ -180,14 +180,14 @@ internal fun CommunityCatalogScreen(
 
         AppearanceUiStyle.MIUIX -> {
             MiuixScaffoldPage(
-                title = "从 models.dev 添加",
+                title = "Add from models.dev",
                 onBack = onBack,
                 actions = {
                     IconButton(
                         onClick = store::refresh,
                         enabled = !store.loading && !store.refreshing,
                     ) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = "刷新模型目录")
+                        Icon(Icons.Rounded.Refresh, contentDescription = "Refresh model catalog")
                     }
                 },
             ) {
@@ -198,7 +198,7 @@ internal fun CommunityCatalogScreen(
                         onSearch = {},
                         expanded = false,
                         onExpandedChange = {},
-                        label = "搜索提供商",
+                        label = "Search providers",
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -206,44 +206,44 @@ internal fun CommunityCatalogScreen(
                 }
 
                 item(key = "catalog_status") {
-                    ProviderSection(title = "目录状态") {
+                    ProviderSection(title = "Catalog status") {
                         BasicComponent(
-                            title = "models.dev 社区目录",
-                            summary = "读取目录不会上传 Eta 的 API Key",
+                            title = "models.dev community catalog",
+                            summary = "Reading the catalog does not upload your API key",
                         )
                         BasicComponent(
-                            title = "模型是社区候选条目",
-                            summary = "能否调用以服务商账号权限和实际接口为准",
+                            title = "Models are community suggestions",
+                            summary = "Availability depends on your provider account and API",
                         )
                         BasicComponent(
-                            title = catalog?.sourceLabel() ?: if (store.loading) "正在读取本地目录" else "目录暂不可用",
+                            title = catalog?.sourceLabel() ?: if (store.loading) "Reading local catalog" else "Catalog unavailable",
                             summary = catalog?.let(::catalogSummary),
                         )
                         if (store.refreshing) {
-                            BasicComponent(title = "正在更新在线目录")
+                            BasicComponent(title = "Updating online catalog")
                         }
                         store.refreshError?.let { error ->
                             BasicComponent(
-                                title = "在线更新失败",
-                                summary = if (catalog != null) "$error；仍可使用当前目录" else error,
+                                title = "Online update failed",
+                                summary = if (catalog != null) "$error; the current catalog is still available" else error,
                             )
                         }
                         if (store.loadError && catalog == null) {
-                            BasicComponent(title = "本地目录读取失败", summary = "请重试或检查应用安装包")
+                            BasicComponent(title = "Could not read local catalog", summary = "Try again or check the app installation")
                         }
                     }
                 }
 
                 item(key = "results_title") {
-                    SmallTitle("可导入提供商（${providers.size}）")
+                    SmallTitle("Available providers (${providers.size}）")
                 }
                 if (catalog == null && store.loading) {
                     item(key = "loading") { CatalogLoadingState() }
                 } else if (providers.isEmpty()) {
                     item(key = "empty") {
                         ListEmptyState(
-                            title = if (catalog == null) "没有可用的目录" else "没有找到匹配的提供商",
-                            summary = if (catalog == null) "点击右上角刷新后重试" else "试试其他名称或地址",
+                            title = if (catalog == null) "No catalog available" else "No matching providers",
+                            summary = if (catalog == null) "Tap refresh in the top right and try again" else "Try another name or address",
                             icon = if (catalog == null) Icons.Rounded.CloudOff else Icons.Rounded.SearchOff,
                         )
                     }
@@ -255,7 +255,7 @@ internal fun CommunityCatalogScreen(
                         ) {
                             ArrowPreference(
                                 title = provider.name,
-                                summary = "${provider.baseUrl}\n${provider.models.size} 个可导入模型",
+                                summary = "${provider.baseUrl}\n${provider.models.size} available models",
                                 onClick = { onNavigate(AppRoute.CommunityCatalogProvider(provider.id)) },
                             )
                         }
@@ -306,9 +306,9 @@ internal fun CommunityCatalogProviderScreen(
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (_: IllegalArgumentException) {
-                    importError = "模型选择已失效，请重新选择"
+                    importError = "Model selection expired. Select again."
                 } catch (_: Throwable) {
-                    importError = "保存提供商失败，请重试"
+                    importError = "Could not save the provider. Try again."
                 } finally {
                     importInFlight = false
                 }
@@ -319,11 +319,11 @@ internal fun CommunityCatalogProviderScreen(
     when (LocalUiStyle.current) {
         AppearanceUiStyle.COUI -> {
             CouiLazyScaffoldPage(
-                title = provider?.name ?: "选择模型",
+                title = provider?.name ?: "Select model",
                 onBack = onBack,
                 actions = {
                     CouiTopAppBarTextButton(
-                        text = "导入（${selectedIds.size}）",
+                        text = "Import (${selectedIds.size}）",
                         enabled = canImport,
                         onClick = onImport,
                     )
@@ -335,8 +335,8 @@ internal fun CommunityCatalogProviderScreen(
                             CatalogLoadingState()
                         } else {
                             ListEmptyState(
-                                title = "目录中没有这个提供商",
-                                summary = "目录可能已更新，请返回列表重新选择",
+                                title = "Provider not found in the catalog",
+                                summary = "The catalog may have changed. Return to the list and select again.",
                             )
                         }
                     }
@@ -344,8 +344,8 @@ internal fun CommunityCatalogProviderScreen(
                 }
 
                 item(key = "provider") {
-                    ProviderSection(title = "提供商") {
-                        CouiPreference(title = "名称", summary = provider.name, showChevron = false)
+                    ProviderSection(title = "Provider") {
+                        CouiPreference(title = "Name", summary = provider.name, showChevron = false)
                         Divider()
                         CouiPreference(title = "Base URL", summary = provider.baseUrl, showChevron = false)
                     }
@@ -364,21 +364,21 @@ internal fun CommunityCatalogProviderScreen(
                     CouiSearchBarBox(
                         query = query,
                         onQueryChange = { query = it },
-                        placeholder = "搜索模型名称或 ID",
+                        placeholder = "Search model name or ID",
                     )
                 }
                 item(key = "models_title") {
                     val visibleIds = remember(filteredModels) { filteredModels.mapTo(mutableSetOf()) { it.modelId } }
                     val allVisibleSelected = visibleIds.isNotEmpty() && selectedIds.containsAll(visibleIds)
                     val titleText = if (selectedIds.isEmpty()) {
-                        "模型（${filteredModels.size}）"
+                        "Models (${filteredModels.size}）"
                     } else {
-                        "模型（已选 ${selectedIds.size} / ${provider.models.size}）"
+                        "Models (selected ${selectedIds.size} / ${provider.models.size}）"
                     }
                     CouiSectionTitle(text = titleText) {
                         if (filteredModels.isNotEmpty()) {
                             Text(
-                                text = if (allVisibleSelected) "全不选" else "全选",
+                                text = if (allVisibleSelected) "Select none" else "Select all",
                                 style = MiuixTheme.textStyles.subtitle,
                                 color = if (!store.importing) {
                                     MiuixTheme.colorScheme.primary
@@ -401,7 +401,7 @@ internal fun CommunityCatalogProviderScreen(
                 }
                 if (filteredModels.isEmpty()) {
                     item(key = "empty_models") {
-                        ListEmptyState(title = "没有找到匹配的模型")
+                        ListEmptyState(title = "No matching models")
                     }
                 } else {
                     itemsIndexed(filteredModels, key = { _, model -> "model:${model.modelId}" }, contentType = { _, _ -> "model" }) { index, model ->
@@ -415,7 +415,7 @@ internal fun CommunityCatalogProviderScreen(
                                     append(model.modelId)
                                     append(" · ")
                                     append(formatCompactTokenCount(model.contextWindow))
-                                    append(" tokens 上下文")
+                                    append(" context tokens")
                                     model.releaseDate?.let { append(" · "); append(it) }
                                 },
                                 checked = model.modelId in selectedIds,
@@ -436,11 +436,11 @@ internal fun CommunityCatalogProviderScreen(
 
         AppearanceUiStyle.MIUIX -> {
             MiuixScaffoldPage(
-                title = provider?.name ?: "选择模型",
+                title = provider?.name ?: "Select model",
                 onBack = onBack,
                 actions = {
                     TextButton(
-                        text = "导入（${selectedIds.size}）",
+                        text = "Import (${selectedIds.size}）",
                         enabled = canImport,
                         onClick = onImport,
                         minWidth = 0.dp,
@@ -456,8 +456,8 @@ internal fun CommunityCatalogProviderScreen(
                             CatalogLoadingState()
                         } else {
                             ListEmptyState(
-                                title = "目录中没有这个提供商",
-                                summary = "目录可能已更新，请返回列表重新选择",
+                                title = "Provider not found in the catalog",
+                                summary = "The catalog may have changed. Return to the list and select again.",
                             )
                         }
                     }
@@ -465,8 +465,8 @@ internal fun CommunityCatalogProviderScreen(
                 }
 
                 item(key = "provider") {
-                    ProviderSection(title = "提供商") {
-                        BasicComponent(title = "名称", summary = provider.name)
+                    ProviderSection(title = "Provider") {
+                        BasicComponent(title = "Name", summary = provider.name)
                         BasicComponent {
                             Text(
                                 text = "Base URL",
@@ -501,7 +501,7 @@ internal fun CommunityCatalogProviderScreen(
                         onSearch = {},
                         expanded = false,
                         onExpandedChange = {},
-                        label = "搜索模型名称或 ID",
+                        label = "Search model name or ID",
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp)
@@ -520,15 +520,15 @@ internal fun CommunityCatalogProviderScreen(
                     ) {
                         SmallTitle(
                             text = if (selectedIds.isEmpty()) {
-                                "模型（${filteredModels.size}）"
+                                "Models (${filteredModels.size}）"
                             } else {
-                                "模型（已选 ${selectedIds.size} / ${provider.models.size}）"
+                                "Models (selected ${selectedIds.size} / ${provider.models.size}）"
                             },
                             modifier = Modifier.weight(1f),
                         )
                         if (filteredModels.isNotEmpty()) {
                             Text(
-                                text = if (allVisibleSelected) "全不选" else "全选",
+                                text = if (allVisibleSelected) "Select none" else "Select all",
                                 style = MiuixTheme.textStyles.subtitle,
                                 color = if (!store.importing) {
                                     MiuixTheme.colorScheme.primary
@@ -551,7 +551,7 @@ internal fun CommunityCatalogProviderScreen(
                 }
                 if (filteredModels.isEmpty()) {
                     item(key = "empty_models") {
-                        ListEmptyState(title = "没有找到匹配的模型")
+                        ListEmptyState(title = "No matching models")
                     }
                 } else {
                     itemsIndexed(filteredModels, key = { _, model -> "model:${model.modelId}" }, contentType = { _, _ -> "model" }) { index, model ->
@@ -565,7 +565,7 @@ internal fun CommunityCatalogProviderScreen(
                                     append(model.modelId)
                                     append(" · ")
                                     append(formatCompactTokenCount(model.contextWindow))
-                                    append(" tokens 上下文")
+                                    append(" context tokens")
                                     model.releaseDate?.let { append(" · "); append(it) }
                                 },
                                 checked = model.modelId in selectedIds,
@@ -598,15 +598,15 @@ private fun CatalogLoadingState() {
 }
 
 private fun CommunityCatalog.sourceLabel(): String = when (source) {
-    CommunityCatalogSource.SNAPSHOT -> "内置目录快照"
-    CommunityCatalogSource.CACHE -> "本地缓存目录"
-    CommunityCatalogSource.ONLINE -> "在线目录"
+    CommunityCatalogSource.SNAPSHOT -> "Built-in catalog snapshot"
+    CommunityCatalogSource.CACHE -> "Cached catalog"
+    CommunityCatalogSource.ONLINE -> "Online catalog"
 }
 
 private fun catalogSummary(catalog: CommunityCatalog): String {
     val updated = catalog.fetchedAt?.let { timestamp ->
         DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(timestamp))
     }
-    return listOfNotNull("${catalog.providers.size} 家可导入提供商", updated?.let { "更新于 $it" })
+    return listOfNotNull("${catalog.providers.size} available providers", updated?.let { "Updated $it" })
         .joinToString(" · ")
 }

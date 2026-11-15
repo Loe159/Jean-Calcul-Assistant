@@ -249,8 +249,8 @@ internal object AgentPhoneToolCatalog {
                 field("end_time", text("带偏移的 ISO 8601 结束时间", 64), create)
                 field("timezone", text("IANA 时区，如 Asia/Shanghai", 80), false)
                 field("all_day", JSONObject().put("type", "boolean"), false)
-                field("location", text("地点", 500), false)
-                field("description", text("说明", 8000), false)
+                field("location", text("Location", 500), false)
+                field("description", text("Description", 8000), false)
                 field(
                     "reminder_minutes",
                     JSONObject()
@@ -275,7 +275,7 @@ internal object AgentPhoneToolCatalog {
             }
             "delete_alarm" -> id("alarm_id")
             "create_note" -> {
-                field("title", text("标题", 200), false)
+                field("title", text("Title", 200), false)
                 field("content", text("便签正文", 20000))
             }
             "read_note",

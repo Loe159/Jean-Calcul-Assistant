@@ -135,6 +135,6 @@ class AgentRuntimeAttachDeliveryTest {
     private fun result() = AgentRuntimeWire.RunResult(
         runId = "run-attach",
         ok = true,
-        content = "完成",
+        content = "Done",
     )
 }

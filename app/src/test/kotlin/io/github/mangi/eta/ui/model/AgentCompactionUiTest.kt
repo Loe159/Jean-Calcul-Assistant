@@ -9,7 +9,7 @@ class AgentCompactionUiTest {
     fun manualActionRequiresIdleCompletedHistory() {
         val empty = AgentChatUiState(emptyList(), input = "草稿", isStreaming = false, thinkingEnabled = false)
         assertFalse(empty.canCompactContext)
-        val ready = empty.copy(history = listOf(AgentModelClient.ConversationMessage("assistant", "已完成")))
+        val ready = empty.copy(history = listOf(AgentModelClient.ConversationMessage("assistant", "Completed")))
         assertTrue(ready.canCompactContext)
         assertFalse(ready.copy(isStreaming = true).canCompactContext)
         assertFalse(empty.copy(history = listOf(AgentModelClient.ConversationMessage("assistant", "仅摘要", contextSummary = true))).canCompactContext)

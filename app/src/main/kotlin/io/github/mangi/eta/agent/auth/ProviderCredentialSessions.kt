@@ -136,7 +136,7 @@ internal class ProviderCredentialSessions(
     }
 
     private fun session(providerId: String): Session {
-        if (providerId.isBlank()) throw ProviderAuthException("oauth_provider_missing", "服务商连接不存在")
+        if (providerId.isBlank()) throw ProviderAuthException("oauth_provider_missing", "Provider connection not found")
         return sessions.computeIfAbsent(providerId) { Session() }
     }
 

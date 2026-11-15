@@ -92,7 +92,7 @@ internal class CommunityCatalogStore(
     }
 
     suspend fun importProvider(provider: CommunityCatalogProvider, modelIds: Set<String>): String {
-        check(!importing) { "目录导入正在进行" }
+        check(!importing) { "Catalog import in progress" }
         importing = true
         try {
             val added = ProviderRepository.addProvider(
@@ -135,19 +135,19 @@ internal class CommunityCatalogStore(
     }
 
     private fun Throwable.catalogErrorMessage(): String {
-        val status = Regex("^目录更新失败：HTTP ([0-9]{3})$")
+        val status = Regex("^Catalog update failed: HTTP ([0-9]{3})$")
             .matchEntire(message.orEmpty())
             ?.groupValues
             ?.get(1)
         return when {
-            status != null -> "目录服务返回 HTTP $status"
-            this is SocketTimeoutException -> "连接目录服务超时"
-            this is UnknownHostException -> "无法解析目录服务地址"
-            this is SSLException -> "目录服务安全连接失败"
-            message == "模型目录超出大小限制" -> "目录文件超出大小限制"
-            this is org.json.JSONException || this is IllegalArgumentException -> "目录格式无效"
-            this is IOException -> "网络连接或本地缓存写入失败"
-            else -> "更新失败，请稍后重试"
+            status != null -> "Catalog service returned HTTP $status"
+            this is SocketTimeoutException -> "Catalog connection timed out"
+            this is UnknownHostException -> "Could not resolve the catalog host"
+            this is SSLException -> "Secure catalog connection failed"
+            message == "Model catalog exceeds the size limit" -> "Catalog file exceeds the size limit"
+            this is org.json.JSONException || this is IllegalArgumentException -> "Invalid catalog format"
+            this is IOException -> "Network connection or cache write failed"
+            else -> "Update failed. Try again later."
         }
     }
 }

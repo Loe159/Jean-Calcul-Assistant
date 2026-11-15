@@ -67,19 +67,19 @@ internal fun ProviderHeadersSection(
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
 ) {
-    ProviderSection(title = "自定义请求头") {
+    ProviderSection(title = "Custom headers") {
         val chevronRotation by animateFloatAsState(if (expanded) 180f else 0f)
         when (LocalUiStyle.current) {
             AppearanceUiStyle.COUI -> {
                 val colors = CouiPageDefaults.themeColors()
                 CouiPreference(
-                    title = if (headers.isEmpty()) "未设置" else "已设置 ${headers.size} 项",
-                    summary = "可覆盖 User-Agent；认证与传输请求头由系统管理。",
+                    title = if (headers.isEmpty()) "Not set" else "Configured ${headers.size} entries",
+                    summary = "You can override User-Agent. Authentication and transport headers are managed by the app.",
                     showChevron = false,
                     trailing = {
                         CouiIcon(
                             imageVector = Icons.Rounded.ExpandMore,
-                            contentDescription = if (expanded) "收起" else "展开",
+                            contentDescription = if (expanded) "Collapse" else "Expand",
                             tint = colors.summary,
                             modifier = Modifier
                                 .size(22.dp)
@@ -108,7 +108,7 @@ internal fun ProviderHeadersSection(
                     }
                     Divider()
                     CouiPreference(
-                        title = "添加请求头",
+                        title = "Add header",
                         titleColor = colors.accent,
                         showChevron = false,
                         onClick = { onHeadersChange(headers + ProviderHeaderDraft()) },
@@ -117,12 +117,12 @@ internal fun ProviderHeadersSection(
             }
             AppearanceUiStyle.MIUIX -> {
                 BasicComponent(
-                    title = if (headers.isEmpty()) "未设置" else "已设置 ${headers.size} 项",
-                    summary = "可覆盖 User-Agent；认证与传输请求头由系统管理。",
+                    title = if (headers.isEmpty()) "Not set" else "Configured ${headers.size} entries",
+                    summary = "You can override User-Agent. Authentication and transport headers are managed by the app.",
                     endActions = {
                         Icon(
                             imageVector = Icons.Rounded.ExpandMore,
-                            contentDescription = if (expanded) "收起" else "展开",
+                            contentDescription = if (expanded) "Collapse" else "Expand",
                             tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
                             modifier = Modifier.rotate(chevronRotation),
                         )
@@ -147,7 +147,7 @@ internal fun ProviderHeadersSection(
                         )
                     }
                     BasicComponent(
-                        title = "添加请求头",
+                        title = "Add header",
                         titleColor = BasicComponentDefaults.titleColor(color = MiuixTheme.colorScheme.primary),
                         startAction = {
                             Icon(
@@ -187,13 +187,13 @@ private fun ProviderHeaderRow(
                     CouiTextField(
                         value = row.header.name,
                         onValueChange = onNameChange,
-                        label = "名称",
+                        label = "Name",
                         singleLine = true,
                     )
                     CouiTextField(
                         value = row.header.value,
                         onValueChange = onValueChange,
-                        label = "值",
+                        label = "Value",
                         singleLine = true,
                         visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
@@ -243,14 +243,14 @@ private fun ProviderHeaderRow(
                     TextField(
                         value = row.header.name,
                         onValueChange = onNameChange,
-                        label = "名称",
+                        label = "Name",
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     TextField(
                         value = row.header.value,
                         onValueChange = onValueChange,
-                        label = "值",
+                        label = "Value",
                         singleLine = true,
                         visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {

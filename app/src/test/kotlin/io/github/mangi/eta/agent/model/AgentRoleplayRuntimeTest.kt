@@ -37,9 +37,9 @@ class AgentRoleplayRuntimeTest {
             val text = request.messages.toString()
             assertTrue(text.contains("林舟"))
             assertTrue(text.contains("工具合同"))
-            assertFalse(text.contains("你是 Eta。"))
+            assertFalse(text.contains("你是 Jean-Calcul。"))
             assertFalse(text.contains("PROVIDER_IDENTITY"))
-            assertFalse(text.contains("现实工具操作仍由 Eta 完成"))
+            assertFalse(text.contains("现实工具操作仍由 Jean-Calcul 完成"))
             assertTrue(text.contains("执行现实任务时也保持角色的身份和语气"))
             val names = (0 until request.tools.length()).map {
                 request.tools.getJSONObject(it).getJSONObject("function").getString("name")
@@ -115,7 +115,7 @@ class AgentRoleplayRuntimeTest {
                 "character_book":{"scan_depth":1,"entries":[
                     {"keys":["钟楼"],"content":"塔顶住着信使","enabled":true}
                 ]},"extensions":{"depth_prompt":{"prompt":"深度设定","depth":1,"role":"user"}}
-            }"""), "用户", "", contextWindow = 16_000,
+            }"""), "User", "", contextWindow = 16_000,
         )
         val source = JSONArray().put(context.personaMessage())
             .put(AgentConversationCodec.userTextMessage("在广场等候"))
@@ -140,7 +140,7 @@ class AgentRoleplayRuntimeTest {
                 {"keys":["tower.png"],"content":"不该被图片链接触发"},
                 {"keys":["钟楼"],"content":"正文触发的设定"}
             ]}
-        }"""), "用户", "", contextWindow = 128_000)
+        }"""), "User", "", contextWindow = 128_000)
         val input = JSONArray().put(context.personaMessage()).put(JSONObject().put("role", "user").put("content",
             JSONArray().put(JSONObject().put("type", "text").put("text", "前往钟楼"))
                 .put(JSONObject().put("type", "image_url").put("image_url", JSONObject().put("url", "https://example.com/tower.png")))))
@@ -155,7 +155,7 @@ class AgentRoleplayRuntimeTest {
         val card = CharacterCardCodec.decodeJson(JSONObject().put("name", "林舟")
             .put("character_book", JSONObject().put("entries", JSONArray().put(JSONObject()
                 .put("constant", true).put("content", lore)))).toString())
-        val context = RoleplayRunContext("fixture", card, "用户", "", contextWindow = 64_000)
+        val context = RoleplayRunContext("fixture", card, "User", "", contextWindow = 64_000)
         val source = JSONArray().put(context.personaMessage()).put(AgentConversationCodec.userTextMessage("出发"))
         assertTrue(context.projectMessages(source).toString().contains(lore))
         source.put(JSONObject().put("role", "assistant").put("content", "长历史".repeat(30_000)))
@@ -169,7 +169,7 @@ class AgentRoleplayRuntimeTest {
             val card = CharacterCardCodec.decodeJson("""{
                 "name":"林舟","extensions":{"depth_prompt":{"prompt":"深度设定","depth":1,"role":"$depthRole"}}
             }""")
-            val context = RoleplayRunContext("fixture", card, "用户", "", contextWindow = 128_000)
+            val context = RoleplayRunContext("fixture", card, "User", "", contextWindow = 128_000)
             val source = JSONArray().put(context.personaMessage())
                 .put(AgentConversationCodec.userTextMessage("第一句").put("_eta_message_id", "first-id"))
                 .put(JSONObject().put("role", "assistant").put("content", "第二句"))

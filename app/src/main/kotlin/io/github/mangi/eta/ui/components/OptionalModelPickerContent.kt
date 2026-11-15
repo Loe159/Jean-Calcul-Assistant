@@ -72,12 +72,12 @@ internal fun OptionalModelPickerContent(
                 CouiSearchBarBox(
                     query = query,
                     onQueryChange = { query = it },
-                    placeholder = "搜索模型或服务商",
+                    placeholder = "Search models or providers",
                     backgroundColor = Color.Transparent,
                 )
                 if (pickerState.providerGroups.size > 1) {
                     val tabItems = remember(pickerState.providerGroups) {
-                        listOf("" to "全部") + pickerState.providerGroups.map { it.providerId to it.providerName }
+                        listOf("" to "All") + pickerState.providerGroups.map { it.providerId to it.providerName }
                     }
                     CouiChipTabs(
                         items = tabItems,
@@ -94,7 +94,7 @@ internal fun OptionalModelPickerContent(
                     onSearch = {},
                     expanded = false,
                     onExpandedChange = {},
-                    label = "搜索模型或服务商",
+                    label = "Search models or providers",
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -106,7 +106,7 @@ internal fun OptionalModelPickerContent(
                     ) {
                         item(key = "filter:all") {
                             EtaChoiceChip(
-                                text = "全部",
+                                text = "All",
                                 selected = providerFilter == null,
                                 onClick = { providerFilter = null },
                             )

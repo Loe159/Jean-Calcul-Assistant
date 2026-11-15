@@ -213,7 +213,7 @@ internal object EtaBackupJsonStreams {
     }
 
     private fun sizeLimitFailure(limit: Long): EtaBackupException {
-        val size = if (limit >= 1024 * 1024) "${limit / (1024 * 1024)} MiB" else "$limit 字节"
+        val size = if (limit >= 1024 * 1024) "${limit / (1024 * 1024)} MiB" else "$limit bytes"
         return EtaBackupException("备份文件超过 $size 限制")
     }
 

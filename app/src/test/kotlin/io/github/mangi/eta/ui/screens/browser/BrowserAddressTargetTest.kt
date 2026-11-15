@@ -33,7 +33,7 @@ class BrowserAddressTargetTest {
 
     @Test
     fun searchTermsAreEncodedAsOneGoogleQuery() {
-        for (query in listOf("天气", "Kotlin 协程", "C++ & Compose #1", "site:github.com Eta")) {
+        for (query in listOf("天气", "Kotlin 协程", "C++ & Compose #1", "site:github.com Jean-Calcul")) {
             val target = Uri.parse(resolveBrowserAddress(" $query "))
             assertEquals("https", target.scheme)
             assertEquals("www.google.com", target.host)

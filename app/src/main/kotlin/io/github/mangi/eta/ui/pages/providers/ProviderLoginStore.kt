@@ -62,7 +62,7 @@ internal class ProviderLoginStore(
             val account = withContext(ioDispatcher) { operations.account(providerId, authMode) }
             mutableState.value = mutableState.value.copy(
                 account = account,
-                message = if (interrupted) "登录已中断，请重试" else null,
+                message = if (interrupted) "Sign-in interrupted. Try again." else null,
             )
         }
     }
@@ -86,7 +86,7 @@ internal class ProviderLoginStore(
             }
             mutableState.value = mutableState.value.copy(account = account, prompt = null, phase = ProviderLoginPhase.SyncingModels)
             val count = withContext(ioDispatcher) { operations.syncModels(providerId, provider.authMode) }
-            mutableState.value = mutableState.value.copy(message = "已登录，已同步 $count 个远端模型")
+            mutableState.value = mutableState.value.copy(message = "Signed in; synced $count remote models")
         }
     }
 
@@ -97,7 +97,7 @@ internal class ProviderLoginStore(
             val revoked = withContext(ioDispatcher) { operations.disconnect(providerId, authMode, activeController) }
             mutableState.value = mutableState.value.copy(
                 account = null,
-                message = if (revoked == false) "已退出登录，远端撤销未确认" else "已退出登录",
+                message = if (revoked == false) "Signed out; remote revocation not confirmed" else "Signed out",
             )
         }
     }
@@ -134,11 +134,11 @@ internal class ProviderLoginStore(
                 if (generation == attempt && !activeController.isCancelled) {
                     mutableState.value = mutableState.value.copy(
                         message = when (mutableState.value.phase) {
-                            ProviderLoginPhase.SyncingModels -> "已登录，模型同步失败，请在模型页重新拉取"
+                            ProviderLoginPhase.SyncingModels -> "Signed in, but model sync failed. Refresh on the models page."
                             else -> (error as? ProviderAuthException)?.message ?: when (phase) {
-                                ProviderLoginPhase.Loading -> "无法读取登录状态，请重试"
-                                ProviderLoginPhase.Disconnecting -> "退出登录失败，请重试"
-                                else -> "登录失败，请重试"
+                                ProviderLoginPhase.Loading -> "Could not read sign-in status. Try again."
+                                ProviderLoginPhase.Disconnecting -> "Sign-out failed. Try again."
+                                else -> "Sign-in failed. Try again."
                             }
                         },
                     )
@@ -184,9 +184,9 @@ private object RepositoryProviderLoginOperations : ProviderLoginOperations {
     ): ProviderAccountSummary = ProviderCredentialRepository.login(providerId, authMode, controller, onPrompt)
 
     override suspend fun syncModels(providerId: String, authMode: String): Int {
-        val provider = requireNotNull(ProviderRepository.providerById(providerId)) { "服务商连接不存在" }
+        val provider = requireNotNull(ProviderRepository.providerById(providerId)) { "Provider connection not found" }
         if (provider.authMode != authMode) {
-            throw ProviderAuthException("oauth_session_changed", "服务商登录方式已变更，请重新拉取模型")
+            throw ProviderAuthException("oauth_session_changed", "Provider sign-in method changed. Refresh models.")
         }
         val catalog = RemoteModelFetcher.fetchCatalog(provider).getOrThrow()
         val result = ModelRepository.syncRemoteCatalog(catalog)

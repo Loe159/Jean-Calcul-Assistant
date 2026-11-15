@@ -157,8 +157,8 @@ internal fun SubagentSettingsScreen(
     val primaryModelName = pickerState.selectedModel?.displayName
     val secondarySummary = when {
         resolvedSecondary != null -> "${resolvedSecondary.provider.name} / ${resolvedSecondary.model.displayName}"
-        !primaryModelName.isNullOrBlank() -> "跟随主模型 ($primaryModelName)"
-        else -> "跟随主模型"
+        !primaryModelName.isNullOrBlank() -> "Follow primary model ($primaryModelName)"
+        else -> "Follow primary model"
     }
 
     val effectiveCapabilities = remember(providers, resolvedSecondary, primaryProviderId, primaryModelId) {
@@ -174,7 +174,7 @@ internal fun SubagentSettingsScreen(
     val effortLabels = remember(effortOptions) {
         effortOptions.map { effort ->
             when (effort) {
-                null -> "跟随模型默认"
+                null -> "Follow model default"
                 ReasoningEffort.DEFAULT -> "Auto"
                 else -> effort.displayName
             }
@@ -236,7 +236,7 @@ internal fun SubagentSettingsScreen(
                     reloadCustomProfiles()
                 },
                 onFailure = { error ->
-                    editorError = error.message ?: "保存失败"
+                    editorError = error.message ?: "Save failed"
                 },
             )
         }
@@ -250,7 +250,7 @@ internal fun SubagentSettingsScreen(
                 actions = {
                     CouiTopAppBarIconButton(
                         icon = CouiIcons.Outlined.Add,
-                        contentDescription = "新建 Subagent",
+                        contentDescription = "New subagent",
                         onClick = {
                             editorError = null
                             editorDraft = CustomSubagentDraft()
@@ -263,7 +263,7 @@ internal fun SubagentSettingsScreen(
                         visible = showModelSheet,
                         onDismissRequest = { showModelSheet = false },
                         dark = dark,
-                        title = "Subagent 模型",
+                        title = "Subagent model",
                         confirmAction = CouiDialogAction(
                             text = stringResource(R.string.action_close),
                             onClick = { showModelSheet = false },
@@ -275,8 +275,8 @@ internal fun SubagentSettingsScreen(
                         OptionalModelPickerContent(
                             pickerState = pickerState,
                             selectedSecondaryModelId = resolvedSecondary?.model?.id,
-                            followTitle = "跟随主模型",
-                            followSubtitle = primaryModelName?.let { "当前：$it" } ?: "默认继承会话正在使用的主模型",
+                            followTitle = "Follow primary model",
+                            followSubtitle = primaryModelName?.let { "Current: $it" } ?: "Inherits the conversation's primary model by default",
                             onSelectModel = { modelId ->
                                 showModelSheet = false
                                 scope.launch {
@@ -345,9 +345,9 @@ internal fun SubagentSettingsScreen(
                     val activeDraft = editorDraft
                     CouiConfirmDialog(
                         visible = activeDraft != null,
-                        title = if (activeDraft?.originalName != null) "编辑 Subagent" else "新建 Subagent",
+                        title = if (activeDraft?.originalName != null) "Edit subagent" else "New subagent",
                         message = null,
-                        confirmText = "保存",
+                        confirmText = "Save",
                         onConfirm = { if (activeDraft != null) onSaveDraft(activeDraft) },
                         onDismissRequest = { editorDraft = null },
                     ) {
@@ -359,25 +359,25 @@ internal fun SubagentSettingsScreen(
                                 CouiTextField(
                                     value = activeDraft.name,
                                     onValueChange = { editorDraft = activeDraft.copy(name = it) },
-                                    label = "名称 (kebab-case，如 bill-analyzer)",
+                                    label = "Name (kebab-case, e.g. bill-analyzer)",
                                     singleLine = true,
                                 )
                                 CouiTextField(
                                     value = activeDraft.description,
                                     onValueChange = { editorDraft = activeDraft.copy(description = it) },
-                                    label = "简介 (Description)",
+                                    label = "Description",
                                     singleLine = true,
                                 )
                                 CouiTextField(
                                     value = activeDraft.toolsText,
                                     onValueChange = { editorDraft = activeDraft.copy(toolsText = it) },
-                                    label = "可用工具 (逗号分隔，留空默认允许全部非 GUI 工具)",
+                                    label = "Tools (comma-separated; blank allows all non-GUI tools)",
                                     singleLine = true,
                                 )
                                 CouiTextField(
                                     value = activeDraft.prompt,
                                     onValueChange = { editorDraft = activeDraft.copy(prompt = it) },
-                                    label = "角色指令 (System Prompt)",
+                                    label = "System prompt",
                                     singleLine = false,
                                     minLines = 4,
                                     maxLines = 8,
@@ -394,16 +394,16 @@ internal fun SubagentSettingsScreen(
                     }
                 },
             ) {
-                Group(title = "通用与模型") {
+                Group(title = "General and model") {
                     CouiSwitchPreference(
-                        title = "启用 Subagent",
+                        title = "Enable subagents",
                         checked = subagentEnabled,
                         enabled = agentPrefs != null,
                         onCheckedChange = onToggleSubagent,
                     )
                     Divider()
                     CouiPreference(
-                        title = "Subagent 模型",
+                        title = "Subagent model",
                         summary = secondarySummary,
                         enabled = subagentEnabled,
                         onClick = { showModelSheet = true },
@@ -411,7 +411,7 @@ internal fun SubagentSettingsScreen(
                     if (effortOptions.size > 1) {
                         Divider()
                         CouiDropdownPreference(
-                            title = "思考强度",
+                            title = "Reasoning level",
                             items = effortLabels,
                             selectedIndex = selectedEffortIndex,
                             enabled = subagentEnabled,
@@ -436,12 +436,12 @@ internal fun SubagentSettingsScreen(
                 Group(title = "Custom Subagents") {
                     if (customProfiles.isEmpty()) {
                         ListEmptyState(
-                            title = "暂无自定义 Subagent",
-                            summary = "可在对话中直接让 Eta 创建专属 Subagent（保存在 agents/<name>.md），或点击右上角 + 手动新建",
+                            title = "No custom subagents yet",
+                            summary = "Ask Jean-Calcul to create a subagent in agents/<name>.md, or tap + to create one",
                             icon = Icons.Rounded.Extension,
                             action = {
                                 CouiButton(
-                                    text = "新建 Subagent",
+                                    text = "New subagent",
                                     role = CouiButtonRole.Primary,
                                     onClick = {
                                         editorError = null
@@ -481,22 +481,22 @@ internal fun SubagentSettingsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Add,
-                            contentDescription = "新建 Subagent",
+                            contentDescription = "New subagent",
                         )
                     }
                 },
                 overlay = {
                     OverlayBottomSheet(
                         show = showModelSheet,
-                        title = "Subagent 模型",
+                        title = "Subagent model",
                         onDismissRequest = { showModelSheet = false },
                         insideMargin = DpSize(0.dp, 0.dp),
                     ) {
                         OptionalModelPickerContent(
                             pickerState = pickerState,
                             selectedSecondaryModelId = resolvedSecondary?.model?.id,
-                            followTitle = "跟随主模型",
-                            followSubtitle = primaryModelName?.let { "当前：$it" } ?: "默认继承会话正在使用的主模型",
+                            followTitle = "Follow primary model",
+                            followSubtitle = primaryModelName?.let { "Current: $it" } ?: "Inherits the conversation's primary model by default",
                             onSelectModel = { modelId ->
                                 showModelSheet = false
                                 scope.launch {
@@ -557,7 +557,7 @@ internal fun SubagentSettingsScreen(
                     val activeDraft = editorDraft
                     WindowDialog(
                         show = activeDraft != null,
-                        title = if (activeDraft?.originalName != null) "编辑 Subagent" else "新建 Subagent",
+                        title = if (activeDraft?.originalName != null) "Edit subagent" else "New subagent",
                         onDismissRequest = { editorDraft = null },
                     ) {
                         if (activeDraft != null) {
@@ -572,28 +572,28 @@ internal fun SubagentSettingsScreen(
                                     TextField(
                                         value = activeDraft.name,
                                         onValueChange = { editorDraft = activeDraft.copy(name = it) },
-                                        label = "名称 (kebab-case，如 bill-analyzer)",
+                                        label = "Name (kebab-case, e.g. bill-analyzer)",
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth(),
                                     )
                                     TextField(
                                         value = activeDraft.description,
                                         onValueChange = { editorDraft = activeDraft.copy(description = it) },
-                                        label = "简介 (Description)",
+                                        label = "Description",
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth(),
                                     )
                                     TextField(
                                         value = activeDraft.toolsText,
                                         onValueChange = { editorDraft = activeDraft.copy(toolsText = it) },
-                                        label = "可用工具 (逗号分隔，留空默认允许全部非 GUI 工具)",
+                                        label = "Tools (comma-separated; blank allows all non-GUI tools)",
                                         singleLine = true,
                                         modifier = Modifier.fillMaxWidth(),
                                     )
                                     TextField(
                                         value = activeDraft.prompt,
                                         onValueChange = { editorDraft = activeDraft.copy(prompt = it) },
-                                        label = "角色指令 (System Prompt)",
+                                        label = "System prompt",
                                         minLines = 4,
                                         maxLines = 8,
                                         modifier = Modifier.fillMaxWidth(),
@@ -608,7 +608,7 @@ internal fun SubagentSettingsScreen(
                                 }
                                 Spacer(modifier = Modifier.height(16.dp))
                                 MiuixDialogActions(
-                                    confirmText = "保存",
+                                    confirmText = "Save",
                                     onCancel = { editorDraft = null },
                                     onConfirm = { onSaveDraft(activeDraft) },
                                 )
@@ -618,27 +618,27 @@ internal fun SubagentSettingsScreen(
                 },
             ) {
                 item(key = "config_group") {
-                    SmallTitle("通用与模型")
+                    SmallTitle("General and model")
                     Card(
                         modifier = Modifier
                             .padding(horizontal = 12.dp)
                             .padding(bottom = 12.dp),
                     ) {
                         SwitchPreference(
-                            title = "启用 Subagent",
+                            title = "Enable subagents",
                             checked = subagentEnabled,
                             enabled = agentPrefs != null,
                             onCheckedChange = onToggleSubagent,
                         )
                         ArrowPreference(
-                            title = "Subagent 模型",
+                            title = "Subagent model",
                             summary = secondarySummary,
                             enabled = subagentEnabled,
                             onClick = { showModelSheet = true },
                         )
                         if (effortOptions.size > 1) {
                             OverlayDropdownPreference(
-                                title = "思考强度",
+                                title = "Reasoning level",
                                 items = effortLabels,
                                 selectedIndex = selectedEffortIndex,
                                 enabled = subagentEnabled,
@@ -674,12 +674,12 @@ internal fun SubagentSettingsScreen(
                     ) {
                         if (customProfiles.isEmpty()) {
                             ListEmptyState(
-                                title = "暂无自定义 Subagent",
-                                summary = "可在对话中直接让 Eta 创建专属 Subagent（保存在 agents/<name>.md），或点击右上角 + 手动新建",
+                                title = "No custom subagents yet",
+                                summary = "Ask Jean-Calcul to create a subagent in agents/<name>.md, or tap + to create one",
                                 icon = Icons.Rounded.Extension,
                                 action = {
                                     TextButton(
-                                        text = "新建 Subagent",
+                                        text = "New subagent",
                                         onClick = {
                                             editorError = null
                                             editorDraft = CustomSubagentDraft()
@@ -773,14 +773,14 @@ private fun SubagentProfileDetailContent(
                 if (onDelete != null) {
                     if (uiStyle == AppearanceUiStyle.COUI) {
                         CouiButton(
-                            text = "删除",
+                            text = "Delete",
                             onClick = onDelete,
                             role = CouiButtonRole.Destructive,
                             modifier = Modifier.weight(1f),
                         )
                     } else {
                         TextButton(
-                            text = "删除",
+                            text = "Delete",
                             onClick = onDelete,
                             colors = ButtonDefaults.textButtonColors(
                                 textColor = StatusError,
@@ -792,14 +792,14 @@ private fun SubagentProfileDetailContent(
                 if (onEdit != null) {
                     if (uiStyle == AppearanceUiStyle.COUI) {
                         CouiButton(
-                            text = "编辑",
+                            text = "Edit",
                             onClick = onEdit,
                             role = CouiButtonRole.Primary,
                             modifier = Modifier.weight(1f),
                         )
                     } else {
                         TextButton(
-                            text = "编辑",
+                            text = "Edit",
                             onClick = onEdit,
                             colors = ButtonDefaults.textButtonColorsPrimary(),
                             modifier = Modifier.weight(1f),

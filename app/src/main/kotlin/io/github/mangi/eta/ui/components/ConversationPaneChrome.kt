@@ -307,7 +307,7 @@ private fun PaneBrandHeader(modifier: Modifier = Modifier) {
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                imageVector = ConversationPaneIcons.BrandEta,
+                imageVector = ConversationPaneIcons.BrandJeanCalcul,
                 contentDescription = null,
                 modifier = Modifier.size(ConversationPanelMetrics.BrandIconSize),
                 tint = Color.White,

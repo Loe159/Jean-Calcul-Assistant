@@ -10,31 +10,31 @@ internal object AgentPhoneResultFormatter {
             "list_calendars" -> return calendarCount(json)
             "list_alarms" -> return alarmCount(json)
             "list_active_timers" -> return timerCount(json)
-            "read_note" -> return json.optJSONObject("note")?.let { "已读取便签" }
-            "read_calendar_event" -> return json.optJSONObject("event")?.let { "已读取日程" }
+            "read_note" -> return json.optJSONObject("note")?.let { "Note read" }
+            "read_calendar_event" -> return json.optJSONObject("event")?.let { "Event read" }
         }
         if (json.optString("status") == "dispatched") {
             return when (toolName) {
-                "set_alarm" -> withDetail("已提交闹钟请求", alarmTime(json))
-                "set_timer" -> withDetail("已提交计时请求", timerDuration(json))
+                "set_alarm" -> withDetail("Alarm request submitted", alarmTime(json))
+                "set_timer" -> withDetail("Timer request submitted", timerDuration(json))
                 else -> null
             }
         }
         if (json.opt("verified") != true) return null
         return when (toolName) {
-            "set_alarm" -> withDetail("已创建闹钟", alarmTime(json.optJSONObject("alarm")))
-            "set_timer" -> withDetail("已设置计时器", timerDuration(json.optJSONObject("timer") ?: json))
+            "set_alarm" -> withDetail("Alarm created", alarmTime(json.optJSONObject("alarm")))
+            "set_timer" -> withDetail("Timer set", timerDuration(json.optJSONObject("timer") ?: json))
             "update_alarm_time" -> alarmTimeChange(json)
             "set_alarm_enabled" -> alarmEnabled(json)
-            "delete_alarm" -> withDetail("已删除闹钟", alarmTime(json.optJSONObject("before")))
+            "delete_alarm" -> withDetail("Alarm deleted", alarmTime(json.optJSONObject("before")))
             "create_calendar_event", "create_calendar_events" -> {
                 val count = json.integer("count", 1, 30)
-                if (count != null) "已创建 $count 个日程" else "已创建日程"
+                if (count != null) "Created $count events" else "Event created"
             }
             "update_calendar_event" -> calendarChange(json)
-            "delete_calendar_event" -> "已删除日程"
-            "create_note" -> "已创建便签"
-            "delete_note" -> if (json.optString("mode") == "recycle") "便签已移至回收站" else null
+            "delete_calendar_event" -> "Event deleted"
+            "create_note" -> "Note created"
+            "delete_note" -> if (json.optString("mode") == "recycle") "Note moved to trash" else null
             else -> null
         }
     }
@@ -42,22 +42,22 @@ internal object AgentPhoneResultFormatter {
     private fun calendarCount(json: JSONObject): String? {
         val items = json.optJSONArray("items") ?: return null
         val count = items.length()
-        if (count == 0) return "未找到可用日历"
-        return "找到 $count 个可用日历" + if (json.opt("has_more") == true) " · 还有更多" else ""
+        if (count == 0) return "No available calendars"
+        return "Found $count available calendars" + if (json.opt("has_more") == true) " · more available" else ""
     }
 
     private fun alarmCount(json: JSONObject): String? {
         val items = json.optJSONArray("items") ?: return null
         val count = items.length()
-        if (count == 0) return "暂无闹钟"
-        return "找到 $count 个闹钟" + if (json.opt("has_more") == true) " · 还有更多" else ""
+        if (count == 0) return "No alarms"
+        return "Found $count alarms" + if (json.opt("has_more") == true) " · more available" else ""
     }
 
     private fun timerCount(json: JSONObject): String? {
         val items = json.optJSONArray("items") ?: return null
         val count = items.length()
-        if (count == 0) return "暂无活跃计时器"
-        return "找到 $count 个计时器" + if (json.opt("has_more") == true) " · 还有更多" else ""
+        if (count == 0) return "No active timers"
+        return "Found $count timers" + if (json.opt("has_more") == true) " · more available" else ""
     }
 
     private fun alarmTime(json: JSONObject?): String? {
@@ -69,9 +69,9 @@ internal object AgentPhoneResultFormatter {
     private fun timerDuration(json: JSONObject): String? {
         val seconds = json.integer("duration_seconds", 1, 86400) ?: return null
         return buildList {
-            if (seconds >= 3600) add("${seconds / 3600} 小时")
-            if (seconds % 3600 >= 60) add("${seconds % 3600 / 60} 分钟")
-            if (seconds % 60 > 0) add("${seconds % 60} 秒")
+            if (seconds >= 3600) add("${seconds / 3600} hours")
+            if (seconds % 3600 >= 60) add("${seconds % 3600 / 60} minutes")
+            if (seconds % 60 > 0) add("${seconds % 60} seconds")
         }.joinToString(" ")
     }
 
@@ -80,31 +80,31 @@ internal object AgentPhoneResultFormatter {
         val alarm = json.optJSONObject("alarm")
         val after = alarmTime(alarm)
         val summary = when {
-            before != null && after != null && before == after -> "闹钟时间未变化 · $after"
-            before != null && after != null -> "闹钟时间：$before → $after"
-            else -> withDetail("已更新闹钟时间", after)
+            before != null && after != null && before == after -> "Alarm time unchanged · $after"
+            before != null && after != null -> "Alarm time: $before → $after"
+            else -> withDetail("Alarm time updated", after)
         }
-        return summary + if (alarm?.opt("enabled") == false) " · 未启用" else ""
+        return summary + if (alarm?.opt("enabled") == false) " · disabled" else ""
     }
 
     private fun alarmEnabled(json: JSONObject): String? {
         val alarm = json.optJSONObject("alarm") ?: return null
         val enabled = alarm.opt("enabled") as? Boolean ?: return null
         val before = json.optJSONObject("before")?.opt("enabled") as? Boolean
-        val state = if (enabled) "开启" else "关闭"
-        val summary = if (before == enabled) "闹钟保持$state" else "闹钟已$state"
+        val state = if (enabled) "On" else "Off"
+        val summary = if (before == enabled) "Alarm remains $state" else "Alarm $state"
         return withDetail(summary, alarmTime(alarm))
     }
 
     private fun calendarChange(json: JSONObject): String {
-        val before = json.optJSONObject("before") ?: return "已更新日程"
-        val after = json.optJSONObject("event") ?: return "已更新日程"
+        val before = json.optJSONObject("before") ?: return "Event updated"
+        val after = json.optJSONObject("event") ?: return "Event updated"
         val fields = listOf(
-            "标题" to listOf("title"),
-            "时间" to listOf("dtstart", "dtend", "eventTimezone", "allDay"),
-            "地点" to listOf("eventLocation"),
-            "说明" to listOf("description"),
-            "提醒" to listOf("reminders"),
+            "Title" to listOf("title"),
+            "Time" to listOf("dtstart", "dtend", "eventTimezone", "allDay"),
+            "Location" to listOf("eventLocation"),
+            "Description" to listOf("description"),
+            "Reminder" to listOf("reminders"),
         )
         val changes = fields.mapNotNull { (label, keys) ->
             label.takeIf {
@@ -114,10 +114,10 @@ internal object AgentPhoneResultFormatter {
                 }
             }
         }
-        if (changes.isNotEmpty()) return "已更新日程 · ${changes.joinToString("、")}"
+        if (changes.isNotEmpty()) return "Event updated · ${changes.joinToString("、")}"
         val keys = fields.flatMap { it.second }
         val complete = keys.all { hasComparableCalendarValue(before, it) && hasComparableCalendarValue(after, it) }
-        return if (complete) "日程未变化" else "已更新日程"
+        return if (complete) "Event unchanged" else "Event updated"
     }
 
     private fun hasComparableCalendarValue(json: JSONObject, key: String): Boolean {

@@ -59,7 +59,7 @@ class OpenAiChatToolCallIdsTest {
             val firstCalls = AgentConversationCodec.parseToolCalls(first)
             val history = JSONArray(request.messages.toString())
                 .put(AgentConversationCodec.assistantHistoryMessage(first, firstCalls))
-                .put(AgentConversationCodec.toolResultMessage(firstCalls.single(), AgentModelClient.ToolResult("完成")))
+                .put(AgentConversationCodec.toolResultMessage(firstCalls.single(), AgentModelClient.ToolResult("Done")))
             val (second, secondEvents) = complete(request.copy(messages = history))
             val secondId = AgentConversationCodec.parseToolCalls(second).single().id
 
@@ -70,7 +70,7 @@ class OpenAiChatToolCallIdsTest {
             assertEquals(secondId, AgentConversationCodec.assistantHistoryMessage(second, secondCalls)
                 .getJSONArray("tool_calls").getJSONObject(0).getString("id"))
             assertEquals(secondId, AgentConversationCodec.toolResultMessage(secondCalls.single(),
-                AgentModelClient.ToolResult("完成")).getString("tool_call_id"))
+                AgentModelClient.ToolResult("Done")).getString("tool_call_id"))
         }
     }
 
@@ -159,7 +159,7 @@ class OpenAiChatToolCallIdsTest {
             JSONObject().put("id", id).put("type", "function")
                 .put("function", JSONObject().put("name", "fixture_tool").put("arguments", "{}")),
         )))
-        messages.put(JSONObject().put("role", "tool").put("tool_call_id", id).put("content", "完成"))
+        messages.put(JSONObject().put("role", "tool").put("tool_call_id", id).put("content", "Done"))
     }
 
     private fun delta(index: Int, id: Any?, name: String? = null, arguments: String): JSONObject =

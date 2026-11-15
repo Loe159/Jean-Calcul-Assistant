@@ -398,7 +398,7 @@ internal class AgentLoop(
                                     content = JSONObject()
                                         .put("ok", false)
                                         .put("code", "SUBAGENT_CANCELLED")
-                                        .put("message", "已停止")
+                                        .put("message", "Stopped")
                                         .toString(),
                                 )
                             } else {

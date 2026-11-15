@@ -74,7 +74,7 @@ class AgentRunCheckpointStoreTest {
                 round = 1,
                 toolCallId = "call-1",
                 name = "run_command",
-                resultSummary = "完成",
+                resultSummary = "Done",
                 imageCount = 0,
                 imageBytes = 0,
                 success = true,
@@ -89,7 +89,7 @@ class AgentRunCheckpointStoreTest {
         assertEquals("执行命令 · Android · root", toolStarted.argsPreview)
         assertEquals("uptime", toolStarted.command)
         val toolFinished = restored.events.filterIsInstance<AgentEvent.ToolFinished>().single()
-        assertEquals("完成", toolFinished.resultSummary)
+        assertEquals("Done", toolFinished.resultSummary)
         assertFalse(restored.events.any { event ->
             event is AgentEvent.AssistantBlockDelta &&
                 event.kind == AgentEvent.AssistantBlockKind.TOOL_CALL

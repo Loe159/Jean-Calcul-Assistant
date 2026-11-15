@@ -30,7 +30,7 @@ class AgentContinuationBuilderTest {
         )
         val request = AgentRuntimeWire.RunRequest(
             runId = "run-old",
-            prompt = "观察屏幕",
+            prompt = "Observe screen",
             config = modelConfig(),
             images = listOf(image),
             history = listOf(AgentModelClient.ConversationMessage(role = "user", content = "更早的问题")),
@@ -41,7 +41,7 @@ class AgentContinuationBuilderTest {
             ),
         )
         val response = AgentModelClient.ModelResponse.Text(
-            content = "完成",
+            content = "Done",
             transcript = listOf(
                 AgentModelClient.ConversationMessage(
                     role = "assistant",
@@ -52,7 +52,7 @@ class AgentContinuationBuilderTest {
                     toolCallId = "call-1",
                     content = "{\"ok\":true}",
                 ),
-                AgentModelClient.ConversationMessage(role = "assistant", content = "完成"),
+                AgentModelClient.ConversationMessage(role = "assistant", content = "Done"),
             ),
         )
 
@@ -96,7 +96,7 @@ class AgentContinuationBuilderTest {
             runId = "entry-run", prompt = "开始", config = modelConfig(), images = emptyList(),
         )
         val continuation = AgentContinuationBuilder.build(
-            request, AgentModelClient.ModelResponse.Text("完成"), "继续", newRunId = "next-run",
+            request, AgentModelClient.ModelResponse.Text("Done"), "继续", newRunId = "next-run",
         )
         assertEquals("entry-run", continuation.effectiveModelSessionId)
     }
@@ -108,7 +108,7 @@ class AgentContinuationBuilderTest {
             runId = "run-old", prompt = "续接正文", config = modelConfig(), images = emptyList(),
             handoff = AgentRuntimeWire.EntryHandoff("run-old", AgentRuntimeWire.AGENT_UI_HANDOFF_SOURCE, payload.toJson()),
         )
-        val continuation = AgentContinuationBuilder.build(request, AgentModelClient.ModelResponse.Text("完成"), "继续")
+        val continuation = AgentContinuationBuilder.build(request, AgentModelClient.ModelResponse.Text("Done"), "继续")
         assertEquals("user-run-old-supplement-7", continuation.history.single().messageId)
     }
 

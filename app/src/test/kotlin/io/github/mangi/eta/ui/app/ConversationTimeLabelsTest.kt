@@ -22,7 +22,7 @@ class ConversationTimeLabelsTest {
     fun labelUsesRelativeDayForRecentHistory() {
         val now = millis(2026, Calendar.JULY, 4, 19, 32)
 
-        assertEquals("昨天", label(millis(2026, Calendar.JULY, 3, 23, 59), now))
+        assertEquals("Yesterday", label(millis(2026, Calendar.JULY, 3, 23, 59), now))
         assertEquals("周一", label(millis(2026, Calendar.JUNE, 29, 8, 0), now))
     }
 
@@ -89,7 +89,7 @@ class ConversationTimeLabelsTest {
             locale = locale,
             timeZone = timeZone,
             use24HourClock = true,
-            yesterdayLabel = "昨天",
+            yesterdayLabel = "Yesterday",
             recentLabel = "最近",
         )
 

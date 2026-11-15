@@ -5,6 +5,11 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+val previewVersionCode = providers.gradleProperty("jeancalcul.versionCode").orNull?.toInt() ?: 2030000000
+require(previewVersionCode in 2030000000..2100000000) { "Preview versionCode is out of range" }
+val updateChannel = providers.gradleProperty("jeancalcul.updateChannel").orNull ?: "preview-pr-62"
+require(updateChannel.matches(Regex("[a-z0-9-]+"))) { "Invalid update channel" }
+
 val releaseStoreFile = System.getenv("ETA_RELEASE_STORE_FILE")
 val releaseStorePassword = System.getenv("ETA_RELEASE_STORE_PASSWORD")
 val releaseKeyAlias = System.getenv("ETA_RELEASE_KEY_ALIAS")
@@ -40,8 +45,9 @@ android {
         targetSdk = 37
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // versionCode 规则：yyyyMMdd + 两位当日序号（01 起），发版时随 versionName 一起手动递增。
-        versionCode = 2026111401
-        versionName = "2.0.0-eta"
+        versionCode = previewVersionCode
+        versionName = "2.0.0-preview.$previewVersionCode"
+        buildConfigField("String", "UPDATE_CHANNEL", "\"$updateChannel\"")
 
         ndk {
             // 同时过滤本地与依赖 AAR 的原生库，确保 APK 仅包含 ARM64。
@@ -50,6 +56,12 @@ android {
     }
 
     signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file(".github/preview-signing.jks")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         if (hasReleaseSigning) {
             create("release") {
                 storeFile = file(requireNotNull(releaseStoreFile))
@@ -68,6 +80,7 @@ android {
             isPseudoLocalesEnabled = true
         }
         release {
+            buildConfigField("String", "UPDATE_CHANNEL", "\"\"")
             versionNameSuffix = buildMetadataSuffix
             signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
@@ -91,7 +104,7 @@ android {
     }
 
     androidResources {
-        localeFilters += listOf("en", "b+zh+Hans", "b+zh+Hant")
+        localeFilters += listOf("en")
     }
 
     packaging {

@@ -565,7 +565,7 @@ class AgentRuntimeWireTest {
     fun legacyRunRequestBundleDefaultsBrowserToolsToEnabled() {
         val request = AgentRuntimeWire.RunRequest(
             runId = "run-legacy",
-            prompt = "读取网页",
+            prompt = "Read page",
             config = AgentModelClient.ModelConfig(
                 baseUrl = "https://api.openai.com/v1",
                 apiKey = "test-key",
@@ -593,7 +593,7 @@ class AgentRuntimeWireTest {
     fun legacyRunRequestUsesSafeDeviceToolDefaults() {
         val request = AgentRuntimeWire.RunRequest(
             runId = "run-legacy-device-tools",
-            prompt = "查看设备状态",
+            prompt = "Device status",
             config = AgentModelClient.ModelConfig(
                 baseUrl = "https://api.openai.com/v1",
                 apiKey = "test-key",
@@ -635,7 +635,7 @@ class AgentRuntimeWireTest {
             toolName = "browser_use",
             result = AgentModelClient.ToolResult(content = content.format("false")),
         )
-        assertEquals("失败", failure)
+        assertEquals("Failed", failure)
 
         val success = AgentModelClient.summarizeToolResult(
             toolName = "browser_use",

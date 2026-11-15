@@ -397,7 +397,7 @@ internal class AgentRuntimeRunExecutor(
             cancelled = runController.isCancelled || throwable is AgentRunCancelledException
             val modelFailure = throwable as? AgentModelExecutionException
             val message = if (cancelled) {
-                "已停止"
+                "Stopped"
             } else {
                 throwable.message ?: throwable.javaClass.simpleName
             }

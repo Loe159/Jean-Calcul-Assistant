@@ -72,7 +72,7 @@ class RuntimeRunRegistryTest {
             },
         )
         registry.admit(request) { RuntimeRunRegistry.Run(request, session) }
-        session.complete(AgentRuntimeWire.RunResult("first", true, "完成")) {
+        session.complete(AgentRuntimeWire.RunResult("first", true, "Done")) {
             assertEquals(AgentRuntimeWire.RunPhase.Committing, registry.snapshots().single().phase)
             val busy = registry.admit(request("too-early", "conversation")) { error("提交期间不能创建") }
             assertEquals("CONVERSATION_BUSY", (busy as RuntimeRunRegistry.Admission.Rejected).code)

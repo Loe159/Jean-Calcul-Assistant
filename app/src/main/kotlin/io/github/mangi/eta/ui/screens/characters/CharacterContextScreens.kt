@@ -24,12 +24,12 @@ import top.yukonga.miuix.kmp.basic.TextButton
 internal fun CharacterPersonaScreen(store: CharacterLibraryStore, onBack: () -> Unit) {
     when (LocalUiStyle.current) {
         AppearanceUiStyle.COUI -> {
-            CouiScaffoldPage(title = "我的人设", onBack = onBack) {
-                CharacterPageMessage("设置你在故事中的身份。开始对话时可以选择是否使用；已开始的故事保留当时的人设。")
-                CharacterTextField("称呼", store.personaDraft.name, { store.updatePersona(name = it) }, !store.busy, singleLine = true)
-                CharacterTextField("身份与关系", store.personaDraft.description, { store.updatePersona(description = it) }, !store.busy, minLines = 6)
+            CouiScaffoldPage(title = "My persona", onBack = onBack) {
+                CharacterPageMessage("Set your identity in the story. Choose it when starting a conversation; existing stories keep their original persona.")
+                CharacterTextField("Name", store.personaDraft.name, { store.updatePersona(name = it) }, !store.busy, singleLine = true)
+                CharacterTextField("Identity and relationship", store.personaDraft.description, { store.updatePersona(description = it) }, !store.busy, minLines = 6)
                 CouiButton(
-                    text = "保存人设",
+                    text = "Save persona",
                     onClick = { store.savePersona(onBack) },
                     enabled = !store.busy,
                     role = CouiButtonRole.Primary,
@@ -41,13 +41,13 @@ internal fun CharacterPersonaScreen(store: CharacterLibraryStore, onBack: () -> 
             }
         }
         AppearanceUiStyle.MIUIX -> {
-            MiuixScaffoldPage(title = "我的人设", onBack = onBack, modifier = Modifier.imePadding()) {
-                item { CharacterPageMessage("设置你在故事中的身份。开始对话时可以选择是否使用；已开始的故事保留当时的人设。") }
-                item(key = "name") { CharacterTextField("称呼", store.personaDraft.name, { store.updatePersona(name = it) }, !store.busy, singleLine = true) }
-                item(key = "persona") { CharacterTextField("身份与关系", store.personaDraft.description, { store.updatePersona(description = it) }, !store.busy, minLines = 6) }
+            MiuixScaffoldPage(title = "My persona", onBack = onBack, modifier = Modifier.imePadding()) {
+                item { CharacterPageMessage("Set your identity in the story. Choose it when starting a conversation; existing stories keep their original persona.") }
+                item(key = "name") { CharacterTextField("Name", store.personaDraft.name, { store.updatePersona(name = it) }, !store.busy, singleLine = true) }
+                item(key = "persona") { CharacterTextField("Identity and relationship", store.personaDraft.description, { store.updatePersona(description = it) }, !store.busy, minLines = 6) }
                 item(key = "save") {
                     TextButton(
-                        text = "保存人设",
+                        text = "Save persona",
                         onClick = { store.savePersona(onBack) },
                         enabled = !store.busy,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp),
@@ -63,9 +63,9 @@ internal fun CharacterPersonaScreen(store: CharacterLibraryStore, onBack: () -> 
 internal fun CharacterMemoryScreen(id: String, store: CharacterLibraryStore, onBack: () -> Unit) {
     when (LocalUiStyle.current) {
         AppearanceUiStyle.COUI -> {
-            CouiScaffoldPage(title = "剧情记忆", onBack = onBack) {
-                CharacterPageMessage("记录这个角色的重要经历、关系与约定。它由此角色的各次对话共享，受记忆总开关控制。")
-                CharacterTextField("剧情与关系", store.memoryDraft, store::updateMemory, !store.busy, minLines = 10)
+            CouiScaffoldPage(title = "Story memory", onBack = onBack) {
+                CharacterPageMessage("Record important events, relationships and agreements. Shared across this character's conversations and controlled by the memory switch.")
+                CharacterTextField("Story and relationships", store.memoryDraft, store::updateMemory, !store.busy, minLines = 10)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -73,13 +73,13 @@ internal fun CharacterMemoryScreen(id: String, store: CharacterLibraryStore, onB
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     CouiButton(
-                        text = "重新载入",
+                        text = "Reload",
                         onClick = { store.loadMemory(id, force = true) },
                         enabled = !store.busy,
                         modifier = Modifier.weight(1f),
                     )
                     CouiButton(
-                        text = "保存记忆",
+                        text = "Save memory",
                         onClick = { store.saveMemory(id) },
                         enabled = !store.busy,
                         role = CouiButtonRole.Primary,
@@ -90,10 +90,10 @@ internal fun CharacterMemoryScreen(id: String, store: CharacterLibraryStore, onB
             }
         }
         AppearanceUiStyle.MIUIX -> {
-            MiuixScaffoldPage(title = "剧情记忆", onBack = onBack, modifier = Modifier.imePadding()) {
-                item { CharacterPageMessage("记录这个角色的重要经历、关系与约定。它由此角色的各次对话共享，受记忆总开关控制。") }
+            MiuixScaffoldPage(title = "Story memory", onBack = onBack, modifier = Modifier.imePadding()) {
+                item { CharacterPageMessage("Record important events, relationships and agreements. Shared across this character's conversations and controlled by the memory switch.") }
                 item(key = "memory") {
-                    CharacterTextField("剧情与关系", store.memoryDraft, store::updateMemory, !store.busy, minLines = 10)
+                    CharacterTextField("Story and relationships", store.memoryDraft, store::updateMemory, !store.busy, minLines = 10)
                 }
                 item(key = "actions") {
                     Row(
@@ -101,13 +101,13 @@ internal fun CharacterMemoryScreen(id: String, store: CharacterLibraryStore, onB
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         TextButton(
-                            text = "重新载入",
+                            text = "Reload",
                             onClick = { store.loadMemory(id, force = true) },
                             enabled = !store.busy,
                             modifier = Modifier.weight(1f),
                         )
                         TextButton(
-                            text = "保存记忆",
+                            text = "Save memory",
                             onClick = { store.saveMemory(id) },
                             enabled = !store.busy,
                             modifier = Modifier.weight(1f),

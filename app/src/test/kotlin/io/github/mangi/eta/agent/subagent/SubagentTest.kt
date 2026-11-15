@@ -267,7 +267,7 @@ class SubagentTest {
                 SubagentStepSnapshot(
                     id = "tool-1-tc1",
                     kind = SubagentStepSnapshot.KIND_TOOL,
-                    title = "查询便签",
+                    title = "Search notes",
                     detail = "",
                     status = SubagentStepSnapshot.STATUS_RUNNING,
                     toolName = "search_notes",

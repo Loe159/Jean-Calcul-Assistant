@@ -120,13 +120,13 @@ class AgentConversationBranchPersistenceTest {
     fun roleplayCandidatesBlockLinksAndGreetingRemainIndependentAcrossRepeatedBranches() = runBlocking {
         val binding = RoleplayBinding(characterId = "character", characterName = "旅人", userName = "朋友", userDescription = "同行者",
             cardSnapshotJson = CharacterCardCodec.encodeJson(CharacterCardCodec.create("旅人")))
-        val journal = listOf(ConversationMessage("assistant", "开场白", messageId = "greeting-source"),
+        val journal = listOf(ConversationMessage("assistant", "Greeting", messageId = "greeting-source"),
             ConversationMessage("user", "出发", messageId = "user-0"),
             ConversationMessage("assistant", "第一块\n\n第二块", messageId = "assistant-0"),
             ConversationMessage("user", "后续问题", messageId = "user-1"),
             ConversationMessage("assistant", "后续回答", messageId = "assistant-1"))
         var source = conversation(0).copy(roleplay = binding, history = journal, journal = journal,
-            messages = listOf(AgentMessageUi("greeting-source", "开场白"), UserMessageUi("user-0", "出发"),
+            messages = listOf(AgentMessageUi("greeting-source", "Greeting"), UserMessageUi("user-0", "出发"),
                 AgentMessageUi("assistant-0-0", "第一块"), AgentMessageUi("assistant-0-1", "第二块"),
                 UserMessageUi("user-1", "后续问题"), AgentMessageUi("assistant-1-0", "后续回答")),
             roleplayMessages = RoleplayMessageState(links = mapOf(
@@ -159,7 +159,7 @@ class AgentConversationBranchPersistenceTest {
 
         val greeting = persistence.branch(context, "child", child.messages.first().id, "greeting-child", "开场分支", 4L)
         assertEquals(1, greeting.messages.size)
-        assertEquals("开场白", greeting.history.single().content)
+        assertEquals("Greeting", greeting.history.single().content)
     }
 
     @Test

@@ -96,7 +96,7 @@ class ConversationPanePanelTest {
                     ConversationSummaryUi(
                         id = "conv-today",
                         title = "你好，你是谁呀",
-                        preview = "我是 Eta",
+                        preview = "我是 Jean-Calcul",
                         timeLabel = "今天",
                         updatedAtMillis = System.currentTimeMillis(),
                         mode = ConversationModeUi.Chat,
@@ -107,7 +107,7 @@ class ConversationPanePanelTest {
                         id = "conv-role",
                         title = "清晨咖啡馆",
                         preview = "早安",
-                        timeLabel = "昨天",
+                        timeLabel = "Yesterday",
                         updatedAtMillis = 1_000L,
                         mode = ConversationModeUi.Chat,
                         characterName = "林岚",

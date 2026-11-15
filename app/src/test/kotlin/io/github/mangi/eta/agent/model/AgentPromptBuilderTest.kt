@@ -49,7 +49,7 @@ class AgentPromptBuilderTest {
             rootAvailable = false,
             executionContext = TerminalExecutionContext(TerminalEnvironment.DEBIAN, null, "/eta/custom workspace"),
         )
-        val terminal = messages.systemContents().single { it.contains("Eta 内置文件与终端工具") }
+        val terminal = messages.systemContents().single { it.contains("Jean-Calcul 内置文件与终端工具") }
         assertTrue(terminal.contains("/eta/custom workspace"))
         assertFalse(terminal.contains("debian"))
         assertTrue(terminal.contains("identity=user"))
@@ -79,7 +79,7 @@ class AgentPromptBuilderTest {
                 )
 
                 val identity = messages.systemContents().single { it.contains("当前配置的模型：") }
-                assertFalse(messages.systemContents().any { it.contains("你是 Eta") })
+                assertFalse(messages.systemContents().any { it.contains("你是 Jean-Calcul") })
                 assertTrue(identity.contains("当前配置的模型：\"$modelId\""))
                 assertFalse(identity.contains(config.modelDisplayName))
                 if (modelId != config.model) assertFalse(identity.contains(config.model))
@@ -180,7 +180,7 @@ class AgentPromptBuilderTest {
                 terminalTools = false,
                 browserTools = true,
             ),
-            prompt = "读取网页",
+            prompt = "Read page",
             images = emptyList(),
             history = emptyList(),
             skillContext = SkillContext(installedSkills = listOf(skill)),
@@ -197,7 +197,7 @@ class AgentPromptBuilderTest {
         assertTrue(skillMessage.contains("capabilities=scripts, assets"))
         assertTrue(skillMessage.contains("description=检查屏幕 并输出 结论"))
         assertTrue(skillMessage.contains("先调用 skills_read"))
-        assertEquals("读取网页", messages.getJSONObject(4).getString("content"))
+        assertEquals("Read page", messages.getJSONObject(4).getString("content"))
     }
 
     @Test

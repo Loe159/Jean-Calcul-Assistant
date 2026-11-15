@@ -19,8 +19,8 @@ class LocaleResourcesTest {
     @Test
     fun supportedLocalesSelectExpectedResourcesAndOthersFallBackToEnglish() {
         assertEquals("Settings", localizedString("en-US", R.string.route_settings))
-        assertEquals("设置", localizedString("zh-CN", R.string.route_settings))
-        assertEquals("设置", localizedString("zh-SG", R.string.route_settings))
+        assertEquals("Settings", localizedString("zh-CN", R.string.route_settings))
+        assertEquals("Settings", localizedString("zh-SG", R.string.route_settings))
         assertEquals("設定", localizedString("zh-TW", R.string.route_settings))
         assertEquals("設定", localizedString("zh-HK", R.string.route_settings))
         assertEquals("昨日", localizedString("zh-TW", R.string.time_yesterday))
@@ -39,9 +39,9 @@ class LocaleResourcesTest {
         assertEquals("当前设备", localizedString("zh-CN", R.string.capability_current_device))
         assertEquals("目前裝置", localizedString("zh-TW", R.string.capability_current_device))
         assertEquals("Current device", localizedString("fr-FR", R.string.capability_current_device))
-        assertEquals("Eta is running", localizedString("en-US", R.string.execution_title))
-        assertEquals("Eta 正在运行", localizedString("zh-CN", R.string.execution_title))
-        assertEquals("Eta 正在執行", localizedString("zh-TW", R.string.execution_title))
+        assertEquals("Jean-Calcul is running", localizedString("en-US", R.string.execution_title))
+        assertEquals("Jean-Calcul 正在运行", localizedString("zh-CN", R.string.execution_title))
+        assertEquals("Jean-Calcul 正在執行", localizedString("zh-TW", R.string.execution_title))
         assertEquals("Environment configuration", localizedString("en-US", R.string.linux_environment_configuration))
         assertEquals("环境配置", localizedString("zh-CN", R.string.linux_environment_configuration))
         assertEquals("環境設定", localizedString("zh-TW", R.string.linux_environment_configuration))
@@ -58,11 +58,11 @@ class LocaleResourcesTest {
         assertEquals("全局浮窗助手", localizedString("zh-CN", R.string.assistant_overlay_settings_title))
         assertEquals("全域浮窗助手", localizedString("zh-TW", R.string.assistant_overlay_settings_title))
         assertEquals(
-            "1 task is running. Return to Eta to check progress.",
+            "1 task is running. Return to Jean-Calcul to check progress.",
             localizedQuantity("en-US", R.plurals.execution_summary, 1),
         )
         assertEquals(
-            "2 tasks are running. Return to Eta to check progress.",
+            "2 tasks are running. Return to Jean-Calcul to check progress.",
             localizedQuantity("en-US", R.plurals.execution_summary, 2),
         )
         assertEquals(

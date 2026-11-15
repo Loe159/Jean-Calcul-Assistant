@@ -80,8 +80,6 @@ import io.github.mangi.eta.config.Prefs
 import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.data.repository.ProviderRepository
 import io.github.mangi.eta.data.repository.RuntimeConfigRepository
-import io.github.mangi.eta.data.update.AppLatestRelease
-import io.github.mangi.eta.data.update.AppUpdateChecker
 import io.github.mangi.eta.systemizer.GoogleAppSystemizerInstaller
 import io.github.mangi.eta.systemizer.RootManager
 import io.github.mangi.eta.systemizer.SystemizerInstallResult
@@ -217,31 +215,9 @@ private fun SettingsPageContent(
     val openUrl: (String) -> Unit = { url ->
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     }
-    var checkingUpdate by remember { mutableStateOf(false) }
-    var availableUpdate by remember { mutableStateOf<AppLatestRelease?>(null) }
+    val checkingUpdate = false
     val checkForUpdate: () -> Unit = {
-        if (!checkingUpdate) {
-            checkingUpdate = true
-            coroutineScope.launch {
-                val release = runCatching {
-                    withContext(Dispatchers.IO) { AppUpdateChecker.fetchLatest() }
-                }.getOrNull()
-                checkingUpdate = false
-                when {
-                    release == null -> Toast.makeText(
-                        context.applicationContext,
-                        context.getString(R.string.ui_update_check_failed),
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                    AppUpdateChecker.isNewer(release.version, appVersionName) -> availableUpdate = release
-                    else -> Toast.makeText(
-                        context.applicationContext,
-                        context.getString(R.string.ui_update_already_latest),
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                }
-            }
-        }
+        io.github.mangi.eta.data.update.PreviewUpdates.check(context, manual = true)
     }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -1088,40 +1064,6 @@ private fun SettingsPageContent(
         },
     )
 
-    availableUpdate?.let { update ->
-        when (LocalUiStyle.current) {
-            AppearanceUiStyle.COUI -> {
-                CouiConfirmDialog(
-                    visible = true,
-                    title = stringResource(R.string.ui_update_available_title),
-                    message = stringResource(R.string.ui_update_available_message, update.version, appVersionName),
-                    confirmText = stringResource(R.string.ui_update_go_download),
-                    onConfirm = {
-                        availableUpdate = null
-                        openUrl(update.url)
-                    },
-                    onDismissRequest = { availableUpdate = null },
-                )
-            }
-            AppearanceUiStyle.MIUIX -> {
-                WindowDialog(
-                    show = true,
-                    title = stringResource(R.string.ui_update_available_title),
-                    summary = stringResource(R.string.ui_update_available_message, update.version, appVersionName),
-                    onDismissRequest = { availableUpdate = null },
-                ) {
-                    MiuixDialogActions(
-                        confirmText = stringResource(R.string.ui_update_go_download),
-                        onCancel = { availableUpdate = null },
-                        onConfirm = {
-                            availableUpdate = null
-                            openUrl(update.url)
-                        },
-                    )
-                }
-            }
-        }
-    }
 }
 
 @Composable
@@ -1257,7 +1199,7 @@ private fun PowerAssistantTarget.displayName(context: Context): String =
     when (this) {
         PowerAssistantTarget.OEM -> context.getString(R.string.power_assistant_system_default)
         PowerAssistantTarget.GEMINI -> "Gemini"
-        PowerAssistantTarget.ETA -> "Eta"
+        PowerAssistantTarget.ETA -> "Jean-Calcul"
     }
 
 private fun isAgentAccessibilityEnabled(context: Context): Boolean {

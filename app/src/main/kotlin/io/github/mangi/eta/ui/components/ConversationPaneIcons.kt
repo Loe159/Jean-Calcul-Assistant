@@ -16,25 +16,15 @@ import androidx.compose.ui.unit.dp
 internal object ConversationPaneIcons {
     private const val STROKE = 1.75f
 
-    /**
-     * Eta（η）专属品牌几何标识：左上起笔带轻盈弧挑，拱肩顺滑延展为修长右笔。
-     * 配合实色圆形印章作为反白核心图形，避免与通用星芒图标撞脸。
-     */
-    val BrandEta: ImageVector by lazy {
-        vector24("PaneBrandEta") {
-            path(
-                stroke = SolidColor(Color.Black),
-                strokeLineWidth = 2.3f,
-                strokeLineCap = StrokeCap.Round,
-                strokeLineJoin = StrokeJoin.Round,
-            ) {
-                moveTo(6.1f, 7.6f)
-                quadTo(7.4f, 5.8f, 8.0f, 7.4f)
-                lineTo(8.0f, 15.6f)
-                moveTo(8.0f, 10.4f)
-                curveTo(8.4f, 6.7f, 11.3f, 5.6f, 13.8f, 6.4f)
-                curveTo(15.7f, 7.0f, 16.4f, 8.6f, 16.4f, 11.2f)
-                lineTo(16.4f, 18.5f)
+    /** Jean-Calcul JC monogram, matching the launcher identity. */
+    val BrandJeanCalcul: ImageVector by lazy {
+        vector24("PaneBrandJeanCalcul") {
+            path(stroke = SolidColor(Color.Black), strokeLineWidth = 2f,
+                strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round) {
+                moveTo(5f, 5f); lineTo(10f, 5f); lineTo(10f, 15f)
+                curveTo(10f, 20f, 3f, 20f, 3f, 15f)
+                moveTo(21f, 7f); curveTo(17f, 3f, 14f, 5f, 14f, 9f)
+                lineTo(14f, 15f); curveTo(14f, 19f, 18f, 21f, 21f, 17f)
             }
         }
     }

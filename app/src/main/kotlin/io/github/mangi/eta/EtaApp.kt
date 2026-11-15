@@ -67,7 +67,7 @@ class EtaApp : Application(), XposedServiceHelper.OnServiceListener {
                 SpeechOssUpload(this@EtaApp).retryPending(this@EtaApp)
             } catch (error: Exception) {
                 if (error is kotlinx.coroutines.CancellationException) throw error
-                AndroidAgentLogger.warn("Eta speech cleanup unavailable: type=${error.javaClass.simpleName}")
+                AndroidAgentLogger.warn("Jean-Calcul speech cleanup unavailable: type=${error.javaClass.simpleName}")
             }
         }
         applicationScope.launch {

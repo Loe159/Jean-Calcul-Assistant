@@ -71,7 +71,7 @@ internal class SpeechPlaybackController(
                 if (error is CancellationException && error !is kotlinx.coroutines.TimeoutCancellationException) throw error
                 if (session == generation) {
                     val failure = error.speechFailure()
-                    AndroidAgentLogger.warn("Eta speech playback failed: code=${failure.code} type=${error.javaClass.simpleName}")
+                    AndroidAgentLogger.warn("Jean-Calcul speech playback failed: code=${failure.code} type=${error.javaClass.simpleName}")
                     stop()
                     mutableState.value = SpeechPlaybackState(error = failure.userMessage)
                 }
@@ -115,7 +115,7 @@ internal class SpeechPlaybackController(
                     } catch (error: Exception) {
                         if (error is CancellationException && error !is kotlinx.coroutines.TimeoutCancellationException) throw error
                         if (streamed) throw error
-                        AndroidAgentLogger.warn("Eta speech stream unavailable, using segments: code=${error.speechFailure().code}")
+                        AndroidAgentLogger.warn("Jean-Calcul speech stream unavailable, using segments: code=${error.speechFailure().code}")
                         ahead.release()
                     }
                 }

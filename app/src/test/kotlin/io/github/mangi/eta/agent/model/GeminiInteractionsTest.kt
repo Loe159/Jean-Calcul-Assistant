@@ -56,7 +56,7 @@ class GeminiInteractionsTest {
     fun thoughtSummaryStartAndDeltaReachVisibleThinkingWithoutExposingSignature() {
         val events = mutableListOf<ProviderEvent>()
         val result = read(
-            start(0, """{"type":"thought","summary":[{"type":"text","text":"检查"}]}""") +
+            start(0, """{"type":"thought","summary":[{"type":"text","text":"Check"}]}""") +
                 delta(0, """{"type":"thought_summary","content":{"type":"text","text":"条件"}}""") +
                 delta(0, """{"type":"thought_signature","signature":"opaque-fixture"}""") + stop(0) +
                 start(1, """{"type":"model_output","content":[{"type":"text","text":"答案"}]}""") +
@@ -64,7 +64,7 @@ class GeminiInteractionsTest {
         )
         assertEquals("检查条件", result.getString("reasoning_content"))
         assertEquals("答案", result.getString("content"))
-        assertEquals(listOf("检查", "条件"), events.filterIsInstance<ProviderEvent.BlockDelta>()
+        assertEquals(listOf("Check", "条件"), events.filterIsInstance<ProviderEvent.BlockDelta>()
             .filter { it.kind == AssistantBlockKind.THINKING }.map { it.delta })
         assertFalse(events.toString().contains("opaque-fixture"))
     }
@@ -157,7 +157,7 @@ class GeminiInteractionsTest {
             .put("usage", JSONObject().put("total_tokens", 125).put("total_input_tokens", 100)))) +
             start(0, """{"type":"model_output"}""") +
             event(JSONObject().put("event_type", "step.delta").put("index", 0)
-                .put("delta", JSONObject().put("type", "text").put("text", "完成"))
+                .put("delta", JSONObject().put("type", "text").put("text", "Done"))
                 .put("metadata", JSONObject().put("total_usage", JSONObject().put("total_cached_tokens", 60)))) +
             event(JSONObject().put("event_type", "step.stop").put("index", 0)
                 .put("usage", JSONObject().put("total_output_tokens", 20))) +
@@ -174,7 +174,7 @@ class GeminiInteractionsTest {
     @Test
     fun totalOnlyUsageDoesNotInventInputTokensAndToolTurnsStillPublishUsage() {
         val totalOnly = mutableListOf<ProviderEvent>()
-        read(start(0, """{"type":"model_output","content":[{"type":"text","text":"完成"}]}""") +
+        read(start(0, """{"type":"model_output","content":[{"type":"text","text":"Done"}]}""") +
             stop(0) + complete("completed", JSONObject().put("total_tokens", 125)), totalOnly)
         val total = totalOnly.filterIsInstance<ProviderEvent.Usage>().single()
         assertEquals(125, total.usage.contextTokens)
@@ -268,9 +268,9 @@ class GeminiInteractionsTest {
         assertEquals("中😀 [[1]](<https://example.test/source>)文", formatted)
         annotation.put("end_index", 5)
         val fallback = GeminiCitationFormatter.apply(text, JSONArray().put(annotation))
-        assertTrue(fallback.startsWith("中😀文\n\n来源："))
+        assertTrue(fallback.startsWith("中😀文\n\nSource: "))
         annotation.put("end_index", 4_294_967_296L)
-        assertTrue(GeminiCitationFormatter.apply(text, JSONArray().put(annotation)).startsWith("中😀文\n\n来源："))
+        assertTrue(GeminiCitationFormatter.apply(text, JSONArray().put(annotation)).startsWith("中😀文\n\nSource: "))
     }
 
     @Test
@@ -381,7 +381,7 @@ class GeminiInteractionsTest {
         val authorization = AtomicReference<String>()
         val accept = AtomicReference<String>()
         val contentType = AtomicReference<String>()
-        withServer(200, textResponse("完成"), { body, headers ->
+        withServer(200, textResponse("Done"), { body, headers ->
             requestBody.set(body)
             apiKey.set(headers.getFirst("x-goog-api-key"))
             authorization.set(headers.getFirst("Authorization"))
@@ -395,7 +395,7 @@ class GeminiInteractionsTest {
                     JSONArray().put(AgentConversationCodec.userTextMessage("问题")), JSONArray()),
                 AgentRunController(),
             )
-            assertEquals("完成", result.assistantMessage.getString("content"))
+            assertEquals("Done", result.assistantMessage.getString("content"))
         }
         assertEquals("test-key", apiKey.get())
         assertEquals(null, authorization.get())
