@@ -170,3 +170,8 @@ Le profil complet dispose de 4 Gio de RAM invitée. En diagnostic, `logcat` est
 filtré sur l’UID exact de la seule application synthétique ; aucun flux global
 ni compte personnel n’est lu. Le rapport distingue la mémoire hôte, la mémoire
 invitée disponible et la perte du transport ADB d’un arrêt du processus émulateur.
+
+Le rendu logiciel utilise désormais `swangle` (ANGLE + SwiftShader), après un
+SIGSEGV du processus émulateur dans le chemin GLES SwiftShader classique. Ce
+changement concerne le moteur de l’émulateur, sans désactiver les effets de l’app.
+[Modes documentés par Android](https://developer.android.com/studio/run/emulator-acceleration).

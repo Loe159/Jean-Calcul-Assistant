@@ -195,6 +195,7 @@ def main():
                           + '\n' + '\n'.join(f'{key}={value}' for key, value in display_config.items()) + '\n')
         # Same 411 x 731 dp viewport as 1080 x 1920 @ 420 dpi, with 56% fewer pixels.
         report['display'] = {'pixels': [720, 1280], 'density': 280, 'dp': [411, 731]}
+        report['graphics_backend'] = 'swangle'
         # Compile and run JVM/lint before the emulator consumes memory. In particular,
         # dexing/lint must not compete with Android on small CI runners.
         print('Building APKs and running JVM/lint before starting Android…', flush=True)
@@ -216,7 +217,7 @@ def main():
         save()
         log = (out / 'logs/emulator-local.txt').open('w')
         cmd = [emulator_bin, '-avd', name, '-port', str(args.port), '-wipe-data', '-no-snapshot',
-               '-no-metrics', '-no-audio', '-no-boot-anim', '-gpu', 'swiftshader',
+               '-no-metrics', '-no-audio', '-no-boot-anim', '-gpu', 'swangle',
                '-feature', '-Vulkan', '-skin', '720x1280', '-memory', '4096', '-cores', '2']
         if args.software_emulator:
             env['ANDROID_I_WANT_MY_TCG'] = 'yes'
