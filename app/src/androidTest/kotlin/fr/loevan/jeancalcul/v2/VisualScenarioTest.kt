@@ -114,6 +114,12 @@ class VisualScenarioTest {
                             if (!imeVisible) SystemClock.sleep(100)
                         }
                         assertTrue("The keyboard scenario requires a visible system IME", imeVisible)
+                        val imePackage = android.provider.Settings.Secure.getString(
+                            context.contentResolver, android.provider.Settings.Secure.DEFAULT_INPUT_METHOD,
+                        )?.substringBefore('/') ?: error("The emulator must have a configured keyboard")
+                        assertTrue("The keyboard must expose actual keys, not just reserve IME space",
+                            device.wait(Until.hasObject(By.pkg(imePackage).descStartsWith("q")), 15000) ||
+                                device.hasObject(By.pkg(imePackage).text("q")))
                     }
                     "regression_fixture" -> activity.onActivity { current ->
                         (current.window.decorView as ViewGroup).addView(View(current).apply { setBackgroundColor(Color.RED) }, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 500))
