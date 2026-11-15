@@ -1,6 +1,7 @@
 package io.github.mangi.eta.agent.development
 
-import io.github.mangi.eta.agent.model.AgentModelClient
+import io.github.mangi.eta.agent.model.*
+import io.github.mangi.eta.agent.runtime.AgentRunController
 import okhttp3.Request
 import org.json.JSONObject
 import org.junit.Assert.*
@@ -42,7 +43,35 @@ class DevelopmentToolsTest {
             responses.removeFirst()
         }
         val tools = DevelopmentTools(state, client, "fixture-run", "Here, capitalize the label", "Settings", true)
-        val result = tools.execute(call(args("propose")))
+        var executed: AgentModelClient.ToolResult? = null
+        var rounds = 0
+        val provider = object : AgentProviderClient {
+            override val id = "development-fixture"
+            override val capabilities = OpenAiChatCompletionsProvider.capabilities
+            override fun complete(request: ProviderRequest, runController: AgentRunController, onEvent: (ProviderEvent) -> Unit): ProviderResponse {
+                rounds++
+                assertTrue((0 until request.tools.length()).any { request.tools.getJSONObject(it).getJSONObject("function").getString("name") == DevelopmentPolicy.TOOL })
+                return if (rounds == 1) {
+                    assertTrue(request.messages.toString().contains("private-fixture-app-context"))
+                    ProviderResponse(JSONObject().put("role", "assistant").put("content", "")
+                        .put("tool_calls", org.json.JSONArray().put(JSONObject().put("id", "develop-fixture").put("type", "function")
+                            .put("function", JSONObject().put("name", DevelopmentPolicy.TOOL).put("arguments", args("propose").toString()))))
+                        .put("finish_reason", "tool_calls"))
+                } else {
+                    assertTrue(request.messages.toString().contains("/pull/63"))
+                    ProviderResponse(JSONObject().put("role", "assistant").put("content", "PR ready").put("finish_reason", "stop"))
+                }
+            }
+        }
+        val completed = AgentModelClient.complete(
+            config = AgentModelClient.ModelConfig(baseUrl = "http://127.0.0.1:8000/v1", model = "fixture", browserTools = false),
+            prompt = "Here, capitalize the label", provider = provider,
+            additionalTools = org.json.JSONArray().put(DevelopmentTools.schema()), assistantScreenContext = "private-fixture-app-context",
+            toolExecutor = AgentModelClient.ToolExecutor { tools.execute(it).also { result -> executed = result } },
+        )
+        assertEquals("PR ready", completed.content)
+        assertEquals(2, rounds)
+        val result = executed!!
         assertTrue(JSONObject(result.content).getBoolean("ok"))
         assertTrue(result.sensitive)
         assertEquals(63, state.proposal()!!.getInt("number"))
@@ -50,7 +79,7 @@ class DevelopmentToolsTest {
         assertEquals(1, seen.count { it.url.encodedPath.endsWith("/pulls") && it.method == "POST" })
         assertTrue(bodies.any { it.contains("Tools") })
         assertFalse(result.content.contains(state.token()!!))
-        assertFalse(bodies.any { it.contains("data:image") || it.contains("assistant_screen_context") })
+        assertFalse(bodies.any { it.contains("data:image") || it.contains("assistant_screen_context") || it.contains("private-fixture-app-context") })
         assertTrue(responses.isEmpty())
     }
     @Test fun changedSourceAndDisabledContextCannotWrite() {
@@ -68,6 +97,13 @@ class DevelopmentToolsTest {
         val count = requests.size
         assertFalse(JSONObject(denied.execute(call(args("propose"))).content).getBoolean("ok"))
         assertEquals(count, requests.size)
+    }
+    @Test fun logDownloadsOnlyAcceptGithubActionsStorageWithoutUserInfoOrInsecureSchemes() {
+        assertTrue(DevelopmentGitHubClient.trustedLogHost("https://fixture.blob.core.windows.net/job/log?sig=fixture"))
+        assertTrue(DevelopmentGitHubClient.trustedLogHost("https://pipelines.actions.githubusercontent.com/job/log"))
+        for (url in listOf("https://evil.example/log", "http://fixture.blob.core.windows.net/log", "https://fixture.blob.core.windows.net.evil.example/log", "https://user@fixture.blob.core.windows.net/log")) {
+            assertFalse(DevelopmentGitHubClient.trustedLogHost(url))
+        }
     }
     @Test fun cannotMergeAPrWhoseHeadChangedAfterUserReview() {
         val state = State()

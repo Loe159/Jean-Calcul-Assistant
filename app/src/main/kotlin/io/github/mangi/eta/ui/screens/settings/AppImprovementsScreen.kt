@@ -83,8 +83,8 @@ internal fun AppImprovementsScreen(onBack: () -> Unit) {
                             DevelopmentMonitor.start(context)
                         } })
                 }
-                CouiPreference(title = "Create a repository-scoped token", summary = "Only this repository: Contents and Pull requests read/write; Actions read. Workflows permission is unnecessary.", onClick = {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/settings/personal-access-tokens/new?name=Jean-Calcul&description=In-app%20improvements&target_name=Loe159&contents=write&pull_requests=write&actions=read")))
+                CouiPreference(title = "Create a repository-scoped token", summary = "Only this repository: Contents and Pull requests read/write; Actions and Checks read. Workflows permission is unnecessary.", onClick = {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/settings/personal-access-tokens/new?name=Jean-Calcul&description=In-app%20improvements&target_name=Loe159&contents=write&pull_requests=write&actions=read&checks=read")))
                 })
             } else CouiPreference(title = "Disconnect GitHub", summary = "Removes the encrypted token and disables new code changes", onClick = { action {
                 withContext(Dispatchers.IO) { store.disconnect() }; connected = false; message = "GitHub disconnected"

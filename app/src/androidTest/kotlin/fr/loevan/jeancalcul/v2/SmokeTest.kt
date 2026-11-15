@@ -77,7 +77,7 @@ class SmokeTest {
                 assertNotNull(snapshot.image)
                 assertEquals("Home", snapshot.appScreen)
                 assertTrue(snapshot.text.contains("Jean-Calcul"))
-                val config = io.github.mangi.eta.agent.model.AgentModelClient.ModelConfig()
+                val config = io.github.mangi.eta.agent.model.AgentModelClient.loadConfig()
                 val request = io.github.mangi.eta.agent.runtime.AgentRuntimeWire.RunRequest(
                     runId = "synthetic-improvement", prompt = "There is a bug here", config = config,
                     images = emptyList(), appDevelopmentScreen = snapshot.appScreen,

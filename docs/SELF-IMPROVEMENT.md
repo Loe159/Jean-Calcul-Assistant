@@ -8,7 +8,7 @@ Install the new signed preview through **Check for updates**. Open **Settings > 
 
 - Contents: read/write.
 - Pull requests: read/write.
-- Actions: read.
+- Actions and Checks: read.
 - Metadata: GitHub grants this automatically.
 
 The token remains in the existing Android Keystore encrypted store. It is not sent to ChatGPT/vLLM, source files, APKs or workflow secrets. Disconnect removes it and disables development actions. No OpenAI API key or paid cloud coding service is required: the already configured model performs the code work through bounded GitHub tools.
@@ -33,7 +33,7 @@ The trusted screen identity is carried separately over the existing IPC; externa
 
 - The agent edits text source/tests/docs and app build settings, not workflows, credentials, native binaries or arbitrary repositories. It works from the installed source revision so a bootstrap preview retains its own feature code even before its PR is merged.
 - Exact blob revisions and unique before/after edits prevent silent overwrites. An interrupted PR publication resumes the same branch. One open improvement PR is tracked at a time.
-- CI failure leaves the previous working channel intact. Open PR/build results for diagnostics and ask the assistant to revise; this version does not launch a second unattended coding run after a failed workflow.
+- CI failure leaves the previous working channel intact. The agent can read bounded, redacted failed-job logs with its GitHub tool. Open PR/build results or ask the assistant to revise; this version does not launch a second unattended coding run after a failed workflow.
 - The preview channel retains its `preview-pr-62` URL for compatibility with installed builds; foundation and `self-improve/**` pushes now publish to it. Publishing is serialized and version codes cannot go backwards. The manifest version is the actual build job's output, including publish-job retries.
 - While an improvement PR is active, its source commit must match the update manifest before the APK is offered. Closed/merged requests stop pinning the channel.
 - Android always requires user approval to install. Background process termination can delay monitoring until reopening the app. Technical screenshots/tests are not native visual approval or proof of real account/device behavior.

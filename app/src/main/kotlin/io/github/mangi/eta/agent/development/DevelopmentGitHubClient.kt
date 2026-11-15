@@ -29,6 +29,25 @@ internal class DevelopmentGitHubClient(
         return if (text.trimStart().startsWith('[')) JSONObject().put("items", JSONArray(text)) else JSONObject(text)
     }
 
+    fun buildLog(proposal: JSONObject): JSONObject {
+        val matching = runs(proposal.getString("branch"))
+        val run = (0 until matching.length()).map(matching::getJSONObject)
+            .filter { it.optString("head_sha") == proposal.getString("head") }
+            .maxByOrNull { it.optLong("id") } ?: error("No build has started for this source revision")
+        val jobs = api("/actions/runs/${run.getLong("id")}/jobs?per_page=100").getJSONArray("jobs")
+        val job = (0 until jobs.length()).map(jobs::getJSONObject)
+            .firstOrNull { it.optString("conclusion") == "failure" }
+            ?: return DevelopmentPolicy.status(true, "No failed job is available; the build may still be running")
+        val credential = token() ?: error("GitHub is disconnected")
+        val request = Request.Builder().url("https://api.github.com/repos/${DevelopmentPolicy.REPOSITORY}/actions/jobs/${job.getLong("id")}/logs")
+            .header("Authorization", "Bearer $credential").header("Accept", "application/vnd.github+json").build()
+        val text = downloadLog(request)
+            .replace(Regex("github_pat_[A-Za-z0-9_]+|gh[pousr]_[A-Za-z0-9_]+|sk-[A-Za-z0-9_-]{12,}"), "[redacted]")
+            .replace(Regex("(?i)authorization[:=] *bearer +\\S+"), "Authorization: Bearer [redacted]")
+        return JSONObject().put("ok", true).put("revision", proposal.getString("head")).put("run_url", run.getString("html_url"))
+            .put("job", job.getString("name")).put("log_tail", text)
+    }
+
     fun revision(ref: String): JSONObject {
         require(ref == DevelopmentPolicy.BASE || ref.matches(Regex("[0-9a-f]{40}")) ||
             runCatching { DevelopmentPolicy.requireBranch(ref) }.isSuccess) { "Invalid source ref" }
@@ -89,6 +108,36 @@ internal class DevelopmentGitHubClient(
         private val client by lazy { AgentHttpClient.client.newBuilder().followRedirects(false).followSslRedirects(false)
             .callTimeout(60, TimeUnit.SECONDS).retryOnConnectionFailure(false).build() }
         private fun encode(value: String): String = java.net.URLEncoder.encode(value, "UTF-8").replace("+", "%20")
+        internal fun trustedLogHost(url: String): Boolean = runCatching {
+            val parsed = url.toHttpUrl()
+            parsed.scheme == "https" && parsed.port == 443 && parsed.username.isEmpty() && parsed.password.isEmpty() &&
+                (parsed.host.endsWith(".blob.core.windows.net") || parsed.host.endsWith(".actions.githubusercontent.com"))
+        }.getOrDefault(false)
+
+        private fun downloadLog(request: Request): String {
+            try {
+                return client.newCall(request).execute().use { response ->
+                    fun tail(body: okhttp3.ResponseBody?): String {
+                        val data = body?.byteStream()?.readNBytes(4 * 1024 * 1024 + 1) ?: error("No job log was returned")
+                        val partial = data.size > 4 * 1024 * 1024
+                        return (if (partial) "[Download bounded to 4 MiB; later log data may be missing]\n" else "[Last 24000 characters of job log]\n") +
+                            data.toString(Charsets.UTF_8).takeLast(24000)
+                    }
+                    if (response.isSuccessful) tail(response.body)
+                    else {
+                        require(response.code in 300..399) { "Job logs are not available yet" }
+                        val location = response.header("Location") ?: error("GitHub did not provide a log download")
+                        require(trustedLogHost(location)) { "Untrusted GitHub log download host" }
+                        // A new request prevents the GitHub token from being forwarded to the signed storage URL.
+                        client.newCall(Request.Builder().url(location).build()).execute().use { log ->
+                            require(log.isSuccessful) { "Could not download the job log" }
+                            tail(log.body)
+                        }
+                    }
+                }
+            } catch (_: IOException) { error("Could not download the job log. Try again later") }
+        }
+
         private fun send(request: Request): String {
             try {
                 return client.newCall(request).execute().use { response ->

@@ -290,10 +290,10 @@ internal class AgentRuntimeRunExecutor(
             )
             val developmentAllowed = request.operation == AgentRuntimeWire.OP_CHAT &&
                 io.github.mangi.eta.agent.development.DevelopmentTools.available(appContext, request.appDevelopmentScreen.isNotBlank())
-            val developmentTools = io.github.mangi.eta.agent.development.DevelopmentTools(
+            val developmentTools = if (developmentAllowed) io.github.mangi.eta.agent.development.DevelopmentTools(
                 appContext, request.runId, request.prompt, request.appDevelopmentScreen, developmentAllowed,
                 ensureActive = { runController.throwIfCancelled() },
-            )
+            ) else null
             val runTools = JSONArray(mcpTools.toString()).also { tools ->
                 if (developmentAllowed) tools.put(io.github.mangi.eta.agent.development.DevelopmentTools.schema())
                 if (subagentAllowed()) AgentSubagentToolCatalog.appendSchemas(tools)
@@ -311,7 +311,9 @@ internal class AgentRuntimeRunExecutor(
             }
             val runToolExecutor = AgentModelClient.ToolExecutor { call ->
                 if (call.name == io.github.mangi.eta.agent.development.DevelopmentPolicy.TOOL) {
-                    developmentTools.execute(call)
+                    developmentTools?.execute(call) ?: AgentModelClient.ToolResult(
+                        io.github.mangi.eta.agent.development.DevelopmentPolicy.status(false, "App improvements are disabled for this request").toString(),
+                    )
                 } else if (call.name in AgentSubagentToolCatalog.names) {
                     if (!subagentAllowed()) {
                         AgentModelClient.ToolResult(
