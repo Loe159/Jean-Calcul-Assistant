@@ -52,6 +52,8 @@ android {
         versionName = "2.0.0-preview.$previewVersionCode"
         buildConfigField("String", "UPDATE_CHANNEL", "\"$updateChannel\"")
         buildConfigField("String", "SOURCE_COMMIT", "\"$sourceCommit\"")
+        // Synthetic AVD runs must not download a public preview or display its installer dialog.
+        buildConfigField("boolean", "SYNTHETIC_EMULATOR", (providers.gradleProperty("jeancalcul.emulator").orNull == "true").toString())
 
         ndk {
             // 同时过滤本地与依赖 AAR 的原生库，确保 APK 仅包含 ARM64。

@@ -29,6 +29,7 @@ internal object PreviewUpdates {
     private var dismissedVersion = 0L
 
     fun check(context: Context, manual: Boolean = false) {
+        if (io.github.mangi.eta.BuildConfig.SYNTHETIC_EMULATOR) return
         val app = context.applicationContext
         if (checking || mutableState.value.downloading) return
         if (!manual && System.currentTimeMillis() - checkedAt < 60 * 1000L) return

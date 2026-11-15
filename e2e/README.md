@@ -30,8 +30,11 @@ python3 e2e/report.py e2e-artifacts/issue54/attempt-1
 Le lanceur crée **son propre AVD vierge**, sans compte, sans snapshot, API 35,
 et ne réutilise jamais un appareil connecté. Port ADB par défaut 5580 (réglable
 avec `--port`). Toutes les commandes ADB et Gradle ciblent ce numéro de série.
-Le réseau Android est coupé avant les tests. Seuls les téléchargements de
-build se font sur le réseau de l'hôte. L'app ne reçoit que du texte synthétique.
+Le lanceur demande la coupure du réseau Android avant les tests. La variante
+`-Pjeancalcul.emulator=true` désactive aussi les contrôles de mise à jour publique :
+un service système peut réactiver le Wi-Fi, mais aucun aperçu externe ne doit
+interrompre les scénarios par une fenêtre d'installation. L'APK ARM64 distribué
+garde ses mises à jour automatiques. L'app ne reçoit que du texte synthétique.
 Ne jamais installer des données, comptes, secrets ou conversations personnels
 dans cet AVD.
 
