@@ -49,11 +49,17 @@ internal class EtaAssistantScreenContext(
         privateScreen = capture.sensitive
         val bitmap = capture.bitmap ?: return
         fallbackJob = scope.launch {
-            val encoded = runCatching {
-                capture.ready?.await()
-                AgentImageCodec.fromScreenContextBitmap(bitmap, source = "jeancalcul_screen_context")
-            }.getOrNull()
-            synchronized(this@EtaAssistantScreenContext) { if (!closed) fallbackImage = encoded }
+            try {
+                val encoded = runCatching {
+                    capture.ready?.await()
+                    AgentImageCodec.fromScreenContextBitmap(bitmap, source = "jeancalcul_screen_context")
+                }.getOrNull()
+                synchronized(this@EtaAssistantScreenContext) { if (!closed) fallbackImage = encoded }
+            } finally {
+                // Joining this job must also observe cleanup, not race a completion callback.
+                capture.release()
+            }
+            // A job cancelled before it starts still has to release the copy destination.
         }.also { job -> job.invokeOnCompletion { capture.release() } }
     }
 

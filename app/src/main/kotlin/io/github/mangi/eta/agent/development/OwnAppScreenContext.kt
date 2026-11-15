@@ -33,8 +33,12 @@ internal object OwnAppScreenContext {
         val sensitive: Boolean,
         val ready: Deferred<Unit>? = null,
     ) {
+        private var releaseScheduled = false
         // PixelCopy owns the destination until its callback, even if the assistant closes first.
+        @Synchronized
         fun release() {
+            if (releaseScheduled) return
+            releaseScheduled = true
             val recycle = { if (bitmap != null && !bitmap.isRecycled) bitmap.recycle() }
             if (ready == null) recycle() else ready.invokeOnCompletion { recycle() }
         }
