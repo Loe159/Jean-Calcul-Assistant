@@ -416,7 +416,7 @@ class OpenAiChatCompletionsProviderTest {
 
             assertNotNull(thrown)
             assertTrue(thrown is IllegalStateException)
-            assertTrue(thrown?.message.orEmpty().contains("未正常结束"))
+            assertTrue(thrown?.message.orEmpty().contains("did not end normally"))
         }
     }
 

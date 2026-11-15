@@ -10,35 +10,35 @@ internal object AgentTerminalToolCatalog {
         tools.put(
             AgentToolSchema.function(
                 name = "terminal",
-                description = "执行 Shell 命令，直接提供 command 即可。默认环境、身份和工作目录见本次运行上下文。" +
-                    "需要保留 cd、环境变量等 Shell 状态时，先 action=open，再通过 session_id 执行命令，最后 action=close。" +
-                    "单次命令结束后进程会回收，勿用 & 挂后台；耗时或后台命令使用 terminal_job，跨运行的后台服务使用 terminal_daemon。" +
-                    "已知文件的读写、编辑和搜索优先使用对应文件工具。",
+                description = "Run a shell command by supplying command. Default environment, identity and working directory are in this run's context." +
+                    "For persistent cd or environment state, use action=open, execute with session_id, then action=close." +
+                    "One-shot processes are cleaned up after commands; do not use & for background work. Use terminal_job for long/background commands and terminal_daemon for cross-run services." +
+                    "Prefer dedicated file tools for reading, writing, editing and searching known files.",
                 parameters = parameters(
                     commandProperties()
                         .put("action", action("exec", "open", "close", "check_root")
-                            .put("description", "默认 exec 执行命令；open 创建持久 Shell；close 关闭会话；check_root 用固定的 su -c 'id -u' 检测并更新 Root 授权，不需要 command，可能显示系统授权请求。"))
-                        .put("session_id", text("open 返回的会话 ID。exec 沿用会话的目录、环境和身份；切换目录请在会话中执行 cd。")),
+                            .put("description", "Default exec runs a command; open creates a persistent shell; close closes it. check_root runs the fixed su -c 'id -u' to verify/update root without command, and may show a system grant prompt."))
+                        .put("session_id", text("Session ID from open. exec keeps its directory/environment/identity; use cd within the session to change directories.")),
                 ),
             ),
         )
         tools.put(
             AgentToolSchema.function(
                 name = "terminal_job",
-                description = "启动可在本次回复结束后继续运行的后台命令。start 立即返回 job_id，完成或失败时发送系统通知；返回的 completion_notifications_enabled 表示当前通知是否可用。" +
-                    "list 查看任务，read 查看当前状态和日志，wait 在需要结果时等待，stop 终止任务。" +
-                    "日志保存为文件，read 返回 output_path；预览截断时可用 read_file 分页读取完整日志。" +
-                    "后台命令使用独立 Shell；不继承 terminal 会话。启动后可继续其他工作或回复用户，不必轮询等待。",
+                description = "Start a background command that can outlive this reply. start returns job_id immediately; completion/failure sends a notification. completion_notifications_enabled reports notification availability." +
+                    "list inspects jobs; read returns status/logs; wait only when the result is needed; stop terminates." +
+                    "Logs are saved in output_path. Use read_file pagination when the preview is truncated." +
+                    "Background jobs use a separate shell, not the terminal session. Continue other work or reply without polling.",
                 parameters = parameters(
                     executionProperties()
                         .put("action", action("start", "list", "read", "wait", "stop"))
-                        .put("command", text("start 要执行的完整命令。"))
-                        .put("description", text("可选的简短任务说明，用于列表和完成通知。"))
-                        .put("timeout_ms", integer("start 的命令运行上限，默认 600000 毫秒；0 表示不设超时。"))
-                        .put("job_id", text("start 或 list 返回的任务 ID；read、wait、stop 使用。"))
-                        .put("active_only", bool("list 是否只返回运行中的任务，默认 true。"))
-                        .put("max_bytes", integer("read 返回的日志尾部字节数，默认 16000，最多 65536；完整日志保存在 output_path。"))
-                        .put("wait_ms", integer("wait 最长等待毫秒数，默认 30000，最多 60000；等待超时不会停止命令。")),
+                        .put("command", text("Complete command for start"))
+                        .put("description", text("Optional short task description for lists and completion notifications"))
+                        .put("timeout_ms", integer("Execution limit for start, default 600000 ms; 0 means no timeout"))
+                        .put("job_id", text("Task ID from start/list; used by read/wait/stop"))
+                        .put("active_only", bool("Only running jobs in list; default true"))
+                        .put("max_bytes", integer("Log tail bytes for read, default 16000, maximum 65536. Full logs are in output_path."))
+                        .put("wait_ms", integer("Maximum wait, default 30000 ms, maximum 60000. A wait timeout does not stop the command.")),
                     "action",
                 ),
             ),
@@ -46,14 +46,14 @@ internal object AgentTerminalToolCatalog {
         tools.put(
             AgentToolSchema.function(
                 name = "terminal_daemon",
-                description = "管理需要跨 Agent 运行保留的后台服务，例如 Web 服务。start 启动并返回 task_id，" +
-                    "list 查看任务，logs 读取日志，stop 停止任务。服务不会随当前运行结束自动回收，" +
-                    "但仍可能因进程退出、系统回收、权限变化或设备重启而终止。",
+                description = "Manage background services that persist across agent runs, such as web servers. start returns task_id." +
+                    "list inspects tasks, logs reads logs and stop terminates. Services are not reclaimed when the current run ends," +
+                    "but may still end on exit, system reclamation, permission changes or device restart.",
                 parameters = parameters(
                     executionProperties()
                         .put("action", action("start", "list", "logs", "stop"))
-                        .put("command", text("start 要执行的命令，使用实际环境支持的 Shell 语法。"))
-                        .put("task_id", text("start 或 list 返回的任务 ID；logs、stop 使用。")),
+                        .put("command", text("Command for start, using shell syntax supported by the actual environment"))
+                        .put("task_id", text("Task ID from start/list; used by logs/stop")),
                     "action",
                 ),
             ),
@@ -63,14 +63,14 @@ internal object AgentTerminalToolCatalog {
     private fun executionProperties(): JSONObject = JSONObject()
         .put("environment", text("Environnement Android uniquement ; les environnements Linux sont exclus.")
             .put("enum", JSONArray(listOf("android"))))
-        .put("identity", text("可选的宿主执行身份；Android 已确认 Root 授权时默认 root，否则 user。已授权时无需先尝试 user 或重复检测；显式 user 使用 Jean-Calcul App UID。Linux 内模拟 root 不提供 Android 特权。")
+        .put("identity", text("Optional host identity. Confirmed Android root defaults to root, otherwise user. Do not first try user or repeat root checks after authorization. Explicit user uses the Jean-Calcul app UID. Simulated Linux root does not grant Android privileges.")
             .put("enum", JSONArray(listOf("user", "root"))))
-        .put("cwd", text("可选工作目录；省略时使用当前环境默认工作区，相对路径也以默认工作区为基准。"))
+        .put("cwd", text("Optional working directory. Defaults to the environment workspace; relative paths resolve there."))
 
     private fun commandProperties(): JSONObject = executionProperties()
-        .put("command", text("要执行的命令，使用实际环境支持的 Shell 语法。"))
-        .put("timeout_ms", integer("命令超时毫秒，默认 30000，最多 180000。超时会终止命令；会话命令超时也会关闭会话。"))
-        .put("merge_stderr", bool("是否把 stderr 合并到 stdout，默认 false。"))
+        .put("command", text("Command using shell syntax supported by the actual environment"))
+        .put("timeout_ms", integer("Command timeout, default 30000 ms, maximum 180000. Timeout terminates the command and closes persistent command sessions."))
+        .put("merge_stderr", bool("Merge stderr into stdout; default false"))
 
     private fun parameters(properties: JSONObject, vararg required: String): JSONObject = JSONObject()
         .put("type", "object")
@@ -78,7 +78,7 @@ internal object AgentTerminalToolCatalog {
         .put("required", JSONArray(required.toList()))
         .put("additionalProperties", false)
 
-    private fun action(vararg values: String): JSONObject = text("要执行的动作。")
+    private fun action(vararg values: String): JSONObject = text("Action to execute")
         .put("enum", JSONArray(values.toList()))
 
     private fun text(description: String) = JSONObject().put("type", "string").put("description", description)

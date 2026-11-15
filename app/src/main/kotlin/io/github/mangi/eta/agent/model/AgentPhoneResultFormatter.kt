@@ -114,7 +114,7 @@ internal object AgentPhoneResultFormatter {
                 }
             }
         }
-        if (changes.isNotEmpty()) return "Event updated · ${changes.joinToString("、")}"
+        if (changes.isNotEmpty()) return "Event updated · ${changes.joinToString(", ")}"
         val keys = fields.flatMap { it.second }
         val complete = keys.all { hasComparableCalendarValue(before, it) && hasComparableCalendarValue(after, it) }
         return if (complete) "Event unchanged" else "Event updated"

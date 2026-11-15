@@ -20,7 +20,7 @@ internal object PreviewUpdateInstaller {
             val request = Request.Builder().url(update.apkUrl).build()
             val digest = MessageDigest.getInstance("SHA-256")
             var size = 0L
-            PreviewUpdateSource.client.newCall(request).execute().use { response ->
+            AppUpdateChecker.client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) throw IOException("APK download failed (HTTP ${response.code})")
                 response.body.byteStream().use { input ->
                     temporary.outputStream().use { output ->

@@ -3,7 +3,7 @@ package io.github.mangi.eta.agent.model
 import java.util.Locale
 import org.json.JSONObject
 
-/** 文件轨迹只保留操作结果与规模，不把路径、正文或搜索条件带入持久摘要。 */
+/** 文件轨迹只保留操作结果与规模，不把路径, 正文或搜索条件带入持久摘要。 */
 internal object AgentFileResultFormatter {
     fun summarize(toolName: String, json: JSONObject): String? = when (toolName) {
         "write_file" -> summarizeWrite(json)

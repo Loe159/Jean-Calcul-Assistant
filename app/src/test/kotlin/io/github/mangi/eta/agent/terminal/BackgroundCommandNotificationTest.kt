@@ -23,7 +23,7 @@ class BackgroundCommandNotificationTest {
             completedAt = 2, exitCode = 0)
         BackgroundCommandNotification.show(context, task)
         val notification = context.getSystemService(NotificationManager::class.java).activeNotifications.single().notification
-        assertEquals("后台命令已完成", notification.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
+        assertEquals("Background command completed", notification.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
         assertEquals("生成报告", notification.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
         assertFalse(notification.extras.toString().contains("secret-command"))
         assertEquals(Notification.VISIBILITY_PRIVATE, notification.visibility)

@@ -58,8 +58,8 @@ class AgentAfterActionSummaryTest {
 
         assertEquals("empty", summary.getString("ui_tree_status"))
         assertTrue(summary.isNull("screen_changed"))
-        assertFalse(summary.getString("note").contains("继续操作"))
-        assertTrue(summary.getString("note").contains("截图"))
+        assertFalse(summary.getString("note").contains("continue with"))
+        assertTrue(summary.getString("note").contains("screenshot"))
     }
 
     @Test

@@ -23,17 +23,17 @@ class AgentFileResultFormatterTest {
 
     @Test
     fun readDistinguishesPaginationFromScanningBeforeTheRequestedLine() {
-        assertEquals("Read first 1 KiB · more available", summarize("read_file", """{"bytes_read":1024,"truncated":true,"start_line_reached":true}"""))
+        assertEquals("Read first 1 KiB · More available", summarize("read_file", """{"bytes_read":1024,"truncated":true,"start_line_reached":true}"""))
         assertEquals("Target line not reached · continue reading", summarize("read_file", """{"bytes_read":0,"truncated":true,"start_line_reached":false,"stop_reason":"scan_limit"}"""))
         assertEquals("Target line not reached · end of file", summarize("read_file", """{"bytes_read":0,"truncated":false,"start_line_reached":false,"stop_reason":"eof"}"""))
     }
 
     @Test
     fun listingAndSearchCountOnlyReturnedResultsAndPreservePartialCoverage() {
-        assertEquals("Listed 1 entries · more available", summarize("list_directory", """{"entries":[{}],"has_more":true}"""))
+        assertEquals("Listed 1 entries · More available", summarize("list_directory", """{"entries":[{}],"has_more":true}"""))
         assertEquals("Directory is empty", summarize("list_directory", """{"entries":[]}"""))
-        assertEquals("Found 2 files · more available · limited scan range", summarize("glob_files", """{"matches":[{},{}],"truncated":true,"partial":true}"""))
-        assertEquals("Found 1 matches · more available · limited scan range", summarize("grep_files", """{"matches":[{}],"truncated":true,"partial":true,"total_skipped":2,"next_cursor":"next-page"}"""))
+        assertEquals("Found 2 itemsFile · More available · limited scan range", summarize("glob_files", """{"matches":[{},{}],"truncated":true,"partial":true}"""))
+        assertEquals("Found 1 matches · More available · limited scan range", summarize("grep_files", """{"matches":[{}],"truncated":true,"partial":true,"total_skipped":2,"next_cursor":"next-page"}"""))
         assertEquals("No matching content · limited scan range", summarize("grep_files", """{"matches":[],"truncated":false,"partial":true,"total_skipped":3}"""))
     }
 

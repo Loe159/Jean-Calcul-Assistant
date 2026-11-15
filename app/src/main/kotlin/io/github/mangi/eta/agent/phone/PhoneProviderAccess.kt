@@ -93,17 +93,17 @@ internal class RootPhoneProviderAccess(private val userId: Int) : PhoneProviderA
                     userId,
                     token,
                     "Jean-Calcul",
-                ) ?: PhoneOperation.error("PHONE_PROVIDER_UNAVAILABLE", "系统未提供该应用接口")
+                ) ?: PhoneOperation.error("PHONE_PROVIDER_UNAVAILABLE", "System does not provide this app API")
             provider =
                 holder.javaClass.getField("provider").get(holder)
-                    ?: PhoneOperation.error("PHONE_PROVIDER_UNAVAILABLE", "应用接口尚不可用")
+                    ?: PhoneOperation.error("PHONE_PROVIDER_UNAVAILABLE", "App API is not available yet")
         }
 
         fun operation(name: String, vararg args: Any?): Any? {
             val method =
                 providerType.methods.singleOrNull {
                     it.name == name && it.parameterCount == args.size
-                } ?: PhoneOperation.error("PHONE_PROTOCOL_UNSUPPORTED", "当前系统的原生接口协议不兼容")
+                } ?: PhoneOperation.error("PHONE_PROTOCOL_UNSUPPORTED", "Native API protocol is incompatible with this system")
             return invoke(method, provider, *args)
         }
 
@@ -125,7 +125,7 @@ internal class RootPhoneProviderAccess(private val userId: Int) : PhoneProviderA
     }
 
     private fun authority(uri: Uri): String =
-        uri.authority?.substringAfter('@') ?: PhoneOperation.error("INVALID_ARGUMENT", "缺少应用接口")
+        uri.authority?.substringAfter('@') ?: PhoneOperation.error("INVALID_ARGUMENT", "Missing app API")
 
     private fun withoutUser(uri: Uri) = uri.buildUpon().authority(authority(uri)).build()
 

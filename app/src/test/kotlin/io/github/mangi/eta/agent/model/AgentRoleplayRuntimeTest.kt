@@ -40,7 +40,7 @@ class AgentRoleplayRuntimeTest {
             assertFalse(text.contains("你是 Eta。"))
             assertFalse(text.contains("PROVIDER_IDENTITY"))
             assertFalse(text.contains("现实工具操作仍由 Eta 完成"))
-            assertTrue(text.contains("执行现实任务时也保持角色的身份和语气"))
+            assertTrue(text.contains("including identity and tone during real tasks"))
             val names = (0 until request.tools.length()).map {
                 request.tools.getJSONObject(it).getJSONObject("function").getString("name")
             }
@@ -195,7 +195,7 @@ class AgentRoleplayRuntimeTest {
     fun roleplaySummarySeparatesStoryFromRealExecution() {
         val provider = provider { request ->
             assertEquals(ProviderRequestPurpose.COMPACTION, request.purpose)
-            assertTrue(request.messages.toString().contains("虚构剧情与真实设备操作分开记录"))
+            assertTrue(request.messages.toString().contains("Keep fiction separate from real device actions"))
             reply("剧情：二人在塔下相识。现实：尚未执行设备操作。")
         }
         val messages = JSONArray().put(JSONObject().put("role", "system").put("content", "固定规则"))

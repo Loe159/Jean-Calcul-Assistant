@@ -1,5 +1,6 @@
 package io.github.mangi.eta.ui.components
 
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -14,9 +15,16 @@ import io.github.mangi.eta.ui.components.coui.CouiConfirmDialog
 internal fun PreviewUpdateDialog() {
     val context = LocalContext.current
     val state by PreviewUpdates.state.collectAsState()
+    fun installReadyUpdate() {
+        runCatching {
+            PreviewUpdates.state.value.file?.let { file -> PreviewUpdateInstaller.install(context, file) }
+        }.onFailure {
+            Toast.makeText(context, "Could not open the Android installer. Try again.", Toast.LENGTH_LONG).show()
+        }
+    }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (context.packageManager.canRequestPackageInstalls()) {
-            PreviewUpdates.state.value.file?.let { file -> PreviewUpdateInstaller.install(context, file) }
+            installReadyUpdate()
         }
     }
     if (state.update == null && state.error == null) return
@@ -41,7 +49,7 @@ internal fun PreviewUpdateDialog() {
                 state.error != null -> PreviewUpdates.dismiss()
                 state.file == null -> PreviewUpdates.download(context)
                 !context.packageManager.canRequestPackageInstalls() -> permission.launch(PreviewUpdateInstaller.permissionIntent(context))
-                else -> PreviewUpdateInstaller.install(context, requireNotNull(state.file))
+                else -> installReadyUpdate()
             }
         },
         onDismissRequest = { PreviewUpdates.dismiss() },

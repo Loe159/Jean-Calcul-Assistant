@@ -81,7 +81,7 @@ class GeminiModelCatalogHttpTest {
         withServer(listOf(body, body)) { url, requests ->
             val result = RemoteModelFetcher.fetchCatalog(provider(url), OkHttpClient(), noOAuth)
             assertTrue(result.isFailure)
-            assertTrue(result.exceptionOrNull()!!.message!!.contains("重复分页令牌"))
+            assertTrue(result.exceptionOrNull()!!.message!!.contains("duplicate pagination token"))
             assertEquals(2, requests.size)
         }
     }
@@ -95,7 +95,7 @@ class GeminiModelCatalogHttpTest {
         )) { url, requests ->
             val result = RemoteModelFetcher.fetchCatalog(provider(url), OkHttpClient(), noOAuth)
             assertTrue(result.isFailure)
-            assertTrue(result.exceptionOrNull()!!.message!!.contains("大小限制"))
+            assertTrue(result.exceptionOrNull()!!.message!!.contains("size limit"))
             assertEquals(2, requests.size)
         }
     }

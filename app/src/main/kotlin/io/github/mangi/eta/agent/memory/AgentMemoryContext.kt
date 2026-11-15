@@ -65,7 +65,7 @@ internal object AgentMemoryContextBuilder {
     private fun extractCore(content: String): String {
         if (content.isEmpty()) return ""
         val lines = content.split('\n')
-        val start = lines.indexOfFirst { it.trim() == CORE_HEADING }
+        val start = lines.indexOfFirst { it.trim() in setOf(CORE_HEADING, LEGACY_CORE_HEADING) }
         if (start < 0) return ""
         val end = ((start + 1) until lines.size)
             .firstOrNull { index -> lines[index].startsWith("# ") }
@@ -74,7 +74,8 @@ internal object AgentMemoryContextBuilder {
     }
 
     private val HEADING = Regex("^#{1,2}\\s+.+$")
-    private const val CORE_HEADING = "# 核心记忆"
+    private const val CORE_HEADING = "# Core memory"
+    private const val LEGACY_CORE_HEADING = "# 核心记忆"
     /** 窗口未知时用于按比例分配记忆、世界书等注入预算的保守基准，不参与压缩判定。 */
     const val DEFAULT_CONTEXT_WINDOW = 128_000
     private const val CONTEXT_WINDOW_DIVISOR = 16

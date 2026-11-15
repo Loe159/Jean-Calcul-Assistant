@@ -565,7 +565,7 @@ class OpenAiResponsesProviderTest {
                     AgentRunController(),
                 )
             }.exceptionOrNull()
-            assertTrue(thrown?.message.orEmpty().contains("缺少合法终止事件"))
+            assertTrue(thrown?.message.orEmpty().contains("missing a valid terminal event"))
         }
     }
 
@@ -581,7 +581,7 @@ class OpenAiResponsesProviderTest {
         )
         assertEquals(1, "https://example.com/a".toRegex().findAll(formatted).count())
         assertTrue(formatted.contains("[[1]]"))
-        assertTrue(formatted.contains("来源："))
+        assertTrue(formatted.contains("Source: "))
         assertTrue(formatted.contains("https://example.com/b"))
     }
 

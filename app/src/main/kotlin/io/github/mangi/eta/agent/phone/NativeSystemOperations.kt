@@ -27,7 +27,7 @@ internal class NativeSystemOperations(
             "set_sound_mode" -> sound(args)
             "get_hotspot",
             "set_hotspot" -> hotspot(tool, args)
-            else -> PhoneOperation.failure("UNKNOWN_TOOL", "未知系统操作")
+            else -> PhoneOperation.failure("UNKNOWN_TOOL", "Unknown system action")
         }
 
     // 移动数据只经 PhoneCommandMain 在 uid 0 的 system Context 中执行，App 进程不直接调用；
@@ -37,7 +37,7 @@ internal class NativeSystemOperations(
     private fun mobileData(tool: String, args: JSONObject): JSONObject {
         val subscription = android.telephony.SubscriptionManager.getDefaultDataSubscriptionId()
         if (!android.telephony.SubscriptionManager.isValidSubscriptionId(subscription))
-            PhoneOperation.error("MOBILE_DATA_UNAVAILABLE", "没有可用的默认数据 SIM 卡")
+            PhoneOperation.error("MOBILE_DATA_UNAVAILABLE", "No default data SIM available")
         val manager =
             context
                 .getSystemService(android.telephony.TelephonyManager::class.java)
@@ -70,10 +70,10 @@ internal class NativeSystemOperations(
         val available =
             type.getMethod("isNightDisplayAvailable", Context::class.java).invoke(null, context)
                 as Boolean
-        if (!available) PhoneOperation.error("DEVICE_UNSUPPORTED", "此设备未提供标准护眼模式接口")
+        if (!available) PhoneOperation.error("DEVICE_UNSUPPORTED", "Device has no standard eye comfort API")
         val manager =
             context.getSystemService("color_display")
-                ?: PhoneOperation.error("DEVICE_UNSUPPORTED", "护眼服务不可用")
+                ?: PhoneOperation.error("DEVICE_UNSUPPORTED", "Eye comfort service unavailable")
         val read = type.getMethod("isNightDisplayActivated")
         val before = read.invoke(manager) as Boolean
         if (tool == "get_night_light") return PhoneOperation.ok(tool).put("enabled", before)
@@ -105,11 +105,11 @@ internal class NativeSystemOperations(
                 "normal" -> AudioManager.RINGER_MODE_NORMAL
                 "silent" -> AudioManager.RINGER_MODE_SILENT
                 "vibrate" -> AudioManager.RINGER_MODE_VIBRATE
-                else -> PhoneOperation.error("INVALID_ARGUMENT", "响铃模式无效")
+                else -> PhoneOperation.error("INVALID_ARGUMENT", "Invalid ringer mode")
             }
         val audio =
             context.getSystemService(AudioManager::class.java)
-                ?: PhoneOperation.error("AUDIO_UNAVAILABLE", "音频服务不可用")
+                ?: PhoneOperation.error("AUDIO_UNAVAILABLE", "Audio service unavailable")
         val before = audio.ringerMode
         if (before != expected) {
             onMutation()
@@ -129,11 +129,11 @@ internal class NativeSystemOperations(
 
     private fun hotspot(tool: String, args: JSONObject): JSONObject {
         if (Build.VERSION.SDK_INT < 36)
-            PhoneOperation.error("DEVICE_UNSUPPORTED", "当前系统未提供兼容的热点控制接口")
+            PhoneOperation.error("DEVICE_UNSUPPORTED", "System has no compatible hotspot control API")
         val expected = if (tool == "set_hotspot") PhoneOperation.boolean(args, "enabled") else null
         val manager =
             context.getSystemService(TetheringManager::class.java)
-                ?: PhoneOperation.error("HOTSPOT_UNAVAILABLE", "热点服务不可用")
+                ?: PhoneOperation.error("HOTSPOT_UNAVAILABLE", "Hotspot service unavailable")
         val executor = Executor { it.run() }
         val current = AtomicReference<Boolean?>(null)
         val initial = CountDownLatch(1)

@@ -124,7 +124,7 @@ class GeminiInteractionsTest {
         val input = GeminiInteractionHistory.input(JSONArray().put(AgentConversationCodec.userTextMessage("旧问题"))
             .put(oldAssistant).put(oldResult).put(current))
         assertEquals(2, input.length())
-        assertTrue(input.getJSONObject(0).getJSONArray("content").getJSONObject(0).getString("text").contains("历史对话文本记录"))
+        assertTrue(input.getJSONObject(0).getJSONArray("content").getJSONObject(0).getString("text").contains("conversation history saved by Jean-Calcul"))
         assertEquals("新问题", input.getJSONObject(1).getJSONArray("content").getJSONObject(0).getString("text"))
         assertFalse((0 until input.length()).any { input.getJSONObject(it).getString("type") == "function_call" })
 
@@ -268,9 +268,9 @@ class GeminiInteractionsTest {
         assertEquals("中😀 [[1]](<https://example.test/source>)文", formatted)
         annotation.put("end_index", 5)
         val fallback = GeminiCitationFormatter.apply(text, JSONArray().put(annotation))
-        assertTrue(fallback.startsWith("中😀文\n\n来源："))
+        assertTrue(fallback.startsWith("中😀文\n\nSource: "))
         annotation.put("end_index", 4_294_967_296L)
-        assertTrue(GeminiCitationFormatter.apply(text, JSONArray().put(annotation)).startsWith("中😀文\n\n来源："))
+        assertTrue(GeminiCitationFormatter.apply(text, JSONArray().put(annotation)).startsWith("中😀文\n\nSource: "))
     }
 
     @Test

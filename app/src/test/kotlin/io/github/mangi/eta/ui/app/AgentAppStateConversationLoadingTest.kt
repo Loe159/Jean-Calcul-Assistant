@@ -320,13 +320,13 @@ class AgentAppStateConversationLoadingTest {
     @Test
     @Config(qualifiers = "b+zh+Hans")
     fun simplifiedChineseBranchPreservesDraftAndUniqueTitles() {
-        assertBranchPreservesDraftAndUniqueTitles("source · min支")
+        assertBranchPreservesDraftAndUniqueTitles("source · Branch")
     }
 
     @Test
     @Config(qualifiers = "b+zh+Hant")
     fun traditionalChineseBranchPreservesDraftAndUniqueTitles() {
-        assertBranchPreservesDraftAndUniqueTitles("source · min支")
+        assertBranchPreservesDraftAndUniqueTitles("source · Branch")
     }
 
     private fun assertBranchPreservesDraftAndUniqueTitles(expectedTitle: String) {

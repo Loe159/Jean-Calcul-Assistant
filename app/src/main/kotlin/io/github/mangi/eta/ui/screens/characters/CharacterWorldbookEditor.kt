@@ -43,7 +43,7 @@ internal fun LazyListScope.characterWorldbookEditor(
     val enabled = !store.busy
     item(key = "worldbook-title") { CharacterSectionHeader("Worldbook") }
     item(key = "worldbook-header") {
-        val summary = "${book.entries.size} entries · ${if (expanded) "收起" else "展开编辑"}"
+        val summary = "${book.entries.size} entries · ${if (expanded) "Collapse" else "Expand editor"}"
         if (LocalUiStyle.current == AppearanceUiStyle.COUI) {
             Group {
                 CouiPreference(

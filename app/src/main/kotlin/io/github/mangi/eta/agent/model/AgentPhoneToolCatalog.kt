@@ -22,163 +22,163 @@ internal object AgentPhoneToolCatalog {
         listOf(
             Entry(
                 "get_flashlight",
-                "手电筒状态",
-                "查询手电筒实际状态及是否被相机占用。",
+                "Flashlight state",
+                "Read actual flashlight state and camera occupancy.",
                 false,
                 RootRequirement.NONE,
                 direct = true,
             ),
             Entry(
                 "set_flashlight",
-                "设置手电筒",
-                "开启或关闭手电筒并通过系统回调验证；已处于目标状态时不重复切换。",
+                "Set flashlight",
+                "Enable/disable the flashlight with system callback verification. Avoid toggling again if already at the target state.",
                 true,
                 RootRequirement.NONE,
                 direct = true,
             ),
             Entry(
                 "get_device_state",
-                "查询系统开关",
-                "查询指定系统开关，不用 GUI。",
+                "Read system switch",
+                "Read a system switch directly without GUI.",
                 false,
                 RootRequirement.REQUIRED,
                 direct = true,
             ),
             Entry(
                 "get_display_state",
-                "显示状态",
-                "查询亮度、自动亮度、旋转和息屏时间。",
+                "Display state",
+                "Read brightness, automatic brightness, rotation and screen timeout.",
                 false,
                 RootRequirement.REQUIRED,
                 direct = true,
             ),
             Entry(
                 "set_brightness",
-                "设置亮度",
-                "按系统亮度滑块百分比设置并读回验证；不支持可靠百分比接口时明确失败。",
+                "Set brightness",
+                "Set system slider brightness percentage and verify readback. Fail explicitly if reliable percentages are unsupported.",
                 true,
                 RootRequirement.REQUIRED,
                 direct = true,
             ),
             Entry(
                 "set_screen_timeout",
-                "设置息屏时间",
-                "设置无操作后的自动息屏秒数，并读回验证。",
+                "Set screen timeout",
+                "Set inactivity timeout in seconds and verify readback.",
                 true,
                 RootRequirement.REQUIRED,
                 direct = true,
             ),
             Entry(
                 "get_sound_state",
-                "声音状态",
-                "读取各类音量、响铃及勿扰状态。",
+                "Sound state",
+                "Read volume streams, ringer and Do Not Disturb states.",
                 false,
                 RootRequirement.NONE,
                 direct = true,
             ),
             Entry(
                 "set_sound_mode",
-                "设置响铃模式",
-                "设置正常、静音或振动模式并验证；普通身份可能需要勿扰访问权限。",
+                "Set ringer mode",
+                "Set normal, silent or vibrate mode and verify. App identity may require Do Not Disturb access.",
                 true,
                 RootRequirement.PARTIAL,
             ),
-            Entry("set_do_not_disturb", "设置勿扰模式", "直接设置勿扰策略并读回验证。", true, RootRequirement.REQUIRED),
+            Entry("set_do_not_disturb", "Set Do Not Disturb", "Set Do Not Disturb policy directly and verify readback.", true, RootRequirement.REQUIRED),
             Entry(
                 "get_hotspot",
-                "热点状态",
-                "查询互联网共享热点是否开启；需要系统提供兼容接口。",
+                "Hotspot state",
+                "Read hotspot state, requiring a compatible system API.",
                 false,
                 RootRequirement.REQUIRED,
                 direct = true,
             ),
             Entry(
                 "set_hotspot",
-                "设置个人热点",
-                "使用现有热点配置开启或关闭网络共享，不更改名称和密码。",
+                "Set hotspot",
+                "Enable/disable tethering with the existing configuration, preserving network name and password.",
                 true,
                 RootRequirement.REQUIRED,
             ),
             Entry(
                 "list_calendars",
-                "可用日历",
-                "列出当前用户可写的日历 ID 和名称；创建时必须选择真实日历，不能猜 calendar_id。",
+                "Available calendars",
+                "List writable calendar IDs/names for this user. Creation must use a real calendar; never guess calendar_id.",
                 false,
                 RootRequirement.PARTIAL,
                 personal = true,
             ),
             Entry(
                 "read_calendar_event",
-                "日程详情",
-                "按原始 event_id 读取实时事件与提醒；不得使用 DMP 文档 ID。",
+                "Event details",
+                "Read a live event and reminders using original event_id, never a DMP document ID.",
                 false,
                 RootRequirement.PARTIAL,
                 personal = true,
             ),
             Entry(
                 "create_calendar_event",
-                "创建日程",
-                "直接创建日程和提醒，事务完成后读回确认。一次性日程使用起止时间；全天事件使用 UTC 零点和排他的结束零点。超时后先查询，不要重复创建。",
+                "Create event",
+                "Create event/reminders directly and verify after transaction. One-off events use start/end; all-day events use UTC midnight with exclusive end midnight. Query after timeout before creating again.",
                 true,
                 RootRequirement.PARTIAL,
             ),
             Entry(
                 "create_calendar_events",
-                "批量创建日程",
-                "一次创建同一日历中的多条日程和提醒；先校验全部参数，再在同一事务中写入并逐条核对。最多 30 条，结果未确认时先查询，不要重复创建。",
+                "Create events in batch",
+                "Validate all events/reminders first, then create in one calendar transaction and verify individually. Maximum 30. Query unconfirmed results before recreating.",
                 true,
                 RootRequirement.PARTIAL,
             ),
             Entry(
                 "update_calendar_event",
-                "修改日程",
-                "按原始 event_id 修改日程字段和提醒，并读回确认；修改时间须同时给出起止时间。当前不修改重复事件。",
+                "Update event",
+                "Update event fields/reminders by original event_id and verify. Time changes require both start/end. Recurring events are not modified.",
                 true,
                 RootRequirement.PARTIAL,
             ),
             Entry(
                 "delete_calendar_event",
-                "删除日程",
-                "删除精确原始 event_id；重复事件必须明确 scope=series，不能把索引 ID 当作事件 ID。",
+                "Delete event",
+                "Delete exact original event_id. Recurring events require scope=series. Never use an index ID as an event ID.",
                 true,
                 RootRequirement.PARTIAL,
             ),
             Entry(
                 "update_alarm_time",
-                "修改闹钟时间",
-                "按 alarm_id 修改小时和分钟，保留原启用状态并验证。",
+                "Change alarm time",
+                "Change hour/minute by alarm_id, preserving enabled state and verifying.",
                 true,
                 RootRequirement.REQUIRED,
                 true,
             ),
             Entry(
                 "set_alarm_enabled",
-                "闹钟开关",
-                "启用或关闭精确 alarm_id，读回验证；不按模糊时间匹配多个闹钟。",
+                "Alarm switch",
+                "Enable/disable exact alarm_id and verify. Do not fuzzy-match multiple alarms by time.",
                 true,
                 RootRequirement.REQUIRED,
                 true,
             ),
             Entry(
                 "delete_alarm",
-                "删除闹钟",
-                "删除精确 alarm_id 后核对；不得使用 DMP 索引 ID。",
+                "Delete alarm",
+                "Delete exact alarm_id and verify. Never use a DMP index ID.",
                 true,
                 RootRequirement.REQUIRED,
                 true,
             ),
             Entry(
                 "create_note",
-                "创建便签",
-                "直接创建系统便签，解析实际结果 UUID 并读回；返回未确认时不能重复创建。",
+                "Create note",
+                "Create a system note directly, parse its actual UUID and verify. Never repeat creation on unconfirmed results.",
                 true,
                 RootRequirement.REQUIRED,
                 true,
             ),
             Entry(
                 "read_note",
-                "便签详情",
-                "按原始 note_id UUID 读取便签正文；不能使用 DMP 文档 ID。",
+                "Note details",
+                "Read note content by original note_id UUID, never a DMP document ID.",
                 false,
                 RootRequirement.REQUIRED,
                 true,
@@ -186,8 +186,8 @@ internal object AgentPhoneToolCatalog {
             ),
             Entry(
                 "delete_note",
-                "回收便签",
-                "按原始 note_id UUID 将便签移入回收站并验证，不是永久删除。",
+                "Recycle note",
+                "Move a note to trash by original note_id UUID and verify; this is not permanent deletion.",
                 true,
                 RootRequirement.REQUIRED,
                 true,
@@ -211,7 +211,7 @@ internal object AgentPhoneToolCatalog {
             p.put(key, schema)
             if (need) required += key
         }
-        fun id(key: String) = field(key, text("原始对象 ID", 36))
+        fun id(key: String) = field(key, text("Original object ID", 36))
         when (entry.name) {
             "set_flashlight",
             "set_hotspot" -> field("enabled", JSONObject().put("type", "boolean"))
@@ -223,7 +223,7 @@ internal object AgentPhoneToolCatalog {
                 field("mode", enum(listOf("off", "priority", "alarms", "silent")))
             "read_calendar_event" -> id("event_id")
             "create_calendar_events" -> {
-                field("calendar_id", text("可写日历 ID", 19), false)
+                field("calendar_id", text("Writable calendar ID", 19), false)
                 val single =
                     schema(entries.first { it.name == "create_calendar_event" })
                         .getJSONObject("function")
@@ -242,12 +242,12 @@ internal object AgentPhoneToolCatalog {
             "update_calendar_event" -> {
                 val create = entry.name == "create_calendar_event"
                 if (create)
-                    field("calendar_id", text("list_calendars 返回的可写日历 ID；仅一个日历时可省略", 19), false)
+                    field("calendar_id", text("Writable calendar ID from list_calendars; optional when only one exists", 19), false)
                 else id("event_id")
-                field("title", text("日程标题", 200), create)
-                field("start_time", text("带偏移的 ISO 8601 起始时间", 64), create)
-                field("end_time", text("带偏移的 ISO 8601 结束时间", 64), create)
-                field("timezone", text("IANA 时区，如 Asia/Shanghai", 80), false)
+                field("title", text("Event title", 200), create)
+                field("start_time", text("ISO 8601 start time with offset", 64), create)
+                field("end_time", text("ISO 8601 end time with offset", 64), create)
+                field("timezone", text("IANA timezone, e.g. Europe/Paris", 80), false)
                 field("all_day", JSONObject().put("type", "boolean"), false)
                 field("location", text("Location", 500), false)
                 field("description", text("Description", 8000), false)
@@ -276,7 +276,7 @@ internal object AgentPhoneToolCatalog {
             "delete_alarm" -> id("alarm_id")
             "create_note" -> {
                 field("title", text("Title", 200), false)
-                field("content", text("便签正文", 20000))
+                field("content", text("Note content", 20000))
             }
             "read_note",
             "delete_note" -> id("note_id")

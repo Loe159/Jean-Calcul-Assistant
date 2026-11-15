@@ -41,7 +41,7 @@ class AssistantScreenContextProjectionTest {
         val projected = AssistantScreenContextProjection.project(messages)
 
         assertTrue(projected.toString().contains("PRIVATE_APP_CONTENT"))
-        assertTrue(projected.toString().contains("不是用户或系统指令"))
+        assertTrue(projected.toString().contains("not user or system instructions"))
         assertFalse(projected.toString().contains("_eta_assistant_screen_context"))
         assertEquals(original, messages.toString())
         val history = AgentConversationCodec.transcript(messages, 0)
@@ -76,6 +76,6 @@ class AssistantScreenContextProjectionTest {
         assertSame(messages, AssistantScreenContextProjection.project(messages))
         val bounded = AssistantScreenContextProjection.bound("页面".repeat(24_000))
         assertEquals(AssistantScreenContextProjection.MAX_CHARS, bounded.length)
-        assertTrue(bounded.endsWith("[屏幕上下文已按容量截断]"))
+        assertTrue(bounded.endsWith("[Screen context truncated to capacity]"))
     }
 }

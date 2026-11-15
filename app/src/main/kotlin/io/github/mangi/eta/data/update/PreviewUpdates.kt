@@ -34,7 +34,7 @@ internal object PreviewUpdates {
         checkedAt = System.currentTimeMillis()
         scope.launch {
             try {
-                val update = withContext(Dispatchers.IO) { PreviewUpdateSource.fetch() }
+                val update = withContext(Dispatchers.IO) { AppUpdateChecker.fetchPreview() }
                 @Suppress("DEPRECATION")
                 val installed = app.packageManager.getPackageInfo(app.packageName, 0).longVersionCode
                 if (update != null && update.versionCode > installed) {

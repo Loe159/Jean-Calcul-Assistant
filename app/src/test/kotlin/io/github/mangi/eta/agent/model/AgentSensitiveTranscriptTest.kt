@@ -62,6 +62,6 @@ class AgentSensitiveTranscriptTest {
         assertFalse(encoded.contains("敏感值"))
         assertFalse(encoded.contains("secret-value"))
         assertTrue(encoded.contains("redacted"))
-        assertTrue(encoded.contains("未写入持久会话"))
+        assertTrue(encoded.contains("not saved in persistent history"))
     }
 }

@@ -105,13 +105,13 @@ class AgentTraceFormatterTest {
                 toolName = "write_file",
                 argumentsJson =
                     """{"path":"/data/local/tmp/secret.txt","content":"api-key-value"}""",
-                expectedParts = listOf("Write file", "字符"),
+                expectedParts = listOf("Write file", "characters"),
                 sensitiveParts = listOf("/data/local/tmp/secret.txt", "api-key-value"),
             ),
             RedactionCase(
                 toolName = "input_text",
                 argumentsJson = """{"text":"one-time-password-123456"}""",
-                expectedParts = listOf("Type text", "字符"),
+                expectedParts = listOf("Type text", "characters"),
                 sensitiveParts = listOf("one-time-password-123456", "123456"),
             ),
             RedactionCase(
@@ -176,11 +176,11 @@ class AgentTraceFormatterTest {
     @Test
     fun deviceStateResultShowsObservedChangesWithoutInventingPreviousState() {
         listOf(
-            """{"target":"auto_rotate","before":false,"after":true}""" to "Auto-rotate：Off → On",
-            """{"target":"auto_brightness","before":true,"after":false}""" to "Auto brightness：On → Off",
-            """{"target":"wifi","before":true,"after":true}""" to "Wi-Fi：KeepOn",
-            """{"target":"auto_rotate","before":false,"after":false}""" to "Auto-rotate：KeepOff",
-            """{"target":"auto_rotate","before":null,"after":true}""" to "Auto-rotate：Done: On",
+            """{"target":"auto_rotate","before":false,"after":true}""" to "Auto-rotate: Off → On",
+            """{"target":"auto_brightness","before":true,"after":false}""" to "Auto brightness: On → Off",
+            """{"target":"wifi","before":true,"after":true}""" to "Wi-Fi: Keep On",
+            """{"target":"auto_rotate","before":false,"after":false}""" to "Auto-rotate: Keep Off",
+            """{"target":"auto_rotate","before":null,"after":true}""" to "Auto-rotate: Done: On",
         ).forEach { (observed, expectedSummary) ->
             val result = JSONObject(observed).put("ok", true).put("verified", true)
             assertEquals(expectedSummary, formatter.summarizeResult("set_device_state", AgentModelClient.ToolResult(result.toString())))
@@ -219,17 +219,17 @@ class AgentTraceFormatterTest {
             """{"ok":true,"count":99,"items":[{"content":"private-record"},{"value":"private-value"}],"has_more":true,"partial":true}""",
             sensitive = true,
         )
-        assertEquals("Found 2  messages · more available · Limited collection range", formatter.summarizeResult("search_messages", result))
+        assertEquals("Found 2 messages · More available · Limited collection range", formatter.summarizeResult("search_messages", result))
 
         val generic = AgentModelClient.ToolResult(
             """{"ok":true,"items":[{"content":"one"},{"content":"two"}],"has_more":true,"partial":true}""",
         )
-        assertEquals("Found 2 results · more available · Limited collection range", formatter.summarizeResult("custom_search", generic))
+        assertEquals("Found 2 results · More available · Limited collection range", formatter.summarizeResult("custom_search", generic))
     }
 
     @Test
     fun specializedResultsKeepFailureAndSubmissionSemantics() {
-        assertEquals("Screen timeout：30 seconds → 2 minutes", formatter.summarizeResult("set_screen_timeout", AgentModelClient.ToolResult(
+        assertEquals("Screen timeout: 30 seconds → 2 minutes", formatter.summarizeResult("set_screen_timeout", AgentModelClient.ToolResult(
             """{"ok":true,"verified":true,"before":30000,"after":120000}""",
         )))
         assertEquals("Timer request submitted · 5 minutes", formatter.summarizeResult("set_timer", AgentModelClient.ToolResult(
@@ -456,7 +456,7 @@ class AgentTraceFormatterTest {
         )
         assertEquals("Search files · 周报", searchFiles)
 
-        // 关键词单行化并截断，避免撑爆折叠行标题
+        // 关键词单行化并截断，避免撑爆折叠行Title
         val longQuery = formatter.summarizeArguments(
             AgentModelClient.ToolCall(
                 id = "search-long",
@@ -467,7 +467,7 @@ class AgentTraceFormatterTest {
         assertFalse(longQuery.contains("\n"))
         assertTrue(longQuery.length <= "Search apps · ".length + 30 + 3)
 
-        // 非搜索类设备工具不追加 query
+        // 非搜索类设备工具不Append query
         val deviceStatus = formatter.summarizeArguments(
             AgentModelClient.ToolCall(
                 id = "device-status",
@@ -495,8 +495,8 @@ class AgentTraceFormatterTest {
         )
 
         assertTrue(summary.contains("Found 4 apps"))
-        assertTrue(summary.contains("抖音、抖音极速版、抖音商城"))
-        assertTrue(summary.contains("等"))
+        assertTrue(summary.contains("抖音, 抖音极速版, 抖音商城"))
+        assertTrue(summary.contains("and others"))
         assertFalse(summary.contains("com.ss.android"))
 
         val empty = formatter.summarizeResult(
@@ -569,7 +569,7 @@ class AgentTraceFormatterTest {
         )
         assertEquals("Failed · code=JOB_NOT_FOUND", coded)
 
-        // 带中文原因的错误：原因面向用户，code= 留给日志提取
+        // 带中文原因的错误: 原因面向User，code= 留给日志提取
         val codedWithMessage = formatter.summarizeResult(
             "terminal",
             AgentModelClient.ToolResult(
@@ -578,7 +578,7 @@ class AgentTraceFormatterTest {
         )
         assertEquals("Failed · Enable terminal/file tools first · code=TERMINAL_TOOLS_DISABLED", codedWithMessage)
 
-        // 无输出的会话动作
+        // 无Output的会话Action
         val closed = formatter.summarizeResult(
             "terminal",
             AgentModelClient.ToolResult(
@@ -640,7 +640,7 @@ class AgentTraceFormatterTest {
         )
 
         val previewLines = summary.lines()
-        // 状态行 + 最多 10 行预览 + 省略标记（与 ToolActivityDetail 的 MAX_RESULT_LINES = 12 对齐）
+        // 状态行 + 最多 10 行预览 + 省略标记 (与 ToolActivityDetail 的 MAX_RESULT_LINES = 12 对齐)
         assertTrue(previewLines.size <= 12)
         assertTrue(summary.endsWith("…"))
         assertTrue(summary.length < longOutput.length)

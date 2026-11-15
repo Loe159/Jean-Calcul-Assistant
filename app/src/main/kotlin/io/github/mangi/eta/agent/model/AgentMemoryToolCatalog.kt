@@ -47,7 +47,7 @@ internal object AgentMemoryToolCatalog {
             .put(
                 AgentToolSchema.function(
                     name = "memory_write",
-                    description = "Atomically update persistent MEMORY.md. Store only durable cross-conversation facts, preferences, relationships, and ongoing project context; never store secrets, credentials, verification codes, or transient requests. Keep '# 核心记忆' concise, correct stale facts, and prefer replacing an existing section over blindly appending duplicates. Use the revision from the most recent memory_write or memory_get result, or the session memory snapshot if neither has run.",
+                    description = "Atomically update persistent MEMORY.md. Store only durable cross-conversation facts, preferences, relationships and ongoing project context. Never store secrets, credentials, verification codes or transient requests. Keep the core memory section concise, correct stale facts and replace existing sections rather than append duplicates. Use the latest memory_write/memory_get revision, or the session snapshot if neither has run.",
                     parameters = JSONObject()
                         .put("type", "object")
                         .put(

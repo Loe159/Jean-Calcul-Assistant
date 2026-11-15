@@ -27,7 +27,7 @@ class AgentModelRetryTest {
         }
         assertEquals(4, calls)
         assertEquals(listOf(2_000L, 4_000L, 8_000L), delays)
-        assertTrue(failure.message.orEmpty().contains("已重试 3 次"))
+        assertTrue(failure.message.orEmpty().contains("retried 3 times"))
         delays.clear()
         calls = 0
         val result = complete(retry, provider { _, _ ->

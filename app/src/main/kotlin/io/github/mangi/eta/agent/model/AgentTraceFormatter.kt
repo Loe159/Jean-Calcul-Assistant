@@ -104,7 +104,7 @@ internal class AgentTraceFormatter {
                 "${match.groupValues[1]}${match.groupValues[2]}<redacted>"
             }
 
-    /** 外部 URI 摘要不记录 path、query、fragment 或用户信息。 */
+    /** 外部 URI 摘要不记录 path, query, fragment 或用户信息。 */
     fun summarizeOpenUriArguments(argumentsJson: String): String =
         runCatching {
             val raw = JSONObject(argumentsJson).optString("uri").trim()
@@ -158,7 +158,7 @@ internal class AgentTraceFormatter {
             "$label · $chars characters"
         }.getOrDefault(label)
 
-    /** 只展示动作与长度，不回显正文：输入内容可能是密码或私人消息。 */
+    /** 只展示动作与长度，不回显正文: 输入内容可能是密码或私人消息。 */
     private fun summarizeTypeText(argumentsJson: String): String =
         runCatching {
             val args = JSONObject(argumentsJson)
@@ -298,7 +298,7 @@ internal class AgentTraceFormatter {
         runCatching { JSONObject(result.content) }.getOrNull()
 
     /**
-     * 网页错误正文、搜索词和页面标题可能回显私密 URL，只保留计数。动作与主机已在参数摘要中，
+     * 网页错误正文, 搜索词和页面标题可能回显私密 URL，只保留计数。动作与主机已在参数摘要中，
      * 结果只给出结论，避免工作过程同一行重复。
      */
     private fun summarizeWebResult(toolName: String, json: JSONObject?): String {
@@ -439,7 +439,7 @@ internal class AgentTraceFormatter {
             append("Found $total apps")
             val shown = names.take(MAX_LISTED_APP_NAMES)
             if (shown.isNotEmpty()) {
-                append(" · ").append(shown.joinToString("、"))
+                append(" · ").append(shown.joinToString(", "))
                 if (total > shown.size) append(" and others")
             }
         }

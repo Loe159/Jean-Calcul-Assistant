@@ -138,7 +138,7 @@ class AgentPromptBuilderTest {
         assertTrue(messages.systemContents().any { it.contains("proactively use exposed read-only tools for evidence rather than guessing, giving templates, asking the user to enumerate sources or repeatedly requesting authorization.") })
         assertTrue(messages.systemContents().any { it.contains("Exposed tools represent capabilities enabled by the user. For requests to understand the user, analyze recent activity or summarize habits and preferences, ") })
         assertTrue(messages.systemContents().any { it.contains("For broad questions, sample multiple relevant sources across time before synthesizing. Do not stop after one record; try other available sources when one is empty.") })
-        assertTrue(messages.systemContents().any { it.contains(" system memories") })
+        assertTrue(messages.systemContents().any { it.contains("memories") })
         assertTrue(messages.systemContents().any { it.contains("When dedicated read tools are absent or insufficient and root shell, file or terminal tools are exposed, locate and inspect private app files and databases read-only. Identify path, format and schema, then use bounded queries without modifying source data.") })
         assertTrue(messages.systemContents().any { it.contains("When dedicated read tools are absent or insufficient and root shell, file or terminal tools are exposed, locate and inspect private app files and databases read-only. Identify path, format and schema, then use bounded queries without modifying source data.") })
         assertTrue(messages.systemContents().any { it.contains("When dedicated read tools are absent or insufficient and root shell, file or terminal tools are exposed, locate and inspect private app files and databases read-only. Identify path, format and schema, then use bounded queries without modifying source data.") })
@@ -212,7 +212,7 @@ class AgentPromptBuilderTest {
 
         val disabled = contents(false)
         val enabled = contents(true)
-        val subagentGuidance = "可调用 subagent 派发子智能体"
+        val subagentGuidance = "use subagent to delegate work."
         assertFalse(disabled.any { it.contains(subagentGuidance) })
         assertEquals(1, enabled.count { it.contains(subagentGuidance) })
         assertEquals(disabled, enabled.filterNot { it.contains(subagentGuidance) })

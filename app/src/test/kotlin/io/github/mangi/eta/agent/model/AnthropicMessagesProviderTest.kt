@@ -436,7 +436,7 @@ class AnthropicMessagesProviderTest {
             val failure = runCatching {
                 AnthropicMessagesProvider.complete(providerRequest(baseUrl), AgentRunController(), events::add)
             }.exceptionOrNull()
-            assertTrue(failure?.message.orEmpty().contains("内容块未正常结束"))
+            assertTrue(failure?.message.orEmpty().contains("content block did not end normally"))
             assertFalse(events.any { it is ProviderEvent.Completed })
         }
     }
@@ -455,7 +455,7 @@ class AnthropicMessagesProviderTest {
             val failure = runCatching {
                 AnthropicMessagesProvider.complete(providerRequest(baseUrl), AgentRunController())
             }.exceptionOrNull()
-            assertTrue(failure?.message.orEmpty().contains("缺少思考签名"))
+            assertTrue(failure?.message.orEmpty().contains("missing a reasoning signature"))
         }
     }
 
@@ -463,8 +463,8 @@ class AnthropicMessagesProviderTest {
     fun thinkingStreamErrorsAndEarlyEofDoNotReportCompletion() {
         val prefix = blockStart(0, JSONObject().put("type", "thinking").put("thinking", "部分思考"))
         val endings = listOf(
-            "" to "未正常结束",
-            event("error", JSONObject().put("error", JSONObject().put("type", "overloaded_error"))) to "返回错误",
+            "" to "did not end normally",
+            event("error", JSONObject().put("error", JSONObject().put("type", "overloaded_error"))) to "returned an error",
         )
         endings.forEach { (ending, expectedError) ->
             withAnthropicServer(prefix + ending) { baseUrl ->

@@ -30,7 +30,7 @@ internal class PhoneAppTools(
             return PhoneOperations.execute(context, tool, arguments)
         if (!calendar && !system && !colorOs())
             return if (tool in setOf("set_alarm", "list_alarms")) null
-            else PhoneOperation.failure("DEVICE_UNSUPPORTED", "当前设备没有兼容的一方应用接口")
+            else PhoneOperation.failure("DEVICE_UNSUPPORTED", "Device has no compatible first-party app API")
         // 标准 Intent 仍承担显式震动设置；厂商创建接口没有对应参数，不能静默忽略。
         if (tool == "set_alarm" && (arguments.has("vibrate") || !rootAvailable())) return null
         if (calendar && hasCalendarAccess(tool in PhoneOperation.writes))
@@ -38,7 +38,7 @@ internal class PhoneAppTools(
         if (!rootAvailable())
             return PhoneOperation.failure(
                 if (calendar) "CALENDAR_PERMISSION_REQUIRED" else "ROOT_REQUIRED",
-                if (calendar) "请在权限健康页授予日历读取和写入权限" else "此一方应用接口需要 Root",
+                if (calendar) "Grant calendar read and write permissions on the permissions page" else "This first-party app API requires root",
             )
         val request =
             JSONObject()
@@ -58,7 +58,7 @@ internal class PhoneAppTools(
         if (!result.ok || result.truncated)
             return PhoneOperation.failure(
                     result.errorCode.ifBlank { "PHONE_OPERATION_UNCONFIRMED" },
-                    "原生操作通道未返回完整结果，请先核对状态",
+                    "Native action channel returned an incomplete result. Verify state first.",
                 )
                 .put("status", if (tool in PhoneOperation.writes) "unconfirmed" else "failed")
                 .put("verified", false)
@@ -67,12 +67,12 @@ internal class PhoneAppTools(
                 .lineSequence()
                 .singleOrNull { it.startsWith(PhoneCommandMain.MARKER) }
                 ?.removePrefix(PhoneCommandMain.MARKER)
-                ?: return PhoneOperation.failure("PHONE_OPERATION_UNCONFIRMED", "未收到可验证的操作结果")
+                ?: return PhoneOperation.failure("PHONE_OPERATION_UNCONFIRMED", "No verifiable action result received")
                     .put("status", "unconfirmed")
         return try {
             JSONObject(payload)
         } catch (_: org.json.JSONException) {
-            PhoneOperation.failure("PHONE_OPERATION_UNCONFIRMED", "操作结果格式不完整")
+            PhoneOperation.failure("PHONE_OPERATION_UNCONFIRMED", "Incomplete action result format")
                 .put("status", "unconfirmed")
         }
     }

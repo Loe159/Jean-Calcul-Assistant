@@ -1,5 +1,6 @@
 package io.github.mangi.eta.data.update
 
+import io.github.mangi.eta.BuildConfig
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
@@ -61,9 +62,25 @@ internal object AppUpdateChecker {
         return false
     }
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(8, TimeUnit.SECONDS)
-        .readTimeout(8, TimeUnit.SECONDS)
+    fun fetchPreview(): PreviewUpdate? {
+        val channel = BuildConfig.UPDATE_CHANNEL
+        if (channel.isBlank()) return null
+        val request = Request.Builder()
+            .url("${PreviewUpdate.REPOSITORY}/releases/download/$channel/update.json")
+            .header("Cache-Control", "no-cache").header("User-Agent", "JeanCalcul-Updater").build()
+        client.newCall(request).execute().use { response ->
+            if (response.code == 404) return null // No successful preview has been published yet.
+            if (!response.isSuccessful) throw IOException("Update check failed (HTTP ${response.code})")
+            val body = response.body.byteStream().readNBytes(64 * 1024 + 1)
+            require(body.size <= 64 * 1024) { "Update manifest is too large" }
+            return PreviewUpdate.parse(JSONObject(body.toString(Charsets.UTF_8)))
+        }
+    }
+
+    internal val client = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .callTimeout(10, TimeUnit.MINUTES)
         .build()
 
     private const val LATEST_RELEASE_URL = "https://api.github.com/repos/Loe159/Jean-Calcul-Assistant/releases/latest"

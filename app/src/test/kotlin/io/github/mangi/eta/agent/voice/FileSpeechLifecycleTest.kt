@@ -112,7 +112,7 @@ class FileSpeechLifecycleTest {
         idle()
         assertTrue(results.isEmpty())
         assertFalse(controller.state.value.active)
-        assertEquals("没有识别到语音，请重试", controller.state.value.error)
+        assertEquals("No speech recognized. Try again.", controller.state.value.error)
         assertTrue(captures.single().canceled)
     }
 

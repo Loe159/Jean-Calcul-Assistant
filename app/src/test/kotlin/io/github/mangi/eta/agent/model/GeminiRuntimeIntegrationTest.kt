@@ -78,7 +78,7 @@ class GeminiRuntimeIntegrationTest {
         )
         assertEquals(listOf("call-1"), executed)
         assertTrue(requests.first().getJSONObject(0).getJSONArray("content")
-            .getJSONObject(0).getString("text").contains("历史对话文本记录"))
+            .getJSONObject(0).getString("text").contains("conversation history saved by Jean-Calcul"))
         val second = requests[1]
         val thought = (0 until second.length()).map(second::getJSONObject)
             .single { it.optString("type") == "thought" }
@@ -121,7 +121,7 @@ class GeminiRuntimeIntegrationTest {
                         assertEquals(!expected, "web_search" in names)
                         assertTrue("fetch_url" in names)
                         assertTrue("browser_use" in names)
-                        assertEquals(expected, request.messages.toString().contains("托管的 google_search"))
+                        assertEquals(expected, request.messages.toString().contains("hosted google_search"))
                         JSONObject().put("content", "完成").put("finish_reason", "stop")
                     })
             }

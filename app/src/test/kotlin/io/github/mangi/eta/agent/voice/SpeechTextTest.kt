@@ -214,7 +214,7 @@ class SpeechTextTest {
             - 不要更改权限
         """.trimIndent())
 
-        assertInOrder(text, "已完成：完成备份", "未完成：尚未更新", "已完成：已核对", "不要更改权限")
+        assertInOrder(text, "Completed: 完成备份", "Incomplete: 尚未更新", "Completed: 已核对", "不要更改权限")
         assertFalse(text.contains("[x]"))
         assertFalse(text.contains("[ ]"))
         assertFalse(text.contains("[X]"))

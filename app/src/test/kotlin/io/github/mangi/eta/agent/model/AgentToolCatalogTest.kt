@@ -62,7 +62,7 @@ class AgentToolCatalogTest {
         assertEquals("string", properties.getJSONObject("url").getString("type"))
         assertEquals("boolean", properties.getJSONObject("submit").getString("type"))
         assertFalse(properties.getJSONObject("url").getString("description").contains("HTTPS"))
-        assertFalse(function.getString("description").contains("拦截"))
+        assertFalse(function.getString("description").contains("The provider blocked this reply. Incomplete content was discarded."))
     }
 
     @Test
@@ -76,9 +76,9 @@ class AgentToolCatalogTest {
 
             assertEquals("string", properties.getJSONObject("observation_id").getString("type"))
             assertTrue("observation_id must be required for $name", "observation_id" in parameters.requiredNames())
-            assertTrue(function.getString("description").contains("同一次"))
+            assertTrue(function.getString("description").contains("Required with index, from the same latest observation."))
             assertTrue(function.getString("description").contains("observe_screen"))
-            assertTrue(function.getString("description").contains("重新观察"))
+            assertTrue(function.getString("description").contains(". Observe the screen again."))
         }
     }
 
@@ -95,10 +95,10 @@ class AgentToolCatalogTest {
         assertEquals(60, properties.getJSONObject("max_nodes").getInt("default"))
         assertEquals(1, properties.getJSONObject("max_nodes").getInt("minimum"))
         assertEquals(120, properties.getJSONObject("max_nodes").getInt("maximum"))
-        assertTrue(function.getString("description").contains("默认只返回"))
+        assertTrue(function.getString("description").contains("Acquire phone control and observe the screen; the runtime waits if another conversation owns it. Default returns foreground app, dimensions, observation_id and visible nodes without a screenshot. Set include_screenshot=true only for insufficient nodes, ambiguous targets or visual/canvas/map/image/QR tasks; keep include_ui_tree=true so new nodes and screenshot share observation_id. Never mix new screenshots with old nodes. Send node actions with the same observation_id. For useful truncated nodes, first raise max_nodes to 120. Call release_gui when finished; observe again after release or user takeover."))
         assertTrue(function.getString("description").contains("include_screenshot=true"))
-        assertTrue(function.getString("description").contains("保持 include_ui_tree=true"))
-        assertTrue(function.getString("description").contains("禁止把新截图与旧节点混用"))
+        assertTrue(function.getString("description").contains("explicitly set include_screenshot=true and keep include_ui_tree=true so screenshot, nodes and observation_id come from the same observation."))
+        assertTrue(function.getString("description").contains("Never combine a new screenshot with old nodes. If truncated nodes remain useful, increase max_nodes rather than requesting an unnecessary screenshot."))
     }
 
     @Test
@@ -116,8 +116,8 @@ class AgentToolCatalogTest {
                 .stringValues()
 
             assertEquals(expectedDirections, directions)
-            assertTrue(function.getString("description").contains("down 显示下方内容"))
-            assertTrue(function.getString("description").contains("up 显示上方内容"))
+            assertTrue(function.getString("description").contains("Content direction: down reveals lower content, up reveals upper content"))
+            assertTrue(function.getString("description").contains("Content direction: down reveals lower content, up reveals upper content"))
         }
     }
 

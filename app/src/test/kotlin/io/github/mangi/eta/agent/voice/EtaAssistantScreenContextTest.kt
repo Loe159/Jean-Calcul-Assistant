@@ -42,7 +42,7 @@ class EtaAssistantScreenContextTest {
             val snapshot = capture.snapshot()
             assertNull(snapshot.image)
             assertTrue(snapshot.text.contains("current.app"))
-            assertTrue(snapshot.text.contains("未提供可用截图"))
+            assertTrue(snapshot.text.contains("did not provide a usable screenshot"))
         } finally { capture.close() }
     }
 

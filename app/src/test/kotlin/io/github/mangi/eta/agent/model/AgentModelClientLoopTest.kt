@@ -41,7 +41,7 @@ class AgentModelClientLoopTest {
             },
             { request, _ ->
                 record(request)
-                assertTrue(request.messages.toString().contains("Root 授权已确认"))
+                assertTrue(request.messages.toString().contains("Root access is confirmed"))
                 assertTrue(request.tools.toString().contains("set_setting"))
                 assistant(finishReason = "tool_calls", toolCalls = listOf(toolCall("root-command", "terminal", """{"command":"id -u","identity":"root"}""")))
             },
@@ -143,8 +143,8 @@ class AgentModelClientLoopTest {
                         assertEquals(browser && !effectiveHosted, "web_search" in names)
                         assertEquals(browser, "fetch_url" in names)
                         assertEquals(browser, "browser_use" in names)
-                        assertEquals(effectiveHosted, request.messages.toString().contains("Provider 托管的 web_search"))
-                        assertEquals(browser && !effectiveHosted, request.messages.toString().contains("使用本地 web_search"))
+                        assertEquals(effectiveHosted, request.messages.toString().contains("provider's hosted web_search"))
+                        assertEquals(browser && !effectiveHosted, request.messages.toString().contains("Use local web_search"))
                         if (effectiveHosted) {
                             val outgoing = ResponsesRequestBuilder.build(config, request.messages, request.tools).getJSONArray("tools")
                             assertEquals(1, (0 until outgoing.length()).count { outgoing.getJSONObject(it).optString("type") == "web_search" })
@@ -182,12 +182,12 @@ class AgentModelClientLoopTest {
         val provider = ScriptedProvider(listOf(
             { request, _ ->
                 assertTrue(request.tools.toString().contains("set_setting"))
-                assertTrue(request.messages.toString().contains("相关应用私有文件与数据库"))
+                assertTrue(request.messages.toString().contains("private app files and databases"))
                 assistant(finishReason = "tool_calls", toolCalls = listOf(toolCall("first", "get_current_context", "{}")))
             },
             { request, _ ->
                 assertFalse(request.tools.toString().contains("set_setting"))
-                assertFalse(request.messages.toString().contains("相关应用私有文件与数据库"))
+                assertFalse(request.messages.toString().contains("private app files and databases"))
                 assertTrue(request.messages.toString().contains("identity=user"))
                 assistant(finishReason = "tool_calls", toolCalls = listOf(
                     toolCall("stale", "set_setting", "{}"),
@@ -234,12 +234,12 @@ class AgentModelClientLoopTest {
         val provider = ScriptedProvider(listOf(
             { request, _ ->
                 assertTrue(request.tools.toString().contains("set_setting"))
-                assertTrue(request.messages.toString().contains("相关应用私有文件与数据库"))
+                assertTrue(request.messages.toString().contains("private app files and databases"))
                 firstAssistant
             },
             { request, _ ->
                 assertTrue(request.tools.toString().contains("set_setting"))
-                assertTrue(request.messages.toString().contains("相关应用私有文件与数据库"))
+                assertTrue(request.messages.toString().contains("private app files and databases"))
                 assistant(content = "完成", finishReason = "stop")
             },
         ))

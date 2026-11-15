@@ -29,7 +29,7 @@ class OneShotShellTest {
         val result = execute("exit 0", ByteArray(512 * 1024))
 
         assertEquals(SHELL_STDIN_FAILED_EXIT_CODE, result.exitCode)
-        assertEquals("命令输入传输失败", result.stderr.decodeToString())
+        assertEquals("Command input transfer failed", result.stderr.decodeToString())
     }
 
     @Test

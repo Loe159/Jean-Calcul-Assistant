@@ -72,7 +72,7 @@ class AgentContinuationBuilderTest {
             listOf("user", "user", "assistant", "tool", "assistant"),
             continuation.history.map { it.role },
         )
-        assertTrue(continuation.history[1].contentJson.contains("未写入持久会话"))
+        assertTrue(continuation.history[1].contentJson.contains("not saved in persistent history"))
         assertEquals("user-run-old", continuation.history[1].messageId)
         assertTrue(!continuation.history[1].contentJson.contains("base64"))
         assertEquals("call-1", continuation.history[3].toolCallId)

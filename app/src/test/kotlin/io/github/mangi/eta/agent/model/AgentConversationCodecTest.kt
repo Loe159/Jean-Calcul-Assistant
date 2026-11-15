@@ -53,7 +53,7 @@ class AgentConversationCodecTest {
         )
 
         assertFalse(message.contentJson.contains("base64"))
-        assertTrue(message.contentJson.contains("未写入持久会话"))
+        assertTrue(message.contentJson.contains("not saved in persistent history"))
     }
 
     @Test
@@ -83,7 +83,7 @@ class AgentConversationCodecTest {
         assertTrue(encoded.length <= AgentLegacyConversationProjection.DIRECT_CHARS)
         assertTrue(decoded.isNotEmpty())
         assertFalse(decoded.first().role == "tool")
-        assertTrue(decoded.first().content.contains("容量上限已压缩"))
+        assertTrue(decoded.first().content.contains("compacted due to transport or storage limits"))
         assertTrue(decoded.last().content.contains("最终答案"))
     }
 

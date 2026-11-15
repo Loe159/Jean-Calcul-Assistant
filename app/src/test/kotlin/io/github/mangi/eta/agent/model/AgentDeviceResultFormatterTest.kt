@@ -13,10 +13,10 @@ class AgentDeviceResultFormatterTest {
             {"datetime":"2026-10-28T21:35:42+08:00","timezone":"Asia/Shanghai",
              "location":{"latitude":31.23041,"longitude":121.4737,"age_s":42}}
         """)
-        assertEquals("2026-10-28 21:35 +08:00 · recent location: 31.23041, 121.4737（42 seconds ago）",
+        assertEquals("2026-10-28 21:35 +08:00 · recent location: 31.23041, 121.4737 (42 seconds ago)",
             AgentDeviceResultFormatter.summarize("get_current_context", json))
         json.getJSONObject("location").put("age_s", 172800)
-        assertEquals("2026-10-28 21:35 +08:00 · recent location: 31.23041, 121.4737（2 days ago）",
+        assertEquals("2026-10-28 21:35 +08:00 · recent location: 31.23041, 121.4737 (2 days ago)",
             AgentDeviceResultFormatter.summarize("get_current_context", json))
         json.getJSONObject("location").remove("age_s")
         assertEquals("2026-10-28 21:35 +08:00 · recent location: 31.23041, 121.4737",
@@ -44,9 +44,9 @@ class AgentDeviceResultFormatterTest {
 
     @Test
     fun booleanChangesKeepUnknownAndUnchangedStatesDistinct() {
-        assertEquals("Auto-rotate：Off → On", summarize("set_device_state", """{"target":"auto_rotate","before":false,"after":true}"""))
-        assertEquals("Flashlight：KeepOff", summarize("set_flashlight", """{"before":false,"after":false}"""))
-        assertEquals("Hotspot：Done: On", summarize("set_hotspot", """{"before":null,"after":true}"""))
+        assertEquals("Auto-rotate: Off → On", summarize("set_device_state", """{"target":"auto_rotate","before":false,"after":true}"""))
+        assertEquals("Flashlight: Keep Off", summarize("set_flashlight", """{"before":false,"after":false}"""))
+        assertEquals("Hotspot: Done: On", summarize("set_hotspot", """{"before":null,"after":true}"""))
         assertNull(summarize("set_device_state", """{"target":"private-target","after":true}"""))
         assertNull(summarize("set_flashlight", """{"after":"false"}"""))
         assertNull(summarize("set_flashlight", """{"expected":true}"""))
@@ -57,32 +57,32 @@ class AgentDeviceResultFormatterTest {
 
     @Test
     fun volumeUsesActualLevelsAndFallsBackWhenScaleIsUnavailable() {
-        assertEquals("Media volume：33% → 53%", summarize("set_volume", """{"stream":"media","before":5,"after":8,"min_level":0,"max_level":15,"percent":50}"""))
-        assertEquals("CallsVolume：0% → 50%", summarize("set_volume", """{"stream":"voice_call","before":1,"after":3,"min_level":1,"max_level":5}"""))
-        assertEquals("RingtoneVolume：2 level → 4 level", summarize("set_volume", """{"stream":"ring","before":2,"after":4}"""))
-        assertEquals("SystemVolume：Keep 0 level", summarize("set_volume", """{"stream":"system","before":0,"after":0,"min_level":0,"max_level":0}"""))
-        assertEquals("Media volume：set to  50%", summarize("set_volume", """{"stream":"media","before":500,"after":501,"min_level":0,"max_level":1000}"""))
+        assertEquals("Media volume: 33% → 53%", summarize("set_volume", """{"stream":"media","before":5,"after":8,"min_level":0,"max_level":15,"percent":50}"""))
+        assertEquals("Calls volume: 0% → 50%", summarize("set_volume", """{"stream":"voice_call","before":1,"after":3,"min_level":1,"max_level":5}"""))
+        assertEquals("Ringtone volume: 2 level → 4 level", summarize("set_volume", """{"stream":"ring","before":2,"after":4}"""))
+        assertEquals("System volume: Keep 0 level", summarize("set_volume", """{"stream":"system","before":0,"after":0,"min_level":0,"max_level":0}"""))
+        assertEquals("Media volume: set to 50%", summarize("set_volume", """{"stream":"media","before":500,"after":501,"min_level":0,"max_level":1000}"""))
         assertNull(summarize("set_volume", """{"stream":"media","percent":50,"level":7}"""))
     }
 
     @Test
     fun numericChangesUseReadbackUnitsAndTreatMissingPreviousValuesAsUnknown() {
-        assertEquals("Brightness：30% → 59.5%", summarize("set_brightness", """{"before":30,"after":59.5,"expected":60}"""))
-        assertEquals("Screen timeout：30 seconds → 2 minutes", summarize("set_screen_timeout", """{"before":30000,"after":120000}"""))
-        assertEquals("Screen timeout：set to  45 seconds", summarize("set_screen_timeout", """{"before":-1,"after":45000}"""))
+        assertEquals("Brightness: 30% → 59.5%", summarize("set_brightness", """{"before":30,"after":59.5,"expected":60}"""))
+        assertEquals("Screen timeout: 30 seconds → 2 minutes", summarize("set_screen_timeout", """{"before":30000,"after":120000}"""))
+        assertEquals("Screen timeout: set to 45 seconds", summarize("set_screen_timeout", """{"before":-1,"after":45000}"""))
         assertNull(summarize("set_screen_timeout", """{"after":-1}"""))
         assertNull(summarize("set_brightness", """{"actual_percent":60,"expected":60}"""))
-        assertEquals("Ringer mode：Normal → Vibrate", summarize("set_sound_mode", """{"before":2,"after":1,"mode":"silent"}"""))
-        assertEquals("Do Not Disturb：Off → Alarms only", summarize("set_do_not_disturb", """{"before":0,"after":3}"""))
+        assertEquals("Ringer mode: Normal → Vibrate", summarize("set_sound_mode", """{"before":2,"after":1,"mode":"silent"}"""))
+        assertEquals("Do Not Disturb: Off → Alarms only", summarize("set_do_not_disturb", """{"before":0,"after":3}"""))
         assertNull(summarize("set_do_not_disturb", """{"after":99}"""))
     }
 
     @Test
     fun settingSummariesExposeOnlyKnownSafeKeysAndNeverArbitraryValues() {
-        assertEquals("Auto brightness：Off → On", summarize("set_setting", """{"namespace":"system","key":"screen_brightness_mode","before":"0","after":"1"}"""))
-        assertEquals("Screen timeout：15 seconds → 1 minutes", summarize("set_setting", """{"namespace":"system","key":"screen_off_timeout","before":"15000","after":"60000"}"""))
-        assertEquals("Battery saver：Off → On", summarize("set_setting", """{"namespace":"global","key":"low_power","before":"0","after":"1"}"""))
-        assertEquals("Do Not Disturb：Off → Total silence", summarize("set_setting", """{"namespace":"global","key":"zen_mode","before":"0","after":"2"}"""))
+        assertEquals("Auto brightness: Off → On", summarize("set_setting", """{"namespace":"system","key":"screen_brightness_mode","before":"0","after":"1"}"""))
+        assertEquals("Screen timeout: 15 seconds → 1 minutes", summarize("set_setting", """{"namespace":"system","key":"screen_off_timeout","before":"15000","after":"60000"}"""))
+        assertEquals("Battery saver: Off → On", summarize("set_setting", """{"namespace":"global","key":"low_power","before":"0","after":"1"}"""))
+        assertEquals("Do Not Disturb: Off → Total silence", summarize("set_setting", """{"namespace":"global","key":"zen_mode","before":"0","after":"2"}"""))
         assertEquals("System settings changed", summarize("set_setting", """{"namespace":"secure","key":"secret-key","before":"old-secret","after":"new-secret"}"""))
         assertEquals("System settings unchanged", summarize("set_setting", """{"namespace":"global","key":"private-key","before":"secret","after":"secret"}"""))
         assertEquals("System settings changed", summarize("set_setting", """{"namespace":"secure","key":"screen_brightness_mode","before":"secret-one","after":"secret-two"}"""))
@@ -91,27 +91,27 @@ class AgentDeviceResultFormatterTest {
 
     @Test
     fun applicationAndMediaSummariesDoNotInventRunningOrPlaybackState() {
-        assertEquals("Stopped app com.example.app", summarize("app_state_control", """{"package_name":"com.example.app","action":"force_stop","state_field":"stopped","before":false,"after":true}"""))
-        assertEquals("Frozen app", summarize("app_state_control", """{"package_name":"private\nbody","action":"freeze","state_field":"enabled","before":true,"after":false}"""))
+        assertEquals("Stopped App com.example.app", summarize("app_state_control", """{"package_name":"com.example.app","action":"force_stop","state_field":"stopped","before":false,"after":true}"""))
+        assertEquals("Frozen App", summarize("app_state_control", """{"package_name":"private\nbody","action":"freeze","state_field":"enabled","before":true,"after":false}"""))
         assertNull(summarize("app_state_control", """{"action":"force_stop","state_field":"enabled","after":true}"""))
         val longPackage = "com.example." + "a".repeat(80)
         val summary = summarize("app_state_control", JSONObject().put("package_name", longPackage)
             .put("action", "unfreeze").put("state_field", "enabled").put("before", false).put("after", true).toString())!!
         assertFalse(summary.contains(longPackage))
-        assertEquals("Unfrozen app ${longPackage.take(59)}…", summary)
-        assertEquals("SentPausecommand", summarize("media_control", """{"action":"pause"}"""))
+        assertEquals("Unfrozen App ${longPackage.take(59)}…", summary)
+        assertEquals("Sent Pause command", summarize("media_control", """{"action":"pause"}"""))
         assertNull(summarize("media_control", """{"action":"private-action"}"""))
     }
 
     @Test
     fun deviceReadSummariesUseStrictPublicFieldsWithoutNetworkNames() {
-        assertEquals("Bluetooth：On", summarize("get_device_state", """{"target":"bluetooth","enabled":true}"""))
-        assertEquals("Flashlight：Off", summarize("get_flashlight", """{"enabled":false}"""))
-        assertEquals("Wi-Fi / VPN：Done: 连接互联网", summarize("network_info", """{"connected":true,"validated":true,"transports":["wifi","vpn","private-network"],"ssid":"private-ssid"}"""))
-        assertEquals("Cellular network：Done: 连接，互联网未验证", summarize("network_info", """{"connected":true,"validated":false,"transports":["cellular"]}"""))
+        assertEquals("Bluetooth: On", summarize("get_device_state", """{"target":"bluetooth","enabled":true}"""))
+        assertEquals("Flashlight: Off", summarize("get_flashlight", """{"enabled":false}"""))
+        assertEquals("Wi-Fi / VPN: Connected to the internet", summarize("network_info", """{"connected":true,"validated":true,"transports":["wifi","vpn","private-network"],"ssid":"private-ssid"}"""))
+        assertEquals("Cellular network: Connected; internet not verified", summarize("network_info", """{"connected":true,"validated":false,"transports":["cellular"]}"""))
         assertEquals("Network: disconnected", summarize("network_info", """{"connected":false,"validated":false,"transports":[]}"""))
-        assertEquals("Battery 73% · 正在充电", summarize("device_status", """{"battery_percent":73,"charging":true}"""))
-        assertEquals("Recent location: 31.23041, 121.4737（42 seconds ago）", summarize("get_current_location", """{"latitude":31.23041,"longitude":121.4737,"age_ms":42000}"""))
+        assertEquals("Battery 73% · Charging", summarize("device_status", """{"battery_percent":73,"charging":true}"""))
+        assertEquals("Recent location: 31.23041, 121.4737 (42 seconds ago)", summarize("get_current_location", """{"latitude":31.23041,"longitude":121.4737,"age_ms":42000}"""))
         assertEquals("Device context read", summarize("get_device_environment", """{"interactive":true}"""))
         assertNull(summarize("network_info", """{"connected":"true","validated":true,"transports":[]}"""))
         assertNull(summarize("device_status", """{"battery_percent":-1,"charging":true}"""))

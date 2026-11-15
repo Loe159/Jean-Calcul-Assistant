@@ -48,7 +48,7 @@ internal object CharacterCardCodec {
         require(originalData.text("name").isNotBlank()) { "角色卡缺少名称" }
         textFields.forEach { field ->
             val value = originalData[field]
-            require(value == null || value is JsonPrimitive && value.isString) { "角色卡字段 $field 必须是文本" }
+            require(value == null || value is JsonPrimitive && value.isString) { "角色卡字段 $field must be text" }
         }
         listOf("tags", "alternate_greetings", "group_only_greetings").forEach { field ->
             val value = originalData[field]

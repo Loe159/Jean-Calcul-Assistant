@@ -25,7 +25,7 @@ internal object AgentDeviceResultFormatter {
                     else -> deviceLabel(json.optString("target")) ?: return null
                 }
                 val enabled = json.opt("enabled") as? Boolean ?: return null
-                return "$label：${booleanState(enabled)}"
+                return "$label: ${booleanState(enabled)}"
             }
             "media_control" -> return mediaControl(json)
             "network_info" -> return networkInfo(json)
@@ -75,7 +75,7 @@ internal object AgentDeviceResultFormatter {
             }
         }
         return "$time · recent location: ${decimal(latitude)}, ${decimal(longitude)}" +
-            if (age != null) "（$age）" else ""
+            if (age != null) " ($age)" else ""
     }
 
     private fun currentLocation(json: JSONObject): String? {
@@ -93,7 +93,7 @@ internal object AgentDeviceResultFormatter {
             }
         }
         return "Recent location: ${decimal(latitude)}, ${decimal(longitude)}" +
-            if (age != null) "（$age）" else ""
+            if (age != null) " ($age)" else ""
     }
 
     private fun booleanChange(label: String, json: JSONObject): String? = change(
@@ -125,7 +125,7 @@ internal object AgentDeviceResultFormatter {
                 "$it level"
             }
         }
-        return change("${stream}Volume", display(before), display(after), unchanged = before == after)
+        return change("${stream} volume", display(before), display(after), unchanged = before == after)
     }
 
     private fun brightness(json: JSONObject): String? {
@@ -160,17 +160,17 @@ internal object AgentDeviceResultFormatter {
         return when (action) {
             "force_stop" -> when {
                 before == true && after -> "$target: remains stopped"
-                after -> "Stopped$target"
+                after -> "Stopped $target"
                 else -> "$target: not stopped"
             }
             "freeze" -> when {
                 before == false && !after -> "$target: remains frozen"
-                !after -> "Frozen$target"
+                !after -> "Frozen $target"
                 else -> "$target: remains enabled"
             }
             "unfreeze" -> when {
                 before == true && after -> "$target: remains enabled"
-                after -> "Unfrozen$target"
+                after -> "Unfrozen $target"
                 else -> "$target: remains frozen"
             }
             else -> null
@@ -218,7 +218,7 @@ internal object AgentDeviceResultFormatter {
             "stop" -> "Stop playback"
             else -> return null
         }
-        return "Sent${action}command"
+        return "Sent ${action} command"
     }
 
     private fun networkInfo(json: JSONObject): String? {
@@ -237,14 +237,14 @@ internal object AgentDeviceResultFormatter {
         }.distinct()
         if (!connected) return "Network: disconnected"
         val label = labels.joinToString(" / ").ifEmpty { "Network" }
-        return "$label：${if (validated) "已连接互联网" else "已连接，互联网未验证"}"
+        return "$label: ${if (validated) "Connected to the internet" else "Connected; internet not verified"}"
     }
 
     private fun deviceStatus(json: JSONObject): String? {
         if (json.opt("ok") != true) return null
         val percent = integer(json, "battery_percent")?.takeIf { it in 0..100 } ?: return null
         val charging = json.opt("charging") as? Boolean ?: return null
-        return "Battery $percent% · ${if (charging) "正在充电" else "未充电"}"
+        return "Battery $percent% · ${if (charging) "Charging" else "Not charging"}"
     }
 
     private fun change(
@@ -255,13 +255,13 @@ internal object AgentDeviceResultFormatter {
         withoutBefore: String = "set to ",
     ): String? {
         if (after == null) return null
-        val prefix = if (withoutBefore.endsWith("to ") && (after.firstOrNull()?.isDigit() == true || after.endsWith("%"))) "$withoutBefore " else withoutBefore
-        val keep = if (after.firstOrNull()?.isDigit() == true || after.endsWith("%")) "Keep " else "Keep"
+        val prefix = withoutBefore.trimEnd() + " "
+        val keep = "Keep "
         return when {
-            before == null -> "$label：$prefix$after"
-            unchanged -> "$label：$keep$after"
-            before == after -> "$label：$prefix$after"
-            else -> "$label：$before → $after"
+            before == null -> "$label: $prefix$after"
+            unchanged -> "$label: $keep$after"
+            before == after -> "$label: $prefix$after"
+            else -> "$label: $before → $after"
         }
     }
 

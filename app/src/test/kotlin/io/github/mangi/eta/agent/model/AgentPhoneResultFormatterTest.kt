@@ -50,7 +50,7 @@ class AgentPhoneResultFormatterTest {
              "before":{"title":"private-old","description":"private-body","eventLocation":"private-place","dtstart":"1","dtend":"2","reminders":[{"minutes":"5","method":"1"}]},
              "event":{"title":"private-new","description":"private-body-new","eventLocation":"private-place-new","dtstart":"3","dtend":"4","reminders":[{"minutes":"10","method":"1"}]}}
         """)
-        assertEquals("Event updated · Title、Time、Location、Description、Reminder", result)
+        assertEquals("Event updated · Title, Time, Location, Description, Reminder", result)
         assertFalse(result!!.contains("private"))
         assertFalse(result.contains('\n'))
         assertEquals("Event unchanged", summarize("update_calendar_event", """
@@ -74,7 +74,7 @@ class AgentPhoneResultFormatterTest {
         assertEquals("Note created", summarize("create_note", """
             {"ok":true,"verified":true,"note":{"title":"private-title","content":"private-body"}}
         """))
-        assertEquals("Found 2 alarms · more available", summarize("list_alarms", """
+        assertEquals("Found 2 alarms · More available", summarize("list_alarms", """
             {"ok":true,"items":[{"label":"private-one"},{"label":"private-two"}],"has_more":true}
         """))
         assertEquals("No alarms", summarize("list_alarms", """{"ok":true,"items":[]}"""))

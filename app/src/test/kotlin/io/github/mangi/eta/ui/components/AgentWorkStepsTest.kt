@@ -86,7 +86,7 @@ class AgentWorkStepsTest {
             resultSummary = "Failed · exit code 1\nno such file",
         )
 
-        assertEquals("Exit code 1", message.outcomeLine())
+        assertEquals("exit code 1", message.outcomeLine())
     }
 
     @Test
