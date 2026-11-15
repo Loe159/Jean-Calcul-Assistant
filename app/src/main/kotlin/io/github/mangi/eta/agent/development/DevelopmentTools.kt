@@ -111,8 +111,14 @@ internal class DevelopmentTools(
             if (content == null) entry.put("sha", JSONObject.NULL) else entry.put("content", content)
             entries.put(entry)
         }
-        return github.api("/git/trees", "POST", JSONObject().put("base_tree", parent.getJSONObject("commit").getJSONObject("tree").getString("sha"))
-            .put("tree", entries)).getString("sha")
+        var treeSha = parent.getJSONObject("commit").getJSONObject("tree").getString("sha")
+        // Large tree updates can time out on GitHub; build intermediate trees before committing once.
+        for (start in 0 until entries.length() step 4) {
+            val chunk = JSONArray()
+            for (index in start until minOf(start + 4, entries.length())) chunk.put(entries.getJSONObject(index))
+            treeSha = github.api("/git/trees", "POST", JSONObject().put("base_tree", treeSha).put("tree", chunk)).getString("sha")
+        }
+        return treeSha
     }
 
     private fun propose(args: JSONObject): JSONObject {
