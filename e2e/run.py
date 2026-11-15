@@ -12,6 +12,7 @@ import socket
 import subprocess
 import sys
 import time
+import threading
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -135,6 +136,8 @@ def main():
     log = None
     adb = None
     success = False
+    monitor_stop = threading.Event()
+    monitor_thread = None
     save()
     try:
         report['commit'] = run(['git', 'rev-parse', 'HEAD']).stdout.strip()
@@ -183,9 +186,13 @@ def main():
         # Pixel 6 defaults to 12 GiB of userdata. This account-free fixture needs
         # much less; size only our new disposable AVD, never an existing device.
         config = out / 'avd' / f'{name}.avd' / 'config.ini'
+        display_config = {'disk.dataPartition.size': '4G', 'hw.lcd.width': '720',
+                          'hw.lcd.height': '1280', 'hw.lcd.density': '280'}
         config.write_text('\n'.join(line for line in config.read_text().splitlines()
-                                    if not line.startswith('disk.dataPartition.size='))
-                          + '\ndisk.dataPartition.size=4G\n')
+                                    if line.split('=', 1)[0] not in display_config)
+                          + '\n' + '\n'.join(f'{key}={value}' for key, value in display_config.items()) + '\n')
+        # Same 411 x 731 dp viewport as 1080 x 1920 @ 420 dpi, with 56% fewer pixels.
+        report['display'] = {'pixels': [720, 1280], 'density': 280, 'dp': [411, 731]}
         # Compile and run JVM/lint before the emulator consumes memory. In particular,
         # dexing/lint must not compete with Android on small CI runners.
         print('Building APKs and running JVM/lint before starting Android…', flush=True)
@@ -208,13 +215,36 @@ def main():
         log = (out / 'logs/emulator-local.txt').open('w')
         cmd = [emulator_bin, '-avd', name, '-port', str(args.port), '-wipe-data', '-no-snapshot',
                '-no-metrics', '-no-audio', '-no-boot-anim', '-gpu', 'swiftshader',
-               '-feature', '-Vulkan', '-memory', '2048', '-cores', '2']
+               '-feature', '-Vulkan', '-skin', '720x1280', '-memory', '2048', '-cores', '2']
         if args.software_emulator:
             env['ANDROID_I_WANT_MY_TCG'] = 'yes'
-            cmd += ['-accel', 'off', '-skin', '540x1200']
+            cmd += ['-accel', 'off']
         if not args.show_window:
             cmd.append('-no-window')
         emulator = subprocess.Popen(cmd, env=env, stdout=log, stderr=subprocess.STDOUT)
+        health = {'samples': 0, 'peak_emulator_rss_kb': 0, 'min_host_available_kb': None}
+        report['emulator_health'] = health
+        def monitor_emulator():
+            while not monitor_stop.is_set():
+                try:
+                    status = Path(f'/proc/{emulator.pid}/status').read_text()
+                    rss = re.search(r'^VmRSS:\s+(\d+)', status, re.MULTILINE)
+                    available = re.search(r'^MemAvailable:\s+(\d+)', Path('/proc/meminfo').read_text(), re.MULTILINE)
+                    health['samples'] += 1
+                    if rss:
+                        health['peak_emulator_rss_kb'] = max(health['peak_emulator_rss_kb'], int(rss.group(1)))
+                    if available:
+                        value = int(available.group(1))
+                        health['min_host_available_kb'] = value if health['min_host_available_kb'] is None else min(value, health['min_host_available_kb'])
+                except OSError:
+                    pass
+                if emulator.poll() is not None:
+                    health['unexpected_exit_code'] = emulator.returncode
+                    break
+                monitor_stop.wait(2)
+        monitor_thread = threading.Thread(target=monitor_emulator, daemon=True)
+        monitor_thread.start()
+
         adb = [adb_bin, '-s', report['serial']]
         deadline = time.monotonic() + (600 if args.software_emulator else 240)
         while time.monotonic() < deadline:
@@ -238,8 +268,8 @@ def main():
         shell('cmd', 'connectivity', 'airplane-mode', 'enable')
         shell('svc', 'wifi', 'disable')
         def baseline():
-            shell('wm', 'size', '1080x1920')
-            shell('wm', 'density', '420')
+            shell('wm', 'size', '720x1280')
+            shell('wm', 'density', '280')
             shell('settings', 'put', 'system', 'font_scale', '1.0')
             shell('cmd', 'uimode', 'night', 'no')
             for setting in ('window_animation_scale', 'transition_animation_scale', 'animator_duration_scale'):
@@ -341,6 +371,11 @@ def main():
         report['error'] = redact(str(error))
         print(report['error'], file=sys.stderr)
     finally:
+        monitor_stop.set()
+        if monitor_thread:
+            monitor_thread.join(timeout=3)
+        if emulator:
+            report['emulator_exit_before_cleanup'] = emulator.poll()
         save()
         if emulator and not (args.keep_emulator and success):
             if adb:

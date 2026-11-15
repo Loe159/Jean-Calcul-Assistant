@@ -159,3 +159,9 @@ directement par `am instrument` pour éviter une seconde JVM pendant le rendu An
 Le protocole AndroidJUnitRunner alimente le XML JUnit : noms exacts attendus, codes
 de réussite par test, nombre de tests et fin normale sont tous requis. Un code de
 sortie ADB égal à zéro ne suffit pas ; échecs, tests ignorés et interruptions restent FAIL.
+
+Le profil de revue utilise désormais 720×1280 à 280 dpi, soit les mêmes
+411×731 dp que 1080×1920 à 420 dpi. Le scénario petit écran reste 360×640 dp.
+Le rapport relève le pic mémoire du seul émulateur lancé par le runner, la mémoire
+disponible de son hôte et son code d’arrêt avant nettoyage ; aucune donnée personnelle
+ni journal système global n’est collecté.
