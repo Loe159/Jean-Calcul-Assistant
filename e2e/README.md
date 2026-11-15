@@ -165,3 +165,8 @@ Le profil de revue utilise désormais 720×1280 à 280 dpi, soit les mêmes
 Le rapport relève le pic mémoire du seul émulateur lancé par le runner, la mémoire
 disponible de son hôte et son code d’arrêt avant nettoyage ; aucune donnée personnelle
 ni journal système global n’est collecté.
+
+Le profil complet dispose de 4 Gio de RAM invitée. En diagnostic, `logcat` est
+filtré sur l’UID exact de la seule application synthétique ; aucun flux global
+ni compte personnel n’est lu. Le rapport distingue la mémoire hôte, la mémoire
+invitée disponible et la perte du transport ADB d’un arrêt du processus émulateur.

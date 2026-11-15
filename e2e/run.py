@@ -138,6 +138,8 @@ def main():
     success = False
     monitor_stop = threading.Event()
     monitor_thread = None
+    app_log_process = None
+    app_log_stream = None
     save()
     try:
         report['commit'] = run(['git', 'rev-parse', 'HEAD']).stdout.strip()
@@ -187,7 +189,7 @@ def main():
         # much less; size only our new disposable AVD, never an existing device.
         config = out / 'avd' / f'{name}.avd' / 'config.ini'
         display_config = {'disk.dataPartition.size': '4G', 'hw.lcd.width': '720',
-                          'hw.lcd.height': '1280', 'hw.lcd.density': '280'}
+                          'hw.lcd.height': '1280', 'hw.lcd.density': '280', 'hw.ramSize': '4096'}
         config.write_text('\n'.join(line for line in config.read_text().splitlines()
                                     if line.split('=', 1)[0] not in display_config)
                           + '\n' + '\n'.join(f'{key}={value}' for key, value in display_config.items()) + '\n')
@@ -215,7 +217,7 @@ def main():
         log = (out / 'logs/emulator-local.txt').open('w')
         cmd = [emulator_bin, '-avd', name, '-port', str(args.port), '-wipe-data', '-no-snapshot',
                '-no-metrics', '-no-audio', '-no-boot-anim', '-gpu', 'swiftshader',
-               '-feature', '-Vulkan', '-skin', '720x1280', '-memory', '2048', '-cores', '2']
+               '-feature', '-Vulkan', '-skin', '720x1280', '-memory', '4096', '-cores', '2']
         if args.software_emulator:
             env['ANDROID_I_WANT_MY_TCG'] = 'yes'
             cmd += ['-accel', 'off']
@@ -278,6 +280,21 @@ def main():
         # Gradle has exited. Keep the emulator's test phase free of another build JVM.
         for apk in (out / 'app-debug.apk', out / 'app-debug-androidTest.apk'):
             run(adb + ['install', '-r', apk], 'install-' + apk.stem)
+        # Capture only this synthetic application's UID, never global Android logs.
+        uid_output = run(adb + ['shell', 'pm', 'list', 'packages', '-U', APP],
+                         'target-app-uid', timeout=15).stdout
+        uid = re.search(r'package:' + re.escape(APP) + r'\s+uid:(\d+)', uid_output)
+        if not uid:
+            raise RuntimeError('Could not resolve the synthetic application UID for scoped diagnostics')
+        app_log_stream = (out / 'logs/app-logcat.txt').open('w')
+        app_log_process = subprocess.Popen(adb + ['logcat', '--uid=' + uid.group(1),
+            '-v', 'threadtime', '-T', '1'], cwd=ROOT, env=env,
+            stdout=app_log_stream, stderr=subprocess.STDOUT)
+        guest_memory = run(adb + ['shell', 'cat', '/proc/meminfo'], 'guest-memory', timeout=15)
+        available = re.search(r'^MemAvailable:\s+(\d+)', guest_memory.stdout, re.MULTILINE)
+        report['guest_available_kb_before_test'] = int(available.group(1)) if available else None
+        report['guest_ram_mb'] = 4096
+        save()
         print('Running Android instrumentation directly on the owned emulator…', flush=True)
         instrumentation_started = time.time()
         instrumented = run(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
@@ -371,6 +388,19 @@ def main():
         report['error'] = redact(str(error))
         print(report['error'], file=sys.stderr)
     finally:
+        if app_log_process:
+            report['app_log_exit_before_cleanup'] = app_log_process.poll()
+            if app_log_process.poll() is None:
+                app_log_process.terminate()
+                try:
+                    app_log_process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    app_log_process.kill()
+                    app_log_process.wait(timeout=5)
+        if app_log_stream:
+            app_log_stream.close()
+            app_log_path = out / 'logs/app-logcat.txt'
+            app_log_path.write_text(redact(app_log_path.read_text(errors='replace')))
         monitor_stop.set()
         if monitor_thread:
             monitor_thread.join(timeout=3)
