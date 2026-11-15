@@ -77,16 +77,27 @@ class VisualScenarioTest {
                         if (scenario == "appearance") {
                             val target = By.text(context.getString(R.string.appearance_title))
                             var swipes = 0
-                            while (!device.hasObject(target) && swipes++ < 15) {
-                                // COUI's scroll container does not expose scrollable=true to UI Automator.
-                                device.swipe(device.displayWidth / 2, device.displayHeight * 4 / 5,
-                                    device.displayWidth / 2, device.displayHeight / 3, 30)
+                            while (swipes++ < 20) {
+                                val bounds = device.findObject(target)?.visibleBounds
+                                val safeTop = device.displayHeight / 4
+                                val safeBottom = device.displayHeight * 3 / 4
+                                if (bounds != null && bounds.height() > 0 && bounds.centerY() in safeTop..safeBottom) break
+                                // A visible accessibility node can still be behind COUI's sticky header.
+                                // Scroll it into the unobstructed viewport before tapping its real bounds.
+                                val overshot = bounds != null && bounds.centerY() < safeTop
+                                device.swipe(device.displayWidth / 2,
+                                    if (overshot) device.displayHeight / 3 else device.displayHeight * 3 / 4,
+                                    device.displayWidth / 2,
+                                    if (overshot) device.displayHeight * 3 / 5 else device.displayHeight / 2, 30)
                                 device.waitForIdle()
                             }
                             val appearance = device.wait(Until.findObject(target), 10000)
-                            assertNotNull("Appearance preference must be reachable by scrolling", appearance)
-                            appearance!!.click()
-                            assertTrue(device.wait(Until.hasObject(By.text(context.getString(R.string.appearance_theme_mode))), 10000))
+                                ?: throw AssertionError("Appearance preference must be reachable by scrolling")
+                            assertTrue("Appearance preference must be clear of the sticky header before tapping",
+                                appearance.visibleBounds.centerY() in device.displayHeight / 4..device.displayHeight * 3 / 4)
+                            appearance.click()
+                            assertTrue("Appearance navigation must show Theme mode",
+                                device.wait(Until.hasObject(By.text(context.getString(R.string.appearance_theme_mode))), 10000))
                         }
                     }
                     "menu" -> {
