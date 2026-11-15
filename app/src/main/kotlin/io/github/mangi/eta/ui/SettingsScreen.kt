@@ -420,7 +420,7 @@ private fun SettingsPageContent(
                     )
                 }
 
-                Group(title = stringResource(R.string.ui_tool_a72ef1)) {
+                Group(title = stringResource(R.string.route_tools)) {
                     CouiPreference(
                         title = stringResource(R.string.settings_tools_list),
                         icon = { CouiSettingsIcon(Icons.Rounded.Dashboard, SettingsIconColors.Green) },
