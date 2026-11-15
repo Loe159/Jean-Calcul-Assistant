@@ -2,6 +2,7 @@ package fr.loevan.jeancalcul.v2
 
 import android.content.Intent
 import android.graphics.Color
+import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -58,19 +59,47 @@ class VisualScenarioTest {
                     "tools" -> {
                         device.findObject(By.desc(context.getString(R.string.action_conversation_history))).click()
                         device.wait(Until.findObject(By.text(context.getString(R.string.route_tools))), 10000).click()
+                        assertTrue(device.wait(Until.hasObject(By.text(context.getString(R.string.capability_current_device))), 10000))
                     }
                     "settings", "providers", "appearance" -> {
                         device.findObject(By.desc(context.getString(R.string.action_conversation_history))).click()
                         device.wait(Until.findObject(By.desc(context.getString(R.string.route_settings))), 10000).click()
-                        if (scenario == "providers") device.wait(Until.findObject(By.text(context.getString(R.string.ui_model_provider_e8c7f5))),10000).click()
+                        assertTrue(device.wait(Until.hasObject(By.text(context.getString(R.string.ui_model_provider_e8c7f5))), 10000))
+                        if (scenario == "providers") {
+                            device.findObject(By.text(context.getString(R.string.ui_model_provider_e8c7f5))).click()
+                            assertTrue(device.wait(Until.hasObject(By.text("ChatGPT / Codex")), 10000))
+                            assertTrue(device.wait(Until.hasObject(By.text("vLLM local")), 10000))
+                        }
                         if (scenario == "appearance") {
-                            val scrollable = device.findObject(By.scrollable(true))
-                            scrollable?.scrollUntil(androidx.test.uiautomator.Direction.DOWN, Until.findObject(By.text(context.getString(R.string.appearance_title))))
-                            device.wait(Until.findObject(By.text(context.getString(R.string.appearance_title))),10000).click()
+                            val target = By.text(context.getString(R.string.appearance_title))
+                            var swipes = 0
+                            while (!device.hasObject(target) && swipes++ < 15) {
+                                // COUI's scroll container does not expose scrollable=true to UI Automator.
+                                device.swipe(device.displayWidth / 2, device.displayHeight * 4 / 5,
+                                    device.displayWidth / 2, device.displayHeight / 3, 30)
+                                device.waitForIdle()
+                            }
+                            val appearance = device.wait(Until.findObject(target), 10000)
+                            assertNotNull("Appearance preference must be reachable by scrolling", appearance)
+                            appearance!!.click()
+                            assertTrue(device.wait(Until.hasObject(By.text(context.getString(R.string.appearance_theme_mode))), 10000))
                         }
                     }
-                    "menu" -> device.findObject(By.desc(context.getString(R.string.action_more))).click()
-                    "keyboard" -> device.findObject(By.clazz("android.widget.EditText")).apply { click(); text = "Synthetic multiline draft\nLine two" }
+                    "menu" -> {
+                        device.findObject(By.desc(context.getString(R.string.action_more))).click()
+                        assertTrue(device.wait(Until.hasObject(By.text(context.getString(R.string.action_new_conversation))), 10000))
+                    }
+                    "keyboard" -> {
+                        device.findObject(By.clazz("android.widget.EditText")).apply { click(); text = "Synthetic multiline draft\nLine two" }
+                        activity.onActivity { it.window.insetsController?.show(WindowInsets.Type.ime()) }
+                        val deadline = SystemClock.uptimeMillis() + 10000
+                        var imeVisible = false
+                        while (!imeVisible && SystemClock.uptimeMillis() < deadline) {
+                            activity.onActivity { imeVisible = it.window.decorView.rootWindowInsets?.isVisible(WindowInsets.Type.ime()) == true }
+                            if (!imeVisible) SystemClock.sleep(100)
+                        }
+                        assertTrue("The keyboard scenario requires a visible system IME", imeVisible)
+                    }
                     "regression_fixture" -> activity.onActivity { current ->
                         (current.window.decorView as ViewGroup).addView(View(current).apply { setBackgroundColor(Color.RED) }, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 500))
                     }
@@ -78,6 +107,8 @@ class VisualScenarioTest {
                     else -> error("Unknown visual scenario: $scenario")
                 }
                 device.waitForIdle(3000)
+                // Semantic destinations above are asserted; let their final compositor frame present.
+                SystemClock.sleep(600)
                 val directory = File(context.filesDir, "e2e").apply { mkdirs() }
                 assertTrue("Screenshot must be a real display capture", device.takeScreenshot(File(directory, "$scenario.png")))
                 } catch (failure: Throwable) {
