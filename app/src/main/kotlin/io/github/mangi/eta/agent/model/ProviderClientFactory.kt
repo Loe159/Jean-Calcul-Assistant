@@ -7,7 +7,7 @@ import io.github.mangi.eta.data.provider.ProviderConnectionProfile
 internal object ProviderClientFactory {
 
     fun getClient(config: AgentModelClient.ModelConfig): AgentProviderClient {
-        require(io.github.mangi.eta.product.JeanCalculProfile.allowsModel(config)) { "Fournisseur non retenu dans Jean-Calcul." }
+        require(io.github.mangi.eta.product.JeanCalculProfile.allowsModel(config)) { "Provider is not supported in Jean-Calcul." }
         ProviderConnectionProfile.forAuthMode(config.authMode)?.let { profile ->
             return when (profile.endpointMode) {
                 OpenAiEndpointMode.RESPONSES -> OpenAiResponsesProvider

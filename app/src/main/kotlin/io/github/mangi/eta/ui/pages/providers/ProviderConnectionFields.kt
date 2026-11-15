@@ -118,7 +118,7 @@ internal fun ProviderConnectionFields(
                     CouiTextField(
                         value = draft.apiKey,
                         onValueChange = { onDraftChange(draft.copy(apiKey = it)) },
-                        label = "Clé API (facultative pour vLLM)",
+                        label = "API key (optional for vLLM)",
                         singleLine = true,
                         enabled = enabled,
                         visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -240,7 +240,7 @@ internal fun ProviderConnectionFields(
                     TextField(
                         value = draft.apiKey,
                         onValueChange = { onDraftChange(draft.copy(apiKey = it)) },
-                        label = "Clé API (facultative pour vLLM)",
+                        label = "API key (optional for vLLM)",
                         singleLine = true,
                         enabled = enabled,
                         visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),

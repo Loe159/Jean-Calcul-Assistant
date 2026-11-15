@@ -271,7 +271,7 @@ internal object AgentModelClient {
     private fun ModelConfig.validate() {
         require(baseUrl.isNotBlank()) { "Configure the API URL first" }
         when {
-            authMode == ProviderAuthModes.API_KEY -> require(apiKey.isNotBlank() || providerSourceType in setOf("", ProviderSourceTypes.CUSTOM)) { "Veuillez configurer la clé API." }
+            authMode == ProviderAuthModes.API_KEY -> require(apiKey.isNotBlank() || providerSourceType in setOf("", ProviderSourceTypes.CUSTOM)) { "Configure the API key first." }
             ProviderAuthModes.isOAuth(authMode) -> {
                 require(providerId.isNotBlank()) { "Account sign-in is missing a provider ID. Select the provider again." }
                 require(apiKey.isEmpty()) { "Account sign-in configuration cannot include an API key" }

@@ -9,8 +9,8 @@ import io.github.mangi.eta.data.model.ProviderSourceTypes
 
 internal object BuiltinProviders {
     const val DEFAULT_SYSTEM_PROMPT =
-        "Tu es Jean-Calcul, un assistant personnel Android. Réponds dans la langue de l’utilisateur, " +
-            "de façon concise et naturelle. Utilise les outils disponibles pour les tâches demandées et vérifie leurs résultats."
+        "You are Jean-Calcul, a personal Android assistant. Respond in the user’s language, " +
+            "concisely and naturally. Use available tools for requested tasks and verify their results."
 
     const val OPENAI_ID = "builtin-openai"
     const val ANTHROPIC_ID = "builtin-anthropic"

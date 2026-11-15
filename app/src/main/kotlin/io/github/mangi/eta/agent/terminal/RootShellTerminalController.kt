@@ -47,7 +47,7 @@ internal class RootShellTerminalController(
 
     fun executeTool(name: String, args: JSONObject): String {
         if (!io.github.mangi.eta.product.JeanCalculProfile.allowsEnvironment(args.optString("environment", "android"))) {
-            return errorJson("FEATURE_DISABLED", "Les environnements Linux ne sont pas inclus dans Jean-Calcul.")
+            return errorJson("FEATURE_DISABLED", "Linux environments are not included in Jean-Calcul.")
         }
         return when (name) {
         "terminal" -> terminal(args)
@@ -580,7 +580,7 @@ internal class RootShellTerminalController(
 
     fun fileTool(name: String, args: JSONObject): String {
         if (!io.github.mangi.eta.product.JeanCalculProfile.allowsEnvironment(args.optString("environment", "android"))) {
-            return errorJson("FEATURE_DISABLED", "Les environnements Linux ne sont pas inclus dans Jean-Calcul.")
+            return errorJson("FEATURE_DISABLED", "Linux environments are not included in Jean-Calcul.")
         }
         return try {
             val environment = normalizeEnvironment(args.optString("environment", "android"))

@@ -41,22 +41,22 @@ internal fun ProviderAccountControls(
     val loggedIn = account != null && !account.needsReauthentication
     val needsLogin = !loggedIn || !account.planEnabled
     val brand = if (authMode == ProviderAuthModes.XAI_GROK) "Grok" else "Codex"
-    val title = account?.email ?: account?.displayName ?: "$brand compte"
+    val title = account?.email ?: account?.displayName ?: "$brand account"
     val summary = browserError ?: state.message ?: when (state.phase) {
-        ProviderLoginPhase.Loading -> "Lecture du compte…"
-        ProviderLoginPhase.Saving -> "Enregistrement…"
-        ProviderLoginPhase.Disconnecting -> "Déconnexion…"
-        ProviderLoginPhase.Authorizing -> if (prompt == null) "Préparation de la connexion…" else "Terminez la connexion dans le navigateur"
-        ProviderLoginPhase.SyncingModels -> "Connecté ; récupération des modèles…"
+        ProviderLoginPhase.Loading -> "Loading account…"
+        ProviderLoginPhase.Saving -> "Saving…"
+        ProviderLoginPhase.Disconnecting -> "Signing out…"
+        ProviderLoginPhase.Authorizing -> if (prompt == null) "Preparing sign-in…" else "Finish signing in in your browser"
+        ProviderLoginPhase.SyncingModels -> "Signed in; fetching models…"
         ProviderLoginPhase.Idle -> when {
             account == null -> if (authMode == ProviderAuthModes.OPENAI_CHATGPT) {
                 "Sign in to Codex with your ChatGPT account"
             } else {
                 "Sign in to use your Grok subscription"
             }
-            account.needsReauthentication -> "Veuillez vous reconnecter"
+            account.needsReauthentication -> "Sign in again"
             !account.planEnabled -> "The account has not granted model access"
-            authMode == ProviderAuthModes.OPENAI_CHATGPT -> "Connecté à Codex"
+            authMode == ProviderAuthModes.OPENAI_CHATGPT -> "Signed in to Codex"
             else -> "Signed in to Grok"
         }
     }
@@ -82,7 +82,7 @@ internal fun ProviderAccountControls(
                     if (state.isBusy) {
                         if (prompt != null) {
                             CouiButton(
-                                text = "Ouvrir le navigateur",
+                                text = "Open browser",
                                 onClick = onOpenBrowser,
                                 role = CouiButtonRole.Primary,
                                 modifier = Modifier.weight(1f),
@@ -90,7 +90,7 @@ internal fun ProviderAccountControls(
                         }
                         if (state.phase in setOf(ProviderLoginPhase.Saving, ProviderLoginPhase.Authorizing, ProviderLoginPhase.SyncingModels)) {
                             CouiButton(
-                                text = "Annuler",
+                                text = "Cancel",
                                 onClick = onCancel,
                                 modifier = Modifier.weight(1f),
                             )
@@ -98,7 +98,7 @@ internal fun ProviderAccountControls(
                     } else {
                         if (needsLogin) {
                             CouiButton(
-                                text = if (loggedIn) "Reconnecter" else "Se connecter avec $brand",
+                                text = if (loggedIn) "Sign in again" else "Sign in with $brand",
                                 enabled = enabled,
                                 onClick = onLogin,
                                 role = CouiButtonRole.Primary,
@@ -106,7 +106,7 @@ internal fun ProviderAccountControls(
                             )
                         } else if (authMode == ProviderAuthModes.OPENAI_CHATGPT) {
                             CouiButton(
-                                text = "Gérer l’utilisation",
+                                text = "Manage usage",
                                 enabled = enabled,
                                 onClick = onManageUsage,
                                 modifier = Modifier.weight(1f),
@@ -114,7 +114,7 @@ internal fun ProviderAccountControls(
                         }
                         if (loggedIn) {
                             CouiButton(
-                                text = "Se déconnecter",
+                                text = "Sign out",
                                 enabled = enabled,
                                 onClick = onDisconnect,
                                 role = CouiButtonRole.Destructive,
@@ -140,24 +140,24 @@ internal fun ProviderAccountControls(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (state.isBusy) {
                         if (prompt != null) {
-                            TextButton(text = "Ouvrir le navigateur", onClick = onOpenBrowser, modifier = Modifier.weight(1f))
+                            TextButton(text = "Open browser", onClick = onOpenBrowser, modifier = Modifier.weight(1f))
                         }
                         if (state.phase in setOf(ProviderLoginPhase.Saving, ProviderLoginPhase.Authorizing, ProviderLoginPhase.SyncingModels)) {
-                            TextButton(text = "Annuler", onClick = onCancel, modifier = Modifier.weight(1f))
+                            TextButton(text = "Cancel", onClick = onCancel, modifier = Modifier.weight(1f))
                         }
                     } else {
                         if (needsLogin) {
                             TextButton(
-                                text = if (loggedIn) "Reconnecter" else "Se connecter avec $brand",
+                                text = if (loggedIn) "Sign in again" else "Sign in with $brand",
                                 enabled = enabled,
                                 onClick = onLogin,
                                 modifier = Modifier.weight(1f),
                             )
                         } else if (authMode == ProviderAuthModes.OPENAI_CHATGPT) {
-                            TextButton(text = "Gérer l’utilisation", enabled = enabled, onClick = onManageUsage, modifier = Modifier.weight(1f))
+                            TextButton(text = "Manage usage", enabled = enabled, onClick = onManageUsage, modifier = Modifier.weight(1f))
                         }
                         if (loggedIn) {
-                            TextButton(text = "Se déconnecter", enabled = enabled, onClick = onDisconnect, modifier = Modifier.weight(1f))
+                            TextButton(text = "Sign out", enabled = enabled, onClick = onDisconnect, modifier = Modifier.weight(1f))
                         }
                     }
                 }
@@ -170,7 +170,7 @@ internal fun openProviderAccountLink(context: Context, url: String): String? = t
     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     null
 } catch (_: ActivityNotFoundException) {
-    "Aucun navigateur disponible"
+    "No browser available"
 } catch (_: SecurityException) {
     "Could not open the browser. Check system settings."
 }

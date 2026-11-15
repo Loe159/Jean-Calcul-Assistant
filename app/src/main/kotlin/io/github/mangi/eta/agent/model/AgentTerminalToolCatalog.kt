@@ -61,7 +61,7 @@ internal object AgentTerminalToolCatalog {
     }
 
     private fun executionProperties(): JSONObject = JSONObject()
-        .put("environment", text("Environnement Android uniquement ; les environnements Linux sont exclus.")
+        .put("environment", text("Android environment only; Linux environments are not included.")
             .put("enum", JSONArray(listOf("android"))))
         .put("identity", text("Optional host identity. Confirmed Android root defaults to root, otherwise user. Do not first try user or repeat root checks after authorization. Explicit user uses the Jean-Calcul app UID. Simulated Linux root does not grant Android privileges.")
             .put("enum", JSONArray(listOf("user", "root"))))

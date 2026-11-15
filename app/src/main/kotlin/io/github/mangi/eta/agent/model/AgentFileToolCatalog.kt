@@ -47,7 +47,7 @@ internal object AgentFileToolCatalog {
 
     private fun properties(): JSONObject = JSONObject()
         .put("environment", JSONObject().put("type", "string").put("enum", JSONArray(listOf("android")))
-            .put("description", "Environnement Android ; utiliser les chemins accessibles au téléphone."))
+            .put("description", "Android environment; use paths accessible from the phone."))
         .put("identity", JSONObject().put("type", "string").put("enum", JSONArray(listOf("user", "root")))
             .put("description", "Optional host identity, matching terminal defaults: confirmed Android root uses root, otherwise user. Linux resolves by backend: PRoot uses user and chroot uses root."))
         .put("cwd", text("Optional working directory, sharing the terminal's default workspace. Actual path is in this execution context.", 4096))

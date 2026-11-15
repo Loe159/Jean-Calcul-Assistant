@@ -51,7 +51,7 @@ fun SystemEnhanceScreen(onAction: (AgentSystemEnhanceAction) -> Unit, modifier: 
         }
         Group {
             CouiPreference(title = stringResource(R.string.settings_virtual_display_title),
-                summary = "Root ou LSPosed est nécessaire pour exécuter les tâches sur un écran virtuel. Activation dans les réglages.", showChevron = false)
+                summary = "Root or LSPosed is required for virtual-display tasks. Enable it in Settings.", showChevron = false)
         }
         CouiPageBottomSpacer()
     }

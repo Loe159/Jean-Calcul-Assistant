@@ -55,7 +55,7 @@ internal data class TerminalExecutionContext(
         append(identityFor(TerminalEnvironment.ANDROID, rootAvailable))
         append(", workspace=")
         append(JSONObject.quote(androidWorkspacePath))
-        append(". Utiliser uniquement le shell Android et les outils disponibles. Linux et les installateurs de développement ne font pas partie de ce produit.")
+        append(". Use only the Android shell and available tools. Linux and development installers are not included in this product.")
     }
 
     private companion object {

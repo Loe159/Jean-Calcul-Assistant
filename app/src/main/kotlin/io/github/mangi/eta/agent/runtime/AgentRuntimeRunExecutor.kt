@@ -119,8 +119,8 @@ internal class AgentRuntimeRunExecutor(
             val roleplayContext = conversationId?.let { id ->
                 runBlocking { RoleplayRunContext.resolve(appContext, id, contextWindow, memoryEnabled) }
             }
-            require(roleplayContext == null) { "Les personnages ne sont pas inclus dans Jean-Calcul." }
-            require(request.operation != AgentRuntimeWire.OP_REWRITE_REPLY) { "La réécriture de personnages est exclue de Jean-Calcul." }
+            require(roleplayContext == null) { "Characters are not included in Jean-Calcul." }
+            require(request.operation != AgentRuntimeWire.OP_REWRITE_REPLY) { "Character reply rewriting is not included in Jean-Calcul." }
 
             val characterMemoryTools = roleplayContext?.let { roleplay ->
                 CharacterMemoryTools(appContext, roleplay.characterId) {

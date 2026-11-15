@@ -197,7 +197,7 @@ internal class AgentLocalTools(
             val args = JSONObject(toolCall.argumentsJson.ifBlank { "{}" })
             if (!io.github.mangi.eta.product.JeanCalculProfile.allowsTool(toolCall.name) ||
                 !io.github.mangi.eta.product.JeanCalculProfile.allowsEnvironment(args.optString("environment", "android"))) {
-                return@runCatching textResult(errorResult("FEATURE_DISABLED", "Fonction exclue de Jean-Calcul ; aucune action exécutée."))
+                return@runCatching textResult(errorResult("FEATURE_DISABLED", "Feature is not included in Jean-Calcul. No action performed."))
             }
             if (AgentToolRequirements.find(toolCall.name) != null &&
                 AgentToolRequirements.rootDenied(toolCall.name, args, rootAvailable())
