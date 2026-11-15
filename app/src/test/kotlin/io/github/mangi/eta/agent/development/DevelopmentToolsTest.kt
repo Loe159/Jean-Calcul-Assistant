@@ -64,7 +64,7 @@ class DevelopmentToolsTest {
             }
         }
         val completed = AgentModelClient.complete(
-            config = AgentModelClient.ModelConfig(baseUrl = "http://127.0.0.1:8000/v1", model = "fixture", browserTools = false),
+            config = AgentModelClient.ModelConfig(baseUrl = "http://127.0.0.1:8000/v1", apiKey = "", model = "fixture", systemPrompt = "Development fixture", browserTools = false),
             prompt = "Here, capitalize the label", provider = provider,
             additionalTools = org.json.JSONArray().put(DevelopmentTools.schema()), assistantScreenContext = "private-fixture-app-context",
             toolExecutor = AgentModelClient.ToolExecutor { tools.execute(it).also { result -> executed = result } },
