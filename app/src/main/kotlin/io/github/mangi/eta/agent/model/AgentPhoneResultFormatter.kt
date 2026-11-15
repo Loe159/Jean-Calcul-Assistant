@@ -43,21 +43,21 @@ internal object AgentPhoneResultFormatter {
         val items = json.optJSONArray("items") ?: return null
         val count = items.length()
         if (count == 0) return "No available calendars"
-        return "Found $count available calendars" + if (json.opt("has_more") == true) " · more available" else ""
+        return "Found $count available calendars" + if (json.opt("has_more") == true) " · More available" else ""
     }
 
     private fun alarmCount(json: JSONObject): String? {
         val items = json.optJSONArray("items") ?: return null
         val count = items.length()
         if (count == 0) return "No alarms"
-        return "Found $count alarms" + if (json.opt("has_more") == true) " · more available" else ""
+        return "Found $count alarms" + if (json.opt("has_more") == true) " · More available" else ""
     }
 
     private fun timerCount(json: JSONObject): String? {
         val items = json.optJSONArray("items") ?: return null
         val count = items.length()
         if (count == 0) return "No active timers"
-        return "Found $count timers" + if (json.opt("has_more") == true) " · more available" else ""
+        return "Found $count timers" + if (json.opt("has_more") == true) " · More available" else ""
     }
 
     private fun alarmTime(json: JSONObject?): String? {

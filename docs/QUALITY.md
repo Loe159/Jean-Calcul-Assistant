@@ -24,8 +24,9 @@ Les références Eta sélectionnées par l’utilisateur sont épinglées dans
 `e2e/references.json` ; elles doivent être ouvertes et comparées réellement.
 Les variantes sans référence exacte (sombre, clavier, police agrandie) sont
 inspectées pour lisibilité/insets, sans revendiquer une conformité pixel à pixel.
-Appareil Samsung automatisé et validation APK en un clic restent
-hors du parcours disponible. Le succès réel dépend du rapport de chaque run ;
+La validation automatisée sur le Samsung reste hors du parcours disponible.
+Les APK de test se mettent désormais à jour depuis l’application via le canal
+GitHub décrit dans [PREVIEW-UPDATES.md](PREVIEW-UPDATES.md). Le succès réel dépend du rapport de chaque run ;
 ne pas déduire une validation de la présence des scripts ou des PNG.
 
 ## Rapport minimal

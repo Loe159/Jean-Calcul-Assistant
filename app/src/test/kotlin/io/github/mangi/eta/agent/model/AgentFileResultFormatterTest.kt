@@ -32,9 +32,9 @@ class AgentFileResultFormatterTest {
     fun listingAndSearchCountOnlyReturnedResultsAndPreservePartialCoverage() {
         assertEquals("Listed 1 entries · More available", summarize("list_directory", """{"entries":[{}],"has_more":true}"""))
         assertEquals("Directory is empty", summarize("list_directory", """{"entries":[]}"""))
-        assertEquals("Found 2 itemsFile · More available · limited scan range", summarize("glob_files", """{"matches":[{},{}],"truncated":true,"partial":true}"""))
-        assertEquals("Found 1 matches · More available · limited scan range", summarize("grep_files", """{"matches":[{}],"truncated":true,"partial":true,"total_skipped":2,"next_cursor":"next-page"}"""))
-        assertEquals("No matching content · limited scan range", summarize("grep_files", """{"matches":[],"truncated":false,"partial":true,"total_skipped":3}"""))
+        assertEquals("Found 2 files · More available · Limited scan range", summarize("glob_files", """{"matches":[{},{}],"truncated":true,"partial":true}"""))
+        assertEquals("Found 1 matches · More available · Limited scan range", summarize("grep_files", """{"matches":[{}],"truncated":true,"partial":true,"total_skipped":2,"next_cursor":"next-page"}"""))
+        assertEquals("No matching content · Limited scan range", summarize("grep_files", """{"matches":[],"truncated":false,"partial":true,"total_skipped":3}"""))
     }
 
     @Test

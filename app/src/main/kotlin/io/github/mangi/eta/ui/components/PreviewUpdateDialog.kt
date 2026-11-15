@@ -28,6 +28,7 @@ internal fun PreviewUpdateDialog() {
         }
     }
     if (state.update == null && state.error == null) return
+    if (state.downloading && state.automatic) return
     CouiConfirmDialog(
         visible = true,
         title = if (state.error != null) "Update unavailable" else "Jean-Calcul update",

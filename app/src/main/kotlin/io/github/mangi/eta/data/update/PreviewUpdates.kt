@@ -17,6 +17,7 @@ internal data class PreviewUpdateState(
     val downloading: Boolean = false,
     val file: File? = null,
     val error: String? = null,
+    val automatic: Boolean = false,
 )
 
 internal object PreviewUpdates {
@@ -25,6 +26,7 @@ internal object PreviewUpdates {
     val state = mutableState.asStateFlow()
     private var checking = false
     private var checkedAt = 0L
+    private var dismissedVersion = 0L
 
     fun check(context: Context, manual: Boolean = false) {
         val app = context.applicationContext
@@ -38,7 +40,13 @@ internal object PreviewUpdates {
                 @Suppress("DEPRECATION")
                 val installed = app.packageManager.getPackageInfo(app.packageName, 0).longVersionCode
                 if (update != null && update.versionCode > installed) {
-                    mutableState.value = PreviewUpdateState(update = update)
+                    if (manual || update.versionCode != dismissedVersion) {
+                        val current = mutableState.value
+                        if (current.update?.versionCode != update.versionCode || current.file?.exists() != true) {
+                            mutableState.value = PreviewUpdateState(update = update)
+                            download(app, automatic = !manual)
+                        }
+                    }
                 } else if (manual) {
                     Toast.makeText(app, "You are using the latest available preview", Toast.LENGTH_LONG).show()
                 }
@@ -49,20 +57,25 @@ internal object PreviewUpdates {
         }
     }
 
-    fun download(context: Context) {
+    fun download(context: Context, automatic: Boolean = false) {
         val update = mutableState.value.update ?: return
         if (mutableState.value.downloading) return
-        mutableState.value = PreviewUpdateState(update, downloading = true)
+        mutableState.value = PreviewUpdateState(update, downloading = true, automatic = automatic)
         scope.launch {
             try {
                 val file = withContext(Dispatchers.IO) { PreviewUpdateInstaller.download(context.applicationContext, update) }
                 mutableState.value = PreviewUpdateState(update = update, file = file)
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
-                mutableState.value = PreviewUpdateState(error = error.message ?: "Update download failed. Try again.")
+                mutableState.value = if (automatic) PreviewUpdateState() else PreviewUpdateState(error = error.message ?: "Update download failed. Try again.")
             }
         }
     }
 
-    fun dismiss() { if (!mutableState.value.downloading) mutableState.value = PreviewUpdateState() }
+    fun dismiss() {
+        if (!mutableState.value.downloading) {
+            dismissedVersion = mutableState.value.update?.versionCode ?: dismissedVersion
+            mutableState.value = PreviewUpdateState()
+        }
+    }
 }

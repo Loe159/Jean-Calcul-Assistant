@@ -31,12 +31,12 @@ class AgentPersonalResultFormatterTest {
         val charEmpty = summarize("character_memory_get", """{"matched_lines":0}""")
         assertEquals("No related Story entries", charEmpty)
         val charRead = summarize("character_memory_get", """{}""")
-        assertEquals("Done: Read story memory", charRead)
+        assertEquals("Read Story memory", charRead)
     }
 
     @Test
     fun memoryWritePresentsActionConclusionWithoutByteOrLineCounts() {
-        assertEquals("Done: Save memory", summarize("memory_write", """{"mode":"append","bytes":5000,"line_count":120}"""))
+        assertEquals("Saved Memory", summarize("memory_write", """{"mode":"append","bytes":5000,"line_count":120}"""))
         assertEquals("Updated Memory", summarize("memory_write", """{"mode":"replace_range","bytes":5000,"line_count":120}"""))
         assertEquals("Cleared Memory", summarize("memory_write", """{"mode":"clear"}"""))
 

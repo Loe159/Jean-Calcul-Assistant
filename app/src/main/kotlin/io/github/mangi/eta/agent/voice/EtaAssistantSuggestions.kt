@@ -38,10 +38,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Text
 
+private data class AssistantSuggestion(val label: String, val prompt: String)
+
 private val assistantSuggestions = listOf(
-    "Summarize screen content",
-    "Explain the current page",
-    "Extract key information",
+    AssistantSuggestion("Summarize", "Summarize screen content"),
+    AssistantSuggestion("Explain page", "Explain the current page"),
+    AssistantSuggestion("Key info", "Extract key information"),
 )
 
 private val suggestionEnterEasing = CubicBezierEasing(0.20f, 0f, 0f, 1f)
@@ -127,12 +129,12 @@ internal fun EtaAssistantSuggestions(
                             indication = null,
                             enabled = visible,
                             role = Role.Button,
-                        ) { onSuggestionClick(suggestion) }
+                        ) { onSuggestionClick(suggestion.prompt) }
                         .padding(horizontal = 15.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = suggestion,
+                        text = suggestion.label,
                         color = colors.inputPrimary.copy(alpha = 0.88f),
                         fontSize = 13.5.sp,
                         lineHeight = 18.sp,

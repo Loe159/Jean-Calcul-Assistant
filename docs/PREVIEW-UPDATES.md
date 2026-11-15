@@ -2,7 +2,7 @@
 
 The PR 62 test channel is `preview-pr-62`. Each push to its branch builds an ARM64 APK with a monotonic version code, runs JVM tests and lint, then publishes a versioned APK and `update.json` to the GitHub prerelease. The manifest is replaced only after its APK is uploaded; rerunning an older build cannot downgrade the channel.
 
-The app checks on foreground launch (at most once per minute). Settings → Check for updates checks immediately. Downloading, SHA-256/size validation and Android package/signing-certificate checks happen inside the app. Android then asks for installation confirmation; allow installation from Jean-Calcul once when requested. Normal updates keep conversations, providers and settings.
+The app checks on foreground launch (at most once per minute). Settings → Check for updates checks immediately. New builds download automatically in the background, then offer installation. Downloading, SHA-256/size validation and Android package/signing-certificate checks happen inside the app. Android then asks for installation confirmation; allow installation from Jean-Calcul once when requested. Normal updates keep conversations, providers and settings.
 
 The old manually distributed APK used a runner-generated debug certificate that was not retained. The first switch may therefore require uninstalling that old APK before installing the new preview, which removes its local data. Android cannot update across mismatched certificates. Subsequent previews use the same checked-in **public development-only** key `.github/preview-signing.jks` (password `android`). Never use that key for production releases. The application ID stays `fr.loevan.jeancalcul.v2`.
 

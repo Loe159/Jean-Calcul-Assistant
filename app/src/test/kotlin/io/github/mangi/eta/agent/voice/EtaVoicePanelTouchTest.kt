@@ -475,7 +475,7 @@ class EtaVoicePanelTouchTest {
             val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
             try {
                 view.draw(Canvas(bitmap))
-                for (label in listOf("Summarize screen content", "Explain the current page", "Extract key information")) {
+                for (label in listOf("Summarize", "Explain page", "Key info")) {
                     val node = requireNotNull(findByText(label)) { "未找到建议胶囊：$label" }
                     val bounds = node.boundsInRoot
                     val sampleX = bounds.center.x.toInt()

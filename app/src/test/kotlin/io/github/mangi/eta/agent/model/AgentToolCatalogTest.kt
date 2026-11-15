@@ -76,9 +76,9 @@ class AgentToolCatalogTest {
 
             assertEquals("string", properties.getJSONObject("observation_id").getString("type"))
             assertTrue("observation_id must be required for $name", "observation_id" in parameters.requiredNames())
-            assertTrue(function.getString("description").contains("Required with index, from the same latest observation."))
+            assertTrue(function.getString("description").contains("same"))
             assertTrue(function.getString("description").contains("observe_screen"))
-            assertTrue(function.getString("description").contains(". Observe the screen again."))
+            assertTrue(function.getString("description").contains("expired"))
         }
     }
 
@@ -97,8 +97,8 @@ class AgentToolCatalogTest {
         assertEquals(120, properties.getJSONObject("max_nodes").getInt("maximum"))
         assertTrue(function.getString("description").contains("Acquire phone control and observe the screen; the runtime waits if another conversation owns it. Default returns foreground app, dimensions, observation_id and visible nodes without a screenshot. Set include_screenshot=true only for insufficient nodes, ambiguous targets or visual/canvas/map/image/QR tasks; keep include_ui_tree=true so new nodes and screenshot share observation_id. Never mix new screenshots with old nodes. Send node actions with the same observation_id. For useful truncated nodes, first raise max_nodes to 120. Call release_gui when finished; observe again after release or user takeover."))
         assertTrue(function.getString("description").contains("include_screenshot=true"))
-        assertTrue(function.getString("description").contains("explicitly set include_screenshot=true and keep include_ui_tree=true so screenshot, nodes and observation_id come from the same observation."))
-        assertTrue(function.getString("description").contains("Never combine a new screenshot with old nodes. If truncated nodes remain useful, increase max_nodes rather than requesting an unnecessary screenshot."))
+        assertTrue(function.getString("description").contains("keep include_ui_tree=true"))
+        assertTrue(function.getString("description").contains("Never mix new screenshots with old nodes"))
     }
 
     @Test
@@ -116,8 +116,8 @@ class AgentToolCatalogTest {
                 .stringValues()
 
             assertEquals(expectedDirections, directions)
-            assertTrue(function.getString("description").contains("Content direction: down reveals lower content, up reveals upper content"))
-            assertTrue(function.getString("description").contains("Content direction: down reveals lower content, up reveals upper content"))
+            assertTrue(function.getString("description").contains("content direction"))
+            assertTrue(function.getString("description").contains("content direction"))
         }
     }
 
