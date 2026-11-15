@@ -22,7 +22,7 @@ internal object GrokModelCatalog {
         var unsupported = 0
         var visible = 0
         val models = entries.mapIndexedNotNull { index, element ->
-            val item = element.jsonObjectOrNull() ?: error("Grok 模型目录包含无效模型项")
+            val item = element.jsonObjectOrNull() ?: error("Grok model catalog contains an invalid entry")
             val meta = item["_meta"]?.jsonObjectOrNull()
             if ((item.boolean("hidden") ?: meta?.boolean("hidden")) == true) return@mapIndexedNotNull null
             visible++
@@ -35,7 +35,7 @@ internal object GrokModelCatalog {
             }
             val id = item.nonBlankString("model", "modelId", "id")
                 ?: meta?.nonBlankString("model", "modelId")
-                ?: error("Grok 模型目录缺少模型标识")
+                ?: error("Grok model catalog is missing a model ID")
             val normalized = JsonObject(item + ("id" to JsonPrimitive(id)))
             val base = decode(normalized)
             val reasoning = item.grokReasoningCapabilities(meta)
@@ -50,7 +50,7 @@ internal object GrokModelCatalog {
         }
         if (unsupported > 0) onUnsupportedProtocols(unsupported)
         require(visible == 0 || unsupported != visible) {
-            "当前订阅连接不使用目录指定的模型协议，无法导入这些模型"
+            "This subscription connection does not use the catalog protocol. These models cannot be imported."
         }
         return models
     }

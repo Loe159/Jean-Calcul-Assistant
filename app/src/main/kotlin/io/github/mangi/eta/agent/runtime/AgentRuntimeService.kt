@@ -194,7 +194,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
         setKeepScreenOn(false)
         runs.all().forEach { run ->
             run.releaseIncoming()
-            run.session.cancel("Agent Runtime 服务已停止")
+            run.session.cancel("Agent runtime service stopped")
         }
         displayedRun = null
         serviceScope.cancel()
@@ -230,7 +230,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                 AgentRuntimeWire.MSG_START_RUN -> {
                     val data = msg.data
                     if (data == null) {
-                        finishWithFailure("Agent Runtime 请求缺少消息体", msg.replyTo)
+                        finishWithFailure("Agent runtime request has no message body", msg.replyTo)
                         return
                     }
                     val incoming = runCatching {
@@ -239,13 +239,13 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                         AndroidAgentLogger.warnThrottled("runtime_invalid_start_request") {
                             "Agent runtime rejected invalid start request: type=${throwable.safeLogType()}"
                         }
-                        finishWithFailure("Agent Runtime 请求格式无效", msg.replyTo)
+                        finishWithFailure("Invalid agent runtime request format", msg.replyTo)
                         return
                     }
                     val request = incoming.request
                     if (request.runId.isBlank() || (request.operation != AgentRuntimeWire.OP_COMPACT && request.prompt.isBlank() && incoming.images.isEmpty() && !incoming.hasDeferredPrompt)) {
                         incoming.close()
-                        finishWithFailure("Agent Runtime 请求缺少 runId 或用户输入", msg.replyTo)
+                        finishWithFailure("Agent runtime request is missing runId or user input", msg.replyTo)
                         return
                     }
                     ingestRunRequest(incoming, msg.replyTo, msg.sendingUid == android.os.Process.myUid())
@@ -268,7 +268,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                     dispatchResultIo {
                         val target = AgentRuntimeResultStore.readOwned(this@AgentRuntimeService, runId, owner)
                         sendResultNow(replyTo, target?.result ?: AgentRuntimeWire.RunResult(
-                            runId, false, "", "完整运行结果不可用", contextSnapshotRef = runId,
+                            runId, false, "", "Full run result unavailable", contextSnapshotRef = runId,
                         ))
                     }
                 }
@@ -348,10 +348,10 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                             run,
                             when (throwable) {
                                 is AgentRuntimeImageTransfer.ImageTransferException ->
-                                    throwable.message ?: "Agent Runtime 无法读取图片"
+                                    throwable.message ?: "Agent runtime could not read the image"
                                 is RuntimeConfigUnavailableException ->
-                                    "请先在 Jean-Calcul 中配置可用的模型"
-                                else -> "Agent Runtime 无法准备请求"
+                                    "Configure an available model in Jean-Calcul first"
+                                else -> "Agent runtime could not prepare the request"
                             },
                         )
                     },
@@ -377,7 +377,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
         if (destroyed) {
             incoming?.close()
             sendRequestIngestedTo(replyTo, request.runId)
-            sendResultTo(replyTo, AgentRuntimeWire.RunResult(request.runId, false, "", "Agent Runtime 服务已停止"))
+            sendResultTo(replyTo, AgentRuntimeWire.RunResult(request.runId, false, "", "Agent runtime service stopped"))
             return null
         }
         val admission = runs.admit(request) {
@@ -414,7 +414,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                         resultSink = { result -> sendResultTo(replyTo, result) },
                     )
                     if (!attached) sendResultTo(replyTo, AgentRuntimeWire.RunResult(
-                        request.runId, false, "", "任务已结束，请恢复完整结果",
+                        request.runId, false, "", "Task ended. Restore the full result.",
                         contextSnapshotRef = request.runId, operation = request.operation,
                     ))
                 }
@@ -437,7 +437,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
             this, "run:${request.runId}", allowBoundFallback = allowBoundFallback,
         ) { mainHandler.post { cancelRun(request.runId) } }
         if (!executionHeld && !allowBoundFallback) {
-            failBeforeExecution(run, "无法启动后台执行服务，请返回 Jean-Calcul 后重试")
+            failBeforeExecution(run, "Could not start background execution. Return to Jean-Calcul and retry.")
             return null
         }
         admission.replacedRuns.forEach { cancelRun(it.runId) }
@@ -646,7 +646,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
             }
             // 不把传输失败伪装成已交付终态；引用使新客户端保留 outbox，等待完整恢复。
             val fallback = AgentRuntimeWire.RunResult(result.runId, false, "",
-                "完整结果传输失败，已保存的历史未删除。请重新打开会话恢复。",
+                "Full result transfer failed. Saved history was kept. Reopen the conversation to recover it.",
                 contextSnapshotRef = result.runId, operation = result.operation)
             try {
                 target?.send(Message.obtain(null, AgentRuntimeWire.MSG_RESULT).apply {
@@ -937,7 +937,7 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                 state.value = (owner?.overlayState ?: AgentOverlayState.Initial).copy(
                     phase = AgentOverlayPhase.PAUSED,
                     status = AgentOverlayStatus.Paused,
-                    detailText = "手机操作已暂停",
+                    detailText = "Phone control paused",
                 )
                 owner?.overlayState = state.value
                 syncActiveRunOverlayVisibility(owner ?: displayedRun)

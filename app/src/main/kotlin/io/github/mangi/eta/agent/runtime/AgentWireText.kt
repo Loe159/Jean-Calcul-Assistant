@@ -20,9 +20,9 @@ internal object AgentWireText {
             bundle.putString(key, text)
             return
         }
-        require(text.length <= MAX_TRANSFER_BYTES) { "历史传输超过单次内存预算，原始记录仍保留" }
+        require(text.length <= MAX_TRANSFER_BYTES) { "History transfer exceeds the memory budget. Original records were kept." }
         val bytes = text.toByteArray(Charsets.UTF_8)
-        require(bytes.size <= MAX_TRANSFER_BYTES) { "历史传输超过单次内存预算，原始记录仍保留" }
+        require(bytes.size <= MAX_TRANSFER_BYTES) { "History transfer exceeds the memory budget. Original records were kept." }
         val file = File.createTempFile("eta-context-", ".json", directory)
         try {
             file.outputStream().use { it.write(bytes) }

@@ -174,7 +174,7 @@ private class BuiltinSkillAssetStore(
 
     fun installBuiltin(skillId: String, registryStore: SkillRegistryStore) {
         val builtin = findBuiltin(skillId)
-            ?: throw IllegalArgumentException("未找到内置 skill：$skillId")
+            ?: throw IllegalArgumentException("Built-in skill not found: $skillId")
         installBuiltinInternal(builtin)
         registryStore.set(
             skillId,
@@ -186,7 +186,7 @@ private class BuiltinSkillAssetStore(
         val targetDir = File(skillsRoot, builtin.id)
         if (Files.exists(targetDir.toPath(), LinkOption.NOFOLLOW_LINKS)) {
             if (!deleteSkillPathWithoutFollowingLinks(skillsRoot, targetDir)) {
-                error("无法安全清理内置 Skill 目录：${builtin.id}")
+                error("Could not safely clean built-in skill directory: ${builtin.id}")
             }
         }
         copyAssetRecursively(context.assets, builtin.assetPath, targetDir)
@@ -274,7 +274,7 @@ class SkillIndexService(
         return withMutationLock {
             synchronized(indexLock) {
                 val entry = listSkillsForManagement().firstOrNull { it.id == skillId && it.installed }
-                    ?: throw IllegalArgumentException("未找到已安装 skill：$skillId")
+                    ?: throw IllegalArgumentException("Installed skill not found: $skillId")
                 registryStore.set(
                     entry.id,
                     SkillRegistryEntry(enabled = enabled, source = entry.source, installState = INSTALL_STATE_INSTALLED),
@@ -345,7 +345,7 @@ class SkillIndexService(
                     }.isSuccess
                     if (!rollbackComplete) {
                         throw SkillRecoveryRequiredException(
-                            "Skill 删除失败，且文件或 registry 尚未完整恢复",
+                            "Skill deletion failed and files or registry were not fully restored",
                             error,
                         )
                     }
@@ -372,7 +372,7 @@ class SkillIndexService(
                 builtinStore.installBuiltin(skillId, registryStore)
                 invalidateIndexLocked()
                 findInstalledSkill(skillId)
-                    ?: throw IllegalStateException("安装内置 skill 后索引失败：$skillId")
+                    ?: throw IllegalStateException("Could not index installed built-in skill: $skillId")
             }
         }
     }
@@ -382,7 +382,7 @@ class SkillIndexService(
         withMutationLock {
             synchronized(indexLock) {
                 require(skillIds.none { builtinStore.findBuiltin(it) != null }) {
-                    "不能把内置 Skill 登记为用户 Skill"
+                    "Cannot register a built-in skill as a user skill"
                 }
                 val registry = registryStore.readStrict()
                 skillIds.distinct().forEach { skillId ->
@@ -447,7 +447,7 @@ class SkillIndexService(
     private fun seedBuiltinSkillsLocked() {
         if (builtinsSeeded) return
         if (!skillsRoot.exists() && !skillsRoot.mkdirs()) {
-            error("无法创建 Skills 目录：${skillsRoot.absolutePath}")
+            error("Could not create skills directory: ${skillsRoot.absolutePath}")
         }
         builtinStore.seedMissingBuiltins(registryStore)
         builtinsSeeded = true
@@ -633,9 +633,9 @@ object SkillCompatibilityChecker {
         }.lowercase()
         return when {
             raw.contains("apple-") || raw.contains("homekit") || raw.contains("healthkit") ->
-                SkillCompatibilityResult(available = false, reason = "不支持 Apple 专属运行时")
+                SkillCompatibilityResult(available = false, reason = "Apple-only runtime is not supported")
             raw.contains("ios") && !raw.contains("android") ->
-                SkillCompatibilityResult(available = false, reason = "该 Skill 标注为 iOS 专属")
+                SkillCompatibilityResult(available = false, reason = "This skill is marked as iOS-only")
             else -> SkillCompatibilityResult(available = true)
         }
     }

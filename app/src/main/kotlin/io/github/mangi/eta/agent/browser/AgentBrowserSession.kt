@@ -222,12 +222,12 @@ internal class AgentBrowserSession(
 
     fun resetFromUser(): BrowserToolResult {
         val context = appContext
-            ?: return errorResult("reset", "BROWSER_NOT_INITIALIZED", "浏览器尚未初始化")
+            ?: return errorResult("reset", "BROWSER_NOT_INITIALIZED", "Browser is not initialized")
         return try {
             operationLock.withLock {
-                if (closed) return@withLock errorResult("reset", "BROWSER_SESSION_CLOSED", "浏览器会话已关闭")
+                if (closed) return@withLock errorResult("reset", "BROWSER_SESSION_CLOSED", "Browser session is closed")
                 interrupted.set(true)
-                currentLoadWaiter?.complete(LoadOutcome(false, "CANCELLED", "操作已取消"))
+                currentLoadWaiter?.complete(LoadOutcome(false, "CANCELLED", "Action canceled"))
                 callOnMain {
                     destroyWebViewOnMain()
                     clearSessionStateOnMain()
@@ -252,7 +252,7 @@ internal class AgentBrowserSession(
         operationEpoch.incrementAndGet()
         activeOperationEpoch = 0L
         navigationGeneration.incrementAndGet()
-        currentLoadWaiter?.complete(LoadOutcome(false, "CANCELLED", "操作已取消"))
+        currentLoadWaiter?.complete(LoadOutcome(false, "CANCELLED", "Action canceled"))
         mainHandler.post {
             runCatching { webView?.stopLoading() }
             currentLoading = false
@@ -322,7 +322,7 @@ internal class AgentBrowserSession(
 
     private fun executeFromExistingContext(action: String, userInitiated: Boolean): BrowserToolResult {
         val context = appContext
-            ?: return errorResult(action, "BROWSER_NOT_INITIALIZED", "浏览器尚未初始化")
+            ?: return errorResult(action, "BROWSER_NOT_INITIALIZED", "Browser is not initialized")
         return executeInternal(
             context = context,
             args = JSONObject().put("action", action),
@@ -340,24 +340,24 @@ internal class AgentBrowserSession(
         initialize(context)
         val action = args.optString("action").trim().lowercase(Locale.ROOT)
         if (action !in SUPPORTED_ACTIONS) {
-            return errorResult(action.ifBlank { "unknown" }, "INVALID_ACTION", "浏览器 action 无效或缺失")
+            return errorResult(action.ifBlank { "unknown" }, "INVALID_ACTION", "Browser action is missing or invalid")
         }
         if (Looper.myLooper() == Looper.getMainLooper()) {
-            return errorResult(action, "MAIN_THREAD_CALL", "浏览器操作不能阻塞主线程")
+            return errorResult(action, "MAIN_THREAD_CALL", "Browser operations cannot block the main thread")
         }
         checkCancellation()
-        if (isDataClearing()) return errorResult(action, "BROWSER_DATA_CLEARING", "正在清除浏览器数据，请稍后再试", "blocked")
+        if (isDataClearing()) return errorResult(action, "BROWSER_DATA_CLEARING", "Browser data is being cleared. Try again later.", "blocked")
         // 等待另一动作时也响应本 run 的取消，不能获得锁后清掉已经到达的取消信号。
         while (!operationLock.tryLock(100L, TimeUnit.MILLISECONDS)) checkCancellation()
         return try {
             checkCancellation()
-            if (closed) return errorResult(action, "BROWSER_SESSION_CLOSED", "浏览器会话已关闭")
-            if (isDataClearing()) return errorResult(action, "BROWSER_DATA_CLEARING", "正在清除浏览器数据，请稍后再试", "blocked")
+            if (closed) return errorResult(action, "BROWSER_SESSION_CLOSED", "Browser session is closed")
+            if (isDataClearing()) return errorResult(action, "BROWSER_DATA_CLEARING", "Browser data is being cleared. Try again later.", "blocked")
             if (!userInitiated && userControlActive) {
                 return errorResult(
                     action = action,
                     code = "USER_CONTROL_ACTIVE",
-                    message = "用户正在接管浏览器，请等待用户离开浏览器页面后再继续",
+                    message = "The user has taken over the browser. Wait until they leave the browser page before continuing.",
                     status = "blocked",
                 )
             }
@@ -387,7 +387,7 @@ internal class AgentBrowserSession(
                         "go_forward" -> historyNavigation(action, backwards = false)
                         "reload" -> reload()
                         "wait_for_selector" -> waitForSelector(args)
-                        else -> throw BrowserFailure("INVALID_ACTION", "浏览器 action 无效")
+                        else -> throw BrowserFailure("INVALID_ACTION", "Invalid browser action")
                     }
                 }.getOrElse { throwable -> failureResult(action, throwable) }
             } finally {
@@ -403,7 +403,7 @@ internal class AgentBrowserSession(
 
     private fun navigate(args: JSONObject): BrowserToolResult {
         val rawUrl = args.optString("url").trim()
-        if (rawUrl.isBlank()) throw BrowserFailure("INVALID_ARGUMENT", "navigate 缺少 url")
+        if (rawUrl.isBlank()) throw BrowserFailure("INVALID_ARGUMENT", "navigate requires url")
         val view = ensureWebView()
         val epoch = activeOperationEpoch
         val waiter = LoadWaiter()
@@ -414,7 +414,7 @@ internal class AgentBrowserSession(
         callOnMain {
             requireActiveOperation(epoch)
             if (navigationGeneration.get() != generation) {
-                throw BrowserFailure("NAVIGATION_SUPERSEDED", "页面导航已被新的操作替代", "cancelled")
+                throw BrowserFailure("NAVIGATION_SUPERSEDED", "Page navigation was superseded by another action", "cancelled")
             }
             currentError = null
             currentHttpStatus = null
@@ -434,10 +434,10 @@ internal class AgentBrowserSession(
                     view.stopLoading()
                     currentLoading = false
                     currentPageVisible = committedMainFrameUrl.isNotBlank()
-                    currentError = "页面加载超时"
+                    currentError = "Page load timed out"
                     publishSnapshotOnMain()
                 }
-                throw BrowserFailure("NAVIGATION_TIMEOUT", "页面加载超时", status = "timeout")
+                throw BrowserFailure("NAVIGATION_TIMEOUT", "Page load timed out", status = "timeout")
             }
         } finally {
             if (currentLoadWaiter === waiter) currentLoadWaiter = null
@@ -446,7 +446,7 @@ internal class AgentBrowserSession(
         throwIfInterrupted()
 
         currentHttpStatus?.takeIf { it >= 400 }?.let { code ->
-            throw BrowserFailure("HTTP_$code", "网页返回 HTTP $code")
+            throw BrowserFailure("HTTP_$code", "Web page returned HTTP $code")
         }
         return toolResult(
             baseEnvelope("navigate", ok = true, status = "ok")
@@ -521,7 +521,7 @@ internal class AgentBrowserSession(
         val view = requirePage()
         val direction = args.optString("direction", "down").lowercase(Locale.ROOT)
             .takeIf { it == "up" || it == "down" }
-            ?: throw BrowserFailure("INVALID_ARGUMENT", "direction 仅支持 up 或 down")
+            ?: throw BrowserFailure("INVALID_ARGUMENT", "direction must be up or down")
         val amount = args.optInt("amount", 600).coerceIn(1, 5_000)
         val selector = validatedSelector(args, required = false)
         val value = evaluateObject(view, BrowserDomScripts.scroll(selector, direction, amount))
@@ -554,7 +554,7 @@ internal class AgentBrowserSession(
             val targetIndex = history.currentIndex + if (backwards) -1 else 1
             targetIndex in 0 until history.size
         }
-        if (!hasTarget) throw BrowserFailure("HISTORY_UNAVAILABLE", "当前没有可用的浏览记录")
+        if (!hasTarget) throw BrowserFailure("HISTORY_UNAVAILABLE", "No browser history available")
         val epoch = activeOperationEpoch
         val generation = navigationGeneration.incrementAndGet()
         callOnMain {
@@ -607,7 +607,7 @@ internal class AgentBrowserSession(
         return toolResult(
             mergeValue(baseEnvelope("wait_for_selector", false, "not_found"), state)
                 .put("code", "ELEMENT_NOT_FOUND")
-                .put("message", "等待的网页元素未出现")
+                .put("message", "Target web element did not appear")
         )
     }
 
@@ -616,10 +616,10 @@ internal class AgentBrowserSession(
         val hasX = args.has("coordinate_x") && !args.isNull("coordinate_x")
         val hasY = args.has("coordinate_y") && !args.isNull("coordinate_y")
         if (hasX != hasY) {
-            throw BrowserFailure("INVALID_ARGUMENT", "coordinate_x 与 coordinate_y 必须同时提供")
+            throw BrowserFailure("INVALID_ARGUMENT", "coordinate_x and coordinate_y must be provided together")
         }
         if (selector == null && !hasX) {
-            throw BrowserFailure("INVALID_ARGUMENT", "需要 selector 或 coordinate_x/coordinate_y")
+            throw BrowserFailure("INVALID_ARGUMENT", "Provide selector or coordinate_x/coordinate_y")
         }
         val x = if (hasX) coordinateFrom(args, "coordinate_x") else null
         val y = if (hasY) coordinateFrom(args, "coordinate_y") else null
@@ -633,7 +633,7 @@ internal class AgentBrowserSession(
     private fun coordinateFrom(args: JSONObject, name: String): Int {
         val value = (args.opt(name) as? Number)?.toDouble()
         if (value == null || value != value.toInt().toDouble()) {
-            throw JSONException("$name 必须是整数坐标")
+            throw JSONException("$name must be an integer coordinate")
         }
         return value.toInt()
     }
@@ -641,7 +641,7 @@ internal class AgentBrowserSession(
     private fun validatedSelector(args: JSONObject, required: Boolean): String? {
         val selector = args.optString("selector").trim()
         if (selector.isBlank()) {
-            if (required) throw BrowserFailure("INVALID_ARGUMENT", "缺少 CSS selector")
+            if (required) throw BrowserFailure("INVALID_ARGUMENT", "Missing CSS selector")
             return null
         }
         return selector
@@ -650,7 +650,7 @@ internal class AgentBrowserSession(
     private fun requirePage(): WebView {
         val view = ensureWebView()
         if (!snapshots.value.available || currentUrl.isBlank()) {
-            throw BrowserFailure("NO_PAGE", "当前没有网页，请先调用 navigate")
+            throw BrowserFailure("NO_PAGE", "No page available. Call navigate first.")
         }
         throwIfInterrupted()
         return view
@@ -666,19 +666,19 @@ internal class AgentBrowserSession(
         if (snapshots.value.isLoading) {
             navigationGeneration.incrementAndGet()
             mainHandler.post { runCatching { webView?.stopLoading() } }
-            throw BrowserFailure("ACTION_TIMEOUT", "网页操作后的页面加载超时", "timeout")
+            throw BrowserFailure("ACTION_TIMEOUT", "Page load timed out after the action", "timeout")
         }
     }
 
     private fun throwIfInterrupted() {
         if (isDataClearing() || interrupted.get() || activeOperationEpoch == 0L) {
-            throw BrowserFailure("CANCELLED", "操作已取消", "cancelled")
+            throw BrowserFailure("CANCELLED", "Action canceled", "cancelled")
         }
     }
 
     private fun requireActiveOperation(epoch: Long) {
         if (isDataClearing() || epoch == 0L || activeOperationEpoch != epoch || interrupted.get()) {
-            throw BrowserFailure("CANCELLED", "操作已取消", "cancelled")
+            throw BrowserFailure("CANCELLED", "Action canceled", "cancelled")
         }
     }
 
@@ -778,14 +778,14 @@ internal class AgentBrowserSession(
         val future = CompletableFuture<String>()
         mainHandler.post {
             if (isDataClearing() || webView !== view || interrupted.get() || activeOperationEpoch != epoch || epoch == 0L) {
-                future.completeExceptionally(BrowserFailure("CANCELLED", "操作已取消", "cancelled"))
+                future.completeExceptionally(BrowserFailure("CANCELLED", "Action canceled", "cancelled"))
             } else {
                 runCatching {
                     view.evaluateJavascript(BrowserDomScripts.wrap(body)) { raw ->
                         if (!isDataClearing() && !interrupted.get() && activeOperationEpoch == epoch) {
                             future.complete(raw ?: "null")
                         } else {
-                            future.completeExceptionally(BrowserFailure("CANCELLED", "操作已取消", "cancelled"))
+                            future.completeExceptionally(BrowserFailure("CANCELLED", "Action canceled", "cancelled"))
                         }
                     }
                 }.onFailure(future::completeExceptionally)
@@ -801,7 +801,7 @@ internal class AgentBrowserSession(
                 activeOperationEpoch = 0L
             }
             mainHandler.post { runCatching { view.stopLoading() } }
-            throw BrowserFailure("SCRIPT_TIMEOUT", "网页响应超时", "timeout")
+            throw BrowserFailure("SCRIPT_TIMEOUT", "Web page response timed out", "timeout")
         } catch (error: ExecutionException) {
             throw error.cause ?: error
         }
@@ -813,21 +813,21 @@ internal class AgentBrowserSession(
         val outer = runCatching { JSONTokener(raw).nextValue() }.getOrNull()
         val decoded = when (outer) {
             is String -> outer
-            null, JSONObject.NULL -> throw BrowserFailure("SCRIPT_FAILED", "网页没有返回可读结果")
+            null, JSONObject.NULL -> throw BrowserFailure("SCRIPT_FAILED", "Web page returned no readable result")
             else -> outer.toString()
         }
         val envelope = runCatching { JSONObject(decoded) }
-            .getOrElse { throw BrowserFailure("SCRIPT_FAILED", "网页结果格式无效") }
+            .getOrElse { throw BrowserFailure("SCRIPT_FAILED", "Invalid web page result format") }
         if (!envelope.optBoolean("ok", false)) {
             val code = envelope.optString("error")
             val message = when {
                 code.contains("TARGET_NOT_FOUND") ||
                     code.contains("TARGET_NOT_VISIBLE") ||
-                    code.contains("TARGET_OCCLUDED") -> "目标网页元素不可见或被其他内容遮挡"
-                code.contains("TARGET_DISABLED") -> "目标网页元素当前不可操作"
-                code.contains("TARGET_NOT_EDITABLE") -> "目标网页元素不可输入"
-                code.contains("not a valid selector", ignoreCase = true) -> "CSS selector 无效"
-                else -> "网页元素操作失败"
+                    code.contains("TARGET_OCCLUDED") -> "Target web element is hidden or covered"
+                code.contains("TARGET_DISABLED") -> "Target web element cannot be operated right now"
+                code.contains("TARGET_NOT_EDITABLE") -> "Target web element does not accept text"
+                code.contains("not a valid selector", ignoreCase = true) -> "Invalid CSS selector"
+                else -> "Web element action failed"
             }
             throw BrowserFailure("SCRIPT_FAILED", message)
         }
@@ -926,7 +926,7 @@ internal class AgentBrowserSession(
 
     private fun failureResult(action: String, throwable: Throwable): BrowserToolResult {
         val failure = throwable as? BrowserFailure
-        val message = failure?.message ?: if (throwable is JSONException) throwable.message.orEmpty() else "浏览器操作失败"
+        val message = failure?.message ?: if (throwable is JSONException) throwable.message.orEmpty() else "Browser action failed"
         if (failure?.code !in setOf("CANCELLED", "USER_CONTROL_ACTIVE")) {
             runCatching {
                 callOnMain {
@@ -1008,7 +1008,7 @@ internal class AgentBrowserSession(
             future.get(JAVASCRIPT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
         } catch (_: TimeoutException) {
             future.cancel(true)
-            throw BrowserFailure("MAIN_THREAD_TIMEOUT", "浏览器主线程响应超时", "timeout")
+            throw BrowserFailure("MAIN_THREAD_TIMEOUT", "Browser main thread timed out", "timeout")
         } catch (error: ExecutionException) {
             throw error.cause ?: error
         }
@@ -1062,7 +1062,7 @@ internal class AgentBrowserSession(
 
         override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
             if (webView !== view || !request.isForMainFrame) return
-            setNavigationErrorOnMain("NETWORK_ERROR", "页面加载失败，请检查网络连接")
+            setNavigationErrorOnMain("NETWORK_ERROR", "Page load failed. Check your network.")
         }
 
         override fun onReceivedHttpError(
@@ -1073,7 +1073,7 @@ internal class AgentBrowserSession(
             if (webView !== view || !request.isForMainFrame) return
             currentHttpStatus = errorResponse.statusCode
             if (errorResponse.statusCode >= 400) {
-                currentError = "网页返回 HTTP ${errorResponse.statusCode}"
+                currentError = "Web page returned HTTP ${errorResponse.statusCode}"
             }
             publishSnapshotOnMain()
         }
@@ -1083,14 +1083,14 @@ internal class AgentBrowserSession(
             mainHandler.post {
                 if (webView === view) {
                     destroyWebViewOnMain()
-                    currentError = "网页渲染进程已退出，请重新打开页面"
+                    currentError = "Page renderer exited. Reopen the page."
                     currentLoading = false
                     currentPageVisible = false
                     committedMainFrameUrl = ""
                     publishSnapshotOnMain()
                 }
             }
-            currentLoadWaiter?.complete(LoadOutcome(false, "RENDERER_GONE", "网页渲染进程已退出"))
+            currentLoadWaiter?.complete(LoadOutcome(false, "RENDERER_GONE", "Page renderer exited"))
             return true
         }
     }

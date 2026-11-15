@@ -31,7 +31,7 @@ class CharacterRepositoryTest {
     @Test
     fun largeCardsPersonaAndConversationBindingsUseChunkedStorage() = runBlocking {
         val description = "山与海😀".repeat(30_000)
-        val profile = CharacterRepository.create(CharacterCardCodec.create("Characters").withEdits(description = description))
+        val profile = CharacterRepository.create(CharacterCardCodec.create("角色").withEdits(description = description))
         CharacterRepository.savePersona(UserPersona("旅人", description))
         assertEquals(description, CharacterRepository.get(profile.id)?.card?.description)
         assertEquals(description, CharacterRepository.binding(profile.id).userDescription)

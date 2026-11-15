@@ -29,11 +29,11 @@ internal class FileToolSearch(
     ): String = fileToolOperation(if (query == null) "glob_files" else "grep_files") {
         require(limit > 0)
         if (query != null && (query.isEmpty() || query.length > 512 || query.contains('\n') || query.contains('\r'))) {
-            throw FileToolException("INVALID_QUERY", "搜索词必须为 1 到 512 个字符的单行普通文本")
+            throw FileToolException("INVALID_QUERY", "Search term must be 1–512 characters of plain, single-line text")
         }
         val root = backend.resolve(path)
         val rootStat = backend.stat(root)
-        if (rootStat.kind != FileToolKind.DIRECTORY) throw FileToolException("NOT_DIRECTORY", "搜索范围必须是目录")
+        if (rootStat.kind != FileToolKind.DIRECTORY) throw FileToolException("NOT_DIRECTORY", "Search scope must be a directory")
         val matcher = FileToolGlob(pattern)
         val signature = digest(JSONObject().put("tool", if (query == null) "glob_files" else "grep_files")
             .put("root", root).put("pattern", pattern).put("query", query ?: JSONObject.NULL)
@@ -42,7 +42,7 @@ internal class FileToolSearch(
         val state = if (cursor.isNullOrBlank()) State(mutableListOf(Frame("", 0, rootStat.revision))) else decodeCursor(cursor, signature)
         state.frames.forEach { frame ->
             if (backend.stat(join(root, frame.relative)).revision != frame.revision) {
-                throw FileToolException("STALE_CURSOR", "搜索目录已变化，请重新开始搜索")
+                throw FileToolException("STALE_CURSOR", "Search directory changed. Restart the search.")
             }
         }
         val startedAt = nanoTime()
@@ -85,7 +85,7 @@ internal class FileToolSearch(
             val filePath = join(root, pending.relative)
             try {
                 val stat = backend.stat(filePath)
-                if (stat.revision != pending.revision) throw FileToolException("STALE_CURSOR", "搜索中的文件已变化，请重新开始搜索")
+                if (stat.revision != pending.revision) throw FileToolException("STALE_CURSOR", "A file being searched changed. Restart the search.")
                 val chunk = reader.read(stat, pending.offset, minOf(16_000, byteBudget))
                 if (chunk.text.isEmpty()) { state.pending = null; continue }
                 var position = 0
@@ -129,7 +129,7 @@ internal class FileToolSearch(
                     }
                     if (matches.length() >= maxResults) { stopReason = "result_limit"; paused = true; break }
                 }
-                if (backend.stat(filePath).revision != stat.revision) throw FileToolException("STALE_CURSOR", "搜索期间文件已变化，请重新开始搜索")
+                if (backend.stat(filePath).revision != stat.revision) throw FileToolException("STALE_CURSOR", "File changed during search. Restart the search.")
                 if (pending.offset >= stat.sizeBytes) state.pending = null
                 if (paused) break
             } catch (error: FileToolException) {
@@ -219,7 +219,7 @@ internal class FileToolSearch(
         state.pending?.let { json.put("pending", JSONObject().put("path", it.relative).put("offset", it.offset).put("line", it.line)
             .put("revision", it.revision).put("tail", it.tail).put("matched", it.lineMatched)) }
         val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(json.toString().toByteArray(Charsets.UTF_8))
-        if (encoded.length > MAX_CURSOR_CHARS) throw FileToolException("CURSOR_LIMIT", "搜索路径过深或过长，请选择更小的搜索目录")
+        if (encoded.length > MAX_CURSOR_CHARS) throw FileToolException("CURSOR_LIMIT", "Search path is too deep or long. Select a smaller directory.")
         return encoded
     }
 
@@ -243,9 +243,9 @@ internal class FileToolSearch(
         }
         State(frames, pending, json.getInt("skipped").also { require(it >= 0) })
     } catch (_: IllegalArgumentException) {
-        throw FileToolException("INVALID_CURSOR", "搜索游标无效或不属于当前搜索条件")
+        throw FileToolException("INVALID_CURSOR", "Search cursor is invalid or does not match the current search")
     } catch (_: org.json.JSONException) {
-        throw FileToolException("INVALID_CURSOR", "搜索游标无效")
+        throw FileToolException("INVALID_CURSOR", "Invalid search cursor")
     }
 
     private fun validateRelative(value: String) {

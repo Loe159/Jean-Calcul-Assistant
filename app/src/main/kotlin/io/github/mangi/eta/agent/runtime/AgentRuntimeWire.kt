@@ -41,7 +41,7 @@ internal object AgentRuntimeWire {
     const val ETA_VOICE_HANDOFF_SOURCE = "eta_voice"
 
     internal class PayloadTooLargeException(sizeBytes: Int) : IllegalArgumentException(
-        "Agent Runtime 请求元数据过大（$sizeBytes bytes）；请缩短输入或会话历史后重试"
+        "Agent runtime request metadata is too large ($sizeBytes bytes). Shorten the input or conversation history and retry."
     )
 
     /** bind 获取服务端 Messenger 的 Intent action。 */
@@ -160,7 +160,7 @@ internal object AgentRuntimeWire {
     private const val MAX_RESULT_REASONING_CHARS = 32_000
     private const val MAX_DRAIN_CONTENT_CHARS = 16_000
     private const val MAX_DRAIN_REASONING_CHARS = 4_000
-    private const val TRUNCATED_SUFFIX = "\n\n[跨进程结果过长，已截断]"
+    private const val TRUNCATED_SUFFIX = "\n\n[Cross-process result truncated]"
     private const val MAX_START_REQUEST_PARCEL_BYTES = 768 * 1024
 
     data class RunRequest(
@@ -276,10 +276,10 @@ internal object AgentRuntimeWire {
     }
 
     fun toBundle(request: RunRequest, images: List<WireImage>, payloadDirectory: File? = null): Bundle {
-        require(images.size == request.images.size) { "图片传输项与请求图片数量不一致" }
+        require(images.size == request.images.size) { "Image transfer count differs from request count" }
         val imageBundles = images.map { image ->
             require((image.remoteUrl == null) xor (image.fileDescriptor == null)) {
-                "图片传输项必须且只能包含远程 URL 或文件描述符"
+                "Each image transfer must contain exactly one remote URL or file descriptor"
             }
             Bundle().apply {
                 image.remoteUrl?.let { putString(KEY_IMAGE_URL, it) }
@@ -313,7 +313,7 @@ internal object AgentRuntimeWire {
 
     private fun requestBundle(request: RunRequest, imageBundles: List<Bundle>, payloadDirectory: File? = null): Bundle = Bundle().apply {
         require(request.assistantScreenContext.length <= AssistantScreenContextProjection.MAX_CHARS) {
-            "助理屏幕上下文超过容量预算"
+            "Assistant screen context exceeds the capacity budget"
         }
         AgentWireText.put(this, "history_json", AgentConversationCodec.encodeTranscriptForStorage(request.history), payloadDirectory)
         putString(KEY_RUN_ID, request.runId)
@@ -385,7 +385,7 @@ internal object AgentRuntimeWire {
                 val reference = image.getString(KEY_IMAGE_URL)
                     ?: image.getString(KEY_DATA_URL) // 兼容升级前仍内联 data URL 的入口进程。
                 require((reference == null) xor (descriptor == null)) {
-                    "图片传输项必须且只能包含引用或文件描述符"
+                    "Each image transfer must contain exactly one reference or file descriptor"
                 }
                 images += WireImage(
                     remoteUrl = reference,
@@ -423,7 +423,7 @@ internal object AgentRuntimeWire {
     fun runRequestFromBundle(bundle: Bundle): RunRequest =
         incomingRunRequestFromBundle(bundle).use { incoming ->
             require(incoming.images.none { it.fileDescriptor != null }) {
-                "包含文件描述符的请求必须先在 Runtime 后台物化"
+                "Requests containing file descriptors must first be materialized in the runtime background"
             }
             incoming.materializeText().copy(
                 images = incoming.images.map { image ->
@@ -448,7 +448,7 @@ internal object AgentRuntimeWire {
             runId = bundle.getString(KEY_RUN_ID).orEmpty(),
             prompt = if (readText) AgentWireText.read(bundle, KEY_PROMPT).orEmpty() else bundle.getString(KEY_PROMPT).orEmpty(),
             assistantScreenContext = bundle.getString(KEY_ASSISTANT_SCREEN_CONTEXT).orEmpty().also {
-                require(it.length <= AssistantScreenContextProjection.MAX_CHARS) { "助理屏幕上下文超过容量预算" }
+                require(it.length <= AssistantScreenContextProjection.MAX_CHARS) { "Assistant screen context exceeds the capacity budget" }
             },
             operation = bundle.getString("operation")?.also { require(it in setOf(OP_CHAT, OP_COMPACT, OP_REWRITE_REPLY)) } ?: OP_CHAT,
             rewriteTargetMessageId = bundle.getString("rewrite_target_message_id")?.also {

@@ -42,19 +42,19 @@ internal class MimoTtsDecoder(onAudio: (ByteArray) -> Unit) {
         if (completed || value == "[DONE]") return false
         val message = JSONObject(value)
         if (!message.isNull("error")) {
-            throw SpeechFailure(SpeechErrorCode.SERVER, "MiMo 语音合成失败，请检查服务权限和配置")
+            throw SpeechFailure(SpeechErrorCode.SERVER, "MiMo speech synthesis failed. Check service permissions and settings.")
         }
         val choices = message.optionalField<JSONArray>("choices")
-            ?: throw SpeechFailure(SpeechErrorCode.PROTOCOL, "MiMo 未返回语音数据")
+            ?: throw SpeechFailure(SpeechErrorCode.PROTOCOL, "MiMo returned no audio data")
         if (choices.length() == 0) return true
         val choice = choices.optJSONObject(0)
-            ?: throw SpeechFailure(SpeechErrorCode.PROTOCOL, "MiMo 返回了无效的语音数据")
+            ?: throw SpeechFailure(SpeechErrorCode.PROTOCOL, "MiMo returned invalid audio data")
         val finishReason = choice.optionalField<String>("finish_reason")
         when (finishReason) {
             null, "stop" -> Unit
-            "length" -> throw SpeechFailure(SpeechErrorCode.SERVER, "MiMo 语音合成不完整，请缩短文本后重试")
-            "content_filter" -> throw SpeechFailure(SpeechErrorCode.SERVER, "MiMo 未能合成这段文本，请调整后重试")
-            else -> throw SpeechFailure(SpeechErrorCode.PROTOCOL, "MiMo 返回了未知的语音状态")
+            "length" -> throw SpeechFailure(SpeechErrorCode.SERVER, "MiMo speech synthesis is incomplete. Try shorter text.")
+            "content_filter" -> throw SpeechFailure(SpeechErrorCode.SERVER, "MiMo could not synthesize this text. Adjust it and retry.")
+            else -> throw SpeechFailure(SpeechErrorCode.PROTOCOL, "MiMo returned an unknown speech status")
         }
         // 音频标识等元数据不代表音频增量，终止事件也不一定携带 delta。
         val encoded = choice.optionalField<JSONObject>("delta")
@@ -64,7 +64,7 @@ internal class MimoTtsDecoder(onAudio: (ByteArray) -> Unit) {
             val bytes = try {
                 Base64.getDecoder().decode(encoded)
             } catch (_: IllegalArgumentException) {
-                throw SpeechFailure(SpeechErrorCode.PROTOCOL, "MiMo 音频编码无效")
+                throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Invalid MiMo audio encoding")
             }
             audio.write(bytes)
         }
@@ -78,5 +78,5 @@ internal class MimoTtsDecoder(onAudio: (ByteArray) -> Unit) {
 private inline fun <reified T : Any> JSONObject.optionalField(name: String): T? {
     if (isNull(name)) return null
     return opt(name) as? T
-        ?: throw SpeechFailure(SpeechErrorCode.PROTOCOL, "MiMo 返回了无效的语音数据")
+        ?: throw SpeechFailure(SpeechErrorCode.PROTOCOL, "MiMo returned invalid audio data")
 }

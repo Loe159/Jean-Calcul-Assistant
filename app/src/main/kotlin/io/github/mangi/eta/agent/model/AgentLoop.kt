@@ -142,7 +142,7 @@ internal class AgentLoop(
                         if (!purpose.allowsTools && (providerEvent is ProviderEvent.HostedToolStarted ||
                                 providerEvent is ProviderEvent.SearchSuggestions ||
                                 providerEvent is ProviderEvent.BlockStart && providerEvent.kind == AssistantBlockKind.TOOL_CALL)) {
-                            throw AgentModelFailure("REPLY_REWRITE_TOOL_CALL", false, "改写回复时模型请求了工具，已停止；原回复未改变。")
+                            throw AgentModelFailure("REPLY_REWRITE_TOOL_CALL", false, "Model requested a tool during rewriting. Stopped; original reply unchanged.")
                         }
                         if (providerEvent is ProviderEvent.RequestStarted) {
                             stepStartedAtMs = monotonicNowMs()
@@ -188,10 +188,10 @@ internal class AgentLoop(
             val assistantMessage = providerResponse.assistantMessage
             val toolCalls = AgentConversationCodec.parseToolCalls(assistantMessage)
             if (!purpose.allowsTools && toolCalls.isNotEmpty()) {
-                throw AgentModelFailure("REPLY_REWRITE_TOOL_CALL", false, "改写回复时模型请求了工具，已停止；原回复未改变。")
+                throw AgentModelFailure("REPLY_REWRITE_TOOL_CALL", false, "Model requested a tool during rewriting. Stopped; original reply unchanged.")
             }
             if (purpose == ProviderRequestPurpose.REPLY_REWRITE && providerResponse.stopReason != AssistantStopReason.END_TURN) {
-                throw AgentModelFailure("REPLY_REWRITE_INCOMPLETE", false, "模型未返回完整的改写回复；原回复未改变。")
+                throw AgentModelFailure("REPLY_REWRITE_INCOMPLETE", false, "Model did not return a complete rewritten reply. Original reply unchanged.")
             }
             val assistantReasoning = assistantMessage.optString("reasoning_content")
             if (
@@ -249,7 +249,7 @@ internal class AgentLoop(
             val content = assistantMessage.optString("content").trim()
             if (content.isBlank() || content == "null") {
                 val finishReason = assistantMessage.optString("finish_reason")
-                error("模型接口第 $round 轮返回为空${finishReason.takeIf { it.isNotBlank() }?.let { "：$it" }.orEmpty()}")
+                error("Model API turn $round returned empty${finishReason.takeIf { it.isNotBlank() }?.let { "：$it" }.orEmpty()}")
             }
 
             publishTranscript()
@@ -278,9 +278,9 @@ internal class AgentLoop(
             "MODEL_CONTENT_FILTER",
             false,
             buildString {
-                append("模型服务商拦截了本次回复，未完成的内容已丢弃。")
-                explanation?.let { append("服务商说明：").append(it) }
-                append("请修改或删除触发拦截的请求后重试，或换用其他模型。")
+                append("The provider blocked this reply. Incomplete content was discarded.")
+                explanation?.let { append("Provider explanation: ").append(it) }
+                append("Edit or remove the blocked request and retry, or select another model.")
             },
         )
     }
@@ -292,8 +292,8 @@ internal class AgentLoop(
         if (content.isNotBlank() && content != "null") return
         throw when (response.stopReason) {
             AssistantStopReason.OUTPUT_LIMIT ->
-                AgentModelFailure("MODEL_OUTPUT_LIMIT", false, "模型输出额度已耗尽但未生成正文，请检查输出上限或降低思考强度。")
-            else -> AgentModelFailure("MODEL_EMPTY_RESPONSE", false, "模型未返回正文或工具调用，请检查服务商状态。")
+                AgentModelFailure("MODEL_OUTPUT_LIMIT", false, "Model output budget exhausted without reply text. Check output limit or reduce reasoning.")
+            else -> AgentModelFailure("MODEL_EMPTY_RESPONSE", false, "Model returned neither text nor tool calls. Check provider status.")
         }
     }
 
@@ -314,7 +314,7 @@ internal class AgentLoop(
     }
 
     private fun steeringPrompt(supplement: String): String =
-        "用户补充指令：$supplement\n\n请基于当前任务上下文继续执行，不要从头重复已经完成或已经验证过的操作。"
+        "Additional user instructions: $supplement\n\nContinue using the current task context. Do not repeat completed or verified actions from the beginning."
 
     private fun steeringMessage(supplement: String): JSONObject =
         AgentConversationCodec.userTextMessage(steeringPrompt(supplement))
@@ -330,11 +330,11 @@ internal class AgentLoop(
                 when (stopReason) {
                     AssistantStopReason.OUTPUT_LIMIT -> rejectedToolOutcome(
                         round, call, "TRUNCATED_TOOL_CALL",
-                        "模型输出达到长度上限，工具参数可能不完整；本次调用未执行，请重新提交完整参数。",
+                        "Model output reached its length limit; tool parameters may be incomplete. No call executed. Submit complete parameters again.",
                     )
                     else -> rejectedToolOutcome(
                         round, call, "UNEXPECTED_TOOL_CALL",
-                        "模型在 ${stopReason.name} 终止状态下返回了工具调用；本批调用未执行，请重新规划。",
+                        "Model returned tool calls in terminal state ${stopReason.name}; this batch was not executed. Replan before continuing.",
                     )
                 }
             }
@@ -440,7 +440,7 @@ internal class AgentLoop(
                 round = round,
                 toolCall = toolCall,
                 code = "TOOL_NOT_AVAILABLE",
-                message = "工具未在本轮能力目录中提供，请使用当前可用工具",
+                message = "Tool is not exposed in this turn's capability catalog. Use available tools.",
             )
         }
         val roundCall = if (toolCall.round == round) toolCall else toolCall.copy(round = round)

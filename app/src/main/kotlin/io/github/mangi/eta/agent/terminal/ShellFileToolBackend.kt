@@ -16,7 +16,7 @@ internal class ShellFileToolBackend(
 
     override fun resolve(path: String): String {
         checkActive()
-        if ('\u0000' in path || path.length > 4096) fail("INVALID_PATH", "文件路径无效或过长")
+        if ('\u0000' in path || path.length > 4096) fail("INVALID_PATH", "File path is invalid or too long")
         val raw = path.ifEmpty { cwd }
         val absolute = when {
             raw == "~" -> home
@@ -28,7 +28,7 @@ internal class ShellFileToolBackend(
         val result = run("readlink -f -- ${shellQuote(absolute)}", maxOutputBytes = 8192, allowFailure = true)
         return if (result.exitCode == 0) {
             decode(result.output).removeSuffix("\n").takeIf { it.startsWith('/') }
-                ?: fail("FILE_METADATA_INVALID", "系统返回的规范路径无效")
+                ?: fail("FILE_METADATA_INVALID", "System returned an invalid canonical path")
         } else absolute
     }
 
@@ -52,9 +52,9 @@ internal class ShellFileToolBackend(
     private fun parseStat(path: String, output: String): FileToolStat {
         val fields = output.split('\n', limit = 3)
         val kind = FileToolKind.entries.firstOrNull { it.wireName == fields.firstOrNull() }
-            ?: fail("FILE_METADATA_INVALID", "无法识别系统返回的文件类型")
+            ?: fail("FILE_METADATA_INVALID", "Could not identify the returned file type")
         val size = fields.getOrNull(1)?.toLongOrNull()
-            ?: fail("FILE_METADATA_INVALID", "无法识别系统返回的文件大小")
+            ?: fail("FILE_METADATA_INVALID", "Could not identify the returned file size")
         val metadata = fields.getOrNull(2)?.trimEnd('\n').orEmpty()
         val versionFields = metadata.split(':', limit = 6)
         if (size < 0 || versionFields.size != 6 ||
@@ -62,12 +62,12 @@ internal class ShellFileToolBackend(
             versionFields[2].toLongOrNull() != size ||
             versionFields[3].toLongOrNull() == null || versionFields[4].toLongOrNull() == null ||
             versionFields[5].isBlank() || '?' in metadata || '%' in metadata || '\n' in metadata
-        ) fail("FILE_METADATA_INVALID", "系统返回的文件版本信息无效")
+        ) fail("FILE_METADATA_INVALID", "System returned invalid file version information")
         return FileToolStat(path, File(path).name.ifEmpty { "/" }, kind, size, digest(metadata.toByteArray()))
     }
 
     override fun readBytes(path: String, offset: Long, limit: Int): ByteArray {
-        if (offset < 0 || limit !in 1..MAX_READ_BYTES) fail("INVALID_ARGUMENT", "读取范围超出限制")
+        if (offset < 0 || limit !in 1..MAX_READ_BYTES) fail("INVALID_ARGUMENT", "Read range exceeds the limit")
         val blockOffset = offset / BLOCK_BYTES
         val prefix = (offset % BLOCK_BYTES).toInt()
         val blocks = (prefix + limit + BLOCK_BYTES - 1) / BLOCK_BYTES
@@ -82,11 +82,11 @@ internal class ShellFileToolBackend(
     }
 
     override fun list(path: String, offset: Int, limit: Int, expectedRevision: String?): FileToolDirectoryPage {
-        if (offset < 0 || limit !in 1..200) fail("INVALID_ARGUMENT", "目录分页范围无效")
+        if (offset < 0 || limit !in 1..200) fail("INVALID_ARGUMENT", "Invalid directory pagination range")
         val before = stat(path)
-        if (before.kind != FileToolKind.DIRECTORY) fail("NOT_DIRECTORY", "目标不是目录")
+        if (before.kind != FileToolKind.DIRECTORY) fail("NOT_DIRECTORY", "Target is not a directory")
         if (expectedRevision != null && expectedRevision != before.revision) {
-            fail("STALE_CURSOR", "目录已变化，请从第一页重新读取")
+            fail("STALE_CURSOR", "Directory changed. Start again from the first page.")
         }
         val quoted = shellQuote(path)
         val result = run(
@@ -95,13 +95,13 @@ internal class ShellFileToolBackend(
             maxOutputBytes = MAX_DIRECTORY_BYTES,
         )
         if (result.output.isNotEmpty() && result.output.last() != 0.toByte()) {
-            fail("DIRECTORY_TOO_LARGE", "目录枚举超过预算，请缩小目录范围")
+            fail("DIRECTORY_TOO_LARGE", "Directory enumeration exceeds the budget. Narrow the scope.")
         }
         val names = decode(result.output).split('\u0000').filter(String::isNotEmpty)
-        if (names.size > MAX_DIRECTORY_ENTRIES) fail("DIRECTORY_TOO_LARGE", "目录条目过多，请缩小范围")
+        if (names.size > MAX_DIRECTORY_ENTRIES) fail("DIRECTORY_TOO_LARGE", "Too many directory entries. Narrow the scope.")
         val sorted = names.sorted()
         val selected = statPage(sorted.drop(offset).take(limit))
-        if (stat(path).revision != before.revision) fail("STALE_CURSOR", "目录读取期间已变化，请重新读取")
+        if (stat(path).revision != before.revision) fail("STALE_CURSOR", "Directory changed during reading. Read it again.")
         val next = (offset.toLong() + selected.size).coerceAtMost(sorted.size.toLong()).toInt()
         return FileToolDirectoryPage(selected, next, next < sorted.size, before.revision)
     }
@@ -125,7 +125,7 @@ internal class ShellFileToolBackend(
         )
         val records = decode(result.output).split('\u0000')
         if (records.size != paths.size + 1 || records.last().isNotEmpty()) {
-            fail("FILE_METADATA_INVALID", "目录条目元数据不完整，请重新读取")
+            fail("FILE_METADATA_INVALID", "Incomplete directory entry metadata. Read it again.")
         }
         return paths.mapIndexed { index, path -> parseStat(path, records[index]) }
     }
@@ -137,14 +137,14 @@ internal class ShellFileToolBackend(
         expectedRevision: String?,
         expectedSha256: String?,
     ): FileToolWriteResult {
-        if (bytes.size > MAX_READ_BYTES) fail("FILE_TOO_LARGE", "单次写入内容超过限制")
+        if (bytes.size > MAX_READ_BYTES) fail("FILE_TOO_LARGE", "Write content exceeds the per-request limit")
         if (expectedSha256 != null && !expectedSha256.matches(Regex("[a-f0-9]{64}"))) {
-            fail("INVALID_ARGUMENT", "内容版本格式无效")
+            fail("INVALID_ARGUMENT", "Invalid content version format")
         }
         val quoted = shellQuote(path)
         val parent = shellQuote(File(path).parent ?: "/")
         expectedRevision?.let {
-            if (stat(path).revision != it) fail("FILE_CHANGED", "文件已变化，请重新读取后编辑")
+            if (stat(path).revision != it) fail("FILE_CHANGED", "File changed. Read it again before editing.")
         }
         val hashCheck = expectedSha256?.let {
             "eta_hash=${'$'}(sha256sum < $quoted) || exit 45; " +
@@ -171,26 +171,26 @@ internal class ShellFileToolBackend(
         val result = execute(command, stdin, maxOutputBytes)
         checkActive()
         when (result.exitCode) {
-            SHELL_STDIN_FAILED_EXIT_CODE -> fail("FILE_INPUT_FAILED", "文件写入内容未能完整传输，请重新读取并确认文件状态")
-            -3 -> fail("CANCELLED", "文件操作已取消")
-            -2 -> fail("FILE_TIMEOUT", "文件操作超时")
-            -1 -> fail("FILE_PROCESS_FAILED", "无法启动文件操作")
-            41 -> fail("FILE_NOT_FOUND", "文件不存在或当前身份无法访问")
-            42 -> fail("NOT_REGULAR_FILE", "目标不是普通文件")
-            43 -> fail("FILE_ACCESS_DENIED", "当前身份没有文件访问权限")
-            44 -> fail("FILE_CHANGED", "文件内容已变化，请重新读取后编辑")
-            45 -> fail("FILE_HASH_UNAVAILABLE", "当前环境无法验证文件内容版本")
+            SHELL_STDIN_FAILED_EXIT_CODE -> fail("FILE_INPUT_FAILED", "Write content was not fully transferred. Read and verify file state.")
+            -3 -> fail("CANCELLED", "File operation canceled")
+            -2 -> fail("FILE_TIMEOUT", "File operation timed out")
+            -1 -> fail("FILE_PROCESS_FAILED", "Could not start file operation")
+            41 -> fail("FILE_NOT_FOUND", "File not found or inaccessible to the current identity")
+            42 -> fail("NOT_REGULAR_FILE", "Target is not a regular file")
+            43 -> fail("FILE_ACCESS_DENIED", "Current identity lacks file access permission")
+            44 -> fail("FILE_CHANGED", "File content changed. Read it again before editing.")
+            45 -> fail("FILE_HASH_UNAVAILABLE", "Current environment cannot verify content versions")
             0 -> Unit
-            else -> if (!allowFailure || result.exitCode != 1) fail("FILE_COMMAND_FAILED", "文件操作失败（exit=${result.exitCode}）")
+            else -> if (!allowFailure || result.exitCode != 1) fail("FILE_COMMAND_FAILED", "File operation failed (exit=${result.exitCode}）")
         }
-        if (result.outputTruncated) fail("FILE_OUTPUT_LIMIT", "文件操作结果超过预算，请缩小范围")
+        if (result.outputTruncated) fail("FILE_OUTPUT_LIMIT", "File operation result exceeds the budget. Narrow the scope.")
         return result
     }
 
     private fun decode(bytes: ByteArray): String = try {
         bytes.decodeToString(throwOnInvalidSequence = true)
     } catch (_: CharacterCodingException) {
-        fail("UNSUPPORTED_ENCODING", "文件名或元数据不是有效 UTF-8")
+        fail("UNSUPPORTED_ENCODING", "File name or metadata is not valid UTF-8")
     }
 
     private fun digest(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256")

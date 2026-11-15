@@ -67,7 +67,7 @@ class AgentRuntimeScreenOnTest {
             service.invoke("updateKeepScreenOn")
             assertTrue(AgentRuntimeService.keepScreenOn.value)
 
-            session.complete(AgentRuntimeWire.RunResult(session.runId, true, "Done"))
+            session.complete(AgentRuntimeWire.RunResult(session.runId, true, "完成"))
             service.invoke("updateKeepScreenOn")
             assertFalse(AgentRuntimeService.keepScreenOn.value)
 
@@ -99,7 +99,7 @@ class AgentRuntimeScreenOnTest {
             val service = serviceController.get()
             service.registerRun("gui-run")
             val background = service.registerRun("background-run", ownsGui = false)
-            background.session.complete(AgentRuntimeWire.RunResult(background.runId, true, "Done"))
+            background.session.complete(AgentRuntimeWire.RunResult(background.runId, true, "完成"))
             service.invoke("updateKeepScreenOn")
             assertTrue(AgentRuntimeService.keepScreenOn.value)
         } finally {
@@ -169,7 +169,7 @@ class AgentRuntimeScreenOnTest {
             service.assertExecutionStatus(AgentOverlayStatus.Paused, 2)
 
             guiRun.session.controller.cancel()
-            guiRun.session.complete(AgentRuntimeWire.RunResult(guiRun.runId, true, "Done"))
+            guiRun.session.complete(AgentRuntimeWire.RunResult(guiRun.runId, true, "完成"))
             service.assertExecutionStatus(background.overlayState.status, 1)
             val guiCoordinator = service.field<GuiControlCoordinator>("guiControl")
             assertTrue(guiCoordinator.state.value.userPaused)
@@ -177,7 +177,7 @@ class AgentRuntimeScreenOnTest {
             assertEquals(AgentOverlayPhase.PAUSED, service.field<MutableState<AgentOverlayState>>("state").value.phase)
             assertFalse(AgentRuntimeService.keepScreenOn.value)
 
-            background.session.complete(AgentRuntimeWire.RunResult(background.runId, true, "Done"))
+            background.session.complete(AgentRuntimeWire.RunResult(background.runId, true, "完成"))
             service.assertExecutionStatus(null, 0)
             assertTrue(guiCoordinator.state.value.userPaused)
         } finally {

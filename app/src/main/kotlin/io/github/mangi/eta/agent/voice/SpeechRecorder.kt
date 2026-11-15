@@ -29,16 +29,16 @@ internal class SpeechRecorder : SpeechAudioCapture {
     @SuppressLint("MissingPermission")
     override suspend fun record(onReady: () -> Unit, onLevel: (Float) -> Unit) = withContext(Dispatchers.IO) {
         val minimum = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
-        if (minimum <= 0) throw SpeechFailure(SpeechErrorCode.AUDIO, "设备不支持语音录音格式")
+        if (minimum <= 0) throw SpeechFailure(SpeechErrorCode.AUDIO, "Device does not support this recording format")
         val audio = AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, RATE,
             AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, maxOf(minimum, FRAME_BYTES * 2))
         recorder = audio
         try {
-            if (audio.state != AudioRecord.STATE_INITIALIZED) throw SpeechFailure(SpeechErrorCode.AUDIO, "无法初始化麦克风")
+            if (audio.state != AudioRecord.STATE_INITIALIZED) throw SpeechFailure(SpeechErrorCode.AUDIO, "Could not initialize microphone")
             if (finishing.get()) return@withContext
             audio.startRecording()
             if (audio.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
-                throw SpeechFailure(SpeechErrorCode.AUDIO, "麦克风不可用，可能正被其他应用占用")
+                throw SpeechFailure(SpeechErrorCode.AUDIO, "Microphone unavailable; another app may be using it")
             }
             onReady()
             var total = 0
@@ -46,12 +46,12 @@ internal class SpeechRecorder : SpeechAudioCapture {
                 val frame = ByteArray(minOf(FRAME_BYTES, MAX_BYTES - total))
                 val count = audio.read(frame, 0, frame.size)
                 if (count <= 0 && finishing.get()) break
-                if (count <= 0 || count % 2 != 0) throw SpeechFailure(SpeechErrorCode.AUDIO, "麦克风读取失败")
+                if (count <= 0 || count % 2 != 0) throw SpeechFailure(SpeechErrorCode.AUDIO, "Could not read microphone")
                 val bytes = if (count == frame.size) frame else frame.copyOf(count)
                 val sent = frames.trySend(bytes)
                 if (sent.isFailure) {
                     if (finishing.get() && sent.isClosed) break
-                    throw SpeechFailure(SpeechErrorCode.BACKPRESSURE, "网络上传不及时，请重试")
+                    throw SpeechFailure(SpeechErrorCode.BACKPRESSURE, "Upload is too slow. Try again.")
                 }
                 total += count
                 var energy = 0.0
@@ -96,10 +96,10 @@ internal suspend fun collectSpeechAudio(frames: kotlinx.coroutines.channels.Rece
     val out = ByteArrayOutputStream()
     for (frame in frames) {
         if (out.size() + frame.size > SpeechRecorder.MAX_BYTES) {
-            throw SpeechFailure(SpeechErrorCode.AUDIO, "录音超过长度限制")
+            throw SpeechFailure(SpeechErrorCode.AUDIO, "Recording exceeds the length limit")
         }
         out.write(frame)
     }
-    if (out.size() == 0) throw SpeechFailure(SpeechErrorCode.NO_SPEECH, "没有录到语音，请重试")
+    if (out.size() == 0) throw SpeechFailure(SpeechErrorCode.NO_SPEECH, "No speech recorded. Try again.")
     return pcmToWav(out.toByteArray())
 }

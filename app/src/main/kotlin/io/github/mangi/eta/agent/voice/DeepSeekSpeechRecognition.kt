@@ -19,7 +19,7 @@ internal fun deepSeekAsrRequest(
     wav: ByteArray,
 ): Request {
     if (wav.size > MAX_DEEPSEEK_ASR_BYTES) {
-        throw SpeechFailure(SpeechErrorCode.AUDIO, "录音超过 DeepSeek 识别接口 8 MiB 限制")
+        throw SpeechFailure(SpeechErrorCode.AUDIO, "Recording exceeds the DeepSeek recognition limit of 8 MiB")
     }
     val body = MultipartBody.Builder()
         .setType(MultipartBody.FORM)
@@ -38,10 +38,10 @@ internal fun deepSeekAsrRequest(
 
 internal fun deepSeekAsrTranscript(response: JSONObject): String {
     if (!response.isNull("error")) {
-        throw SpeechFailure(SpeechErrorCode.SERVER, "DeepSeek 语音识别失败，请检查服务权限和配置")
+        throw SpeechFailure(SpeechErrorCode.SERVER, "DeepSeek recognition failed. Check permissions and settings.")
     }
     val text = response.opt("text") as? String
-        ?: throw SpeechFailure(SpeechErrorCode.PROTOCOL, "DeepSeek 未返回有效的识别结果")
+        ?: throw SpeechFailure(SpeechErrorCode.PROTOCOL, "DeepSeek returned no valid recognition result")
     return text.trim()
 }
 

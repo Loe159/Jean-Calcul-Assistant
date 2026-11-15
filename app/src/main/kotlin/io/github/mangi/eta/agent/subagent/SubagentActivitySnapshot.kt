@@ -100,7 +100,7 @@ internal data class SubagentActivitySnapshot(
                 prompt = prompt,
                 resumed = resumeId.isNotEmpty(),
                 status = STATUS_RUNNING,
-                currentAction = "正在启动…",
+                currentAction = "Starting…",
             )
         }.getOrNull()
     }

@@ -73,7 +73,7 @@ internal class RootShellDeviceController(
     ) {
         fun fromScreenshot(x: Int, y: Int): ScreenPoint {
             require(x in 0 until screenshotWidth && y in 0 until screenshotHeight) {
-                "截图坐标超出范围：($x,$y) not in ${screenshotWidth}x$screenshotHeight"
+                "Screenshot coordinates out of range: ($x,$y) not in ${screenshotWidth}x$screenshotHeight"
             }
             return ScreenPoint(
                 x = (x.toFloat() * screenWidth / screenshotWidth).toInt(),
@@ -222,9 +222,9 @@ internal class RootShellDeviceController(
                     .put(
                         "note",
                         if (elementObservation?.source == ElementSource.ACCESSIBILITY && nodes.isNotEmpty()) {
-                            "节点来自无障碍服务，支持 tap_element、type_text、scroll_element 等稳定节点动作"
+                            "Accessibility nodes support stable tap_element, type_text and scroll_element actions"
                         } else if (elementObservation?.source == ElementSource.UIAUTOMATOR && nodes.isNotEmpty()) {
-                            "节点来自 uiautomator，节点动作通过 Root Shell 执行"
+                            "Nodes originate from uiautomator; node actions use root shell"
                         } else {
                             ScreenObservationMetadata.uiTreeNote(uiTreeStatus, image != null)
                         }
@@ -234,7 +234,7 @@ internal class RootShellDeviceController(
                 "coordinate_contract",
                 if (coordinateSpace == null) {
                     JSONObject()
-                        .put("note", "坐标工具必须显式填写 coordinate_space：ui_nodes 的 center/bounds 用 screen；本次未附图")
+                        .put("note", "Coordinate tools require coordinate_space. Use screen for ui_nodes center/bounds; no screenshot is attached.")
                 } else {
                     JSONObject()
                         .put("recommended_coordinate_space", "normalized")
@@ -258,7 +258,7 @@ internal class RootShellDeviceController(
                         )
                         .put(
                             "note",
-                            "看截图定位用 normalized（0–999，相对整屏），不受模型侧图片缩放影响；ui_nodes 的 center/bounds 用 screen",
+                            "Use normalized (0–999, relative to the full screen) for screenshots regardless of model-side resizing. Use screen for ui_nodes center/bounds.",
                         )
                 }
             )
@@ -365,10 +365,10 @@ internal class RootShellDeviceController(
                 "scroll",
                 null,
                 "INVALID_ARGUMENT",
-                "direction 仅支持 up/down/left/right",
+                "direction must be up/down/left/right",
             )
         val parsedAmount = ScrollAmount.parse(amount)
-            ?: return scrollErrorJson("scroll", parsed, "INVALID_ARGUMENT", "amount 仅支持 small/page")
+            ?: return scrollErrorJson("scroll", parsed, "INVALID_ARGUMENT", "amount must be small/page")
         AgentAccessibilityService.current()?.let { service ->
             return scrollActionJson("scroll", service.scrollCurrent(parsed, parsedAmount, displayId = displayId))
         }
@@ -393,9 +393,9 @@ internal class RootShellDeviceController(
     }
 
     fun inputText(text: String, displayId: Int = Display.DEFAULT_DISPLAY): String {
-        if (text.isEmpty()) return errorJson("INVALID_ARGUMENT", "text 不能为空")
+        if (text.isEmpty()) return errorJson("INVALID_ARGUMENT", "text cannot be empty")
         if (text.length > MAX_INPUT_TEXT_CHARS) {
-            return errorJson("TEXT_TOO_LONG", "input_text 最多支持 $MAX_INPUT_TEXT_CHARS 个字符")
+            return errorJson("TEXT_TOO_LONG", "input_text supports at most $MAX_INPUT_TEXT_CHARS characters")
         }
         AgentAccessibilityService.current()?.let { service ->
             val result = service.inputTextFocused(text, displayId = displayId)
@@ -407,7 +407,7 @@ internal class RootShellDeviceController(
         }
         return errorJson(
             "ACCESSIBILITY_UNAVAILABLE",
-            "input_text 需要无障碍服务确认真实输入焦点；本次未发送任何按键",
+            "input_text requires accessibility to verify real input focus. No key sent.",
         )
     }
 
@@ -418,7 +418,7 @@ internal class RootShellDeviceController(
         displayId: Int = Display.DEFAULT_DISPLAY,
     ): String {
         if (text.length > MAX_REPLACE_TEXT_CHARS) {
-            return errorJson("TEXT_TOO_LONG", "replace_text 最多支持 $MAX_REPLACE_TEXT_CHARS 个字符")
+            return errorJson("TEXT_TOO_LONG", "replace_text supports at most $MAX_REPLACE_TEXT_CHARS characters")
         }
         AgentAccessibilityService.current()?.let { service ->
             val snapshot = observation?.accessibilitySnapshot
@@ -429,7 +429,7 @@ internal class RootShellDeviceController(
             }
             return nodeActionJson("replace_text", result)
         }
-        return errorJson("ACCESSIBILITY_UNAVAILABLE", "replace_text 需要先启用 Jean-Calcul Agent 无障碍服务")
+        return errorJson("ACCESSIBILITY_UNAVAILABLE", "Enable Jean-Calcul Agent accessibility before using replace_text")
     }
 
     fun clearText(
@@ -446,7 +446,7 @@ internal class RootShellDeviceController(
         val snapshot = observation.accessibilitySnapshot
         if (snapshot != null) {
             val service = AgentAccessibilityService.current()
-                ?: return errorJson("ACCESSIBILITY_UNAVAILABLE", "无障碍服务已断开，请重新观察屏幕")
+                ?: return errorJson("ACCESSIBILITY_UNAVAILABLE", "Accessibility disconnected. Observe again.")
             val result = service.clickNode(snapshot, index)
             if (result.ok) {
                 waitForUiSettle("tap")
@@ -456,7 +456,7 @@ internal class RootShellDeviceController(
         }
         if (!rootAvailable()) return rootRequired()
         val resolved = resolveUiAutomatorNode(observation, index)
-            ?: return errorJson("STALE_NODE", "无法在当前界面唯一确认目标节点，请重新观察屏幕")
+            ?: return errorJson("STALE_NODE", "Target node is not uniquely identifiable. Observe again.")
         val node = resolved.node
         return tap(node.centerX, node.centerY).rewriteTool("tap_element")
     }
@@ -469,7 +469,7 @@ internal class RootShellDeviceController(
         val snapshot = observation.accessibilitySnapshot
         if (snapshot != null) {
             val service = AgentAccessibilityService.current()
-                ?: return errorJson("ACCESSIBILITY_UNAVAILABLE", "无障碍服务已断开，请重新观察屏幕")
+                ?: return errorJson("ACCESSIBILITY_UNAVAILABLE", "Accessibility disconnected. Observe again.")
             val result = service.longClickNode(snapshot, index, durationMs.toLong())
             if (result.ok) {
                 waitForUiSettle("long_press")
@@ -479,7 +479,7 @@ internal class RootShellDeviceController(
         }
         if (!rootAvailable()) return rootRequired()
         val resolved = resolveUiAutomatorNode(observation, index)
-            ?: return errorJson("STALE_NODE", "无法在当前界面唯一确认目标节点，请重新观察屏幕")
+            ?: return errorJson("STALE_NODE", "Target node is not uniquely identifiable. Observe again.")
         val node = resolved.node
         return longPress(node.centerX, node.centerY, durationMs).rewriteTool("long_press_element")
     }
@@ -495,10 +495,10 @@ internal class RootShellDeviceController(
                 "scroll_element",
                 null,
                 "INVALID_ARGUMENT",
-                "direction 仅支持 up/down/left/right",
+                "direction must be up/down/left/right",
             )
         val parsedAmount = ScrollAmount.parse(amount)
-            ?: return scrollErrorJson("scroll_element", parsed, "INVALID_ARGUMENT", "amount 仅支持 small/page")
+            ?: return scrollErrorJson("scroll_element", parsed, "INVALID_ARGUMENT", "amount must be small/page")
         val snapshot = observation.accessibilitySnapshot
         if (snapshot != null) {
             val service = AgentAccessibilityService.current()
@@ -506,7 +506,7 @@ internal class RootShellDeviceController(
                     "scroll_element",
                     parsed,
                     "ACCESSIBILITY_UNAVAILABLE",
-                    "无障碍服务已断开，请重新观察屏幕",
+                    "Accessibility disconnected. Observe again.",
                 )
             return scrollActionJson(
                 tool = "scroll_element",
@@ -519,7 +519,7 @@ internal class RootShellDeviceController(
                 "scroll_element",
                 parsed,
                 "STALE_NODE",
-                "无法在当前界面唯一确认滚动目标，请重新观察屏幕",
+                "Scroll target is not uniquely identifiable. Observe again.",
             )
         val node = resolved.node
         if (!node.scrollable) {
@@ -527,7 +527,7 @@ internal class RootShellDeviceController(
                 "scroll_element",
                 parsed,
                 "NOT_SCROLLABLE",
-                "指定节点不可滚动",
+                "Specified node is not scrollable",
             )
         }
         return rootScroll(
@@ -600,7 +600,7 @@ internal class RootShellDeviceController(
                 "cmd statusbar expand-settings",
                 "press_key",
             ).let { JSONObject(it).put("button", normalized).toString() }
-            else -> return errorJson("INVALID_ARGUMENT", "button 仅支持 BACK/HOME/ENTER/RECENTS/PASTE/NOTIFICATIONS/QUICK_SETTINGS")
+            else -> return errorJson("INVALID_ARGUMENT", "button must be BACK/HOME/ENTER/RECENTS/PASTE/NOTIFICATIONS/QUICK_SETTINGS")
         }
         return inputCommand("${inputCommandPrefix(displayId)} keyevent $keyCode", "press_key")
     }
@@ -623,7 +623,7 @@ internal class RootShellDeviceController(
         displayId: Int = Display.DEFAULT_DISPLAY,
     ): String {
         val needle = text.trim()
-        if (needle.isBlank()) return errorJson("INVALID_ARGUMENT", "text 不能为空")
+        if (needle.isBlank()) return errorJson("INVALID_ARGUMENT", "text cannot be empty")
         val timeout = timeoutMs.coerceIn(500, 60_000)
         val deadline = System.currentTimeMillis() + timeout
         var attempts = 0
@@ -650,7 +650,7 @@ internal class RootShellDeviceController(
                     .put("tool", "wait_for_text")
                     .put("attempts", attempts)
                     .put("matched_node", matchedNode)
-                    .put("note", "等待查询不会发布元素快照；如需节点动作，请重新调用 observe_screen")
+                    .put("note", "Wait queries do not publish node snapshots. Call observe_screen before node actions.")
                     .toString()
             }
             Thread.sleep(350)
@@ -659,7 +659,7 @@ internal class RootShellDeviceController(
             .put("ok", false)
             .put("tool", "wait_for_text")
             .put("code", "TIMEOUT")
-            .put("message", "等待文本超时：$needle")
+            .put("message", "Timed out waiting for text: $needle")
             .put("attempts", attempts)
             .toString()
     }
@@ -670,7 +670,7 @@ internal class RootShellDeviceController(
         displayId: Int = Display.DEFAULT_DISPLAY,
     ): String {
         val target = packageName.trim()
-        if (target.isBlank()) return errorJson("INVALID_ARGUMENT", "package_name 不能为空")
+        if (target.isBlank()) return errorJson("INVALID_ARGUMENT", "package_name cannot be empty")
         val timeout = timeoutMs.coerceIn(500, 60_000)
         val deadline = System.currentTimeMillis() + timeout
         var attempts = 0
@@ -707,7 +707,7 @@ internal class RootShellDeviceController(
             .put("ok", false)
             .put("tool", "wait_for_package")
             .put("code", "TIMEOUT")
-            .put("message", "等待应用前台超时：$target")
+            .put("message", "Timed out waiting for foreground app: $target")
             .put("last_package", lastPackage)
             .put("attempts", attempts)
             .toString()
@@ -715,7 +715,7 @@ internal class RootShellDeviceController(
 
     fun clipboardSet(context: Context, text: String): String {
         if (text.length > MAX_CLIPBOARD_TEXT_CHARS) {
-            return errorJson("TEXT_TOO_LONG", "剪贴板文本最多支持 $MAX_CLIPBOARD_TEXT_CHARS 个字符")
+            return errorJson("TEXT_TOO_LONG", "Clipboard text supports at most $MAX_CLIPBOARD_TEXT_CHARS characters")
         }
         val serviceResult = AgentAccessibilityService.current()?.copyToClipboard(text)
         val ok = serviceResult?.ok ?: runCatching {
@@ -732,7 +732,7 @@ internal class RootShellDeviceController(
                 .put("code", serviceResult?.code?.ifBlank { null } ?: "CLIPBOARD_WRITE_FAILED")
                 .put(
                     "message",
-                    serviceResult?.message?.ifBlank { null } ?: "写入系统剪贴板失败",
+                    serviceResult?.message?.ifBlank { null } ?: "Could not write system clipboard",
                 )
         }
         return json.toString()
@@ -760,7 +760,7 @@ internal class RootShellDeviceController(
         if (!result.ok) {
             json
                 .put("code", result.code)
-                .put("message", "剪贴板为空，或当前应用无权读取剪贴板")
+                .put("message", "Clipboard is empty or inaccessible to this app")
         }
         return json.toString()
     }
@@ -770,7 +770,7 @@ internal class RootShellDeviceController(
         displayId: Int = Display.DEFAULT_DISPLAY,
     ): String {
         if (text.length > MAX_CLIPBOARD_TEXT_CHARS) {
-            return errorJson("TEXT_TOO_LONG", "paste_text 最多支持 $MAX_CLIPBOARD_TEXT_CHARS 个字符")
+            return errorJson("TEXT_TOO_LONG", "paste_text supports at most $MAX_CLIPBOARD_TEXT_CHARS characters")
         }
         AgentAccessibilityService.current()?.let { service ->
             val result = service.pasteText(text, displayId = displayId)
@@ -782,7 +782,7 @@ internal class RootShellDeviceController(
         }
         return errorJson(
             "ACCESSIBILITY_UNAVAILABLE",
-            "paste_text 需要无障碍服务确认真实输入焦点；本次未修改剪贴板",
+            "paste_text requires accessibility to verify real input focus. Clipboard unchanged.",
         )
     }
 
@@ -791,7 +791,7 @@ internal class RootShellDeviceController(
         val accessibilityAction = when (normalized) {
             "notifications", "notification" -> "NOTIFICATIONS"
             "quick_settings", "quicksettings", "settings" -> "QUICK_SETTINGS"
-            else -> return errorJson("INVALID_ARGUMENT", "panel 仅支持 notifications/quick_settings")
+            else -> return errorJson("INVALID_ARGUMENT", "panel must be notifications/quick_settings")
         }
         AgentAccessibilityService.current()?.let { service ->
             val actionResult = service.globalActionResult(accessibilityAction)
@@ -1087,7 +1087,7 @@ internal class RootShellDeviceController(
         if (!rootAvailable()) throw DeviceControlUnavailableException()
         val result = runSuText("wm size", timeoutSeconds = 5)
         return AndroidDisplaySizeParser.parse(result.output)
-            ?: error("无法读取屏幕尺寸：${result.output.take(160)}")
+            ?: error("Could not read screen dimensions: ${result.output.take(160)}")
     }
 
     private fun screenContentBounds(displayId: Int = Display.DEFAULT_DISPLAY): Rect {
@@ -1116,7 +1116,7 @@ internal class RootShellDeviceController(
                 tool,
                 direction,
                 "INVALID_NODE_BOUNDS",
-                "滚动区域过小或不在屏幕内",
+                "Scroll region is too small or outside the screen",
             )
         val result = runSuText(
             "${inputCommandPrefix(displayId)} swipe ${gesture.start.x} ${gesture.start.y} " +
@@ -1169,18 +1169,18 @@ internal class RootShellDeviceController(
                     .put("code", "ACTION_OUTCOME_UNKNOWN")
                     .put(
                         "message",
-                        "Root 滚动命令超时，动作可能已经执行但位移无法确认；请先重新观察",
+                        "Root scroll command timed out. Action may have occurred but displacement is unconfirmed. Observe again first.",
                     )
             } else if (evidence == ScrollEvidence.DIRECTION_MISMATCH) {
                 json
                     .put("code", "DIRECTION_MISMATCH")
-                    .put("message", "界面向请求方向的反方向移动")
+                    .put("message", "Content moved opposite to the requested direction")
             } else {
                 json
                     .put("code", "ACTION_OUTCOME_UNKNOWN")
                     .put(
                         "message",
-                        "滚动手势已发出，但无法确认方向或位移；请先重新观察，禁止直接重试",
+                        "Scroll gesture dispatched, but direction/displacement unconfirmed. Observe again without retrying blindly.",
                     )
             }
         }
@@ -1273,7 +1273,7 @@ internal class RootShellDeviceController(
             }
             ShellActionOutcomePolicy.Outcome.TIMED_OUT -> errorJson(
                 "ACTION_OUTCOME_UNKNOWN",
-                "Root 动作命令超时，动作可能已经执行；请先重新观察，避免重复操作",
+                "Root action timed out and may have executed. Observe again to avoid duplication.",
             )
             ShellActionOutcomePolicy.Outcome.FAILED ->
                 errorJson("COMMAND_FAILED", result.output.ifBlank { "exit=${result.exitCode}" })
@@ -1296,7 +1296,7 @@ internal class RootShellDeviceController(
     private fun validatePoint(x: Int, y: Int, displayId: Int = Display.DEFAULT_DISPLAY) {
         val (width, height) = screenSize(displayId)
         require(x in 0 until width && y in 0 until height) {
-            "坐标超出屏幕范围：($x,$y) not in ${width}x$height"
+            "Coordinates outside the screen: ($x,$y) not in ${width}x$height"
         }
     }
 
@@ -1393,7 +1393,7 @@ internal class RootShellDeviceController(
                 return ProcessBytesResult(
                     ShellActionOutcomePolicy.PROCESS_TIMEOUT_EXIT_CODE,
                     output.bytes(),
-                    "命令执行超时".toByteArray(),
+                    "Command timed out".toByteArray(),
                 )
             }
             outputThread.join(500)
@@ -1430,10 +1430,10 @@ internal class RootShellDeviceController(
 
     private fun accessibilityUnavailable(): String = errorJson(
         "ACCESSIBILITY_UNAVAILABLE",
-        "Jean-Calcul 无障碍服务未连接；请开启服务后重新观察屏幕",
+        "Jean-Calcul accessibility is disconnected. Enable it and observe again.",
     )
 
-    private fun rootRequired(): String = errorJson("ROOT_REQUIRED", "此操作需要设备 Root 权限")
+    private fun rootRequired(): String = errorJson("ROOT_REQUIRED", "This operation requires device root access")
 
     private fun scrollErrorJson(
         tool: String,

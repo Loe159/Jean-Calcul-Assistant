@@ -26,7 +26,7 @@ internal object DeviceMutationResult {
             .also { result ->
                 if (!verified) {
                     result.put("code", failureCode ?: "STATE_CHANGE_UNCONFIRMED")
-                    result.put("message", if (commandAccepted) "操作请求已提交，但未确认目标状态；请先检查状态，不要直接重复操作" else "系统接口未成功完成操作")
+                    result.put("message", if (commandAccepted) "Action submitted, but target state unconfirmed. Check state before retrying." else "System API did not complete the action")
                 }
             }
     }

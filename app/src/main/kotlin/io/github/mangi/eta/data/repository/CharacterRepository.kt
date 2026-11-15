@@ -85,7 +85,7 @@ internal object CharacterRepository {
 
     suspend fun duplicate(id: String): CharacterProfile = withContext(Dispatchers.IO) {
         val profile = get(id) ?: throw IllegalArgumentException("角色已不存在")
-        createStored(validated(profile.card.withEdits(name = "${profile.card.name} 副本")), avatarBytes(profile.avatarPath))
+        createStored(validated(profile.card.withEdits(name = "${profile.card.name} copy")), avatarBytes(profile.avatarPath))
     }
 
     /** 删除角色及其图片、剧情记忆目录；已有对话保留当时的角色快照，不受影响。 */

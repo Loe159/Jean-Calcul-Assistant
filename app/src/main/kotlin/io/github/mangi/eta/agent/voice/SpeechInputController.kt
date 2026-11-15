@@ -71,7 +71,7 @@ internal class SpeechInputController(
     fun start(settings: SpeechSettings? = null, credentials: SpeechCredentials? = null, holdToTalk: Boolean = false) {
         cancel()
         val session = generation
-        mutableState.value = SpeechInputState(phase = EtaSpeechPhase.STARTING, progress = "正在连接")
+        mutableState.value = SpeechInputState(phase = EtaSpeechPhase.STARTING, progress = "Connecting")
         job = scope.launch(Dispatchers.Main.immediate) {
             try {
                 val rawConfig = settings ?: SpeechSettingsRepository.settings()
@@ -97,13 +97,13 @@ internal class SpeechInputController(
                             recording = launch {
                                 try {
                                     audio.record(
-                                        onReady = { update { it.copy(phase = EtaSpeechPhase.LISTENING, progress = "正在聆听，点击完成结束") } },
+                                        onReady = { update { it.copy(phase = EtaSpeechPhase.LISTENING, progress = "Listening. Tap Finish to stop.") } },
                                         onLevel = { level -> update { it.copy(level = level) } },
                                     )
                                 } finally {
                                     if (generation == session) releaseCapture()
                                 }
-                                update { it.copy(phase = EtaSpeechPhase.RECOGNIZING, level = 0f, progress = "正在识别") }
+                                update { it.copy(phase = EtaSpeechPhase.RECOGNIZING, level = 0f, progress = "Recognizing speech") }
                             }
                         }
                         Unit
@@ -134,7 +134,7 @@ internal class SpeechInputController(
                         recording?.cancel()
                     }
                 }
-                if (text.isBlank()) throw SpeechFailure(SpeechErrorCode.NO_SPEECH, "没有识别到语音，请重试")
+                if (text.isBlank()) throw SpeechFailure(SpeechErrorCode.NO_SPEECH, "No speech recognized. Try again.")
                 val final = refined(session, config.refineTranscript, text)
                 if (generation == session) {
                     cancel()
@@ -163,7 +163,7 @@ internal class SpeechInputController(
     private suspend fun refined(session: Long, refineTranscript: Boolean, text: String): String {
         if (!refineTranscript || generation != session) return text
         mutableState.value = mutableState.value.copy(
-            phase = EtaSpeechPhase.RECOGNIZING, preview = text, progress = "正在校对", level = 0f,
+            phase = EtaSpeechPhase.RECOGNIZING, preview = text, progress = "Proofreading", level = 0f,
         )
         return try {
             refiner.refine(text)
@@ -180,7 +180,7 @@ internal class SpeechInputController(
         finishRequested = true
         if (mutableState.value.phase == EtaSpeechPhase.STARTING) { cancel(); return }
         recorder?.finish()
-        mutableState.value = mutableState.value.copy(phase = EtaSpeechPhase.RECOGNIZING, progress = "正在识别", level = 0f)
+        mutableState.value = mutableState.value.copy(phase = EtaSpeechPhase.RECOGNIZING, progress = "Recognizing speech", level = 0f)
     }
 
     fun cancel() {

@@ -62,7 +62,7 @@ internal object WebToolsSettingsRepository {
                 .putString(KEY_CREDENTIALS, Base64.getEncoder().encodeToString(encrypted))
                 .commit(),
         ) {
-            "网页工具凭据保存失败"
+            "Could not save web tool credentials"
         }
     }
 
@@ -125,4 +125,4 @@ internal object WebToolsSettingsRepository {
     }
 }
 
-internal class WebToolsCredentialsUnavailable : Exception("网页工具凭据无法解密，请重新填写并保存")
+internal class WebToolsCredentialsUnavailable : Exception("Could not decrypt web tool credentials. Enter and save them again.")

@@ -109,7 +109,7 @@ class AgentRuntimeResultStoreTest {
                 toolCallId = "call-1",
                 content = "{\"ok\":true}",
             ),
-            AgentModelClient.ConversationMessage(role = "assistant", content = "Done"),
+            AgentModelClient.ConversationMessage(role = "assistant", content = "完成"),
         )
         val completedRun = AgentRuntimeWire.CompletedRun(
             handoff = AgentRuntimeWire.EntryHandoff(
@@ -120,7 +120,7 @@ class AgentRuntimeResultStoreTest {
             result = AgentRuntimeWire.RunResult(
                 runId = runId,
                 ok = true,
-                content = "Done",
+                content = "完成",
                 transcript = transcript,
             ),
             createdAt = System.currentTimeMillis(),
@@ -131,7 +131,7 @@ class AgentRuntimeResultStoreTest {
         val restored = AgentRuntimeResultStore.list(context).single { it.result.runId == runId }
         assertEquals(transcript.map { it.role }, restored.result.transcript.map { it.role })
         assertEquals("call-1", restored.result.transcript[1].toolCallId)
-        assertEquals("Done", restored.result.transcript.last().content)
+        assertEquals("完成", restored.result.transcript.last().content)
     }
 
     @Test
@@ -172,7 +172,7 @@ class AgentRuntimeResultStoreTest {
                     result = AgentRuntimeWire.RunResult(
                         runId = runId,
                         ok = true,
-                        content = "Done",
+                        content = "完成",
                     ),
                     createdAt = System.currentTimeMillis(),
                 ),
@@ -265,7 +265,7 @@ class AgentRuntimeResultStoreTest {
         result = AgentRuntimeWire.RunResult(
             runId = runId,
             ok = true,
-            content = "Done",
+            content = "完成",
         ),
         createdAt = createdAt,
     )

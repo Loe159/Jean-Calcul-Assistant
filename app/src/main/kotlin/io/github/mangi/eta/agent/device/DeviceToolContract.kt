@@ -12,10 +12,10 @@ internal object DeviceToolContract {
         if (!arguments.has("user_id")) return null
         val requested = arguments.opt("user_id")
         if (requested !is Number || requested.toDouble() != requested.toInt().toDouble() || requested.toInt() < 0) {
-            return failure("INVALID_ARGUMENT", "user_id 必须是非负整数")
+            return failure("INVALID_ARGUMENT", "user_id must be a nonnegative integer")
         }
         if (requested.toInt() == userId) return null
-        return failure("USER_SCOPE_UNSUPPORTED", "此工具只支持 Jean-Calcul 所属的 Android 用户，不自动跨用户或工作资料执行")
+        return failure("USER_SCOPE_UNSUPPORTED", "This tool only supports Jean-Calcul's Android user and does not cross users or work profiles automatically")
             .put("user_id", userId)
             .put("requested_user_id", requested.toInt())
     }

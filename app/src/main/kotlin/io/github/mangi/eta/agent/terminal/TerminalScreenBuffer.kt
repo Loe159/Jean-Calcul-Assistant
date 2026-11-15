@@ -21,7 +21,7 @@ internal class TerminalScreenBuffer(
     private val maxScrollback: Int = 500,
 ) {
     init {
-        require(cols > 0 && rows > 0) { "cols/rows 必须为正" }
+        require(cols > 0 && rows > 0) { "cols/rows must be positive" }
     }
 
     var cols: Int = cols
@@ -265,7 +265,7 @@ internal class TerminalScreenBuffer(
      * 放大时从滚动历史取回，使软键盘弹出与收起来回切换时画面保持贴底且可逆。
      */
     fun resize(newCols: Int, newRows: Int) {
-        require(newCols > 0 && newRows > 0) { "cols/rows 必须为正" }
+        require(newCols > 0 && newRows > 0) { "cols/rows must be positive" }
         if (newCols == cols && newRows == rows) return
         if (altActive) {
             mainScreen?.let { main ->

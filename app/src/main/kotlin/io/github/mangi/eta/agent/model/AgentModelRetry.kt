@@ -49,7 +49,7 @@ internal class AgentModelRetry(
                 if (retries == MAX_RETRIES) {
                     throw AgentModelFailure(
                         classified.code, false,
-                        "${classified.message} 已重试 $MAX_RETRIES 次仍未恢复，已保留此前完成的工具结果。",
+                        "${classified.message} retried $MAX_RETRIES times without recovery. Earlier tool results were kept.",
                         classified,
                     )
                 }

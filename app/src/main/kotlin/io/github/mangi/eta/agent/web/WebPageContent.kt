@@ -53,7 +53,7 @@ internal object WebPageContent {
             mime == "text/markdown" || mime == "text/x-markdown" -> "markdown"
             mime == "application/json" || mime.startsWith("application/") && mime.endsWith("+json") -> "json"
             mime.startsWith("text/") -> "text"
-            else -> throw WebPageContentException("UNSUPPORTED_CONTENT_TYPE", "此内容类型不支持文本正文解析")
+            else -> throw WebPageContentException("UNSUPPORTED_CONTENT_TYPE", "This content type does not support text extraction")
         }
         val reasons = mutableListOf<String>()
         if (sourceTruncated) reasons += "source_limit"
@@ -76,14 +76,14 @@ internal object WebPageContent {
 
     fun page(document: WebPageDocument, offsetChars: Int = 0, maxChars: Int = MAX_PAGE_CHARS): WebPageContentPage {
         if (offsetChars !in 0..document.content.length || maxChars <= 0) {
-            throw WebPageContentException("INVALID_CONTENT_RANGE", "正文分页范围无效")
+            throw WebPageContentException("INVALID_CONTENT_RANGE", "Invalid content pagination range")
         }
         if (offsetChars > 0 && offsetChars < document.content.length &&
             document.content[offsetChars].isLowSurrogate() && document.content[offsetChars - 1].isHighSurrogate()
-        ) throw WebPageContentException("INVALID_CONTENT_OFFSET", "正文游标位于 Unicode 字符中间，请使用上次 next_offset_chars")
+        ) throw WebPageContentException("INVALID_CONTENT_OFFSET", "Cursor falls inside a Unicode character. Use the previous next_offset_chars.")
         val end = completeCharacterEnd(document.content, (offsetChars.toLong() + maxChars.coerceAtMost(MAX_PAGE_CHARS)).coerceAtMost(document.content.length.toLong()).toInt())
         if (end == offsetChars && offsetChars < document.content.length) {
-            throw WebPageContentException("CONTENT_PAGE_TOO_SMALL", "分页上限不足以返回一个完整 Unicode 字符")
+            throw WebPageContentException("CONTENT_PAGE_TOO_SMALL", "Page size is too small for one Unicode character")
         }
         return WebPageContentPage(offsetChars, end, document.content.length, document.content.substring(offsetChars, end),
             end < document.content.length, document.truncated)

@@ -55,15 +55,15 @@ internal object CustomHeaderFilter {
         val names = mutableSetOf<String>()
         headers.forEachIndexed { index, header ->
             val name = header.name.trim()
-            val prefix = "第 ${index + 1} 个请求头"
-            if (isForbidden(name)) return "${prefix}名称为空或由系统管理"
+            val prefix = "Reasoning turn ${index + 1} request headers"
+            if (isForbidden(name)) return "${prefix}Name is empty or managed by the app"
             if (!name.matches(Regex("[!#$%&'*+.^_`|~0-9A-Za-z-]+"))) {
-                return "${prefix}名称包含无效字符"
+                return "${prefix}Name contains invalid characters"
             }
             if (header.value.any { it != '\t' && it !in ' '..'~' }) {
-                return "${prefix}值只能包含可打印的 ASCII 字符或制表符"
+                return "${prefix}Value must contain printable ASCII or tabs only"
             }
-            if (!names.add(name.lowercase())) return "${prefix}名称重复（不区分大小写）"
+            if (!names.add(name.lowercase())) return "${prefix}Duplicate name (case-insensitive)"
         }
         return null
     }

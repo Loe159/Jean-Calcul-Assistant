@@ -29,7 +29,7 @@ internal object DeviceContextTool {
             .put("timezone", localTime.zone.id)
             .put(
                 "weekday",
-                localTime.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.SIMPLIFIED_CHINESE),
+                localTime.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.ENGLISH),
             )
             .put("location", location.toJson())
             .toString()

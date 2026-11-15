@@ -29,7 +29,7 @@ internal object PreviewUpdates {
     fun check(context: Context, manual: Boolean = false) {
         val app = context.applicationContext
         if (checking || mutableState.value.downloading) return
-        if (!manual && System.currentTimeMillis() - checkedAt < 6 * 60 * 60 * 1000L) return
+        if (!manual && System.currentTimeMillis() - checkedAt < 60 * 1000L) return
         checking = true
         checkedAt = System.currentTimeMillis()
         scope.launch {

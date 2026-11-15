@@ -179,7 +179,7 @@ class AgentRuntimeWireTest {
         val request = AgentRuntimeWire.RunRequest(
             runId = "assistant-context", prompt = "这是什么？", images = emptyList(),
             config = AgentModelClient.ModelConfig(baseUrl = "https://example.invalid", apiKey = "test", model = "test", systemPrompt = "", reasoningEffort = ReasoningEffort.OFF),
-            assistantScreenContext = "当前应用与画面内容",
+            assistantScreenContext = "当前App与画面Content",
         )
         val bundle = AgentRuntimeWire.toLegacyBundle(request)
         assertEquals(request, AgentRuntimeWire.runRequestFromBundle(bundle))
@@ -225,7 +225,7 @@ class AgentRuntimeWireTest {
     fun contextSnapshotRoundTripsDirectlyAndDrainOnlyCarriesReference() {
         val snapshot = io.github.mangi.eta.agent.model.AgentContextSnapshot(
             operationId = "compact-1", consumedUserTurns = 4, coveredUserTurns = 3,
-            messages = listOf(AgentModelClient.ConversationMessage("assistant", "摘要内容", contextSummary = true, compactedUserTurns = 3)),
+            messages = listOf(AgentModelClient.ConversationMessage("assistant", "摘要Content", contextSummary = true, compactedUserTurns = 3)),
         )
         val result = AgentRuntimeWire.RunResult("compact-1", true, "", contextSnapshot = snapshot,
             operation = AgentRuntimeWire.OP_COMPACT)
@@ -292,7 +292,7 @@ class AgentRuntimeWireTest {
     fun oversizedLegacyInlineImageRequestIsRejectedBeforeMessengerSend() {
         val request = AgentRuntimeWire.RunRequest(
             runId = "run-large-image",
-            prompt = "分析图片",
+            prompt = "min析图片",
             config = AgentModelClient.ModelConfig(
                 baseUrl = "https://example.invalid/v1",
                 apiKey = "test-key",
@@ -331,7 +331,7 @@ class AgentRuntimeWireTest {
         val dataUrl = "data:image/png;base64,${Base64.encodeToString(imageBytes, Base64.NO_WRAP)}"
         val request = AgentRuntimeWire.RunRequest(
             runId = "run-large-image",
-            prompt = "分析图片",
+            prompt = "min析图片",
             config = AgentModelClient.ModelConfig(
                 baseUrl = "https://example.invalid/v1",
                 apiKey = "test-key",
@@ -399,11 +399,11 @@ class AgentRuntimeWireTest {
                 context = context,
                 value = sourceFile.absolutePath,
                 source = "test_local",
-            ) ?: error("测试图片解析失败")
+            ) ?: error("测试图片解析Failed")
             assertEquals(sourceFile.absolutePath, image.reference)
             val request = AgentRuntimeWire.RunRequest(
                 runId = "run-local-image",
-                prompt = "分析本地图片",
+                prompt = "min析本地图片",
                 config = AgentModelClient.ModelConfig(
                     baseUrl = "https://example.invalid/v1",
                     apiKey = "test-key",
@@ -503,7 +503,7 @@ class AgentRuntimeWireTest {
     fun runRequestBundleRoundTripPreservesConfigHistoryAndImages() {
         val request = AgentRuntimeWire.RunRequest(
             runId = "run-1",
-            prompt = "继续分析",
+            prompt = "继续min析",
             config = AgentModelClient.ModelConfig(
                 providerSourceType = "bailian",
                 baseUrl = "https://dashscope.aliyuncs.com/compatible-mode/v1",
@@ -624,7 +624,7 @@ class AgentRuntimeWireTest {
             """{"action":"type","url":"https://user:password@example.com/private?q=token#fragment","text":"secret input"}"""
         )
 
-        assertEquals("输入内容 · example.com", summary)
+        assertEquals("Type content · example.com", summary)
     }
 
     @Test
@@ -641,7 +641,7 @@ class AgentRuntimeWireTest {
             toolName = "browser_use",
             result = AgentModelClient.ToolResult(content = content.format("true")),
         )
-        assertEquals("已提取正文 · example.com · 《Example》 · 约 11 字 · 2 个元素 · 已截断", success)
+        assertEquals("Content extracted · example.com · 《Example》 · About 11 characters · 2 elements · Truncated", success)
 
         listOf("user:password", "secret body", "private", "token", "ok=").forEach { leaked ->
             assertTrue("$leaked leaked: $success", !success.contains(leaked))
@@ -655,7 +655,7 @@ class AgentRuntimeWireTest {
             """{"uri":"https://user:password@example.com/private/access_token/value?q=secret#fragment"}"""
         )
 
-        assertEquals("交给外部应用 · https · example.com", summary)
+        assertEquals("Open in external app · https · example.com", summary)
     }
 
     @Test
@@ -671,19 +671,19 @@ class AgentRuntimeWireTest {
                 kind = AgentEvent.AssistantBlockKind.THINKING,
                 index = 0,
                 deltaChars = 4,
-                delta = "思考",
+                delta = "Reasoning",
             ),
             AgentEvent.AssistantBlockEnd(
                 round = 2,
                 kind = AgentEvent.AssistantBlockKind.THINKING,
                 index = 0,
                 contentChars = 4,
-                replacementContent = "思考",
+                replacementContent = "Reasoning",
             ),
             AgentEvent.AssistantReceived(
                 round = 2,
                 contentChars = 12,
-                reasoningContent = "完整思考内容",
+                reasoningContent = "完整ReasoningContent",
                 toolNames = listOf("observe_screen", "input_text"),
             ),
             AgentEvent.UsageReceived(
@@ -702,7 +702,7 @@ class AgentRuntimeWireTest {
                 round = 2,
                 toolCallId = "call_abc",
                 name = "run_command",
-                argsPreview = "执行命令 · Android · root",
+                argsPreview = "Run command · Android · root",
                 command = "pm list packages | head",
             ),
             AgentEvent.ToolFinished(
@@ -736,12 +736,12 @@ class AgentRuntimeWireTest {
             runId = "run-1",
             ok = true,
             content = "最终回答",
-            reasoningContent = "先分析问题，再调用工具，最后总结。",
+            reasoningContent = "先min析问题，再调用工具，最后总结。",
             transcript = listOf(
                 AgentModelClient.ConversationMessage(
                     role = "assistant",
                     content = "最终回答",
-                    reasoningContent = "先分析问题，再调用工具，最后总结。",
+                    reasoningContent = "先min析问题，再调用工具，最后总结。",
                 )
             ),
         )

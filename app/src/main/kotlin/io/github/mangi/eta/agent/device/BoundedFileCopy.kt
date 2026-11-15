@@ -20,5 +20,5 @@ internal object BoundedFileCopy {
         }
     }
 
-    class TooLargeException : IOException("文件超过导入大小限制")
+    class TooLargeException : IOException("File exceeds the import size limit")
 }

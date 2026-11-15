@@ -45,7 +45,7 @@ internal class WebHttpTransport(baseClient: OkHttpClient) : Closeable {
     private val activeCalls = ConcurrentHashMap.newKeySet<Call>()
 
     fun ensureActive() {
-        if (closed.get() || Thread.currentThread().isInterrupted) throw WebRequestException("WEB_CANCELLED", "网页请求已取消")
+        if (closed.get() || Thread.currentThread().isInterrupted) throw WebRequestException("WEB_CANCELLED", "Web request canceled")
     }
 
     fun get(rawUrl: String, maxBytes: Int = MAX_RESPONSE_BYTES): WebHttpResponse =
@@ -62,7 +62,7 @@ internal class WebHttpTransport(baseClient: OkHttpClient) : Closeable {
         require(maxBytes in 1..MAX_RESPONSE_BYTES)
         val normalizedMethod = method.trim().uppercase(Locale.ROOT)
         if (normalizedMethod != "GET" && normalizedMethod != "POST") {
-            throw WebRequestException("INVALID_ARGUMENT", "仅支持 GET 或 POST 请求方式")
+            throw WebRequestException("INVALID_ARGUMENT", "Only GET or POST methods are supported")
         }
         val initial = validateUrl(rawUrl)
         var url = initial
@@ -72,9 +72,9 @@ internal class WebHttpTransport(baseClient: OkHttpClient) : Closeable {
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30)
         repeat(MAX_REDIRECTS + 1) { redirectCount ->
             ensureActive()
-            if (!visited.add("$currentMethod:${url}")) throw WebRequestException("WEB_REDIRECT_LOOP", "网页重定向形成循环")
+            if (!visited.add("$currentMethod:${url}")) throw WebRequestException("WEB_REDIRECT_LOOP", "Web redirect loop detected")
             val remaining = deadline - System.nanoTime()
-            if (remaining <= 0) throw WebRequestException("WEB_TIMEOUT", "网页请求超时")
+            if (remaining <= 0) throw WebRequestException("WEB_TIMEOUT", "Web request timed out")
             val sameOrigin = url.scheme == initial.scheme && url.host == initial.host && url.port == initial.port
             val requestBuilder = Request.Builder().url(url)
                 .header("User-Agent", DEFAULT_USER_AGENT)
@@ -102,11 +102,11 @@ internal class WebHttpTransport(baseClient: OkHttpClient) : Closeable {
                 call.execute().use { response ->
                     ensureActive()
                     if (response.code in REDIRECT_STATUS) {
-                        if (redirectCount == MAX_REDIRECTS) throw WebRequestException("WEB_REDIRECT_LIMIT", "网页重定向次数超过限制")
+                        if (redirectCount == MAX_REDIRECTS) throw WebRequestException("WEB_REDIRECT_LIMIT", "Web redirect limit exceeded")
                         val location = response.header("Location")
-                            ?: throw WebRequestException("WEB_REDIRECT_INVALID", "网页重定向缺少目标地址")
+                            ?: throw WebRequestException("WEB_REDIRECT_INVALID", "Web redirect has no target URL")
                         val resolved = url.resolve(location)
-                            ?: throw WebRequestException("WEB_REDIRECT_INVALID", "网页重定向地址无效")
+                            ?: throw WebRequestException("WEB_REDIRECT_INVALID", "Invalid web redirect URL")
                         url = validateUrl(resolved.toString())
                         if (response.code in setOf(301, 302, 303) && currentMethod == "POST") {
                             currentMethod = "GET"
@@ -142,18 +142,18 @@ internal class WebHttpTransport(baseClient: OkHttpClient) : Closeable {
                 throw failure
             } catch (_: InterruptedIOException) {
                 ensureActive()
-                throw WebRequestException("WEB_TIMEOUT", "网页连接或读取超时")
+                throw WebRequestException("WEB_TIMEOUT", "Web connection or read timed out")
             } catch (_: ProtocolException) {
                 ensureActive()
-                throw WebRequestException("WEB_PROTOCOL_ERROR", "服务器返回了无法处理的 HTTP 响应")
+                throw WebRequestException("WEB_PROTOCOL_ERROR", "Server returned an unsupported HTTP response")
             } catch (_: IOException) {
                 ensureActive()
-                throw WebRequestException("WEB_NETWORK_ERROR", "无法完成网页请求，请检查网络、证书及相关网络授权")
+                throw WebRequestException("WEB_NETWORK_ERROR", "Could not complete the web request. Check network, certificates and network permissions.")
             } finally {
                 activeCalls -= call
             }
         }
-        throw WebRequestException("WEB_REDIRECT_LIMIT", "网页重定向次数超过限制")
+        throw WebRequestException("WEB_REDIRECT_LIMIT", "Web redirect limit exceeded")
     }
 
     override fun close() {
@@ -172,14 +172,14 @@ internal class WebHttpTransport(baseClient: OkHttpClient) : Closeable {
 
         fun validateUrl(raw: String): HttpUrl {
             if (raw.isBlank() || raw.length > 8192 || raw.any { it.isISOControl() }) {
-                throw WebRequestException("INVALID_URL", "网址为空、过长或包含无效字符")
+                throw WebRequestException("INVALID_URL", "URL is empty, too long or contains invalid characters")
             }
-            val url = raw.toHttpUrlOrNull() ?: throw WebRequestException("INVALID_URL", "只支持完整的 HTTP(S) 网址")
+            val url = raw.toHttpUrlOrNull() ?: throw WebRequestException("INVALID_URL", "Only complete HTTP(S) URLs are supported")
             if (url.username.isNotEmpty() || url.password.isNotEmpty()) {
-                throw WebRequestException("URL_CREDENTIALS_UNSUPPORTED", "此工具不接受包含用户名或密码的网址")
+                throw WebRequestException("URL_CREDENTIALS_UNSUPPORTED", "This tool does not accept URLs containing usernames or passwords")
             }
             return url.newBuilder().fragment(null).build().also {
-                if (it.toString().length > 8192) throw WebRequestException("INVALID_URL", "编码后的网址超过长度限制")
+                if (it.toString().length > 8192) throw WebRequestException("INVALID_URL", "Encoded URL exceeds the length limit")
             }
         }
 
@@ -188,7 +188,7 @@ internal class WebHttpTransport(baseClient: OkHttpClient) : Closeable {
                 name.any { it.isISOControl() || it == ':' || it.isWhitespace() } ||
                 value.any { it == '\r' || it == '\n' || it == '\u0000' }
             ) {
-                throw WebRequestException("INVALID_ARGUMENT", "请求头名称或值包含无效字符")
+                throw WebRequestException("INVALID_ARGUMENT", "Header name or value contains invalid characters")
             }
         }
 

@@ -287,7 +287,7 @@ class PersonalContextQueryServiceTest {
         assertFailure("PERSONAL_CONTEXT_FIELD_UNAVAILABLE", service(time).execute(request("count", "notes").put("start_time", "2026-01-01T00:00:00Z")))
         assertTrue(time.dataCalls.isEmpty())
         val search = FakeTransport(mutableSetOf("titleCom", "textCom", "folder_nameCom"))
-        assertFailure("PERSONAL_CONTEXT_FIELD_UNAVAILABLE", service(search).execute(request("search", "notes").put("query", "Content")))
+        assertFailure("PERSONAL_CONTEXT_FIELD_UNAVAILABLE", service(search).execute(request("search", "notes").put("query", "内容")))
         assertTrue(search.dataCalls.isEmpty())
     }
 

@@ -85,7 +85,7 @@ internal class SpeechPcmDecoder(private val onAudio: (ByteArray) -> Unit) {
         if (phase != Phase.PCM || buffer.size != 0L || pcmBytes == 0L) invalid()
     }
 
-    private fun invalid(): Nothing = throw SpeechFailure(SpeechErrorCode.PROTOCOL, "语音音频格式或长度无效")
+    private fun invalid(): Nothing = throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Invalid speech audio format or length")
 
     private companion object {
         const val MAX_HEADER_BYTES = 65_536L

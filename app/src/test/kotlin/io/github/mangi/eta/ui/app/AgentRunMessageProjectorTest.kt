@@ -118,14 +118,14 @@ class AgentRunMessageProjectorTest {
                 toolName = "observe_screen",
                 status = ToolActivityStatusUi.Success,
                 argumentsSummary = "{}",
-                resultSummary = "Done",
+                resultSummary = "完成",
             ),
             ToolActivityMessageUi(
                 id = "$runId-tool-1-call-failed",
                 toolName = "run_command",
                 status = ToolActivityStatusUi.Failed,
                 argumentsSummary = "{}",
-                resultSummary = "Execution failed",
+                resultSummary = "执行失败",
             ),
         )
         val otherRunMessages = listOf(
@@ -225,7 +225,7 @@ class AgentRunMessageProjectorTest {
             round = 1,
             toolCallId = "call-1",
             name = "observe_screen",
-            resultSummary = "Done",
+            resultSummary = "完成",
             imageCount = 0,
             imageBytes = 0,
             success = true,
@@ -238,8 +238,8 @@ class AgentRunMessageProjectorTest {
             messages = projector.finalizeThinking(runId, messages)
             messages = projector.startTool(runId, toolStart, messages)
             messages = projector.finishTool(runId, toolEnd, messages)
-            messages = projector.appendTextDelta(runId, round = 2, index = 0, delta = "Check", messages)
-            messages = projector.appendTextDelta(runId, round = 2, index = 0, delta = "Done", messages)
+            messages = projector.appendTextDelta(runId, round = 2, index = 0, delta = "检查", messages)
+            messages = projector.appendTextDelta(runId, round = 2, index = 0, delta = "完成", messages)
             messages = projector.finalizeText(runId, messages)
 
             assertEquals(4, messages.size)
@@ -483,7 +483,7 @@ class AgentRunMessageProjectorTest {
                 round = 1,
                 toolCallId = "call-1",
                 name = "run_command",
-                argsPreview = "Run command",
+                argsPreview = "执行命令",
             ),
             listOf(UserMessageUi(id = "user-$runId", content = "重启设备")),
         )
@@ -519,7 +519,7 @@ class AgentRunMessageProjectorTest {
         )
         messages = projector.startHostedTool(
             runId,
-            AgentEvent.HostedToolStarted(round = 1, toolCallId = "ws_1", name = "Web search"),
+            AgentEvent.HostedToolStarted(round = 1, toolCallId = "ws_1", name = "网页搜索"),
             projector.finalizeTextRound(runId, round = 1, messages),
         )
         messages = projector.finishHostedTool(
@@ -527,7 +527,7 @@ class AgentRunMessageProjectorTest {
             AgentEvent.HostedToolFinished(
                 round = 1,
                 toolCallId = "ws_1",
-                name = "Web search",
+                name = "网页搜索",
                 success = true,
             ),
             messages,
@@ -584,19 +584,19 @@ class AgentRunMessageProjectorTest {
 
         // 成功的结果保留事件标记里的 token 信息，不再追加第二条结果通知。
         val success = AgentRunMessageProjector.mergeCompactionResultNotice(
-            runId, base + completed, ok = true, detail = "Context compacted",
+            runId, base + completed, ok = true, detail = "上下文压缩完成",
         )
         assertEquals(base + completed, success)
 
         // 失败结果把同一条标记改写为失败原因。
         val failed = AgentRunMessageProjector.mergeCompactionResultNotice(
-            runId, base + completed, ok = false, detail = "Context compaction failed",
+            runId, base + completed, ok = false, detail = "上下文压缩失败",
         )
-        assertEquals("Context compaction failed", failed.filterIsInstance<SystemNoticeMessageUi>().single().detail)
+        assertEquals("上下文压缩失败", failed.filterIsInstance<SystemNoticeMessageUi>().single().detail)
 
         // 事件标记缺失时（如断连恢复路径）才补一条结果标记。
         val appended = AgentRunMessageProjector.mergeCompactionResultNotice(
-            runId, base, ok = true, detail = "Context compacted",
+            runId, base, ok = true, detail = "上下文压缩完成",
         )
         assertEquals(
             "assistant-$runId-compaction-result",
@@ -605,17 +605,17 @@ class AgentRunMessageProjectorTest {
 
         // 仍在进行中的标记被结果收尾，不停留在运行态。
         val finalized = AgentRunMessageProjector.mergeCompactionResultNotice(
-            runId, base + started, ok = true, detail = "Context compacted",
+            runId, base + started, ok = true, detail = "上下文压缩完成",
         )
         val finishedNotice = finalized.filterIsInstance<SystemNoticeMessageUi>().single()
-        assertEquals("Context compacted", finishedNotice.detail)
+        assertEquals("上下文压缩完成", finishedNotice.detail)
         assertFalse(finishedNotice.running)
 
         // finishContextCompaction 只收尾仍在运行的标记，已完成标记保持 token 信息。
-        val interrupted = projector.finishContextCompaction(runId, base + started, "Context compaction interrupted")
+        val interrupted = projector.finishContextCompaction(runId, base + started, "上下文压缩已中断")
         val interruptedNotice = interrupted.filterIsInstance<SystemNoticeMessageUi>().single()
-        assertEquals("Context compaction interrupted", interruptedNotice.detail)
+        assertEquals("上下文压缩已中断", interruptedNotice.detail)
         assertFalse(interruptedNotice.running)
-        assertEquals(base + completed, projector.finishContextCompaction(runId, base + completed, "Context compaction interrupted"))
+        assertEquals(base + completed, projector.finishContextCompaction(runId, base + completed, "上下文压缩已中断"))
     }
 }

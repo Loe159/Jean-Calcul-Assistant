@@ -336,15 +336,15 @@ internal object AnthropicMessagesProvider : AgentProviderClient {
             }
             !sawMessageStop
         }
-        if (!sawMessageStop) throw AgentModelFailure.incompleteStream("Anthropic SSE 流未正常结束")
+        if (!sawMessageStop) throw AgentModelFailure.incompleteStream("Anthropic SSE stream did not end normally")
         if (blocks.values.any { it.type in setOf("text", "thinking", "redacted_thinking", "tool_use") && !it.stopped }) {
-            throw AgentModelFailure.incompleteStream("Anthropic SSE 内容块未正常结束")
+            throw AgentModelFailure.incompleteStream("Anthropic SSE content block did not end normally")
         }
         val toolCalls = blocks.values
             .filter { it.type == "tool_use" && it.name.isNotBlank() }
             .sortedBy { it.index }
         if (toolCalls.isNotEmpty() && blocks.values.any { it.type == "thinking" && it.signature.isEmpty() }) {
-            throw AgentModelFailure.incompleteStream("Anthropic SSE 工具回合缺少思考签名")
+            throw AgentModelFailure.incompleteStream("Anthropic SSE tool turn is missing a reasoning signature")
         }
 
         return JSONObject()
@@ -412,7 +412,7 @@ internal object AnthropicMessagesProvider : AgentProviderClient {
         return when (type) {
             "error" -> throw AgentModelFailure.stream(
                 json.optJSONObject("error") ?: JSONObject(),
-                "Anthropic SSE 返回错误",
+                "Anthropic SSE returned an error",
             )
             "message_start" -> {
                 EventResult(usage = parseUsage(json.optJSONObject("message")?.optJSONObject("usage")))

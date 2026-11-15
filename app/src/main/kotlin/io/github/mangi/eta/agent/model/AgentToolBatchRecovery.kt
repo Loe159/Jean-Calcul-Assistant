@@ -12,7 +12,7 @@ internal object AgentToolBatchRecovery {
             open.forEach { id ->
                 recovered += AgentModelClient.ConversationMessage(role = "tool", toolCallId = id,
                     content = JSONObject().put("ok", false).put("code", "TOOL_INTERRUPTED")
-                        .put("message", "工具批次已中断，未取得该调用的完整结果；执行状态未知，请先核实，不要自动重放。").toString())
+                        .put("message", "Tool batch interrupted without a complete result. Execution status unknown. Verify before replaying.").toString())
             }
             open.clear()
         }

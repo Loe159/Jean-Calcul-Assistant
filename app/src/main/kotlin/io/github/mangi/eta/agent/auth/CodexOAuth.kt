@@ -16,6 +16,6 @@ internal object CodexOAuth {
             ?.takeIf { it.isNotBlank() && it.length <= 512 }
             ?: throw IllegalArgumentException()
     } catch (_: Exception) {
-        throw ProviderAuthException("codex_account_missing", "Codex 凭据缺少工作区信息，请重新登录")
+        throw ProviderAuthException("codex_account_missing", "Codex credentials have no workspace information. Sign in again.")
     }
 }

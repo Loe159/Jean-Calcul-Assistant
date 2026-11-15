@@ -11,12 +11,12 @@ import io.github.mangi.eta.R
 
 /** Overlay 不等同于前台 Activity；只在可见浮窗采集或播放音频期间提升服务类型。 */
 internal class AssistantSpeechForeground(private val service: Service) {
-    fun recording() = start(ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE, "Jean-Calcul 正在聆听")
-    fun playback() = start(ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK, "Jean-Calcul 正在朗读")
+    fun recording() = start(ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE, "Jean-Calcul is listening")
+    fun playback() = start(ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK, "Jean-Calcul is reading aloud")
 
     private fun start(type: Int, title: String) {
         service.getSystemService(NotificationManager::class.java).createNotificationChannel(
-            NotificationChannel(CHANNEL, "助手语音", NotificationManager.IMPORTANCE_LOW),
+            NotificationChannel(CHANNEL, "Assistant voice", NotificationManager.IMPORTANCE_LOW),
         )
         val stop = PendingIntent.getService(service, 0,
             Intent(service, EtaAssistantOverlayService::class.java).setAction(ACTION_STOP),
@@ -24,15 +24,15 @@ internal class AssistantSpeechForeground(private val service: Service) {
         val notification = Notification.Builder(service, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
-            .setContentText("仅在助手浮窗可见时运行")
+            .setContentText("Runs only while the floating assistant is visible")
             .setOngoing(true)
             .setCategory(Notification.CATEGORY_SERVICE)
-            .addAction(Notification.Action.Builder(null, "停止", stop).build())
+            .addAction(Notification.Action.Builder(null, "Stop", stop).build())
             .build()
         try {
             service.startForeground(NOTIFICATION_ID, notification, type)
         } catch (_: RuntimeException) {
-            throw SpeechFailure(SpeechErrorCode.PERMISSION, "系统不允许当前浮窗使用音频，请检查麦克风权限和默认数字助理设置")
+            throw SpeechFailure(SpeechErrorCode.PERMISSION, "The system blocked overlay audio. Check microphone permission and the default assistant setting.")
         }
     }
 

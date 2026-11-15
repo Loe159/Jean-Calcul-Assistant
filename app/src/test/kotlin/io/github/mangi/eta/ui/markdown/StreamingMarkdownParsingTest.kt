@@ -48,7 +48,7 @@ class StreamingMarkdownParsingTest {
         val targets = Channel<StreamingMarkdownTarget>(Channel.CONFLATED)
         val parser = StreamingGfmParserSession()
         val parsedSources = mutableListOf<String>()
-        repeat(100) { targets.send(StreamingMarkdownTarget("Content".repeat(it + 1), true)) }
+        repeat(100) { targets.send(StreamingMarkdownTarget("内容".repeat(it + 1), true)) }
         targets.close()
 
         consumeStreamingMarkdownTargets(
@@ -60,7 +60,7 @@ class StreamingMarkdownParsingTest {
             publish = {},
         )
 
-        assertEquals(listOf("Content".repeat(100)), parsedSources)
+        assertEquals(listOf("内容".repeat(100)), parsedSources)
     }
 
     @Test

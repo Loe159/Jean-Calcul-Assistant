@@ -158,7 +158,7 @@ internal object AgentModelImageEncoder {
         profile: EncodingProfile,
         flattenAlpha: Boolean,
     ): AgentModelClient.ModelImage {
-        require(!bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0) { "图片位图不可用" }
+        require(!bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0) { "Image bitmap unavailable" }
         val encodedBitmap = renderBitmap(
             bitmap = bitmap,
             target = targetSize(bitmap.width, bitmap.height, profile),
@@ -171,11 +171,11 @@ internal object AgentModelImageEncoder {
             ).coerceAtLeast(32 * 1024)
             val output = ByteArrayOutputStream(initialCapacity)
             check(encodedBitmap.compress(profile.format, profile.quality, output)) {
-                "图片编码失败"
+                "Image encoding failed"
             }
             val encoded = output.toByteArray()
             require(encoded.isNotEmpty() && encoded.size <= MAX_AGENT_IMAGE_BYTES) {
-                "图片数据过大：${encoded.size}"
+                "Image data is too large: ${encoded.size}"
             }
             return AgentModelClient.ModelImage(
                 reference = "data:${profile.mimeType};base64,${Base64.encodeToString(encoded, Base64.NO_WRAP)}",
@@ -218,8 +218,8 @@ internal object AgentModelImageEncoder {
     }
 
     private fun inspectBounds(bytes: ByteArray, mimeHint: String): ImageBounds {
-        require(bytes.isNotEmpty()) { "图片内容为空" }
-        require(bytes.size <= MAX_AGENT_IMAGE_BYTES) { "图片数据过大：${bytes.size}" }
+        require(bytes.isNotEmpty()) { "Image content is empty" }
+        require(bytes.size <= MAX_AGENT_IMAGE_BYTES) { "Image data is too large: ${bytes.size}" }
         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
         return ImageBounds(
@@ -292,7 +292,7 @@ internal object AgentModelImageEncoder {
         if (uri.scheme == "content") {
             return {
                 context.contentResolver.openInputStream(uri)
-                    ?: error("无法打开本地图片")
+                    ?: error("Could not open local image")
             }
         }
         val file = when (uri.scheme) {

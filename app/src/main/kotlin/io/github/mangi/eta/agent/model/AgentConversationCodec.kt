@@ -12,9 +12,9 @@ import org.json.JSONTokener
 /** Provider JSON 与 Eta 稳定会话 DTO 之间的转换；脱敏不改变普通文本与工具批次。 */
 internal object AgentConversationCodec {
 
-    private const val IMAGE_OMITTED_TEXT = "[图片观察已在当前回合使用，未写入持久会话]"
+    private const val IMAGE_OMITTED_TEXT = "[Image observation was used in this turn but was not saved in persistent history]"
     private const val SENSITIVE_TOOL_OMITTED_TEXT =
-        "[敏感工具参数与原始结果仅供当前回合使用，未写入持久会话]"
+        "[Sensitive tool parameters and raw results are available only this turn and were not saved in persistent history]"
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = false
@@ -107,7 +107,7 @@ internal object AgentConversationCodec {
         )
         images.forEach { image ->
             require(image.reference.isProviderImageReference()) {
-                "模型图片尚未在 Agent Runtime 中物化"
+                "Model image has not been materialized in the agent runtime"
             }
             content.put(
                 JSONObject()

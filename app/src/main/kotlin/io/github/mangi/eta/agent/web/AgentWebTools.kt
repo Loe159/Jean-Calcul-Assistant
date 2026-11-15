@@ -35,18 +35,18 @@ internal class AgentWebTools(
         when (name) {
             "web_search" -> search(args)
             "fetch_url" -> fetch(args)
-            else -> throw WebRequestException("UNKNOWN_TOOL", "未知网页工具")
+            else -> throw WebRequestException("UNKNOWN_TOOL", "Unknown web tool")
         }.toString()
     } catch (failure: WebRequestException) {
-        failure(name, failure.code, failure.message ?: "网页请求失败", failure.status).toString()
+        failure(name, failure.code, failure.message ?: "Web request failed", failure.status).toString()
     } catch (failure: WebPageContentException) {
-        failure(name, failure.code, failure.message ?: "网页正文处理失败").toString()
+        failure(name, failure.code, failure.message ?: "Page content processing failed").toString()
     } catch (failure: WebSearchException) {
-        failure(name, failure.code, failure.message ?: "搜索页面处理失败").toString()
+        failure(name, failure.code, failure.message ?: "Search page processing failed").toString()
     } catch (_: JSONException) {
-        failure(name, "INVALID_ARGUMENT", "网页工具参数缺失或类型错误").toString()
+        failure(name, "INVALID_ARGUMENT", "Missing web tool argument or wrong type").toString()
     } catch (_: IllegalArgumentException) {
-        failure(name, "INVALID_ARGUMENT", "网页工具参数不在允许范围内").toString()
+        failure(name, "INVALID_ARGUMENT", "Web tool argument is out of range").toString()
     }
 
     private fun search(args: JSONObject): JSONObject {
@@ -92,26 +92,26 @@ internal class AgentWebTools(
             .put("results", results).put("count", results.length()).put("truncated", page.limited)
             .put("limit_reasons", JSONArray(page.limitReasons)).put("skipped_results", page.skippedResults)
             .put("source_role", "untrusted_web_content")
-            .put("citation_hint", "引用检索结果时使用其标题和原始 URL；摘要不等于已读取完整网页。")
+            .put("citation_hint", "Cite search results using their title and original URL. A snippet does not mean the full page was read.")
     }
 
     private fun searchBuiltIn(query: String, limit: Int): SearchPage {
         val url = PublicWebSearch.searchUrl(query, limit)
         val response = transport.get(url)
-        if (response.status == 202) throw WebRequestException("SEARCH_CHALLENGE", "搜索站点要求人工验证，未取得搜索结果", 202)
-        if (response.status == 429) throw WebRequestException("SEARCH_RATE_LIMITED", "搜索站点限制了请求，请稍后重试", 429)
+        if (response.status == 202) throw WebRequestException("SEARCH_CHALLENGE", "Search site requires human verification; no results were obtained", 202)
+        if (response.status == 429) throw WebRequestException("SEARCH_RATE_LIMITED", "Search site limited requests. Try again later.", 429)
         requireSuccess(response)
-        if (response.truncated) throw WebRequestException("SEARCH_RESPONSE_TOO_LARGE", "搜索响应超过大小限制，请缩小查询范围")
+        if (response.truncated) throw WebRequestException("SEARCH_RESPONSE_TOO_LARGE", "Search response exceeds the size limit. Narrow the query.")
         val decoded = WebResponseDecoder.decode(response)
-        if (decoded.lossy) throw WebRequestException("SEARCH_ENCODING_ERROR", "搜索页面包含无法可靠解码的内容")
+        if (decoded.lossy) throw WebRequestException("SEARCH_ENCODING_ERROR", "Search page contains content that cannot be decoded reliably")
         return PublicWebSearch.parse(decoded.text, response.finalUrl, limit, ::ensureActive)
     }
 
     private fun fetch(args: JSONObject): JSONObject {
-        if (args.has("url") == args.has("document_id")) throw WebRequestException("INVALID_ARGUMENT", "url 与 document_id 必须且只能提供一个")
+        if (args.has("url") == args.has("document_id")) throw WebRequestException("INVALID_ARGUMENT", "Provide exactly one of url or document_id")
         val offset = args.optInt("offset_chars", 0)
         val maxChars = args.optInt("max_chars", 12_000)
-        if (offset < 0 || maxChars !in 1_000..16_000) throw WebRequestException("INVALID_ARGUMENT", "网页分页范围无效")
+        if (offset < 0 || maxChars !in 1_000..16_000) throw WebRequestException("INVALID_ARGUMENT", "Invalid page pagination range")
         val id: String
         val snapshot: Snapshot
         if (args.has("url")) {
@@ -164,9 +164,9 @@ internal class AgentWebTools(
             id = "web_" + UUID.randomUUID().toString()
         } else {
             id = args.getString("document_id")
-            if (id.isEmpty() || id.length > 128) throw WebRequestException("INVALID_ARGUMENT", "文档 ID 无效")
+            if (id.isEmpty() || id.length > 128) throw WebRequestException("INVALID_ARGUMENT", "Invalid document ID")
             snapshot = synchronized(documents) { documents[id] }
-                ?: throw WebRequestException("WEB_DOCUMENT_EXPIRED", "网页快照已失效或不属于本次运行，请重新提供 URL")
+                ?: throw WebRequestException("WEB_DOCUMENT_EXPIRED", "Page snapshot expired or belongs to another run. Provide the URL again.")
         }
         val document = snapshot.document
         val page = WebPageContent.page(document, offset, maxChars)
@@ -217,7 +217,7 @@ internal class AgentWebTools(
             .put("truncated", page.hasMore || page.sourceTruncated).put("truncation_reasons", JSONArray(document.truncationReasons))
             .put("links", links).put("links_truncated", document.linksTruncated || links.length() < candidates.size)
             .put("source_role", "untrusted_web_content")
-            .put("citation_hint", "引用此网页时使用 title 与 final_url；本工具只获取静态响应，需要 JavaScript、登录或交互时使用 browser_use。")
+            .put("citation_hint", "Cite this page using title and final_url. This tool fetches static content only; use browser_use for JavaScript, login or interaction.")
     }
 
     private fun fetchLocalSnapshot(url: String, fallbackFrom: String? = null): Snapshot {
@@ -244,12 +244,12 @@ internal class AgentWebTools(
     private fun requireSuccess(response: WebHttpResponse) {
         if (response.status !in 200..299) throw WebRequestException(
             when (response.status) { 401, 403 -> "WEB_ACCESS_DENIED"; 404 -> "WEB_NOT_FOUND"; 429 -> "WEB_RATE_LIMITED"; else -> "WEB_HTTP_ERROR" },
-            "网页请求失败（HTTP ${response.status}）", response.status,
+            "Web request failed (HTTP ${response.status}）", response.status,
         )
     }
 
     private fun ensureActive() {
-        if (closed.get()) throw WebRequestException("WEB_CANCELLED", "网页工具已取消")
+        if (closed.get()) throw WebRequestException("WEB_CANCELLED", "Web tool canceled")
         transport.ensureActive()
     }
 

@@ -24,20 +24,20 @@ internal suspend fun recognizeSpeechFile(
     withTimeout(300_000) {
         when (settings.asr) {
             AsrProvider.MIMO -> {
-                onProgress("正在识别")
+                onProgress("Recognizing speech")
                 recognizeMimoSpeech(settings.mimoAsr, credentials.mimoAsr, wav)
             }
             AsrProvider.DEEPSEEK -> {
-                onProgress("正在识别")
+                onProgress("Recognizing speech")
                 recognizeDeepSeekSpeech(settings.deepseekAsr, credentials.deepseekAsr, wav)
             }
             AsrProvider.QWEN_FLASH -> {
-                onProgress("正在识别")
+                onProgress("Recognizing speech")
                 recognizeQwenShortAudio(settings, credentials, wav)
             }
             AsrProvider.QWEN_FILE -> recognizeQwenFile(context, settings, credentials, wav, onProgress)
             AsrProvider.QWEN_REALTIME, AsrProvider.DOUBAO ->
-                throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "当前语音服务需要流式识别")
+                throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "This speech service requires streaming recognition")
         }
     }
 }
@@ -69,7 +69,7 @@ private suspend fun recognizeQwenFile(
     onProgress: (String) -> Unit,
 ): String {
     val base = speechBaseUrl(settings.qwenAsr.endpoint())
-    onProgress("正在上传录音")
+    onProgress("Uploading recording")
     return SpeechOssUpload(context).withAudio(settings.oss, credentials, wav) { audioUrl ->
         val parameters = JSONObject().put("channel_id", JSONArray().put(0)).put("enable_itn", true)
         settings.language.takeIf(String::isNotBlank)?.let { parameters.put("language", it) }
@@ -80,9 +80,9 @@ private suspend fun recognizeQwenFile(
         ).header("X-DashScope-Async", "enable").build())
         val task = submitted.getJSONObject("output").getString("task_id")
         if (!Regex("[A-Za-z0-9_-]+").matches(task)) {
-            throw SpeechFailure(SpeechErrorCode.PROTOCOL, "文件转写任务编号无效")
+            throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Invalid transcription task ID")
         }
-        onProgress("正在等待文件转写，可随时取消")
+        onProgress("Waiting for transcription. You can cancel at any time.")
         awaitQwenFileTranscript(base, credentials.qwenAsr, task)
     }
 }
@@ -102,8 +102,8 @@ private suspend fun awaitQwenFileTranscript(base: String, key: String, task: Str
                 return fileTranscript(transcription)
             }
             "FAILED", "CANCELED", "UNKNOWN" ->
-                throw SpeechFailure(SpeechErrorCode.SERVER, "千问文件转写失败，请检查服务权限")
-            else -> throw SpeechFailure(SpeechErrorCode.PROTOCOL, "文件转写返回未知任务状态")
+                throw SpeechFailure(SpeechErrorCode.SERVER, "Qwen file transcription failed. Check service permissions.")
+            else -> throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Transcription returned an unknown task status")
         }
     }
 }

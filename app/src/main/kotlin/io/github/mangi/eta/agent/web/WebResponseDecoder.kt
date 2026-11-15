@@ -15,7 +15,7 @@ internal data class DecodedWebResponse(val text: String, val contentType: String
 internal object WebResponseDecoder {
     fun decode(response: WebHttpResponse): DecodedWebResponse {
         val bytes = response.bytes
-        if (bytes.size > WebHttpTransport.MAX_RESPONSE_BYTES) throw WebRequestException("WEB_DECODE_LIMIT", "网页响应超过解码容量限制")
+        if (bytes.size > WebHttpTransport.MAX_RESPONSE_BYTES) throw WebRequestException("WEB_DECODE_LIMIT", "Web response exceeds decoding capacity")
         val bom = when {
             bytes.startsWith(0xef, 0xbb, 0xbf) -> "UTF-8" to 3
             bytes.startsWith(0xfe, 0xff) -> "UTF-16BE" to 2
@@ -29,13 +29,13 @@ internal object WebResponseDecoder {
         val prefix = decodeBytes(prefixBytes, 0, prefixCharset, CodingErrorAction.REPLACE, endOfInput = false)
         val declared = response.contentType?.toMediaTypeOrNull()
         if (declared == null && bom == null && hasBinarySignature(prefixBytes)) {
-            throw WebRequestException("BINARY_CONTENT", "响应包含二进制文件内容，请使用对应的文件或媒体工具")
+            throw WebRequestException("BINARY_CONTENT", "Response contains binary data. Use the appropriate file or media tool.")
         }
         val mime = declared?.let { "${it.type}/${it.subtype}" }?.lowercase(Locale.ROOT)
             ?: if (HTML_PREFIX.containsMatchIn(prefix)) "text/html" else "text/plain"
         if (!mime.startsWith("text/") && mime !in setOf("application/json", "application/xhtml+xml") &&
             !(mime.startsWith("application/") && mime.endsWith("+json"))
-        ) throw WebRequestException("UNSUPPORTED_CONTENT_TYPE", "此网址不是可读取的文本网页，请使用对应的文件或媒体工具")
+        ) throw WebRequestException("UNSUPPORTED_CONTENT_TYPE", "This URL is not a readable text page. Use the appropriate file or media tool.")
         val headerCharset = declared?.parameter("charset")
         val htmlCharset = if (mime == "text/html" && bom == null && headerCharset == null) {
             val head = Jsoup.parse(prefix)
@@ -46,14 +46,14 @@ internal object WebResponseDecoder {
         val charset = try {
             Charset.forName(bom?.first ?: headerCharset ?: htmlCharset ?: "UTF-8")
         } catch (_: IllegalArgumentException) {
-            throw WebRequestException("UNSUPPORTED_CHARSET", "网页声明了当前环境不支持的字符编码")
+            throw WebRequestException("UNSUPPORTED_CHARSET", "The page declares an unsupported character encoding")
         }
         var lossy = false
         val text = try { decodeBytes(bytes, offset, charset, CodingErrorAction.REPORT, !response.truncated) } catch (_: CharacterCodingException) {
             lossy = true
             decodeBytes(bytes, offset, charset, CodingErrorAction.REPLACE, !response.truncated)
         }
-        if (text.any(::isBinaryControl)) throw WebRequestException("BINARY_CONTENT", "响应包含二进制控制字符，不能作为网页正文读取")
+        if (text.any(::isBinaryControl)) throw WebRequestException("BINARY_CONTENT", "Response contains binary control characters and cannot be read as page text")
         return DecodedWebResponse(text, mime, charset.name(), lossy)
     }
 
@@ -63,11 +63,11 @@ internal object WebResponseDecoder {
         val output = CharBuffer.allocate(((bytes.size - offset) * decoder.maxCharsPerByte()).toInt() + 2)
         val result = decoder.decode(input, output, endOfInput)
         if (result.isError) result.throwException()
-        if (result.isOverflow) throw WebRequestException("WEB_DECODE_LIMIT", "网页解码超过容量限制")
+        if (result.isOverflow) throw WebRequestException("WEB_DECODE_LIMIT", "Page decoding exceeds capacity")
         if (endOfInput) {
             val flushed = decoder.flush(output)
             if (flushed.isError) flushed.throwException()
-            if (flushed.isOverflow) throw WebRequestException("WEB_DECODE_LIMIT", "网页解码超过容量限制")
+            if (flushed.isOverflow) throw WebRequestException("WEB_DECODE_LIMIT", "Page decoding exceeds capacity")
         }
         output.flip()
         return output.toString()

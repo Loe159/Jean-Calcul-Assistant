@@ -10,9 +10,9 @@ internal object AgentToolSchema {
             .put("enum", JSONArray().put("normalized").put("screen").put("screenshot"))
             .put(
                 "description",
-                "必填。normalized（推荐）：x、y 取 0–999，相对整块屏幕的比例，看截图时用它，不受图片缩放影响；" +
-                    "screen：真实屏幕像素，ui_nodes 的 center/bounds 就是这个坐标；" +
-                    "screenshot：最近一次附图的原始像素，仅当你确定看到的是未缩放原图时使用。",
+                "Required. normalized (recommended): x/y range 0–999 relative to the full screen; use for screenshots regardless of scaling." +
+                    "screen: physical screen pixels, as used by ui_nodes center/bounds." +
+                    "screenshot: original pixels of the latest screenshot, only when you are certain it is unscaled.",
             )
 
     fun function(

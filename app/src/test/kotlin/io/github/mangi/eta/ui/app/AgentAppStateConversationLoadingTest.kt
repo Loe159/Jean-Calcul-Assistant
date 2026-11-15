@@ -274,7 +274,7 @@ class AgentAppStateConversationLoadingTest {
         assertTrue(runs.isStopRequested("run-a"))
         assertFalse(runs.isStopRequested("run-b"))
 
-        state.completeRunForTest("run-a", "已保存的结果")
+        state.completeRunForTest("run-a", "Saved的结果")
         awaitCondition { state.conversationPaneState.conversations.none { it.id == "first" } }
         assertEquals(setOf("run-b"), runs.observedRunIds)
         assertTrue(state.homeState.isStreaming)
@@ -292,24 +292,24 @@ class AgentAppStateConversationLoadingTest {
         state.selectConversation("second")
         awaitLoaded(state, "second")
         state.registerRunForTest("run-b", "second")
-        state.sendCurrentMessage("后台后续消息")
+        state.sendCurrentMessage("Background后续消息")
         state.selectConversation("first")
         awaitLoaded(state, "first")
 
-        state.completeRunForTest("run-b", "后台已完成的回复")
+        state.completeRunForTest("run-b", "BackgroundCompleted的回复")
         awaitCondition {
             runBlocking { AgentConversationStore.loadConversation(context, "second") }
-                ?.journal?.any { it.role == "user" && it.content == "后台后续消息" } == true
+                ?.journal?.any { it.role == "user" && it.content == "Background后续消息" } == true
         }
         val saved = requireNotNull(runBlocking { AgentConversationStore.loadConversation(context, "second") })
-        val answerIndex = saved.journal.indexOfFirst { it.content == "后台已完成的回复" }
-        val followupIndex = saved.journal.indexOfFirst { it.content == "后台后续消息" }
+        val answerIndex = saved.journal.indexOfFirst { it.content == "BackgroundCompleted的回复" }
+        val followupIndex = saved.journal.indexOfFirst { it.content == "Background后续消息" }
         assertTrue(answerIndex >= 0 && answerIndex < followupIndex)
         assertEquals("first", state.conversationPaneState.selectedConversationId)
         assertTrue(state.homeState.isStreaming)
         assertEquals("run-a", runs.activeRunId("first"))
         awaitCondition { runs.observedRunIds == setOf("run-a") }
-        state.completeRunForTest("run-a", "前台任务完成")
+        state.completeRunForTest("run-a", "前台任务Done")
     }
 
     @Test
@@ -320,20 +320,20 @@ class AgentAppStateConversationLoadingTest {
     @Test
     @Config(qualifiers = "b+zh+Hans")
     fun simplifiedChineseBranchPreservesDraftAndUniqueTitles() {
-        assertBranchPreservesDraftAndUniqueTitles("source · 分支")
+        assertBranchPreservesDraftAndUniqueTitles("source · min支")
     }
 
     @Test
     @Config(qualifiers = "b+zh+Hant")
     fun traditionalChineseBranchPreservesDraftAndUniqueTitles() {
-        assertBranchPreservesDraftAndUniqueTitles("source · 分支")
+        assertBranchPreservesDraftAndUniqueTitles("source · min支")
     }
 
     private fun assertBranchPreservesDraftAndUniqueTitles(expectedTitle: String) {
         seed("source" to branchSource())
         val state = AgentAppState(context, scope)
         state.branchConversation("source", "assistant-source-1-0", "未发送的草稿")
-        state.branchConversation("source", "assistant-source-1-0", "重复点击")
+        state.branchConversation("source", "assistant-source-1-0", "重复Tap")
         awaitCondition { state.conversationPaneState.conversations.size == 2 && !state.isBranchingCurrentConversation }
         val firstBranch = state.conversationPaneState.conversations.single { it.id != "source" }
         awaitLoaded(state, firstBranch.id)
@@ -474,6 +474,6 @@ class AgentAppStateConversationLoadingTest {
             ShadowLooper.idleMainLooper(10, TimeUnit.MILLISECONDS)
             Thread.sleep(1)
         }
-        assertTrue("异步会话操作未在限定时间内完成", condition())
+        assertTrue("异步会话操作未在限定Time内Done", condition())
     }
 }

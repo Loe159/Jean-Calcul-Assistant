@@ -354,7 +354,7 @@ class AgentConversationStoreTest {
             ConversationEntity("dormant", "未打开", false, revisionsJson = "invalid deferred revisions",
                 createdAt = 1L, updatedAt = 1L),
         ))
-        dao.insertMessages(listOf(ConversationMessageEntity("dormant-last", "dormant", 0, "assistant", "Content".repeat(20_000))))
+        dao.insertMessages(listOf(ConversationMessageEntity("dormant-last", "dormant", 0, "assistant", "内容".repeat(20_000))))
         dao.insertState(ConversationStateEntity(selectedConversationId = "active"))
 
         val dormant = AgentConversationStore.load(context).conversationsById.getValue("dormant")
@@ -429,13 +429,13 @@ class AgentConversationStoreTest {
     @Test
     fun searchIncludesMatchingLocalizedNoticeCodesFromEarlierMessages() = runBlocking {
         val dao = EtaDatabase.get(context).conversationDao()
-        dao.insertConversations(listOf(ConversationEntity("notice", "Title", false, createdAt = 1L, updatedAt = 1L)))
+        dao.insertConversations(listOf(ConversationEntity("notice", "标题", false, createdAt = 1L, updatedAt = 1L)))
         dao.insertMessages(listOf(
             ConversationMessageEntity("old-notice", "notice", 0, "system_notice", SystemNoticeCode.Interrupted.wireValue),
             ConversationMessageEntity("new-message", "notice", 1, "assistant", "新的回答"),
         ))
 
-        assertEquals(setOf("notice"), AgentConversationStore.searchConversationIds(context, "Interrupted", listOf(SystemNoticeCode.Interrupted)))
+        assertEquals(setOf("notice"), AgentConversationStore.searchConversationIds(context, "已中断", listOf(SystemNoticeCode.Interrupted)))
     }
 
     @Test

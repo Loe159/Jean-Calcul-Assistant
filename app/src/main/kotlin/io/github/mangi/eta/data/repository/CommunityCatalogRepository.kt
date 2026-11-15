@@ -78,9 +78,9 @@ internal object CommunityCatalogRepository {
             }
             val raw = try {
                 call.execute().use { response ->
-                    if (!response.isSuccessful) error("目录更新失败：HTTP ${response.code}")
+                    if (!response.isSuccessful) error("Catalog update failed: HTTP ${response.code}")
                     if (!response.header("Content-Type").orEmpty().startsWith("application/json", ignoreCase = true)) {
-                        error("目录更新失败：响应格式不是 JSON")
+                        error("Catalog update failed: response is not JSON")
                     }
                     response.body.byteStream().use { it.readUtf8Limited() }
                 }
@@ -94,7 +94,7 @@ internal object CommunityCatalogRepository {
                     fetchedAt = System.currentTimeMillis(),
                 )
             } catch (failure: Exception) {
-                throw IllegalStateException("目录数据格式无效", failure)
+                throw IllegalStateException("Invalid catalog data format", failure)
             }
             val file = AtomicFile(cacheFile(context.applicationContext))
             val output = file.startWrite()
@@ -114,9 +114,9 @@ internal object CommunityCatalogRepository {
     }
 
     fun newProvider(selection: CommunityCatalogProvider, modelIds: Set<String>): ProviderSetting {
-        require(modelIds.isNotEmpty()) { "请至少选择一个模型" }
+        require(modelIds.isNotEmpty()) { "Select at least one model" }
         val models = selection.models.filter { it.modelId in modelIds }
-        require(models.size == modelIds.size) { "选中的模型已不在目录中，请重新选择" }
+        require(models.size == modelIds.size) { "Selected model is no longer in the catalog. Select again." }
         return CustomProviderSetting(
             id = UUID.randomUUID().toString(),
             name = selection.name,

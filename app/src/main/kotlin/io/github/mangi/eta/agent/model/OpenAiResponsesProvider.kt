@@ -58,7 +58,7 @@ internal object OpenAiResponsesProvider : AgentProviderClient {
     internal fun buildHttpRequest(request: ProviderRequest): Request {
         val config = request.effectiveConfig
         require(config.openAiEndpointMode == OpenAiEndpointMode.RESPONSES) {
-            "当前 Provider 未配置为 Responses API"
+            "Provider is not configured for the Responses API"
         }
         val body = buildRequestJson(config, request.messages, request.effectiveTools, request.purpose)
             .toString()
@@ -94,7 +94,7 @@ internal object OpenAiResponsesProvider : AgentProviderClient {
         runController: AgentRunController,
         onEvent: (ProviderEvent) -> Unit,
     ): JSONObject {
-        if (stream == null) error("模型接口未返回响应流")
+        if (stream == null) error("Model API returned no response stream")
         val streamedText = StringBuilder()
         val streamedReasoning = StringBuilder()
         val toolCalls = linkedMapOf<String, StreamingFunctionCall>()
@@ -345,7 +345,7 @@ internal object OpenAiResponsesProvider : AgentProviderClient {
                             "completed" -> "response.completed"
                             "failed" -> "response.failed"
                             "incomplete" -> "response.incomplete"
-                            else -> throw AgentModelFailure.incompleteStream("Codex 终止事件缺少有效状态")
+                            else -> throw AgentModelFailure.incompleteStream("Codex terminal event is missing a valid status")
                         }
                     } else type
                 }
@@ -354,8 +354,8 @@ internal object OpenAiResponsesProvider : AgentProviderClient {
             terminal == null
         }
 
-        if (!sawEvent) throw AgentModelFailure.incompleteStream("模型接口未返回 SSE data chunk")
-        val finalResponse = terminal ?: throw AgentModelFailure.incompleteStream("模型接口 Responses SSE 流缺少合法终止事件")
+        if (!sawEvent) throw AgentModelFailure.incompleteStream("Model API returned no SSE data chunk")
+        val finalResponse = terminal ?: throw AgentModelFailure.incompleteStream("Responses SSE stream is missing a valid terminal event")
         if (terminalType == "response.failed") throwResponseFailure(finalResponse)
 
         val terminalOutput = finalResponse.optJSONArray("output")
@@ -623,21 +623,21 @@ internal object OpenAiResponsesProvider : AgentProviderClient {
 
     private fun throwEventError(event: JSONObject) {
         val error = event.optJSONObject("error") ?: return
-        val message = error.optString("message").ifBlank { "未提供错误信息" }.compactError()
+        val message = error.optString("message").ifBlank { "No error information provided" }.compactError()
         val type = error.optString("type").takeIf { it.isNotBlank() }
-        throw AgentModelFailure.stream(error, "模型接口 SSE 返回错误${type?.let { " (type=$it)" }.orEmpty()}：$message")
+        throw AgentModelFailure.stream(error, "Model API SSE returned an error${type?.let { " (type=$it)" }.orEmpty()}：$message")
     }
 
     private fun throwTopLevelEventError(event: JSONObject): Nothing {
-        val message = event.optString("message").ifBlank { "未提供错误信息" }.compactError()
+        val message = event.optString("message").ifBlank { "No error information provided" }.compactError()
         val code = event.optString("code").takeIf { it.isNotBlank() }
-        throw AgentModelFailure.stream(event, "模型接口 SSE 返回错误${code?.let { " (code=$it)" }.orEmpty()}：$message")
+        throw AgentModelFailure.stream(event, "Model API SSE returned an error${code?.let { " (code=$it)" }.orEmpty()}：$message")
     }
 
     private fun throwResponseFailure(response: JSONObject): Nothing {
         val error = response.optJSONObject("error")
-        val message = error?.optString("message").orEmpty().ifBlank { "未提供错误信息" }
-        throw AgentModelFailure.stream(error ?: JSONObject(), "模型接口 Responses 请求失败：${message.compactError()}")
+        val message = error?.optString("message").orEmpty().ifBlank { "No error information provided" }
+        throw AgentModelFailure.stream(error ?: JSONObject(), "Model API Responses request failed: ${message.compactError()}")
     }
 
     private fun JSONObject.intValue(vararg keys: String): Int? {

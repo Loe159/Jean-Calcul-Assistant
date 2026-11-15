@@ -60,16 +60,16 @@ internal class DetachedTaskSupervisor(
         description: String = "",
         timeoutMs: Long = 0,
     ): DaemonStartResult {
-        if (identity != "root" && identity != "user") return DaemonStartResult.Failed("INVALID_ARGUMENT", "执行身份无效")
-        if (identity == "root" && !rootAvailable()) return DaemonStartResult.Failed("ROOT_REQUIRED", "Root 授权不可用")
+        if (identity != "root" && identity != "user") return DaemonStartResult.Failed("INVALID_ARGUMENT", "Invalid execution identity")
+        if (identity == "root" && !rootAvailable()) return DaemonStartResult.Failed("ROOT_REQUIRED", "Root access unavailable")
         if (identity == "user" && environment.isLinux && LinuxEnvironmentPaths.backendOf(rootfsPath(environment)) != LinuxExecutionBackend.PROOT) {
-            return DaemonStartResult.Failed("LINUX_ENVIRONMENT_REQUIRES_ROOT", "所选 Linux 环境需要 Root")
+            return DaemonStartResult.Failed("LINUX_ENVIRONMENT_REQUIRES_ROOT", "Selected Linux environment requires root")
         }
         if (identity == "root" && environment.isLinux && LinuxEnvironmentPaths.backendOf(rootfsPath(environment)) == LinuxExecutionBackend.PROOT) {
-            return DaemonStartResult.Failed("INVALID_IDENTITY", "免 Root Linux 使用普通应用身份")
+            return DaemonStartResult.Failed("INVALID_IDENTITY", "Rootless Linux uses the app identity")
         }
         if (list().count { it.running } >= MAX_TASKS) {
-            return DaemonStartResult.Failed("MAX_TASKS_REACHED", "守护任务数量已达上限 $MAX_TASKS，请先停止不用的任务")
+            return DaemonStartResult.Failed("MAX_TASKS_REACHED", "Daemon task limit reached: $MAX_TASKS. Stop unused tasks first.")
         }
         val id = (if (commandTask) "job_" else "dm_") + UUID.randomUUID().toString().take(8)
         val token = UUID.randomUUID().toString().replace("-", "")
@@ -128,7 +128,7 @@ internal class DetachedTaskSupervisor(
         )
         if (!synchronized(RECORDS_LOCK) { saveTasksLocked(loadTasksLocked() + task) }) {
             stopTaskProcess(task)
-            return DaemonStartResult.Failed("RECORDS_WRITE_FAILED", "无法保存后台任务，请检查内部存储")
+            return DaemonStartResult.Failed("RECORDS_WRITE_FAILED", "Could not save background task. Check internal storage.")
         }
         logger.info(
             "Agent terminal daemon action=start outcome=started taskId=$id " +
@@ -184,8 +184,8 @@ internal class DetachedTaskSupervisor(
 
     fun readLogs(id: String, maxBytes: Int = MAX_LOG_READ_BYTES): DaemonLogsResult {
         val task = synchronized(RECORDS_LOCK) { loadTasksLocked() }.firstOrNull { it.id == id }
-            ?: return DaemonLogsResult(ok = false, code = "TASK_NOT_FOUND", message = "未找到守护任务：$id")
-        if (task.identity == "root" && !rootAvailable()) return DaemonLogsResult(ok = false, code = "ROOT_REQUIRED", message = "Root 授权不可用")
+            ?: return DaemonLogsResult(ok = false, code = "TASK_NOT_FOUND", message = "Daemon task not found: $id")
+        if (task.identity == "root" && !rootAvailable()) return DaemonLogsResult(ok = false, code = "ROOT_REQUIRED", message = "Root access unavailable")
         val limit = maxBytes.coerceIn(1_024, MAX_LOG_READ_BYTES)
         val result = runOneShotShell(
             processSupervisor = oneShotSupervisor,
@@ -194,7 +194,7 @@ internal class DetachedTaskSupervisor(
             timeoutSeconds = 15,
         )
         if (result.exitCode != 0) {
-            return DaemonLogsResult(ok = false, code = "LOGS_UNAVAILABLE", message = "日志不可用：exit=${result.exitCode}")
+            return DaemonLogsResult(ok = false, code = "LOGS_UNAVAILABLE", message = "Logs unavailable: exit=${result.exitCode}")
         }
         return DaemonLogsResult(
             ok = true,
@@ -222,12 +222,12 @@ internal class DetachedTaskSupervisor(
             commandPayload(command, "$wireDir/$id.exit") + "; } > ${shellQuote(logPath)} 2>&1"
         val process = oneShotSupervisor.startShellProcess(identity, script, true, environment,
             linuxRootfsPath = rootfsPath(environment), linuxSharedMounts = linuxSharedMountsProvider())
-            ?: return DaemonStartResult.Failed("PROCESS_START_FAILED", "无法启动后台命令")
+            ?: return DaemonStartResult.Failed("PROCESS_START_FAILED", "Could not start background command")
         val ownership = oneShotSupervisor.ownershipOf(process)
         if (ownership == null) {
             oneShotSupervisor.terminateAndReap(process)
             oneShotSupervisor.unregisterProcess(process)
-            return DaemonStartResult.Failed("PROCESS_START_FAILED", "后台命令未完成进程归属确认")
+            return DaemonStartResult.Failed("PROCESS_START_FAILED", "Background command process ownership was not confirmed")
         }
         val task = DetachedTask(id, ownership.pid, ownership.token, command, cwd, identity, environment,
             logPath, System.currentTimeMillis(), LinuxEnvironmentPaths.backendOf(rootfsPath(environment)), workspace,
@@ -235,7 +235,7 @@ internal class DetachedTaskSupervisor(
         if (!synchronized(RECORDS_LOCK) { saveTasksLocked(loadTasksLocked() + task) }) {
             oneShotSupervisor.terminateAndReap(process)
             oneShotSupervisor.unregisterProcess(process)
-            return DaemonStartResult.Failed("RECORDS_WRITE_FAILED", "无法保存后台命令")
+            return DaemonStartResult.Failed("RECORDS_WRITE_FAILED", "Could not save background command")
         }
         val running = CommandProcess(process, oneShotSupervisor)
         COMMAND_PROCESSES[id] = running
@@ -369,14 +369,14 @@ internal class DetachedTaskSupervisor(
     private fun startUserDaemon(id: String, token: String, command: String, cwd: String, environment: TerminalEnvironment): DaemonStartResult {
         val workspace = if (environment.isLinux || daemonDir == DEFAULT_DAEMON_DIR) TerminalRuntime.userWorkspacePath else File(daemonDir).parent!!
         val hostDir = if (environment.isLinux || daemonDir == DEFAULT_DAEMON_DIR) File(workspace, "daemon") else File(daemonDir)
-        if (!hostDir.mkdirs() && !hostDir.isDirectory) return DaemonStartResult.Failed("WORKSPACE_UNAVAILABLE", "工作目录不可访问")
+        if (!hostDir.mkdirs() && !hostDir.isDirectory) return DaemonStartResult.Failed("WORKSPACE_UNAVAILABLE", "Working directory is inaccessible")
         val pidFile = File(hostDir, "$id.pid")
         val logFile = File(hostDir, "$id.log")
         val commandBody = "exec sh -c ${shellQuote(command)}"
         val payload = if (environment.isLinux) {
             val rootfs = rootfsPath(environment)
-            if (!LinuxEnvironmentPaths.rootfsReady(rootfs)) return DaemonStartResult.Failed("LINUX_ENVIRONMENT_NOT_READY", "Linux 环境尚未安装")
-            if (!ProotCommandBuilder.available()) return DaemonStartResult.Failed("PROOT_UNAVAILABLE", "当前设备没有可用的免 Root Linux 运行组件")
+            if (!LinuxEnvironmentPaths.rootfsReady(rootfs)) return DaemonStartResult.Failed("LINUX_ENVIRONMENT_NOT_READY", "Linux environment is not installed")
+            if (!ProotCommandBuilder.available()) return DaemonStartResult.Failed("PROOT_UNAVAILABLE", "No rootless Linux runtime component is available on this device")
             ProotCommandBuilder.payload(requireNotNull(rootfs), "cd ${shellQuote(cwd)} && $commandBody", linuxSharedMountsProvider(), workspace = workspace)
         } else "cd ${shellQuote(cwd)} && $commandBody"
         val lease = "daemon:$id"
@@ -387,10 +387,10 @@ internal class DetachedTaskSupervisor(
             if (!acquireUserLease(lease) {
                     stopped.set(true)
                     synchronized(launchLock) { stop(id) }
-                }) return@synchronized DaemonStartResult.Failed("BACKGROUND_START_NOT_ALLOWED", "请返回 Jean-Calcul 后重新启动后台任务")
+                }) return@synchronized DaemonStartResult.Failed("BACKGROUND_START_NOT_ALLOWED", "Return to Jean-Calcul and restart the background task")
             if (stopped.get()) {
                 releaseUserLease(lease)
-                return@synchronized DaemonStartResult.Failed("TASK_CANCELLED", "后台任务已取消")
+                return@synchronized DaemonStartResult.Failed("TASK_CANCELLED", "Background task canceled")
             }
             val script = "printf '%s\\n' \"${'$'}${'$'}\" > ${shellQuote(pidFile.absolutePath)}; $payload"
             val launcher = "if command -v setsid >/dev/null 2>&1; then exec setsid -w sh -c ${shellQuote(script)}; else exec sh -c ${shellQuote(script)}; fi"
@@ -404,7 +404,7 @@ internal class DetachedTaskSupervisor(
                 }.start()
             } catch (_: java.io.IOException) {
                 releaseUserLease(lease)
-                return@synchronized DaemonStartResult.Failed("PROCESS_START_FAILED", "无法启动后台任务")
+                return@synchronized DaemonStartResult.Failed("PROCESS_START_FAILED", "Could not start background task")
             }
             val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3)
             while (pidFile.length() == 0L && process.isAlive && System.nanoTime() < deadline) Thread.sleep(10)
@@ -412,7 +412,7 @@ internal class DetachedTaskSupervisor(
             if (pid == null || pid <= 1) {
                 process.destroyForcibly()
                 releaseUserLease(lease)
-                return@synchronized DaemonStartResult.Failed("PROCESS_START_FAILED", "后台任务未完成启动")
+                return@synchronized DaemonStartResult.Failed("PROCESS_START_FAILED", "Background task did not finish starting")
             }
             val task = DetachedTask(id, pid, token, command, cwd, "user", environment,
                 if (environment.isLinux) "$LINUX_DAEMON_DIR/$id.log" else logFile.absolutePath,
@@ -423,7 +423,7 @@ internal class DetachedTaskSupervisor(
                 stopTaskProcess(task)
                 process.destroyForcibly()
                 releaseUserLease(lease)
-                return@synchronized DaemonStartResult.Failed("RECORDS_WRITE_FAILED", "无法保存后台任务，请检查内部存储")
+                return@synchronized DaemonStartResult.Failed("RECORDS_WRITE_FAILED", "Could not save background task. Check internal storage.")
             }
             thread(name = "eta-daemon-wait", isDaemon = true) {
                 try { process.waitFor() } finally {
@@ -433,7 +433,7 @@ internal class DetachedTaskSupervisor(
             }
             if (stopped.get()) {
                 stop(id)
-                DaemonStartResult.Failed("TASK_CANCELLED", "后台任务已取消")
+                DaemonStartResult.Failed("TASK_CANCELLED", "Background task canceled")
             } else DaemonStartResult.Started(task)
         }
     }
@@ -480,7 +480,7 @@ internal class DetachedTaskSupervisor(
             TerminalEnvironment.ANDROID -> oneShotSupervisor.buildAndroidPayload(identity, script)
             else -> {
                 val rootfs = rootfsPath(environment)
-                    ?: return OneShotShellResult(-1, ByteArray(0), "Linux rootfs 未配置".toByteArray())
+                    ?: return OneShotShellResult(-1, ByteArray(0), "Linux rootfs is not configured".toByteArray())
                 oneShotSupervisor.buildLinuxPayload(rootfs, script, linuxSharedMountsProvider())
             }
         }
@@ -492,7 +492,7 @@ internal class DetachedTaskSupervisor(
             }
             builder.redirectErrorStream(true).start()
         }.getOrElse {
-            return OneShotShellResult(-1, ByteArray(0), (it.message ?: "无法启动进程").toByteArray())
+            return OneShotShellResult(-1, ByteArray(0), (it.message ?: "Could not start process").toByteArray())
         }
         val output = ByteArrayOutputCollector()
         val reader = thread(name = "agent-daemon-launch-reader", isDaemon = true) {
@@ -502,7 +502,7 @@ internal class DetachedTaskSupervisor(
         if (!finished) {
             runCatching { process.destroyForcibly() }
             runCatching { reader.join(500) }
-            return OneShotShellResult(-2, output.bytes(), "命令执行超时".toByteArray())
+            return OneShotShellResult(-2, output.bytes(), "Command timed out".toByteArray())
         }
         runCatching { reader.join(500) }
         return OneShotShellResult(process.exitValue(), output.bytes(), ByteArray(0))

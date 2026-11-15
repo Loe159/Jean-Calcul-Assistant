@@ -13,24 +13,24 @@ import kotlinx.serialization.json.intOrNull
 /** Codex 账号目录是独立协议，不按公共 API 的预设或 supported_in_api 筛选。 */
 internal object CodexModelCatalog {
     fun parse(entries: JsonArray): List<Model> = entries.mapIndexedNotNull { index, element ->
-        val item = element as? JsonObject ?: error("Codex 模型目录包含无效模型项")
+        val item = element as? JsonObject ?: error("Codex model catalog contains an invalid entry")
         when (item.string("visibility")) {
             "list" -> Unit
             "hide", "none" -> return@mapIndexedNotNull null
-            else -> error("Codex 模型目录缺少有效的可见性信息")
+            else -> error("Codex model catalog is missing valid visibility information")
         }
         val slug = item.string("slug")?.takeIf(String::isNotBlank)
-            ?: error("Codex 模型目录缺少模型标识")
+            ?: error("Codex model catalog is missing a model ID")
         val levels = item["supported_reasoning_levels"]?.let { raw ->
-            require(raw is JsonArray) { "Codex 模型目录的推理档位无效" }
+            require(raw is JsonArray) { "Invalid Codex model catalog reasoning level" }
             raw.mapNotNull { option -> effort((option as? JsonObject)?.string("effort")) }.distinct()
         }.orEmpty()
         val default = effort(item.string("default_reasoning_level"))?.takeIf { it in levels }
         val reasoning = levels.filter { it != ReasoningEffort.OFF }
         val modalities = item["input_modalities"]?.let { raw ->
-            require(raw is JsonArray) { "Codex 模型目录的输入类型无效" }
+            require(raw is JsonArray) { "Invalid Codex model catalog input type" }
             raw.map { value ->
-                require(value is JsonPrimitive && value.isString) { "Codex 模型目录的输入类型无效" }
+                require(value is JsonPrimitive && value.isString) { "Invalid Codex model catalog input type" }
                 value.content
             }
         } ?: listOf(Model.TEXT_MODALITY, Model.IMAGE_MODALITY)

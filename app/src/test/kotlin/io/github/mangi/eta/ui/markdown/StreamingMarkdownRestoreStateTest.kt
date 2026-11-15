@@ -11,7 +11,7 @@ class StreamingMarkdownRestoreStateTest {
         state.begin("后台已完成的内容")
 
         repeat(10) {
-            assertFalse(state.completeLayout(state.generation, "Background", "后台已完成的内容"))
+            assertFalse(state.completeLayout(state.generation, "后台", "后台已完成的内容"))
         }
         assertTrue(state.completeLayout(state.generation, "后台已完成的内容", "后台已完成的内容"))
         assertFalse(state.completeLayout(state.generation, "后台已完成的内容和增量", "后台已完成的内容和增量"))

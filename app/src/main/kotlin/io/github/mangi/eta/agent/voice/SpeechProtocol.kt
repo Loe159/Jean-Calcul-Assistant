@@ -17,11 +17,11 @@ internal class SpeechFailure(val code: SpeechErrorCode, val userMessage: String)
 
 internal fun Throwable.speechFailure(): SpeechFailure = when (this) {
     is SpeechFailure -> this
-    is SpeechCredentialsUnavailable -> SpeechFailure(SpeechErrorCode.CREDENTIALS, "语音凭据无法解密，请重新填写并保存")
-    is SecurityException -> SpeechFailure(SpeechErrorCode.PERMISSION, "请允许 Jean-Calcul 使用麦克风")
-    is kotlinx.coroutines.TimeoutCancellationException -> SpeechFailure(SpeechErrorCode.TIMEOUT, "语音服务响应超时，请重试")
-    is IOException -> SpeechFailure(SpeechErrorCode.NETWORK, "无法连接语音服务，请检查网络")
-    else -> SpeechFailure(SpeechErrorCode.PROTOCOL, "语音服务返回了无法处理的数据")
+    is SpeechCredentialsUnavailable -> SpeechFailure(SpeechErrorCode.CREDENTIALS, "Could not decrypt speech credentials. Enter and save them again.")
+    is SecurityException -> SpeechFailure(SpeechErrorCode.PERMISSION, "Allow Jean-Calcul to use the microphone")
+    is kotlinx.coroutines.TimeoutCancellationException -> SpeechFailure(SpeechErrorCode.TIMEOUT, "Speech service timed out. Try again.")
+    is IOException -> SpeechFailure(SpeechErrorCode.NETWORK, "Could not connect to the speech service. Check your network.")
+    else -> SpeechFailure(SpeechErrorCode.PROTOCOL, "Speech service returned unsupported data")
 }
 
 internal fun validateSpeechSettings(
@@ -32,81 +32,81 @@ internal fun validateSpeechSettings(
 ) {
     if (!synthesis && !settings.recognitionEnabled) return
     fun required(value: String, name: String) {
-        if (value.isBlank()) throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "请先配置$name")
+        if (value.isBlank()) throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Configure first: $name")
     }
     if (synthesis) {
         when (settings.tts) {
-            TtsProvider.NONE -> throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "请先在设置中配置语音播报")
+            TtsProvider.NONE -> throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Configure speech synthesis in settings first")
             TtsProvider.QWEN -> {
-                required(secrets.qwenTts, "千问播报 API Key")
-                required(settings.qwenVoice, "音色")
+                required(secrets.qwenTts, "Qwen speech API key")
+                required(settings.qwenVoice, "Voice")
                 speechBaseUrl(settings.qwenTts.endpoint())
             }
             TtsProvider.DOUBAO -> {
-                required(secrets.doubaoTts, "豆包播报凭据")
-                required(settings.doubaoVoice, "音色")
+                required(secrets.doubaoTts, "Doubao speech credentials")
+                required(settings.doubaoVoice, "Voice")
                 speechBaseUrl(settings.doubaoTts.baseUrl)
-                if (settings.doubaoTts.legacyAuth) required(settings.doubaoTts.appId, "豆包 App ID")
+                if (settings.doubaoTts.legacyAuth) required(settings.doubaoTts.appId, "Doubao app ID")
             }
             TtsProvider.GEMINI -> {
-                required(secrets.geminiTts, "Gemini 播报 API Key")
-                required(settings.geminiTts.voice, "音色")
+                required(secrets.geminiTts, "Gemini speech API key")
+                required(settings.geminiTts.voice, "Voice")
                 speechBaseUrl(settings.geminiTts.baseUrl)
                 if (settings.geminiTts.style.length > 500) {
-                    throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "朗读风格请控制在 500 字以内")
+                    throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Reading style must be at most 500 characters")
                 }
             }
             TtsProvider.MINIMAX -> {
-                required(secrets.minimaxTts, "MiniMax 播报 API Key")
-                required(settings.minimaxTts.voice, "音色")
+                required(secrets.minimaxTts, "MiniMax speech API key")
+                required(settings.minimaxTts.voice, "Voice")
                 speechBaseUrl(settings.minimaxTts.baseUrl)
                 if (settings.minimaxTts.speed !in 0.5f..2f) {
-                    throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "MiniMax 语速须在 0.5～2 倍之间")
+                    throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "MiniMax speech speed must be between 0.5 and 2")
                 }
             }
             TtsProvider.MIMO -> {
-                required(secrets.mimoTts, "MiMo 播报 API Key")
-                required(settings.mimoTts.voice, "音色")
+                required(secrets.mimoTts, "MiMo speech API key")
+                required(settings.mimoTts.voice, "Voice")
                 speechBaseUrl(settings.mimoTts.baseUrl)
                 if (settings.mimoTts.style.length > 500) {
-                    throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "朗读风格请控制在 500 字以内")
+                    throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Reading style must be at most 500 characters")
                 }
             }
             TtsProvider.DEEPSEEK -> {
-                if (!hasProviderDeepSeekKey) required(secrets.deepseekTts, "DeepSeek 播报 API Key")
-                required(settings.deepseekTts.voice, "音色")
+                if (!hasProviderDeepSeekKey) required(secrets.deepseekTts, "DeepSeek speech API key")
+                required(settings.deepseekTts.voice, "Voice")
                 speechBaseUrl(settings.deepseekTts.baseUrl)
             }
         }
     } else when (settings.asr) {
         AsrProvider.MIMO -> {
-            required(secrets.mimoAsr, "MiMo 识别 API Key")
+            required(secrets.mimoAsr, "MiMo recognition API key")
             speechBaseUrl(settings.mimoAsr.baseUrl)
         }
         AsrProvider.DEEPSEEK -> {
-            if (!hasProviderDeepSeekKey) required(secrets.deepseekAsr, "DeepSeek 识别 API Key")
+            if (!hasProviderDeepSeekKey) required(secrets.deepseekAsr, "DeepSeek recognition API key")
             speechBaseUrl(settings.deepseekAsr.baseUrl)
         }
         AsrProvider.DOUBAO -> {
-            required(secrets.doubaoAsr, "豆包识别凭据")
+            required(secrets.doubaoAsr, "Doubao recognition credentials")
             speechBaseUrl(settings.doubaoAsr.baseUrl)
-            if (settings.doubaoAsr.legacyAuth) required(settings.doubaoAsr.appId, "豆包 App ID")
+            if (settings.doubaoAsr.legacyAuth) required(settings.doubaoAsr.appId, "Doubao app ID")
         }
         AsrProvider.QWEN_REALTIME,
         AsrProvider.QWEN_FLASH,
         AsrProvider.QWEN_FILE,
         -> {
-            required(secrets.qwenAsr, "千问识别 API Key")
+            required(secrets.qwenAsr, "Qwen recognition API key")
             speechBaseUrl(settings.qwenAsr.endpoint())
             if (settings.asr == AsrProvider.QWEN_FILE) {
                 required(settings.oss.bucket, "OSS Bucket")
-                required(settings.oss.region, "OSS 地域")
+                required(settings.oss.region, "OSS region")
                 required(secrets.ossAccessKeyId, "OSS AccessKey ID")
                 required(secrets.ossAccessKeySecret, "OSS AccessKey Secret")
                 speechBaseUrl(settings.oss.endpoint)
                 if (!Regex("[a-z0-9][a-z0-9-]{1,61}[a-z0-9]").matches(settings.oss.bucket) ||
                     settings.oss.prefix.split('/').any { it == ".." || it == "." }
-                ) throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "请检查 OSS Bucket 和目录前缀")
+                ) throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Check the OSS bucket and directory prefix")
             }
         }
     }
@@ -116,6 +116,6 @@ internal fun speechBaseUrl(value: String): String {
     val url = value.trim().toHttpUrlOrNull()
     if (url == null || !url.isHttps || url.username.isNotEmpty() || url.password.isNotEmpty() ||
         url.query != null || url.fragment != null
-    ) throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "服务地址须为不含认证信息和查询参数的 HTTPS 地址")
+    ) throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Service URL must use HTTPS without credentials or query parameters")
     return url.toString().trimEnd('/')
 }

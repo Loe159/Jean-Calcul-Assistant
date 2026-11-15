@@ -130,7 +130,7 @@ class ProviderLoginStoreTest {
             release.complete(Unit)
             val done = withTimeout(2_000) { store.state.first { !it.isBusy } }
             assertEquals(listOf("save", "login", "sync"), operations.calls.toList())
-            assertEquals("已登录，已同步 2 个远端模型", done.message)
+            assertEquals("Signed in; synced 2 remote models", done.message)
         } finally { store.close() }
     }
 

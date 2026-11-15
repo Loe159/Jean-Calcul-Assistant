@@ -106,6 +106,6 @@ class CodexResponsesRequestTest {
     )
 
     private fun tools() = JSONArray("""[{"type":"function","function":{
-      "name":"read_file","description":"Read file","parameters":{"type":"object","properties":{}}
+      "name":"read_file","description":"读取文件","parameters":{"type":"object","properties":{}}
     }}]""")
 }

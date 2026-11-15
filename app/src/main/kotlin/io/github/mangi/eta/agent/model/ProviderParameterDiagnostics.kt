@@ -21,7 +21,7 @@ internal object ProviderParameterDiagnostics {
             }
             if (fields.size >= 3) break
         }
-        return (codes.take(1) + fields.take(3).map { "字段 $it" }).joinToString("；").ifEmpty { null }
+        return (codes.take(1) + fields.take(3).map { "Field $it" }).joinToString("；").ifEmpty { null }
     }
 
     private fun safeParameterPath(raw: String): String? {
@@ -29,7 +29,7 @@ internal object ProviderParameterDiagnostics {
         val segments = raw.split('.')
         if (segments.first().substringBefore('[') !in requestParameterRoots) return null
         return segments.joinToString(".") { segment ->
-            if (segment.substringBefore('[') in publicParameterNames) segment else "<自定义字段>"
+            if (segment.substringBefore('[') in publicParameterNames) segment else "<custom field>"
         }
     }
 

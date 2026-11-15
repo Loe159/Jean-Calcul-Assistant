@@ -8,7 +8,7 @@ internal class FileToolGlob(pattern: String) {
         if (pattern.isEmpty() || pattern.length > 512 || pattern.startsWith('/') || pattern.indexOf('\u0000') >= 0 ||
             pattern.split('/').any { it == ".." || it == "." || it.isEmpty() }
         ) {
-            throw FileToolException("INVALID_GLOB", "模式必须是搜索目录内的相对路径，支持 *、? 和 ** 路径段")
+            throw FileToolException("INVALID_GLOB", "Pattern must be relative to the search directory and supports *, ? and ** segments")
         }
         components = pattern.split('/').fold(mutableListOf<String>()) { result, component ->
             if (component != "**" || result.lastOrNull() != "**") result += component

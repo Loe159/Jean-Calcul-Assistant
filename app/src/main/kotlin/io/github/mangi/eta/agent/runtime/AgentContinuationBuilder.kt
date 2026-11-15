@@ -12,7 +12,7 @@ internal object AgentContinuationBuilder {
         newRunId: String = "run-${UUID.randomUUID()}",
         createdAt: Long = System.currentTimeMillis(),
     ): AgentRuntimeWire.RunRequest {
-        require(request.operation == AgentRuntimeWire.OP_CHAT) { "该运行不是可继续的对话回合" }
+        require(request.operation == AgentRuntimeWire.OP_CHAT) { "This run is not a resumable conversation turn" }
         val uiPayload = request.handoff?.takeIf { it.source == AgentRuntimeWire.AGENT_UI_HANDOFF_SOURCE }
             ?.let { AgentUiHandoffPayload.from(it.payload) }
         val baseHistory = response.contextSnapshot?.messages ?: (request.history +

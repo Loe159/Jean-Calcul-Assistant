@@ -59,7 +59,7 @@ internal fun reconcileRemoteModels(
         }
         remoteByKey.forEach { (key, remote) ->
             if (key !in consumed && key in adopted) {
-                require(remote.id.isNotBlank()) { "远端模型缺少本地标识" }
+                require(remote.id.isNotBlank()) { "Remote model is missing a local ID" }
                 add(remote.copy(
                     modelId = remote.modelId.trim(),
                     displayName = remote.displayName.trim().ifBlank { remote.modelId.trim() },

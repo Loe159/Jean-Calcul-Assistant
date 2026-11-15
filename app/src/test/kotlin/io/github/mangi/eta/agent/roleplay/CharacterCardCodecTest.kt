@@ -45,7 +45,7 @@ class CharacterCardCodecTest {
 
     @Test(expected = IllegalArgumentException::class)
     fun corruptPngIsRejected() {
-        val bytes = CharacterCardPng.write(avatar(), CharacterCardCodec.create("Characters"))
+        val bytes = CharacterCardPng.write(avatar(), CharacterCardCodec.create("角色"))
         bytes[20] = (bytes[20].toInt() xor 1).toByte()
         CharacterCardPng.read(bytes)
     }
@@ -61,7 +61,7 @@ class CharacterCardCodecTest {
 
     @Test
     fun editingWorldbookPreservesForeignBookAndEntryExtensions() {
-        val card = CharacterCardCodec.decodeJson("""{"name":"Characters","character_book":{
+        val card = CharacterCardCodec.decodeJson("""{"name":"角色","character_book":{
           "name":"世界","vendor":"保留","extensions":{"vendor":{"x":[1,2]}},
           "entries":[{"id":7,"keys":["山"],"content":"旧正文","enabled":true,"insertion_order":3,
             "extensions":{"position":0,"unknown":["a",{"b":true}]}}]
@@ -81,7 +81,7 @@ class CharacterCardCodecTest {
 
     @Test
     fun compatibilityWarningsShareMacroAndWorldbookSupportWithoutEchoingCardText() {
-        val card = CharacterCardCodec.decodeJson("""{"name":"Characters",
+        val card = CharacterCardCodec.decodeJson("""{"name":"角色",
           "description":"{{setvar::private_key::private_value}} <script>private_script()</script>",
           "extensions":{"regex_scripts":[{"x":"private_regex"}],"scripts":["private_script"],
             "depth_prompt":{"prompt":"备注","depth":"invalid"}},
@@ -95,13 +95,13 @@ class CharacterCardCodecTest {
         assertTrue(warnings.any { it.contains("深度备注") })
         assertFalse(warnings.any { it.contains("private_") })
         assertEquals(null, card.depthPrompt)
-        assertEquals(emptyList<String>(), CharacterCardCompatibility.warnings(CharacterCardCodec.create("Characters")
+        assertEquals(emptyList<String>(), CharacterCardCompatibility.warnings(CharacterCardCodec.create("角色")
             .withEdits(description = "{{char}}与{{user}}交流。<START> {{original}}")))
     }
 
     @Test
     fun unrelatedWorldbookEditPreservesUnsupportedPosition() {
-        val card = CharacterCardCodec.decodeJson("""{"name":"Characters","character_book":{"entries":[
+        val card = CharacterCardCodec.decodeJson("""{"name":"角色","character_book":{"entries":[
           {"enabled":true,"constant":true,"content":"正文","position":"at_depth","extensions":{"position":4,"depth":2}}
         ]}}""")
         val updated = card.withWorldbook(card.worldbookDraft().copy(name = "新书名"))
@@ -141,7 +141,7 @@ class CharacterCardCodecTest {
 
     @Test
     fun amplifiedCrossFieldMacrosFailBeforeBuildingUnboundedOutput() {
-        val card = CharacterCardCodec.create("Characters").withEdits(
+        val card = CharacterCardCodec.create("角色").withEdits(
             description = "{{scenario}}".repeat(100),
             scenario = "{{personality}}".repeat(100),
             personality = "设定".repeat(200),

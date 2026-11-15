@@ -25,7 +25,7 @@ class RoleplayConversationReducerTest {
             messages = listOf(AgentMessageUi("greeting", "你好"), UserMessageUi("user-r1", "查询日历"),
                 AgentMessageUi("assistant-r1-2-0", "今天有会议。"), UserMessageUi("user-r2", "谢谢")),
             history = journal, journal = journal, input = "", isStreaming = false, thinkingEnabled = false,
-            roleplay = RoleplayBinding("c1", "{}", "Characters"),
+            roleplay = RoleplayBinding("c1", "{}", "角色"),
         ), "r1")
     }
 
@@ -64,7 +64,7 @@ class RoleplayConversationReducerTest {
         val initial = conversation()
         val state = initial.copy(roleplayMessages = initial.roleplayMessages.copy(
             pendingRewrites = mapOf("rewrite-1" to "assistant-r1-2-0")), isStreaming = true)
-        val result = AgentRuntimeWire.RunResult("rewrite-1", false, "", "Stopped", operation = AgentRuntimeWire.OP_REWRITE_REPLY)
+        val result = AgentRuntimeWire.RunResult("rewrite-1", false, "", "已停止", operation = AgentRuntimeWire.OP_REWRITE_REPLY)
         val recovered = AgentPendingResultRecovery.apply(state, result.runId, result, supplements = emptyList()).state
         assertEquals(state.journal, recovered.journal)
         assertEquals(state.history, recovered.history)
@@ -184,7 +184,7 @@ class RoleplayConversationReducerTest {
         return AgentChatUiState(
             messages = listOf(AgentMessageUi("reply-1", "第二段")),
             history = journal, journal = journal, input = "", isStreaming = false, thinkingEnabled = false,
-            roleplay = RoleplayBinding("character", "{}", "Characters"),
+            roleplay = RoleplayBinding("character", "{}", "角色"),
             roleplayMessages = RoleplayMessageState(links = mapOf(
                 "reply-0" to RoleplayMessageLink("reply", 0),
                 "reply-1" to RoleplayMessageLink("reply", 1),

@@ -54,7 +54,7 @@ internal object AuthorizedProviderHttp {
                             val failure = AgentModelFailure.http(response.code, response.peekBody(16_384).string())
                             if (failure.code != "HTTP_401") throw failure
                             throw AgentModelFailure(
-                                "OAUTH_UNAUTHORIZED", false, "订阅登录已失效，请重新登录服务商账户。",
+                                "OAUTH_UNAUTHORIZED", false, "Subscription sign-in expired. Sign in to the provider again.",
                             )
                         }
                         return consume(response)

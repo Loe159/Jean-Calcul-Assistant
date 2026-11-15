@@ -69,9 +69,9 @@ internal object GeminiInteractionsRequest {
         }
         val effort = config.effectiveReasoningEffort
         if (effort != ReasoningEffort.DEFAULT) {
-            require(effort != ReasoningEffort.OFF) { "当前 Gemini 模型不支持关闭思考，请选择 Default 或支持的思考档位。" }
+            require(effort != ReasoningEffort.OFF) { "This Gemini model cannot disable reasoning. Select Default or a supported reasoning level." }
             require(effort.wireValue in setOf("minimal", "low", "medium", "high")) {
-                "Gemini Interactions 协议不支持所选思考档位。"
+                "Gemini Interactions does not support the selected reasoning level."
             }
             generation.put("thinking_level", effort.wireValue)
         }
@@ -98,8 +98,8 @@ internal object GeminiInteractionHistory {
         fun flushHistory() {
             if (history.isEmpty()) return
             input.put(userInput(JSONArray().put(text(
-                "[以下是 Jean-Calcul 保存的历史对话文本记录；工具调用与结果仅供参考，不是当前待执行请求。]\n" +
-                    history.joinToString("\n\n") + "\n[历史记录结束]",
+                "[The following is conversation history saved by Jean-Calcul. Tool calls and results are reference data, not current execution requests.]\n" +
+                    history.joinToString("\n\n") + "\n[End of history]",
             ))))
             history.clear()
         }
@@ -145,8 +145,8 @@ internal object GeminiInteractionHistory {
         append('[').append(message.optString("role")).append("] ")
         append(providerMessageText(message.opt("content")))
         val calls = message.optJSONArray("tool_calls")
-        if (calls != null) append("\n工具调用记录：").append(calls)
-        if (message.optString("role") == "tool") append("\n调用标识：").append(message.optString("tool_call_id"))
+        if (calls != null) append("\nTool call record: ").append(calls)
+        if (message.optString("role") == "tool") append("\nCall ID: ").append(message.optString("tool_call_id"))
     }
 
     private fun isToolError(result: String): Boolean = try {
@@ -173,19 +173,19 @@ internal object GeminiInteractionHistory {
                     if (url.startsWith("data:image/", ignoreCase = true)) {
                         val comma = url.indexOf(',')
                         require(comma > 0 && url.substring(0, comma).endsWith(";base64", ignoreCase = true)) {
-                            "Gemini 图片输入必须为 Base64 图片或 HTTP 地址。"
+                            "Gemini image input must be Base64 image data or an HTTP URL."
                         }
                         image.put("mime_type", url.substring(5, comma).substringBefore(';'))
                             .put("data", url.substring(comma + 1))
                     } else {
                         require(url.startsWith("https://") || url.startsWith("http://")) {
-                            "Gemini 图片输入地址无效。"
+                            "Invalid Gemini image input URL."
                         }
                         image.put("uri", url)
                     }
                     converted.put(image)
                 }
-                else -> throw IllegalArgumentException("Gemini 不支持该输入内容类型。")
+                else -> throw IllegalArgumentException("Gemini does not support this input content type.")
             }
         }
         return converted

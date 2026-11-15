@@ -15,7 +15,7 @@ class AgentTraceFormatterTest {
         assertEquals("Read time and location", formatter.summarizeArguments(
             AgentModelClient.ToolCall("context", "get_current_context", "{}"),
         ))
-        assertEquals("2026-10-28 12:30 +08:00 · 系统定位已关闭", formatter.summarizeResult(
+        assertEquals("2026-10-28 12:30 +08:00 · System location disabled", formatter.summarizeResult(
             "get_current_context",
             AgentModelClient.ToolResult("""{"datetime":"2026-10-28T12:30:00+08:00","location":{"status":"location_disabled"}}"""),
         ))
@@ -49,7 +49,7 @@ class AgentTraceFormatterTest {
         val fetch = formatter.summarizeArguments(AgentModelClient.ToolCall(
             "fetch", "fetch_url", """{"url":"https://alice:password@example.com/private-path?token=secret-query#private-fragment"}""",
         ))
-        assertEquals("读取网页 · example.com", fetch)
+        assertEquals("Read page · example.com", fetch)
         val next = formatter.summarizeArguments(AgentModelClient.ToolCall(
             "next", "fetch_url", """{"document_id":"private-document-id","offset_chars":12000}""",
         ))
@@ -61,11 +61,11 @@ class AgentTraceFormatterTest {
         val search = formatter.summarizeResult("web_search", AgentModelClient.ToolResult(
             """{"ok":true,"query":"private-query","results":[{"title":"private-title","url":"https://example.com/private-path","snippet":"private-body"}]}""",
         ))
-        assertEquals("找到 1 条搜索结果", search)
+        assertEquals("Found 1 search results", search)
         val fetch = formatter.summarizeResult("fetch_url", AgentModelClient.ToolResult(
             """{"ok":true,"final_url":"https://alice:password@example.com/private-path?token=secret-query","title":"private-title","text":"private-body","has_more":true}""",
         ))
-        assertEquals("已读前 12 字", fetch)
+        assertEquals("Read first 12 characters", fetch)
         listOf("private-query", "private-title", "private-body", "private-path", "password", "secret-query").forEach {
             assertFalse(search.contains(it))
             assertFalse(fetch.contains(it))
@@ -129,13 +129,13 @@ class AgentTraceFormatterTest {
             RedactionCase(
                 toolName = "memory_get",
                 argumentsJson = """{"query":"private relationship"}""",
-                expectedParts = listOf("检索记忆"),
+                expectedParts = listOf("Search Memory"),
                 sensitiveParts = listOf("private relationship"),
             ),
             RedactionCase(
                 toolName = "memory_write",
                 argumentsJson = """{"mode":"append","revision":"secret-revision","content":"private memory"}""",
-                expectedParts = listOf("追加记忆"),
+                expectedParts = listOf("Append Memory"),
                 sensitiveParts = listOf("secret-revision", "private memory"),
             ),
         )
@@ -176,11 +176,11 @@ class AgentTraceFormatterTest {
     @Test
     fun deviceStateResultShowsObservedChangesWithoutInventingPreviousState() {
         listOf(
-            """{"target":"auto_rotate","before":false,"after":true}""" to "自动旋转：关闭 → 开启",
-            """{"target":"auto_brightness","before":true,"after":false}""" to "自动亮度：开启 → 关闭",
-            """{"target":"wifi","before":true,"after":true}""" to "Wi-Fi：保持开启",
-            """{"target":"auto_rotate","before":false,"after":false}""" to "自动旋转：保持关闭",
-            """{"target":"auto_rotate","before":null,"after":true}""" to "自动旋转：已开启",
+            """{"target":"auto_rotate","before":false,"after":true}""" to "Auto-rotate：Off → On",
+            """{"target":"auto_brightness","before":true,"after":false}""" to "Auto brightness：On → Off",
+            """{"target":"wifi","before":true,"after":true}""" to "Wi-Fi：KeepOn",
+            """{"target":"auto_rotate","before":false,"after":false}""" to "Auto-rotate：KeepOff",
+            """{"target":"auto_rotate","before":null,"after":true}""" to "Auto-rotate：Done: On",
         ).forEach { (observed, expectedSummary) ->
             val result = JSONObject(observed).put("ok", true).put("verified", true)
             assertEquals(expectedSummary, formatter.summarizeResult("set_device_state", AgentModelClient.ToolResult(result.toString())))
@@ -195,7 +195,7 @@ class AgentTraceFormatterTest {
             """{"ok":true,"verified":true,"target":"private-target","after":true}""" to "Done",
             """{"ok":true,"verified":false,"target":"auto_rotate","before":false,"after":true}""" to "Executed; result unconfirmed",
             """{"ok":false,"status":"unconfirmed","verified":false,"target":"auto_rotate","before":false,"after":false,"expected":true}""" to "Action submitted; result unconfirmed",
-            """{"ok":false,"code":"ROOT_REQUIRED","target":"auto_rotate","before":false,"after":true}""" to "失败 · code=ROOT_REQUIRED",
+            """{"ok":false,"code":"ROOT_REQUIRED","target":"auto_rotate","before":false,"after":true}""" to "Failed · code=ROOT_REQUIRED",
         ).forEach { (content, expectedSummary) ->
             assertEquals(expectedSummary, formatter.summarizeResult("set_device_state", AgentModelClient.ToolResult(content)))
         }
@@ -206,11 +206,11 @@ class AgentTraceFormatterTest {
         val listed = AgentModelClient.ToolResult(
             """{"ok":true,"count":99,"items":[{"name":"private-name","installed":true},{"path":"private-path","installed":false}]}""",
         )
-        assertEquals("找到 2 个技能 · 1 个已安装", formatter.summarizeResult("skills_inspect_github", listed))
+        assertEquals("Found 2 skills · 1 installed", formatter.summarizeResult("skills_inspect_github", listed))
         val installed = AgentModelClient.ToolResult(
             """{"ok":true,"installed":[{"name":"private-name"}],"available":"next_turn","message":"private-message"}""",
         )
-        assertEquals("已安装 1 个技能 · 下一轮可用", formatter.summarizeResult("skills_install_from_github", installed))
+        assertEquals("Installed 1 skills · available next turn", formatter.summarizeResult("skills_install_from_github", installed))
     }
 
     @Test
@@ -219,26 +219,26 @@ class AgentTraceFormatterTest {
             """{"ok":true,"count":99,"items":[{"content":"private-record"},{"value":"private-value"}],"has_more":true,"partial":true}""",
             sensitive = true,
         )
-        assertEquals("找到 2 条短信 · 还有更多 · 采集范围有限", formatter.summarizeResult("search_messages", result))
+        assertEquals("Found 2  messages · more available · Limited collection range", formatter.summarizeResult("search_messages", result))
 
         val generic = AgentModelClient.ToolResult(
             """{"ok":true,"items":[{"content":"one"},{"content":"two"}],"has_more":true,"partial":true}""",
         )
-        assertEquals("找到 2 条结果 · 还有更多 · 采集范围有限", formatter.summarizeResult("custom_search", generic))
+        assertEquals("Found 2 results · more available · Limited collection range", formatter.summarizeResult("custom_search", generic))
     }
 
     @Test
     fun specializedResultsKeepFailureAndSubmissionSemantics() {
-        assertEquals("自动息屏：30 秒 → 2 分钟", formatter.summarizeResult("set_screen_timeout", AgentModelClient.ToolResult(
+        assertEquals("Screen timeout：30 seconds → 2 minutes", formatter.summarizeResult("set_screen_timeout", AgentModelClient.ToolResult(
             """{"ok":true,"verified":true,"before":30000,"after":120000}""",
         )))
-        assertEquals("已提交计时请求 · 5 分钟", formatter.summarizeResult("set_timer", AgentModelClient.ToolResult(
+        assertEquals("Timer request submitted · 5 minutes", formatter.summarizeResult("set_timer", AgentModelClient.ToolResult(
             """{"ok":true,"status":"dispatched","verified":false,"duration_seconds":300}""",
         )))
-        assertEquals("已追加 512 字节", formatter.summarizeResult("write_file", AgentModelClient.ToolResult(
+        assertEquals("Appended 512 bytes", formatter.summarizeResult("write_file", AgentModelClient.ToolResult(
             """{"ok":true,"mode":"append","bytes_written":512}""",
         )))
-        assertEquals("失败 · code=FILE_INPUT_FAILED", formatter.summarizeResult("write_file", AgentModelClient.ToolResult(
+        assertEquals("Failed · code=FILE_INPUT_FAILED", formatter.summarizeResult("write_file", AgentModelClient.ToolResult(
             """{"ok":false,"code":"FILE_INPUT_FAILED","mode":"append","bytes_written":512}""",
         )))
     }
@@ -259,7 +259,7 @@ class AgentTraceFormatterTest {
 
         assertEquals("git status --short", formatter.displayCommand(terminal))
         assertEquals("pm list packages | head", formatter.displayCommand(runCommand))
-        assertEquals("终端 · 单次执行 · Linux", formatter.summarizeArguments(terminal))
+        assertEquals("Terminal · Run once · Linux", formatter.summarizeArguments(terminal))
         assertFalse(formatter.summarizeArguments(terminal).contains("git status"))
         assertNull(
             formatter.displayCommand(
@@ -290,7 +290,7 @@ class AgentTraceFormatterTest {
                     ),
                 )
 
-                assertEquals("终端 · 单次执行 · $label", summary)
+                assertEquals("Terminal · Run once · $label", summary)
             }
     }
 
@@ -305,10 +305,10 @@ class AgentTraceFormatterTest {
             )
         )!!
 
-        assertTrue(displayed.contains("API_KEY=<已隐藏>"))
-        assertTrue(displayed.contains("Authorization: <已隐藏>"))
-        assertTrue(displayed.contains("--password <已隐藏>"))
-        assertTrue(displayed.contains("access_token=<已隐藏>"))
+        assertTrue(displayed.contains("API_KEY=<redacted>"))
+        assertTrue(displayed.contains("Authorization: <redacted>"))
+        assertTrue(displayed.contains("--password <redacted>"))
+        assertTrue(displayed.contains("access_token=<redacted>"))
         assertFalse(displayed.contains("sk-secret"))
         assertFalse(displayed.contains("token-value"))
         assertFalse(displayed.contains("hunter2"))
@@ -391,7 +391,7 @@ class AgentTraceFormatterTest {
         )
 
         assertTrue(readable.contains("Content extracted"))
-        assertTrue(readable.contains("约 2.3 万字"))
+        assertTrue(readable.contains("About 2.3 ten-thousand characters"))
         assertTrue(readable.contains("Truncated"))
     }
 
@@ -407,7 +407,7 @@ class AgentTraceFormatterTest {
         assertTrue(formatter.isSuccessResult(noFlag))
         assertTrue(formatter.isSuccessResult(malformed))
         assertEquals("Tapped", formatter.summarizeResult("tap", ok))
-        assertEquals("失败 · code=X", formatter.summarizeResult("tap", failed))
+        assertEquals("Failed · code=X", formatter.summarizeResult("tap", failed))
     }
 
     @Test
@@ -420,9 +420,9 @@ class AgentTraceFormatterTest {
             ),
         )
 
-        assertEquals("已读取记忆", summary)
+        assertEquals("Read Memory", summary)
         assertFalse(summary.contains("9 行"))
-        assertFalse(summary.contains("321 字节"))
+        assertFalse(summary.contains("321 bytes"))
         assertFalse(summary.contains("private memory"))
 
         val querySummary = formatter.summarizeResult(
@@ -431,7 +431,7 @@ class AgentTraceFormatterTest {
                 content = """{"ok":true,"matched_lines":3,"line_count":200,"bytes":8000}""",
             ),
         )
-        assertEquals("找到 3 条相关记忆", querySummary)
+        assertEquals("Found 3 related Memory entries", querySummary)
         assertFalse(querySummary.contains("200"))
         assertFalse(querySummary.contains("8000"))
     }
@@ -445,7 +445,7 @@ class AgentTraceFormatterTest {
                 argumentsJson = """{"query":"抖音"}""",
             ),
         )
-        assertEquals("搜索应用 · 抖音", searchApps)
+        assertEquals("Search apps · 抖音", searchApps)
 
         val searchFiles = formatter.summarizeArguments(
             AgentModelClient.ToolCall(
@@ -454,7 +454,7 @@ class AgentTraceFormatterTest {
                 argumentsJson = """{"query":"周报"}""",
             ),
         )
-        assertEquals("搜索文件 · 周报", searchFiles)
+        assertEquals("Search files · 周报", searchFiles)
 
         // 关键词单行化并截断，避免撑爆折叠行标题
         val longQuery = formatter.summarizeArguments(
@@ -465,7 +465,7 @@ class AgentTraceFormatterTest {
             ),
         )
         assertFalse(longQuery.contains("\n"))
-        assertTrue(longQuery.length <= "搜索应用 · ".length + 30 + 3)
+        assertTrue(longQuery.length <= "Search apps · ".length + 30 + 3)
 
         // 非搜索类设备工具不追加 query
         val deviceStatus = formatter.summarizeArguments(
@@ -494,7 +494,7 @@ class AgentTraceFormatterTest {
             ),
         )
 
-        assertTrue(summary.contains("已找到 4 个应用"))
+        assertTrue(summary.contains("Found 4 apps"))
         assertTrue(summary.contains("抖音、抖音极速版、抖音商城"))
         assertTrue(summary.contains("等"))
         assertFalse(summary.contains("com.ss.android"))
@@ -502,7 +502,7 @@ class AgentTraceFormatterTest {
         val empty = formatter.summarizeResult(
             "search_apps",
             AgentModelClient.ToolResult(
-                content = """{"ok":true,"tool":"search_apps","query":"不存在的应用","apps":[]}""",
+                content = """{"ok":true,"tool":"search_apps","query":"不存在的App","apps":[]}""",
             ),
         )
         assertEquals("No matching apps", empty)
@@ -517,7 +517,7 @@ class AgentTraceFormatterTest {
             ),
         )
 
-        assertEquals("已打开 · 抖音", summary)
+        assertEquals("Opened · 抖音", summary)
     }
 
     @Test
@@ -525,11 +525,11 @@ class AgentTraceFormatterTest {
         val summary = formatter.summarizeResult(
             "launch_app",
             AgentModelClient.ToolResult(
-                content = """{"ok":true,"app_name":"示例应用","canvas":"virtual","launch_status":"unconfirmed"}""",
+                content = """{"ok":true,"app_name":"示例App","canvas":"virtual","launch_status":"unconfirmed"}""",
             ),
         )
 
-        assertEquals("已请求打开，待确认 · 示例应用 · 虚拟屏", summary)
+        assertEquals("Open requested; awaiting confirmation · 示例App · virtual display", summary)
     }
 
     @Test
@@ -549,7 +549,7 @@ class AgentTraceFormatterTest {
                 content = """{"ok":false,"tool":"terminal","action":"exec","exit_code":1,"stdout":"","stderr":"Permission denied"}""",
             ),
         )
-        assertTrue(failure.startsWith("失败 · 退出码 1"))
+        assertTrue(failure.startsWith("Failed · exit code 1"))
         assertTrue(failure.contains("Permission denied"))
 
         val timedOut = formatter.summarizeResult(
@@ -567,16 +567,16 @@ class AgentTraceFormatterTest {
                 content = """{"ok":false,"code":"JOB_NOT_FOUND"}""",
             ),
         )
-        assertEquals("失败 · code=JOB_NOT_FOUND", coded)
+        assertEquals("Failed · code=JOB_NOT_FOUND", coded)
 
         // 带中文原因的错误：原因面向用户，code= 留给日志提取
         val codedWithMessage = formatter.summarizeResult(
             "terminal",
             AgentModelClient.ToolResult(
-                content = """{"ok":false,"code":"TERMINAL_TOOLS_DISABLED","message":"请先启用终端/文件工具"}""",
+                content = """{"ok":false,"code":"TERMINAL_TOOLS_DISABLED","message":"Enable terminal/file tools first"}""",
             ),
         )
-        assertEquals("失败 · 请先启用终端/文件工具 · code=TERMINAL_TOOLS_DISABLED", codedWithMessage)
+        assertEquals("Failed · Enable terminal/file tools first · code=TERMINAL_TOOLS_DISABLED", codedWithMessage)
 
         // 无输出的会话动作
         val closed = formatter.summarizeResult(
@@ -585,7 +585,7 @@ class AgentTraceFormatterTest {
                 content = """{"ok":true,"tool":"terminal","action":"close","closed_session":true}""",
             ),
         )
-        assertEquals("终端 · 关闭终端", closed)
+        assertEquals("Terminal · Close terminal", closed)
 
         val multiLineOutput = (1..12).joinToString("\n") { "line-$it" }
         val multiLinePreview = formatter.summarizeResult(
@@ -609,10 +609,10 @@ class AgentTraceFormatterTest {
         val summary = formatter.summarizeResult(
             "wait_for_text",
             AgentModelClient.ToolResult(
-                content = """{"ok":false,"code":"TIMEOUT","message":"等待文本超时：抖音"}""",
+                content = """{"ok":false,"code":"TIMEOUT","message":"Timed out waiting for text: 抖音"}""",
             ),
         )
-        assertEquals("失败 · 等待文本超时：抖音 · code=TIMEOUT", summary)
+        assertEquals("Failed · Timed out waiting for text: 抖音 · code=TIMEOUT", summary)
 
         val codeOnly = formatter.summarizeResult(
             "tap_element",
@@ -620,7 +620,7 @@ class AgentTraceFormatterTest {
                 content = """{"ok":false,"code":"INVALID_NODE_INDEX"}""",
             ),
         )
-        assertEquals("失败 · code=INVALID_NODE_INDEX", codeOnly)
+        assertEquals("Failed · code=INVALID_NODE_INDEX", codeOnly)
     }
 
     @Test

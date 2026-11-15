@@ -10,7 +10,7 @@ internal object SubscriptionResponsesRequest {
         val profile = ProviderConnectionProfile.forAuthMode(config.authMode) ?: return
         if (profile == ProviderConnectionProfile.OPENAI_CODEX) {
             val unsupported = CODEX_UNSUPPORTED_FIELDS.filter(request::has)
-            require(unsupported.isEmpty()) { "Codex 不支持请求参数：${unsupported.joinToString()}" }
+            require(unsupported.isEmpty()) { "Codex does not support request parameter: ${unsupported.joinToString()}" }
             if (!request.has("parallel_tool_calls")) request.put("parallel_tool_calls", true)
         }
         if (profile == ProviderConnectionProfile.XAI_GROK) {

@@ -49,12 +49,12 @@ internal class McpSecretStore(context: Context) {
             preferences.edit()
             .putString(tokenKey(serverId), Base64.encodeToString(payload, Base64.NO_WRAP))
             .commit()
-        ) { "MCP 凭据保存失败" }
+        ) { "Could not save MCP credentials" }
     }
 
     @Synchronized
     fun clear(serverId: String) {
-        check(preferences.edit().remove(tokenKey(serverId)).commit()) { "MCP 凭据删除失败" }
+        check(preferences.edit().remove(tokenKey(serverId)).commit()) { "Could not delete MCP credentials" }
     }
 
     private fun secretKey(): SecretKey {

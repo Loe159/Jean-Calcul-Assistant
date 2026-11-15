@@ -84,7 +84,7 @@ internal class AgentStructuredDeviceTools(
                         return sensitive(
                             indexed
                                 .put("fallback_reason", native.optString("code"))
-                                .put("notice", "原始便签来源暂不可读，返回历史索引，不能据此确认最新状态")
+                                .put("notice", "Original notes source is temporarily unreadable. Returning historical index; this does not confirm current state.")
                                 .toString()
                         )
                     }
@@ -133,7 +133,7 @@ internal class AgentStructuredDeviceTools(
                                 .also {
                                     if (state == null)
                                         it.put("code", "STATE_UNAVAILABLE")
-                                            .put("message", "无法确认当前开关状态")
+                                            .put("message", "Could not confirm the current switch state")
                                 }
                                 .toString()
                         )
@@ -172,7 +172,7 @@ internal class AgentStructuredDeviceTools(
                     else -> null
                 }
         } catch (failure: PhoneOperationFailure) {
-            sensitive(PhoneOperation.failure(failure.code, failure.message ?: "参数无效").toString())
+            sensitive(PhoneOperation.failure(failure.code, failure.message ?: "Invalid argument").toString())
         }
     }
 
@@ -184,12 +184,12 @@ internal class AgentStructuredDeviceTools(
                 JSONObject()
                     .put("ok", false)
                     .put("code", "ROOT_REQUIRED")
-                    .put("message", "系统记忆来源需要设备 Root 权限；仍可查询已授权的通知历史")
+                    .put("message", "System memory sources require root. Authorized notification history remains available.")
             } else if (!colorOs()) {
                 JSONObject()
                     .put("ok", false)
                     .put("code", "DEVICE_UNSUPPORTED")
-                    .put("message", "此设备不支持系统记忆来源；仍可查询已授权的通知历史")
+                    .put("message", "This device does not support system memory sources. Authorized notification history remains available.")
             } else
                 runCatching {
                     JSONObject(colorOsMemoryTools.searchOrders(args).content)
@@ -234,7 +234,7 @@ internal class AgentStructuredDeviceTools(
                 JSONObject()
                     .put("ok", false)
                     .put("code", "NOTIFICATION_HISTORY_ACCESS_REQUIRED")
-                    .put("message", "授予通知使用权后可从新通知中识别订单状态")
+                    .put("message", "Grant notification access to identify order status from new notifications")
             }
         return AgentModelClient.ToolResult(
             content =
@@ -344,11 +344,11 @@ internal class AgentStructuredDeviceTools(
             return JSONObject()
                 .put("ok", false)
                 .put("code", "DIRECT_CLOCK_ACTION_FAILED")
-                .put("message", "系统未确认直接创建，已打开时钟页面，请让用户完成确认")
+                .put("message", "Direct creation was not confirmed. The clock page was opened for user confirmation.")
                 .put("tool", tool)
                 .put("mode", "ui_fallback")
         }
-        return JSONObject(error("CLOCK_UNAVAILABLE", "没有可处理该请求的时钟应用"))
+        return JSONObject(error("CLOCK_UNAVAILABLE", "No clock app can handle this request"))
     }
 
     private fun deviceStatus(): String {
@@ -439,7 +439,7 @@ internal class AgentStructuredDeviceTools(
                 "next" -> KeyEvent.KEYCODE_MEDIA_NEXT
                 "previous" -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
                 "stop" -> KeyEvent.KEYCODE_MEDIA_STOP
-                else -> return error("INVALID_ARGUMENT", "不支持的媒体动作")
+                else -> return error("INVALID_ARGUMENT", "Unsupported media action")
             }
         val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         audio.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
@@ -455,7 +455,7 @@ internal class AgentStructuredDeviceTools(
         val namespace = args.getString("namespace").lowercase(Locale.ROOT)
         val key = args.getString("key")
         if (!DeviceToolContract.validSetting(namespace, key))
-            return error("INVALID_ARGUMENT", "设置命名空间或键格式无效")
+            return error("INVALID_ARGUMENT", "Invalid settings namespace or key")
         var publicReadFailure: String? = null
         val publicValue =
             try {
@@ -473,7 +473,7 @@ internal class AgentStructuredDeviceTools(
                 null
             }
         if (publicReadFailure != null && !rootAvailable()) {
-            return error(publicReadFailure, "系统不允许读取此设置，或设置服务暂不可用")
+            return error(publicReadFailure, "System blocked this setting read, or the settings service is unavailable")
         }
         val rootValue =
             if (publicValue == null && rootAvailable())
@@ -482,11 +482,11 @@ internal class AgentStructuredDeviceTools(
                 )
             else null
         if (publicReadFailure != null && rootValue?.ok != true) {
-            return error(publicReadFailure, "系统不允许读取此设置，或设置服务暂不可用")
+            return error(publicReadFailure, "System blocked this setting read, or the settings service is unavailable")
         }
         if (rootValue != null && !rootValue.ok) return rootError(rootValue)
         if (rootValue?.truncated == true)
-            return error("SETTING_VALUE_TRUNCATED", "设置值超过读取上限，无法返回完整值")
+            return error("SETTING_VALUE_TRUNCATED", "Setting value exceeds the read limit; full value unavailable")
         val value =
             publicValue
                 ?: rootValue
@@ -552,7 +552,7 @@ internal class AgentStructuredDeviceTools(
         val dataSizes = parseLongArrayLine(result.stdout, "App Data Sizes:")
         val cacheSizes = parseLongArrayLine(result.stdout, "Cache Sizes:")
         if (packages == null || appSizes == null || dataSizes == null || cacheSizes == null) {
-            return error("STORAGE_STATS_UNAVAILABLE", "系统未返回可解析的应用存储统计")
+            return error("STORAGE_STATS_UNAVAILABLE", "System returned no parsable app storage statistics")
         }
         val items =
             (0 until packages.length())
@@ -666,11 +666,11 @@ internal class AgentStructuredDeviceTools(
 
     private fun listenerNotifications(packageFilter: String, limit: Int): String {
         if (!AgentNotificationHistoryService.isEnabled(context)) {
-            return error("NOTIFICATION_ACCESS_REQUIRED", "请先在权限健康页授予 Jean-Calcul 通知使用权")
+            return error("NOTIFICATION_ACCESS_REQUIRED", "Grant Jean-Calcul notification access on the permissions page first")
         }
         val notifications =
             AgentNotificationHistoryService.currentNotifications()
-                ?: return error("NOTIFICATION_LISTENER_UNAVAILABLE", "通知服务尚未连接，请稍后重试")
+                ?: return error("NOTIFICATION_LISTENER_UNAVAILABLE", "Notification service is not connected. Try again later.")
         val items = JSONArray()
         notifications
             .asSequence()
@@ -755,7 +755,7 @@ internal class AgentStructuredDeviceTools(
                 result.timedOut -> "ROOT_COMMAND_TIMEOUT"
                 else -> "ROOT_COMMAND_FAILED"
             }
-        return error(code, "Root 系统接口执行失败（exit=${result.exitCode}）")
+        return error(code, "Root system API failed (exit=${result.exitCode}）")
     }
 
     private fun parseJsonArrayLine(source: String, prefix: String): JSONArray? =
@@ -787,7 +787,7 @@ internal class AgentStructuredDeviceTools(
             "thu" -> Calendar.THURSDAY
             "fri" -> Calendar.FRIDAY
             "sat" -> Calendar.SATURDAY
-            else -> throw IllegalArgumentException("不支持的重复日期")
+            else -> throw IllegalArgumentException("Unsupported repeat day")
         }
 
     private fun String.decodeXml(): String =

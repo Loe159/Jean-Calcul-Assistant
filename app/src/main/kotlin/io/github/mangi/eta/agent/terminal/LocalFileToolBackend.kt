@@ -25,7 +25,7 @@ internal class LocalFileToolBackend(
 
     override fun resolve(path: String): String {
         checkActive()
-        if (path.indexOf('\u0000') >= 0) throw FileToolException("INVALID_PATH", "路径包含无效字符")
+        if (path.indexOf('\u0000') >= 0) throw FileToolException("INVALID_PATH", "Path contains invalid characters")
         val candidate = when {
             path.isEmpty() -> workspace
             path == "~" -> home
@@ -42,7 +42,7 @@ internal class LocalFileToolBackend(
         require(offset >= 0 && limit in 1..MAX_READ_BYTES)
         val file = File(resolve(path))
         if (metadata(file.toPath()).kind != FileToolKind.FILE) {
-            throw FileToolException("NOT_REGULAR_FILE", "目标不是普通文件")
+            throw FileToolException("NOT_REGULAR_FILE", "Target is not a regular file")
         }
         return RandomAccessFile(file, "r").use { input ->
             input.seek(offset)
@@ -60,12 +60,12 @@ internal class LocalFileToolBackend(
 
     override fun list(path: String, offset: Int, limit: Int, expectedRevision: String?): FileToolDirectoryPage {
         require(offset >= 0 && limit in 1..MAX_DIRECTORY_PAGE)
-        if (offset > MAX_DIRECTORY_POSITION) throw FileToolException("DIRECTORY_LIMIT", "目录枚举位置超过当前限制")
+        if (offset > MAX_DIRECTORY_POSITION) throw FileToolException("DIRECTORY_LIMIT", "Directory enumeration position exceeds the current limit")
         val directory = File(resolve(path)).toPath()
         val before = metadata(directory)
-        if (before.kind != FileToolKind.DIRECTORY) throw FileToolException("NOT_DIRECTORY", "目标不是目录")
+        if (before.kind != FileToolKind.DIRECTORY) throw FileToolException("NOT_DIRECTORY", "Target is not a directory")
         if (expectedRevision != null && before.revision != expectedRevision) {
-            throw FileToolException("STALE_CURSOR", "目录已变化，请从头重新列出或搜索")
+            throw FileToolException("STALE_CURSOR", "Directory changed. List or search again from the beginning.")
         }
         val entries = ArrayList<FileToolStat>(limit)
         var position = 0
@@ -88,7 +88,7 @@ internal class LocalFileToolBackend(
             }
         }
         val after = metadata(directory)
-        if (after.revision != before.revision) throw FileToolException("STALE_CURSOR", "枚举期间目录已变化，请重试")
+        if (after.revision != before.revision) throw FileToolException("STALE_CURSOR", "Directory changed during enumeration. Try again.")
         return FileToolDirectoryPage(entries, position, hasMore, before.revision)
     }
 
@@ -100,16 +100,16 @@ internal class LocalFileToolBackend(
         expectedSha256: String?,
     ): FileToolWriteResult = synchronized(writeLock) {
         checkActive()
-        if (bytes.size > MAX_WRITE_BYTES) throw FileToolException("CONTENT_TOO_LARGE", "单次写入内容超过大小限制")
+        if (bytes.size > MAX_WRITE_BYTES) throw FileToolException("CONTENT_TOO_LARGE", "Write content exceeds the size limit")
         val target = File(resolve(path)).toPath()
         val existing = try { metadata(target) } catch (_: NoSuchFileException) { null }
         if (existing != null && existing.kind != FileToolKind.FILE) {
-            throw FileToolException("NOT_REGULAR_FILE", "目标不是普通文件")
+            throw FileToolException("NOT_REGULAR_FILE", "Target is not a regular file")
         }
         verifyExpected(target, existing, expectedRevision, expectedSha256)
         Files.createDirectories(target.parent)
         // 创建父目录后再次解析，防止已有符号链接把写入引向允许根之外。
-        if (File(resolve(path)).toPath() != target) throw FileToolException("FILE_CHANGED", "写入目标已变化")
+        if (File(resolve(path)).toPath() != target) throw FileToolException("FILE_CHANGED", "Write target changed")
         if (append) {
             checkActive()
             FileOutputStream(target.toFile(), true).use { output ->
@@ -135,15 +135,15 @@ internal class LocalFileToolBackend(
                     if (permissions != null && Files.getPosixFilePermissions(temporary) != permissions) {
                         Files.setPosixFilePermissions(temporary, permissions)
                         if (Files.getPosixFilePermissions(temporary) != permissions) {
-                            throw FileToolException("FILE_PERMISSION_PRESERVE_FAILED", "文件系统未应用原文件权限，本次未写入")
+                            throw FileToolException("FILE_PERMISSION_PRESERVE_FAILED", "Filesystem did not apply the original permissions. No write performed.")
                         }
                     }
                 } catch (_: UnsupportedOperationException) {
-                    throw FileToolException("FILE_PERMISSION_PRESERVE_FAILED", "文件系统不支持保留原文件权限，本次未写入")
+                    throw FileToolException("FILE_PERMISSION_PRESERVE_FAILED", "Filesystem cannot preserve original permissions. No write performed.")
                 } catch (_: IOException) {
-                    throw FileToolException("FILE_PERMISSION_PRESERVE_FAILED", "无法保留原文件权限，本次未写入")
+                    throw FileToolException("FILE_PERMISSION_PRESERVE_FAILED", "Could not preserve original permissions. No write performed.")
                 } catch (_: SecurityException) {
-                    throw FileToolException("FILE_PERMISSION_PRESERVE_FAILED", "保留原文件权限未获授权，本次未写入")
+                    throw FileToolException("FILE_PERMISSION_PRESERVE_FAILED", "Permission preservation was not authorized. No write performed.")
                 }
             }
             val current = try { metadata(target) } catch (_: NoSuchFileException) { null }
@@ -152,7 +152,7 @@ internal class LocalFileToolBackend(
             try {
                 Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
             } catch (_: AtomicMoveNotSupportedException) {
-                throw FileToolException("ATOMIC_WRITE_UNSUPPORTED", "此文件系统不支持原子替换，本次未写入")
+                throw FileToolException("ATOMIC_WRITE_UNSUPPORTED", "Filesystem does not support atomic replacement. No write performed.")
             }
             FileToolWriteResult(metadata(target), atomic = true)
         } finally {
@@ -161,9 +161,9 @@ internal class LocalFileToolBackend(
     }
 
     private fun verifyExpected(path: Path, current: FileToolStat?, revision: String?, sha256: String?) {
-        if (revision != null && current?.revision != revision) throw FileToolException("FILE_CHANGED", "文件已变化，本次未写入")
+        if (revision != null && current?.revision != revision) throw FileToolException("FILE_CHANGED", "File changed. No write performed.")
         if (sha256 != null) {
-            if (current == null || current.sizeBytes > MAX_WRITE_BYTES) throw FileToolException("FILE_CHANGED", "文件已变化，本次未写入")
+            if (current == null || current.sizeBytes > MAX_WRITE_BYTES) throw FileToolException("FILE_CHANGED", "File changed. No write performed.")
             val digest = MessageDigest.getInstance("SHA-256")
             var total = 0
             Files.newInputStream(path).use { input ->
@@ -173,12 +173,12 @@ internal class LocalFileToolBackend(
                     val count = input.read(buffer)
                     if (count < 0) break
                     total += count
-                    if (total > MAX_WRITE_BYTES) throw FileToolException("FILE_CHANGED", "文件已变化，本次未写入")
+                    if (total > MAX_WRITE_BYTES) throw FileToolException("FILE_CHANGED", "File changed. No write performed.")
                     digest.update(buffer, 0, count)
                 }
             }
             if (digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) } != sha256) {
-                throw FileToolException("FILE_CHANGED", "文件内容已变化，本次未写入")
+                throw FileToolException("FILE_CHANGED", "File content changed. No write performed.")
             }
         }
     }
@@ -201,7 +201,7 @@ internal class LocalFileToolBackend(
     }
 
     override fun checkActive() {
-        if (isCancelled() || Thread.currentThread().isInterrupted) throw InterruptedException("文件操作已取消")
+        if (isCancelled() || Thread.currentThread().isInterrupted) throw InterruptedException("File operation canceled")
     }
 
     private fun checkInterrupted() = checkActive()

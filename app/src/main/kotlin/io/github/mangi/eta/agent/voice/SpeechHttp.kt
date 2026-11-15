@@ -27,7 +27,7 @@ internal object SpeechHttp {
 
     suspend fun json(request: Request): JSONObject = read(request) { response ->
         val source = response.body.source()
-        if (source.request(MAX_JSON_BYTES + 1)) throw SpeechFailure(SpeechErrorCode.PROTOCOL, "语音服务响应过大")
+        if (source.request(MAX_JSON_BYTES + 1)) throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Speech service response is too large")
         JSONObject(source.readUtf8())
     }
 
@@ -58,9 +58,9 @@ internal object SpeechHttp {
     fun checkStatus(status: Int) {
         if (status in 200..299) return
         throw when (status) {
-            401, 403 -> SpeechFailure(SpeechErrorCode.AUTHENTICATION, "语音服务认证失败，请检查凭据和服务权限")
-            429 -> SpeechFailure(SpeechErrorCode.RATE_LIMITED, "语音服务请求过于频繁，请稍后重试")
-            else -> SpeechFailure(SpeechErrorCode.SERVER, "语音服务请求失败（HTTP $status）")
+            401, 403 -> SpeechFailure(SpeechErrorCode.AUTHENTICATION, "Speech service authentication failed. Check credentials and permissions.")
+            429 -> SpeechFailure(SpeechErrorCode.RATE_LIMITED, "Speech service rate limit reached. Try again later.")
+            else -> SpeechFailure(SpeechErrorCode.SERVER, "Speech service request failed (HTTP $status）")
         }
     }
 

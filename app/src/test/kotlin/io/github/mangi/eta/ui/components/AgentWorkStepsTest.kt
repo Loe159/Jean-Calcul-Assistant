@@ -62,7 +62,7 @@ class AgentWorkStepsTest {
     @Test
     fun trivialSuccessHasNoOutcome() {
         assertNull(tool("t1", "observe_screen", resultSummary = "Done").outcomeLine())
-        assertEquals("2 张图片", tool("t2", "observe_screen", resultSummary = "完成 · 2 张图片").outcomeLine())
+        assertEquals("2 images", tool("t2", "observe_screen", resultSummary = "Completed · 2 images").outcomeLine())
     }
 
     @Test
@@ -71,7 +71,7 @@ class AgentWorkStepsTest {
             "t1",
             "tap",
             status = ToolActivityStatusUi.Failed,
-            resultSummary = "失败 · 找不到元素 · code=E_NOT_FOUND",
+            resultSummary = "Failed · 找不到元素 · code=E_NOT_FOUND",
         )
 
         assertEquals("找不到元素", message.outcomeLine())
@@ -83,10 +83,10 @@ class AgentWorkStepsTest {
             "t1",
             "run_command",
             status = ToolActivityStatusUi.Failed,
-            resultSummary = "失败 · 退出码 1\nno such file",
+            resultSummary = "Failed · exit code 1\nno such file",
         )
 
-        assertEquals("退出码 1", message.outcomeLine())
+        assertEquals("Exit code 1", message.outcomeLine())
     }
 
     @Test

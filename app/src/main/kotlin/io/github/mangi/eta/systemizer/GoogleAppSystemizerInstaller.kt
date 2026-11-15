@@ -168,7 +168,7 @@ internal class GoogleAppSystemizerInstaller(
         if (!finished) {
             process.destroyForcibly()
             reader.join(1000)
-            return RootCommandResult(exitCode = -2, output = "命令执行超时")
+            return RootCommandResult(exitCode = -2, output = "Command timed out")
         }
 
         reader.join(1000)

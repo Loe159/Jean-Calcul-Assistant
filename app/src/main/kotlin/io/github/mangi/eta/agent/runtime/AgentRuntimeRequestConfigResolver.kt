@@ -38,7 +38,7 @@ internal object AgentRuntimeRequestConfigResolver {
             require(
                 runtimeConfig.providerId == entry.providerId &&
                     runtimeConfig.authMode == entry.authMode && runtimeConfig.model == entry.model
-            ) { "账号登录配置已变更，请重新选择服务商和模型" }
+            ) { "Account sign-in settings changed. Select the provider and model again." }
         }
         val effort = if (preserveReasoningChoice) {
             runtimeConfig.reasoningCapabilities?.normalize(entry.effectiveReasoningEffort)

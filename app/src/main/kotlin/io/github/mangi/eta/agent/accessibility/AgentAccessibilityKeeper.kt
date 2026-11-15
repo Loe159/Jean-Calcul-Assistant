@@ -54,21 +54,21 @@ object AgentAccessibilityKeeper {
         if (!protectionAvailable() || !protectionEnabled()) {
             return AccessibilityEnableResult.failure(
                 code = "ACCESSIBILITY_UNAVAILABLE",
-                message = "Jean-Calcul 无障碍服务未连接；请在系统设置中开启 Jean-Calcul 无障碍服务",
+                message = "Jean-Calcul accessibility is disconnected. Enable it in system settings.",
                 recoveryRequested = false,
             )
         }
         if (!requestRecovery()) {
             return AccessibilityEnableResult.failure(
                 code = "ACCESSIBILITY_PROTECTION_UNAVAILABLE",
-                message = "无障碍保护后端不可用；本次 GUI 操作未执行",
+                message = "Accessibility protection backend unavailable. No GUI action performed.",
                 recoveryRequested = true,
             )
         }
         if (!awaitServiceBinding()) {
             return AccessibilityEnableResult.failure(
                 code = "ACCESSIBILITY_REPAIR_TIMEOUT",
-                message = "Jean-Calcul 无障碍服务未在恢复时限内连接；本次 GUI 操作未执行",
+                message = "Jean-Calcul accessibility did not reconnect in time. No GUI action performed.",
                 recoveryRequested = true,
             )
         }

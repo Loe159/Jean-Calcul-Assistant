@@ -54,8 +54,8 @@ internal class SpeechPlaybackController(
                 val (config, secrets) = SpeechSettingsRepository.resolveDeepSeekFallback(rawConfig, rawSecrets)
                 validateSpeechSettings(config, secrets, synthesis = true)
                 val readable = withContext(Dispatchers.Default) { SpeechText.readable(text) }
-                if (readable.isBlank()) throw SpeechFailure(SpeechErrorCode.NO_SPEECH, "这条消息没有可朗读的正文")
-                if (readable.length > 30_000) throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "正文过长，请选择较短的回答朗读")
+                if (readable.isBlank()) throw SpeechFailure(SpeechErrorCode.NO_SPEECH, "This message has no text to read aloud")
+                if (readable.length > 30_000) throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Text is too long. Select a shorter reply to read aloud.")
                 lease?.requestPlaybackFocus { beforePlayback(); playbackActive = true }
                 val player = createOutput()
                 output = player

@@ -39,9 +39,9 @@ import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Text
 
 private val assistantSuggestions = listOf(
-    "总结屏幕内容",
-    "解释当前页面",
-    "提取关键信息",
+    "Summarize screen content",
+    "Explain the current page",
+    "Extract key information",
 )
 
 private val suggestionEnterEasing = CubicBezierEasing(0.20f, 0f, 0f, 1f)

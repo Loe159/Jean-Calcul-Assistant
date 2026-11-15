@@ -29,14 +29,14 @@ internal object AppUpdateChecker {
             .build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                throw IOException("GitHub Release 请求失败（HTTP ${response.code}）")
+                throw IOException("GitHub release request failed (HTTP ${response.code}）")
             }
             val json = runCatching { JSONObject(response.body.string()) }
-                .getOrElse { throw IOException("GitHub Release 响应不是有效 JSON", it) }
+                .getOrElse { throw IOException("GitHub release response is not valid JSON", it) }
             val tag = json.optString("tag_name").trim()
             val url = json.optString("html_url").trim()
             if (tag.isEmpty() || url.isEmpty()) {
-                throw IOException("GitHub Release 响应缺少 tag_name/html_url")
+                throw IOException("GitHub release response is missing tag_name/html_url")
             }
             return AppLatestRelease(version = tag.removePrefix("v"), url = url)
         }

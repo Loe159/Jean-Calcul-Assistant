@@ -32,9 +32,9 @@ internal suspend fun streamSpeech(
         TtsProvider.QWEN -> streamQwen(settings, credentials, chunks, onAudio)
         TtsProvider.DOUBAO -> streamDoubao(settings, credentials, chunks, onAudio)
         TtsProvider.DEEPSEEK -> streamDeepSeekSpeech(settings.deepseekTts, credentials.deepseekTts, chunks, onAudio)
-        TtsProvider.NONE -> throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "请先选择语音播报服务")
+        TtsProvider.NONE -> throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Select a speech synthesis service first")
         TtsProvider.GEMINI, TtsProvider.MINIMAX, TtsProvider.MIMO ->
-            throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "当前语音服务使用逐段流式合成")
+            throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "This speech service uses streaming synthesis by segment")
     }
 }
 
@@ -70,13 +70,13 @@ private suspend fun streamQwen(
                     onAudio(audio)
                 }
                 "session.finished" -> {
-                    if (audioBytes == 0L) throw SpeechFailure(SpeechErrorCode.PROTOCOL, "语音音频不完整，请重试")
+                    if (audioBytes == 0L) throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Incomplete speech audio. Try again.")
                     return@coroutineScope
                 }
-                "error" -> throw SpeechFailure(SpeechErrorCode.SERVER, "千问语音合成失败，请检查模型权限和配置")
+                "error" -> throw SpeechFailure(SpeechErrorCode.SERVER, "Qwen speech synthesis failed. Check model permissions and settings.")
             }
         }
-        throw SpeechFailure(SpeechErrorCode.PROTOCOL, "千问语音合成连接提前结束")
+        throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Qwen speech synthesis connection ended early")
     }
 }
 
@@ -111,7 +111,7 @@ private suspend fun streamDoubao(
             for (bytes in socket.messages) {
                 val frame = DoubaoTtsCodec.decode(bytes)
                 if (frame.errorCode != null) {
-                    throw SpeechFailure(SpeechErrorCode.SERVER, "豆包语音合成失败（${frame.errorCode}）")
+                    throw SpeechFailure(SpeechErrorCode.SERVER, "Doubao speech synthesis failed (${frame.errorCode}）")
                 }
                 when (frame.event) {
                     DoubaoTtsCodec.CONNECTION_STARTED -> socket.binary(DoubaoTtsCodec.encode(
@@ -124,14 +124,14 @@ private suspend fun streamDoubao(
                     }
                     DoubaoTtsCodec.SESSION_FINISHED -> {
                         runCatching { socket.binary(DoubaoTtsCodec.encode(DoubaoTtsCodec.FINISH_CONNECTION, null, "{}")) }
-                        if (audioBytes == 0L) throw SpeechFailure(SpeechErrorCode.PROTOCOL, "语音音频不完整，请重试")
+                        if (audioBytes == 0L) throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Incomplete speech audio. Try again.")
                         return@coroutineScope
                     }
                     DoubaoTtsCodec.CONNECTION_FAILED, DoubaoTtsCodec.SESSION_FAILED ->
-                        throw SpeechFailure(SpeechErrorCode.SERVER, "豆包语音合成失败，请检查音色和服务配置")
+                        throw SpeechFailure(SpeechErrorCode.SERVER, "Doubao speech synthesis failed. Check voice and service settings.")
                 }
             }
-            throw SpeechFailure(SpeechErrorCode.PROTOCOL, "豆包语音合成连接提前结束")
+            throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Doubao speech synthesis connection ended early")
         } finally {
             sender.cancel()
         }
@@ -140,7 +140,7 @@ private suspend fun streamDoubao(
 
 private fun checkedAudio(total: Long, added: Int): Long {
     val next = total + added
-    if (next > MAX_AUDIO_BYTES) throw SpeechFailure(SpeechErrorCode.PROTOCOL, "语音音频格式或长度无效")
+    if (next > MAX_AUDIO_BYTES) throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Invalid speech audio format or length")
     return next
 }
 

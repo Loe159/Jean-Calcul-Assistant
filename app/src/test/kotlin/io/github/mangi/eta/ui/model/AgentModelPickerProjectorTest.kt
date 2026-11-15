@@ -283,8 +283,8 @@ class AgentModelPickerProjectorTest {
         assertEquals(200, stats.reasoningTokens)
         assertEquals(3_600, stats.totalTokens)
         assertEquals("80", formatCacheHitPercent(stats.cachedTokens, stats.promptTokens))
-        assertEquals("2.4秒", formatStatDuration(2_400L))
-        assertEquals("1分5秒", formatStatDuration(65_000L))
+        assertEquals("2.4s", formatStatDuration(2_400L))
+        assertEquals("1min5s", formatStatDuration(65_000L))
         assertEquals("200", formatTokensPerSecond(200.4))
         assertEquals("6.8", formatTokensPerSecond(6.81))
     }
@@ -294,7 +294,7 @@ class AgentModelPickerProjectorTest {
         val subagentSnapshot = io.github.mangi.eta.agent.subagent.SubagentActivitySnapshot(
             subagentId = "sub-1",
             subagentType = "explore",
-            description = "检索文件",
+            description = "Search文件",
             usage = io.github.mangi.eta.agent.subagent.SubagentUsageSnapshot(
                 inputTokens = 5_000,
                 cachedTokens = 4_000,
@@ -320,13 +320,13 @@ class AgentModelPickerProjectorTest {
                 id = "t1",
                 toolName = "subagent",
                 status = ToolActivityStatusUi.Success,
-                argumentsSummary = "explore · 检索文件",
+                argumentsSummary = "explore · Search文件",
                 command = subagentSnapshot,
             ),
             SystemNoticeMessageUi(
                 id = "c1",
                 code = SystemNoticeCode.ContextCompaction,
-                detail = "上下文已压缩",
+                detail = "Context compacted",
                 archiveId = "fold-1",
                 tokensBefore = 80_000,
                 usage = TokenUsageUi(

@@ -90,19 +90,19 @@ internal class UserTerminalController(
         synchronized(sessionLock) {
             pruneDeadSessionsLocked()
             if (sessions.size >= MAX_SESSIONS) {
-                return OpenResult.Failed("SESSION_LIMIT_REACHED", "会话数量已达上限")
+                return OpenResult.Failed("SESSION_LIMIT_REACHED", "Session limit reached")
             }
             if (selectedIdentity != "root" && selectedIdentity != "user") {
-                return OpenResult.Failed("INVALID_ARGUMENT", "identity 仅支持 root/user")
+                return OpenResult.Failed("INVALID_ARGUMENT", "identity must be root/user")
             }
             if (environment.isLinux && selectedIdentity != "root" && LinuxEnvironmentPaths.backendOf(environmentRootfsPath) != LinuxExecutionBackend.PROOT) {
-                return OpenResult.Failed("LINUX_ENVIRONMENT_REQUIRES_ROOT", "Linux 工具环境仅支持 root identity")
+                return OpenResult.Failed("LINUX_ENVIRONMENT_REQUIRES_ROOT", "Linux environment only supports root identity")
             }
-            if (selectedIdentity == "root" && !rootAvailable()) return OpenResult.Failed("ROOT_REQUIRED", "Root 授权不可用")
+            if (selectedIdentity == "root" && !rootAvailable()) return OpenResult.Failed("ROOT_REQUIRED", "Root access unavailable")
             if (environment.isLinux &&
                 !LinuxEnvironmentPaths.rootfsReady(environmentRootfsPath)
             ) {
-                return OpenResult.Failed("LINUX_ENVIRONMENT_NOT_READY", "Linux 工具环境尚未安装")
+                return OpenResult.Failed("LINUX_ENVIRONMENT_NOT_READY", "Linux environment is not installed")
             }
             val safeCwd = cwd?.takeIf { it.isNotBlank() } ?: if (environment.isLinux) LINUX_DEFAULT_CWD else TerminalRuntime.workspace(selectedIdentity)
             val process = processSupervisor.startShellProcess(
@@ -116,7 +116,7 @@ internal class UserTerminalController(
                 } else {
                     emptyList()
                 },
-            ) ?: return OpenResult.Failed("PROCESS_START_FAILED", "无法启动终端进程")
+            ) ?: return OpenResult.Failed("PROCESS_START_FAILED", "Could not start terminal process")
             val newSession = Session(
                 identity = selectedIdentity,
                 environment = environment,
@@ -140,7 +140,7 @@ internal class UserTerminalController(
             }
             if (!processSupervisor.transferActiveProcess(process) { sessions[sessionId] = newSession }) {
                 processSupervisor.terminateProcessTree(process)
-                return OpenResult.Failed("TERMINAL_CLOSED", "终端控制器已关闭")
+                return OpenResult.Failed("TERMINAL_CLOSED", "Terminal controller is closed")
             }
 
             val setup = buildString {
@@ -156,7 +156,7 @@ internal class UserTerminalController(
             if (setupResult.exitCode != 0 || setupResult.timedOut) {
                 closeSessionLocked(sessionId)
                 logger.warn("User terminal action=open outcome=failed environment=${environment.wireName}")
-                return OpenResult.Failed("SESSION_OPEN_FAILED", "终端会话初始化失败")
+                return OpenResult.Failed("SESSION_OPEN_FAILED", "Terminal session initialization failed")
             }
             newSession.cwd = setupResult.cwd ?: safeCwd
             newSession.stdout.clear()

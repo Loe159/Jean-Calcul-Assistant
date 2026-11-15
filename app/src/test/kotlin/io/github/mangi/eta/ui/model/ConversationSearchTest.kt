@@ -13,7 +13,7 @@ class ConversationSearchTest {
         when (code) {
             SystemNoticeCode.Stopped -> "Stopped"
             SystemNoticeCode.EmptyResult -> "Empty result"
-            SystemNoticeCode.ContextCompaction -> "Context compaction"
+            SystemNoticeCode.ContextCompaction -> "上下文压缩"
             SystemNoticeCode.ModelRetry -> "Retrying"
             SystemNoticeCode.RuntimeFailed -> "Runtime failed"
             SystemNoticeCode.Interrupted -> "Interrupted"
@@ -62,7 +62,7 @@ class ConversationSearchTest {
         )
 
         assertTrue(state.contentMatches("观察", noticeText))
-        assertFalse(state.contentMatches("Terminal", noticeText))
+        assertFalse(state.contentMatches("终端", noticeText))
     }
 
     @Test
@@ -72,14 +72,14 @@ class ConversationSearchTest {
                 id = "tool",
                 toolName = "run_terminal_command",
                 status = ToolActivityStatusUi.Success,
-                argumentsSummary = "List directory",
+                argumentsSummary = "列出目录",
                 command = "ls -la /tmp",
                 resultSummary = "total 5",
             ),
         )
 
         assertTrue(state.contentMatches("terminal", noticeText))
-        assertTrue(state.contentMatches("List directory", noticeText))
+        assertTrue(state.contentMatches("列出目录", noticeText))
         assertTrue(state.contentMatches("/tmp", noticeText))
         assertTrue(state.contentMatches("total", noticeText))
         assertFalse(state.contentMatches("不存在", noticeText))

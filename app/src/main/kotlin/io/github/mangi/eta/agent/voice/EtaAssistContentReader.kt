@@ -14,33 +14,33 @@ internal object EtaAssistContentReader {
         val output = BoundedText()
         val structure = state.assistStructure
         val component = structure?.activityComponent
-        output.line("焦点应用", state.isFocused.toString())
+        output.line("Focused app", state.isFocused.toString())
         component?.let {
-            output.line("应用组件", it.flattenToShortString())
+            output.line("App component", it.flattenToShortString())
             try {
                 val info = context.packageManager.getApplicationInfo(it.packageName, 0)
-                output.line("应用名称", context.packageManager.getApplicationLabel(info).toString())
+                output.line("App name", context.packageManager.getApplicationLabel(info).toString())
             } catch (_: android.content.pm.PackageManager.NameNotFoundException) {
                 // 包在采集后卸载时仍保留系统提供的组件信息。
             }
         }
         state.assistContent?.let { content ->
-            output.line("网页链接", content.webUri?.toString())
-            output.line("结构化内容", content.structuredData, 6_000)
-            output.line("页面动作", content.intent?.action)
-            output.line("页面链接", content.intent?.dataString)
+            output.line("Web link", content.webUri?.toString())
+            output.line("Structured content", content.structuredData, 6_000)
+            output.line("Page actions", content.intent?.action)
+            output.line("Page links", content.intent?.dataString)
             content.clipData?.let { clip ->
                 for (index in 0 until minOf(clip.itemCount, 4)) {
                     val item = clip.getItemAt(index)
-                    output.line("应用提供的文本", item.text?.toString())
-                    output.line("应用提供的链接", item.uri?.toString())
+                    output.line("Text provided by app", item.text?.toString())
+                    output.line("Links provided by app", item.uri?.toString())
                 }
             }
         }
         try {
             appendData(output, state.assistData)
         } catch (_: android.os.BadParcelableException) {
-            output.line("提示", "部分应用附加数据不可读")
+            output.line("Note", "Some extra app data could not be read")
         }
         if (structure != null) {
             var visited = 0
@@ -48,16 +48,16 @@ internal object EtaAssistContentReader {
             val stack = ArrayDeque<Pair<AssistStructure.ViewNode, Int>>()
             for (windowIndex in 0 until minOf(structure.windowNodeCount, 4)) {
                 val window = structure.getWindowNodeAt(windowIndex)
-                output.line("窗口", window.title?.toString())
+                output.line("Window", window.title?.toString())
                 stack.addLast(window.rootViewNode to 0)
                 while (stack.isNotEmpty() && visited < MAX_NODES && !output.full) {
                     val (node, depth) = stack.removeLast()
                     visited++
                     if (node.visibility != View.VISIBLE || isPassword(node.inputType)) continue
-                    output.line("控件", node.className)
-                    output.line("文本", node.text?.toString())
-                    output.line("描述", node.contentDescription?.toString())
-                    output.line("提示", node.hint)
+                    output.line("Control", node.className)
+                    output.line("Text", node.text?.toString())
+                    output.line("Description", node.contentDescription?.toString())
+                    output.line("Note", node.hint)
                     if (depth < MAX_DEPTH) {
                         val children = minOf(node.childCount, MAX_NODES - visited - stack.size)
                         if (children < node.childCount) truncated = true
@@ -68,7 +68,7 @@ internal object EtaAssistContentReader {
                 }
                 if (visited >= MAX_NODES || output.full) break
             }
-            if (truncated || stack.isNotEmpty() || visited >= MAX_NODES) output.line("提示", "界面节点已按容量截断")
+            if (truncated || stack.isNotEmpty() || visited >= MAX_NODES) output.line("Note", "UI nodes truncated to fit the capacity limit")
         }
         return output.toString()
     }
@@ -80,7 +80,7 @@ internal object EtaAssistContentReader {
         for (key in data.keySet().sorted().take(24)) {
             val value = data.get(key)
             if (value is CharSequence || value is Number || value is Boolean) {
-                output.line("应用数据：${key.take(128)}", value.toString())
+                output.line("App data: ${key.take(128)}", value.toString())
             }
         }
     }
@@ -104,7 +104,7 @@ internal object EtaAssistContentReader {
             val remaining = MAX_CHARS - text.length
             text.append(line.take(remaining))
         }
-        override fun toString(): String = text.toString() + if (full) "\n[应用内容已截断]" else ""
+        override fun toString(): String = text.toString() + if (full) "\n[App content truncated]" else ""
     }
 
     private const val MAX_NODES = 400

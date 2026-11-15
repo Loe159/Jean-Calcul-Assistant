@@ -37,8 +37,8 @@ internal class BackgroundTerminalJobs(
         description: String,
         timeoutMs: Long,
     ): String {
-        if (closed) return failure("BACKGROUND_CLOSED", "后台命令宿主已关闭")
-        if (!lease()) return failure("BACKGROUND_START_NOT_ALLOWED", "系统未允许启动后台执行，请返回 Jean-Calcul 后重试")
+        if (closed) return failure("BACKGROUND_CLOSED", "Background command host is closed")
+        if (!lease()) return failure("BACKGROUND_START_NOT_ALLOWED", "The system blocked background execution. Return to Jean-Calcul and retry.")
         return when (val result = launcher.start(command, cwd, identity, environment,
             commandTask = true, description = description, timeoutMs = timeoutMs.coerceAtLeast(0))) {
             is DaemonStartResult.Failed -> {
@@ -61,7 +61,7 @@ internal class BackgroundTerminalJobs(
     fun read(id: String, maxBytes: Int = 16_000): String {
         refresh()
         val task = supervisor.findTask(id)?.takeIf { it.commandTask }
-            ?: return failure("JOB_NOT_FOUND", "未找到后台命令，请用 terminal_job 的 list 查看任务")
+            ?: return failure("JOB_NOT_FOUND", "Background command not found. Use terminal_job list to inspect tasks.")
         val logs = supervisor.readLogs(id, maxBytes)
         val result = taskJson(task).put("action", "read")
         if (!logs.ok) return result.put("ok", false).put("code", logs.code).put("message", logs.message).toString()
@@ -70,25 +70,25 @@ internal class BackgroundTerminalJobs(
 
     fun stop(id: String): String {
         val task = supervisor.findTask(id)?.takeIf { it.commandTask }
-            ?: return failure("JOB_NOT_FOUND", "未找到后台命令")
-        if (!supervisor.stopCommand(task.id)) return failure("JOB_STOP_FAILED", "无法停止后台命令，请检查当前身份授权")
+            ?: return failure("JOB_NOT_FOUND", "Background command not found")
+        if (!supervisor.stopCommand(task.id)) return failure("JOB_STOP_FAILED", "Could not stop background command. Check identity permissions.")
         refresh()
         return taskJson(supervisor.findTask(id) ?: task).put("action", "stop").toString()
     }
 
     fun waitFor(id: String, timeoutMs: Long, isCancelled: () -> Boolean): String {
         resume()
-        if (supervisor.findTask(id)?.commandTask != true) return failure("JOB_NOT_FOUND", "未找到后台命令")
+        if (supervisor.findTask(id)?.commandTask != true) return failure("JOB_NOT_FOUND", "Background command not found")
         val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs.coerceIn(0, 60_000))
         waitLock.withLock {
             while (supervisor.findTask(id)?.completedAt == null) {
-                if (isCancelled()) return failure("CANCELLED", "已取消等待；后台命令仍保留，可单独停止")
+                if (isCancelled()) return failure("CANCELLED", "Wait canceled; the background command is kept and can be stopped separately")
                 val remaining = deadline - System.nanoTime()
                 if (remaining <= 0) break
                 changed.awaitNanos(minOf(remaining, TimeUnit.MILLISECONDS.toNanos(200)))
             }
         }
-        val task = supervisor.findTask(id) ?: return failure("JOB_NOT_FOUND", "后台命令已清理")
+        val task = supervisor.findTask(id) ?: return failure("JOB_NOT_FOUND", "Background command cleaned up")
         return taskJson(task).put("action", "wait").put("wait_timed_out", task.completedAt == null).toString()
     }
 

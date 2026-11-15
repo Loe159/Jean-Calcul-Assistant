@@ -15,7 +15,7 @@ class CharacterCardImportMessagesTest {
 
     @Test
     fun unrecognizedErrorCannotExposeFileOrExceptionText() {
-        assertNull(characterCardImportMessage("角色卡原文：private example"))
+        assertNull(characterCardImportMessage("Characters卡原文：private example"))
         assertNull(characterCardImportMessage(null))
         assertNotNull(characterCardImportMessage("CARD_METADATA_MISSING"))
         assertNotNull(characterCardImportMessage("CARD_TOO_LARGE"))

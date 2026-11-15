@@ -30,7 +30,7 @@ internal object PtyInputFrames {
 
     /** 窗口尺寸；原生侧拒绝超出 1..1000 的值。 */
     fun resize(rows: Int, cols: Int): ByteArray {
-        require(rows in 1..1000 && cols in 1..1000) { "终端尺寸超出范围" }
+        require(rows in 1..1000 && cols in 1..1000) { "Terminal size is out of range" }
         val out = ByteArray(HEADER_SIZE + 4)
         val offset = writeHeader(out, 0, TYPE_RESIZE, 4)
         out[offset] = (rows ushr 8).toByte()

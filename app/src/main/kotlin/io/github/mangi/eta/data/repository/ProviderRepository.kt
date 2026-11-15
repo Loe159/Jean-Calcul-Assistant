@@ -85,17 +85,17 @@ internal object ProviderRepository {
     suspend fun updateProvider(provider: ProviderSetting) {
         require(io.github.mangi.eta.product.JeanCalculProfile.allowsProvider(provider)) { "Seuls vLLM et ChatGPT sont disponibles." }
         mutationMutex.withLock {
-            val previous = requireNotNull(providerById(provider.id)) { "Provider 不存在" }
+            val previous = requireNotNull(providerById(provider.id)) { "Provider not found" }
             if (previous.authMode != provider.authMode) {
                 forgetCredentials(provider.id)
             }
-            require(dao().updateProvider(provider.toEntity()) == 1) { "Provider 不存在" }
+            require(dao().updateProvider(provider.toEntity()) == 1) { "Provider not found" }
         }
         repairSelection()
     }
 
     internal suspend fun replaceModels(providerId: String, models: List<Model>) {
-        val provider = requireNotNull(providerById(providerId)) { "Provider 不存在" }
+        val provider = requireNotNull(providerById(providerId)) { "Provider not found" }
         dao().replaceModels(
             providerId = providerId,
             models = provider.withModels(models).toModelEntities(),
@@ -121,7 +121,7 @@ internal object ProviderRepository {
             val nextOrder = (allProviders().maxOfOrNull { it.sortOrder } ?: -1) + 1
             source.deepCopy(
                 id = newId(),
-                name = "${source.name} 副本",
+                name = "${source.name} copy",
                 sortOrder = nextOrder,
                 builtIn = false,
             ).also { replaceProvider(it) }

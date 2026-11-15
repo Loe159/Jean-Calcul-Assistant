@@ -96,7 +96,7 @@ class AgentWebToolsTest {
         WebFixtureServer { WebFixtureResponse(headers = mapOf("Content-Type" to "text/html"), body = "<title>标题</title><main>正文<a href='/source'>来源</a></main>".toByteArray()) }.use { server ->
             tools().use { tools ->
                 val result = call(tools, "fetch_url", JSONObject().put("url", server.url()))
-                assertEquals("Title", result.getString("title"))
+                assertEquals("标题", result.getString("title"))
                 assertTrue(result.getString("text").contains("[1]"))
                 assertEquals(server.url("/source"), result.getJSONArray("links").getJSONObject(0).getString("url"))
                 assertEquals("untrusted_web_content", result.getString("source_role"))

@@ -51,9 +51,9 @@ internal class ShellProcessSupervisor(
         ptyRows: Int = DEFAULT_PTY_ROWS,
     ): Process? {
         if (isClosing) return null
-        require(identity == "root" || identity == "user") { "identity 仅支持 root/user" }
+        require(identity == "root" || identity == "user") { "identity must be root/user" }
         require(!environment.isLinux || identity == "root" || LinuxEnvironmentPaths.backendOf(linuxRootfsPath) == LinuxExecutionBackend.PROOT) {
-            "Linux 工具环境仅支持 root identity"
+            "Linux environment only supports root identity"
         }
         if (environment.isLinux && identity == "root" && LinuxEnvironmentPaths.backendOf(linuxRootfsPath) == LinuxExecutionBackend.PROOT) return null
         if (identity == "root" && !rootAvailable()) return null
@@ -197,7 +197,7 @@ internal class ShellProcessSupervisor(
             )
             else -> buildLinuxPayload(
                 rootfsPath = requireNotNull(linuxRootfsPath) {
-                    "Linux 工具环境 rootfs 未配置"
+                    "Linux environment rootfs is not configured"
                 },
                 command = managedCommand,
                 sharedMounts = linuxSharedMounts,
@@ -209,7 +209,7 @@ internal class ShellProcessSupervisor(
         val exportOwner = "export $ETA_PROCESS_OWNER_ENV=${shellQuote(ownershipToken)}"
         if (pty) {
             // PTY 会话由原生组件建立独立 session 并在退出时回收整个进程组，Root 与普通身份共用同一入口。
-            val executable = ptyExecutable() ?: throw IOException("PTY 组件不可用")
+            val executable = ptyExecutable() ?: throw IOException("PTY component unavailable")
             val script = "printf '%s group\\n' \"${'$'}${'$'}\" > $path; export TERM=$PTY_TERM_TYPE; $payload"
             return "$exportOwner; exec ${shellQuote(executable.absolutePath)} $ptyRows $ptyCols -- sh -c ${shellQuote(script)}"
         }
@@ -551,7 +551,7 @@ internal fun runOneShotShell(
     ) ?: return OneShotShellResult(
         if (processSupervisor.isClosing) -3 else -1,
         ByteArray(0),
-        if (processSupervisor.isClosing) "操作已取消".toByteArray() else "无法启动进程".toByteArray(),
+        if (processSupervisor.isClosing) "Action canceled".toByteArray() else "Could not start process".toByteArray(),
     )
 
     try {
@@ -582,7 +582,7 @@ internal fun runOneShotShell(
             stderrThread.join(500)
             stdinThread.join(500)
             processSupervisor.reapProcess(process)
-            return OneShotShellResult(-2, output.bytes(), "命令执行超时".toByteArray(), output.isTruncated(), stderr.isTruncated())
+            return OneShotShellResult(-2, output.bytes(), "Command timed out".toByteArray(), output.isTruncated(), stderr.isTruncated())
         }
 
         outputThread.join(500)
@@ -592,7 +592,7 @@ internal fun runOneShotShell(
         // 子进程的失败保留原始语义；声称成功但输入传输失败时不能把不完整写入当作成功。
         if (exitCode == 0 && stdin?.isNotEmpty() == true && stdinFailed.get()) {
             return OneShotShellResult(
-                SHELL_STDIN_FAILED_EXIT_CODE, output.bytes(), "命令输入传输失败".toByteArray(),
+                SHELL_STDIN_FAILED_EXIT_CODE, output.bytes(), "Command input transfer failed".toByteArray(),
                 output.isTruncated(),
             )
         }

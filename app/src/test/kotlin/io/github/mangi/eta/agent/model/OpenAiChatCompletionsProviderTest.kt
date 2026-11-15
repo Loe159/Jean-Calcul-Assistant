@@ -179,7 +179,7 @@ class OpenAiChatCompletionsProviderTest {
             .put("completion_tokens", 2)
             .put("total_tokens", 12)
         val body = buildString {
-            append(sseChunk(JSONObject().put("content", "Done")))
+            append(sseChunk(JSONObject().put("content", "完成")))
             append(sseChunk(null, finishReason = "stop"))
             append(usageChunk(usage))
         }
@@ -192,7 +192,7 @@ class OpenAiChatCompletionsProviderTest {
                 onEvent = events::add
             )
 
-            assertEquals("Done", response.assistantMessage.getString("content"))
+            assertEquals("完成", response.assistantMessage.getString("content"))
             assertEquals(
                 12,
                 events.filterIsInstance<ProviderEvent.Usage>().single().usage.contextTokens

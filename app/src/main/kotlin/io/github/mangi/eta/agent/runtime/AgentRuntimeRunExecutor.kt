@@ -219,7 +219,7 @@ internal class AgentRuntimeRunExecutor(
                             entrySurfaceGuard?.dismissOnce() == false ->
                                 ToolExecutionDecision.Reject(
                                     code = "ENTRY_SURFACE_NOT_READY",
-                                    message = "入口窗口关闭未完成；本次工具未执行，请勿在当前任务中重复调用",
+                                    message = "Entry window did not finish closing. Tool not executed; do not repeat it in this task.",
                                 )
                             else -> ToolExecutionDecision.Allow
                         }
@@ -309,7 +309,7 @@ internal class AgentRuntimeRunExecutor(
                             JSONObject()
                                 .put("ok", false)
                                 .put("code", "SUBAGENT_DISABLED")
-                                .put("message", "Subagent 权限已关闭")
+                                .put("message", "Subagent permission is disabled")
                                 .toString(),
                         )
                     } else if (call.name == AgentSubagentToolCatalog.PROFILE_TOOL_NAME) {
@@ -325,7 +325,7 @@ internal class AgentRuntimeRunExecutor(
                             JSONObject()
                                 .put("ok", false)
                                 .put("code", "TOOL_DISABLED")
-                                .put("message", "工具 ${call.name} 已在工具列表中关闭，本次未执行")
+                                .put("message", "Tool ${call.name} is disabled in the tool list and was not executed")
                                 .toString(),
                         )
                     } else {

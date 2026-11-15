@@ -71,7 +71,7 @@ class AccessibilityNodeIdentityTest {
 
     private fun identity(
         uniqueId: String = "",
-        text: String = "Entries",
+        text: String = "条目",
         description: String = "",
     ): AccessibilityNodeIdentity = AccessibilityNodeIdentity(
         uniqueId = uniqueId,

@@ -49,21 +49,21 @@ internal object ScreenObservationMetadata {
 
     fun uiTreeNote(status: String, screenshotAttached: Boolean): String {
         val description = when (status) {
-            "not_requested" -> "本次未请求节点树"
-            "available" -> "节点树可用"
-            "empty" -> "已读取窗口，但没有可用节点；不能据此判断应用不支持当前显示屏"
-            "no_window" -> "目标显示屏未返回可观察窗口"
-            "root_unavailable" -> "已找到目标窗口，但暂时无法读取根节点"
-            "timeout" -> "节点查询超时"
-            "busy" -> "上一次节点查询尚未结束"
-            "query_failed" -> "节点查询失败"
-            else -> "无障碍服务不可用，当前没有节点读取通道"
+            "not_requested" -> "UI tree was not requested"
+            "available" -> "UI tree available"
+            "empty" -> "Windows read but no nodes available. This does not prove the app cannot use this display."
+            "no_window" -> "Target display returned no observable window"
+            "root_unavailable" -> "Target window found, but its root node is unreadable"
+            "timeout" -> "Node query timed out"
+            "busy" -> "Previous node query has not finished"
+            "query_failed" -> "Node query failed"
+            else -> "Accessibility unavailable; no node reading channel"
         }
         if (status == "not_requested" || status == "available") return description
         return description + if (screenshotAttached) {
-            "；可结合本次截图观察界面"
+            "; use the attached screenshot to inspect the UI"
         } else {
-            "；可请求截图确认当前界面"
+            "; request a screenshot to verify the UI"
         }
     }
 }

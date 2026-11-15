@@ -40,7 +40,7 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
     ): ProviderResponse {
         val config = request.effectiveConfig
         require(config.openAiEndpointMode == OpenAiEndpointMode.CHAT_COMPLETIONS) {
-            "当前 Provider 未配置为 Chat Completions API"
+            "Provider is not configured for the Chat Completions API"
         }
         val url = ProviderUrls.openAiChatCompletionsUrl(config.baseUrl)
         val headers = okhttp3.Headers.Builder()
@@ -157,7 +157,7 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
         existingToolCallIds: Set<String>,
         onEvent: (ProviderEvent) -> Unit
     ): JSONObject {
-        if (stream == null) error("模型接口未返回响应流")
+        if (stream == null) error("Model API returned no response stream")
         val content = StringBuilder()
         val reasoningContent = StringBuilder()
         val toolCalls = linkedMapOf<Int, StreamingToolCall>()
@@ -218,7 +218,7 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
                 finishReason = reason
             }
             if (reason == "error") {
-                error("模型接口 SSE 以 error 结束")
+                error("Model API SSE ended with error")
             }
             val delta = choice.optJSONObject("delta") ?: JSONObject()
             val reasoningDelta = visibleReasoningDelta(delta)
@@ -274,8 +274,8 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
             true
         }
 
-        if (!sawStreamData) throw AgentModelFailure.incompleteStream("模型接口未返回 SSE data chunk")
-        if (!sawDone && finishReason == null) throw AgentModelFailure.incompleteStream("模型接口 SSE 流未正常结束")
+        if (!sawStreamData) throw AgentModelFailure.incompleteStream("Model API returned no SSE data chunk")
+        if (!sawDone && finishReason == null) throw AgentModelFailure.incompleteStream("Model API SSE stream did not end normally")
 
         finishActiveVisibleBlock()
         resolveToolCallIds(toolCalls.values, existingToolCallIds)
@@ -402,11 +402,11 @@ internal object OpenAiChatCompletionsProvider : AgentProviderClient {
             errorType?.let { "type=$it" },
         ).joinToString(", ")
         val message = streamError.optString("message")
-            .ifBlank { "未提供错误信息" }
+            .ifBlank { "No error information provided" }
             .compactError()
         throw AgentModelFailure.stream(
             streamError,
-            "模型接口 SSE 返回错误${context.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()}：$message",
+            "Model API SSE returned an error${context.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()}：$message",
         )
     }
 

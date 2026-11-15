@@ -28,9 +28,9 @@ internal sealed interface AgentEvent {
             PHASE_STARTED -> RUNNING_DETAIL
             PHASE_COMPLETED -> {
                 val archiveTag = archiveId.takeIf { it.isNotBlank() }?.let { "（$it）" }.orEmpty()
-                "上下文已压缩$archiveTag，用量将在下一次模型响应后更新。"
+                "Context compacted$archiveTag. Usage will update after the next model response."
             }
-            else -> "上下文压缩失败，原始上下文已保留。"
+            else -> "Context compaction failed. The original context was kept."
         }
         override fun toLogLine(): String = buildString {
             append("context_compaction phase=").append(phase.toSafeLogToken())
@@ -50,7 +50,7 @@ internal sealed interface AgentEvent {
             const val PHASE_STARTED = "started"
             const val PHASE_COMPLETED = "completed"
             /** 进行中的展示文案同时是 UI 判定运行态的依据，改动必须与 UI 侧同步。 */
-            const val RUNNING_DETAIL = "正在压缩上下文…"
+            const val RUNNING_DETAIL = "Compacting context…"
         }
     }
 
@@ -80,7 +80,7 @@ internal sealed interface AgentEvent {
         val reasonCode: String,
     ) : AgentEvent {
         val displayMessage: String
-            get() = "模型请求暂时中断，${delayMs / 1000} 秒后重试（$attempt/$maxAttempts）；此前工具结果已保留。"
+            get() = "Model request interrupted; retrying in ${delayMs / 1000} seconds ($attempt/$maxAttempts); previous tool results were kept."
 
         override fun toLogLine(): String =
             "model_retry_scheduled round=$round, attempt=$attempt, delay_ms=$delayMs, code=${reasonCode.toSafeLogToken()}"

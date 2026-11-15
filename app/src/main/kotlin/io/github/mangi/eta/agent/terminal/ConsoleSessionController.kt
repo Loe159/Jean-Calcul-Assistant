@@ -64,18 +64,18 @@ internal class ConsoleSessionController(
         synchronized(sessionLock) {
             pruneDeadSessionsLocked()
             if (sessions.size >= MAX_SESSIONS) {
-                return OpenResult.Failed("SESSION_LIMIT_REACHED", "会话数量已达上限")
+                return OpenResult.Failed("SESSION_LIMIT_REACHED", "Session limit reached")
             }
             val environmentRootfsPath = rootfsPath(environment)
             val identity = identity ?: if (environment.isLinux) TerminalRuntime.defaultIdentity(environment, environmentRootfsPath) else if (rootAvailable()) "root" else "user"
-            if (identity !in setOf("root", "user")) return OpenResult.Failed("INVALID_ARGUMENT", "执行身份无效")
-            if (environment.isLinux && identity == "user" && LinuxEnvironmentPaths.backendOf(environmentRootfsPath) != LinuxExecutionBackend.PROOT) return OpenResult.Failed("LINUX_ENVIRONMENT_REQUIRES_ROOT", "所选 Linux 环境需要 Root")
-            if (environment.isLinux && identity == "root" && LinuxEnvironmentPaths.backendOf(environmentRootfsPath) == LinuxExecutionBackend.PROOT) return OpenResult.Failed("INVALID_IDENTITY", "免 Root Linux 使用普通应用身份")
-            if (identity == "root" && !rootAvailable()) return OpenResult.Failed("ROOT_REQUIRED", "Root 授权不可用")
+            if (identity !in setOf("root", "user")) return OpenResult.Failed("INVALID_ARGUMENT", "Invalid execution identity")
+            if (environment.isLinux && identity == "user" && LinuxEnvironmentPaths.backendOf(environmentRootfsPath) != LinuxExecutionBackend.PROOT) return OpenResult.Failed("LINUX_ENVIRONMENT_REQUIRES_ROOT", "Selected Linux environment requires root")
+            if (environment.isLinux && identity == "root" && LinuxEnvironmentPaths.backendOf(environmentRootfsPath) == LinuxExecutionBackend.PROOT) return OpenResult.Failed("INVALID_IDENTITY", "Rootless Linux uses the app identity")
+            if (identity == "root" && !rootAvailable()) return OpenResult.Failed("ROOT_REQUIRED", "Root access unavailable")
             if (environment.isLinux &&
                 !LinuxEnvironmentPaths.rootfsReady(environmentRootfsPath)
             ) {
-                return OpenResult.Failed("LINUX_ENVIRONMENT_NOT_READY", "Linux 工具环境尚未安装")
+                return OpenResult.Failed("LINUX_ENVIRONMENT_NOT_READY", "Linux environment is not installed")
             }
             val process = processSupervisor.startShellProcess(
                 identity = identity,
@@ -91,7 +91,7 @@ internal class ConsoleSessionController(
                 pty = true,
                 ptyCols = cols,
                 ptyRows = rows,
-            ) ?: return OpenResult.Failed("PROCESS_START_FAILED", "无法启动控制台进程，请检查所选环境和终端组件")
+            ) ?: return OpenResult.Failed("PROCESS_START_FAILED", "Could not start console process. Check the environment and terminal components.")
 
             val sessionId = "c${++nextSessionNumber}"
             val newSession = PtySession(environment, process, identity)

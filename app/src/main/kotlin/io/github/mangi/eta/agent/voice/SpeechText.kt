@@ -24,14 +24,14 @@ internal object SpeechText {
                     val marker = items.firstOrNull()?.children?.firstOrNull { it.type == MarkdownTokenTypes.LIST_NUMBER }
                     val start = marker?.let { markdown.substring(it.startOffset, it.endOffset).trim().dropLast(1).toIntOrNull() } ?: 1
                     for ((index, item) in items.withIndex()) {
-                        append("\n第 ${start + index} 项：")
+                        append("\nItem ${start + index}: ")
                         appendNode(item)
                     }
                     append('\n')
                 }
                 GFMTokenTypes.CHECK_BOX -> {
                     val marker = markdown.substring(node.startOffset, node.endOffset)
-                    append(if ('x' in marker || 'X' in marker) "已完成：" else "未完成：")
+                    append(if ('x' in marker || 'X' in marker) "Completed: " else "Incomplete: ")
                 }
                 MarkdownElementTypes.IMAGE -> append(' ')
                 MarkdownElementTypes.LINK_DEFINITION,

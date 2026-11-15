@@ -76,10 +76,10 @@ private suspend fun recognizeQwen(
                     }
                     "session.finished" -> return@coroutineScope transcript.result()
                     "error", "conversation.item.input_audio_transcription.failed" ->
-                        throw SpeechFailure(SpeechErrorCode.SERVER, "千问识别失败，请检查模型权限和配置")
+                        throw SpeechFailure(SpeechErrorCode.SERVER, "Qwen recognition failed. Check model permissions and settings.")
                 }
             }
-            throw SpeechFailure(SpeechErrorCode.PROTOCOL, "千问识别连接提前结束")
+            throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Qwen recognition connection ended early")
         } finally { sender?.cancel() }
     }
 }
@@ -125,7 +125,7 @@ private suspend fun recognizeDoubao(
                 }
                 if (message.final) return@coroutineScope text.trim()
             }
-            throw SpeechFailure(SpeechErrorCode.PROTOCOL, "豆包识别连接提前结束")
+            throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Doubao recognition connection ended early")
         } finally { sender.cancel() }
     }
 }

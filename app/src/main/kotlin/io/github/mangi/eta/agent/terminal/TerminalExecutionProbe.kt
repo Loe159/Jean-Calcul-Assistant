@@ -58,7 +58,7 @@ internal object TerminalExecutionProbe {
             .put("shell_provider", provider)
             .put("shell_executable", executable ?: JSONObject.NULL)
             .put("available_commands", JSONArray(entries.filter { it.startsWith("command=") }.map { it.substringAfter('=') }.filter { it in commands }))
-            .put("capability_scope", "当前 Shell 的命令解析结果；不表示具备服务访问权限，也不替代执行前授权检查")
+            .put("capability_scope", "Command resolution in the current shell; this does not grant service access or replace authorization checks before execution")
         return Output(
             text = text.take(start) + text.substring(endExclusive),
             runtime = runtime,

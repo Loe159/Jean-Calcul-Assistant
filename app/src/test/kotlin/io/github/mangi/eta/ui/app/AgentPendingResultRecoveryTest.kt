@@ -214,7 +214,7 @@ class AgentPendingResultRecoveryTest {
             status = ToolActivityStatusUi.Success,
             argumentsSummary = "执行命令 · Android · root",
             command = "uptime",
-            resultSummary = "Done",
+            resultSummary = "完成",
         )
         val recovered = AgentPendingResultRecovery.apply(
             state = AgentChatUiState(

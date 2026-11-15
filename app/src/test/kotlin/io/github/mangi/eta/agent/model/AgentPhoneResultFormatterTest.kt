@@ -9,13 +9,13 @@ import org.junit.Test
 class AgentPhoneResultFormatterTest {
     @Test
     fun alarmCreationRequiresVerificationAndIntentOnlyMeansSubmitted() {
-        assertEquals("已创建闹钟 · 07:30", summarize("set_alarm", """
+        assertEquals("Alarm created · 07:30", summarize("set_alarm", """
             {"ok":true,"verified":true,"alarm":{"hour":7,"minute":30,"label":"private-label"}}
         """))
-        assertEquals("已提交闹钟请求 · 07:30", summarize("set_alarm", """
+        assertEquals("Alarm request submitted · 07:30", summarize("set_alarm", """
             {"ok":true,"status":"dispatched","verified":false,"hour":7,"minute":30}
         """))
-        assertEquals("已提交计时请求 · 1 小时 1 分钟 1 秒", summarize("set_timer", """
+        assertEquals("Timer request submitted · 1 hours 1 minutes 1 seconds", summarize("set_timer", """
             {"ok":true,"status":"dispatched","verified":false,"duration_seconds":3661}
         """))
         assertNull(summarize("set_alarm", """{"ok":true,"verified":false}"""))
@@ -35,10 +35,10 @@ class AgentPhoneResultFormatterTest {
             """))
         }
         assertNull(summarize("set_alarm_enabled", """{"ok":true,"verified":true,"alarm":{}}"""))
-        assertEquals("闹钟保持关闭 · 07:30", summarize("set_alarm_enabled", """
+        assertEquals("Alarm remains Off · 07:30", summarize("set_alarm_enabled", """
             {"ok":true,"verified":true,"before":{"enabled":false},"alarm":{"enabled":false,"hour":7,"minute":30}}
         """))
-        assertEquals("闹钟时间：07:00 → 07:30 · 未启用", summarize("update_alarm_time", """
+        assertEquals("Alarm time: 07:00 → 07:30 · disabled", summarize("update_alarm_time", """
             {"ok":true,"verified":true,"before":{"hour":7,"minute":0},"alarm":{"hour":7,"minute":30,"enabled":false}}
         """))
     }
@@ -50,7 +50,7 @@ class AgentPhoneResultFormatterTest {
              "before":{"title":"private-old","description":"private-body","eventLocation":"private-place","dtstart":"1","dtend":"2","reminders":[{"minutes":"5","method":"1"}]},
              "event":{"title":"private-new","description":"private-body-new","eventLocation":"private-place-new","dtstart":"3","dtend":"4","reminders":[{"minutes":"10","method":"1"}]}}
         """)
-        assertEquals("已更新日程 · 标题、时间、地点、说明、提醒", result)
+        assertEquals("Event updated · Title、Time、Location、Description、Reminder", result)
         assertFalse(result!!.contains("private"))
         assertFalse(result.contains('\n'))
         assertEquals("Event unchanged", summarize("update_calendar_event", """
@@ -66,7 +66,7 @@ class AgentPhoneResultFormatterTest {
 
     @Test
     fun calendarCountsAreOnlyUsedForCreationAndNotesAreRecycled() {
-        assertEquals("已创建 3 个日程", summarize("create_calendar_events", """{"ok":true,"verified":true,"count":3}"""))
+        assertEquals("Created 3 events", summarize("create_calendar_events", """{"ok":true,"verified":true,"count":3}"""))
         assertEquals("Event deleted", summarize("delete_calendar_event", """{"ok":true,"verified":true,"affected":8}"""))
         assertEquals("Note moved to trash", summarize("delete_note", """
             {"ok":true,"verified":true,"mode":"recycle","affected":1,"before":{"title":"private-title","content":"private-body"}}
@@ -74,13 +74,13 @@ class AgentPhoneResultFormatterTest {
         assertEquals("Note created", summarize("create_note", """
             {"ok":true,"verified":true,"note":{"title":"private-title","content":"private-body"}}
         """))
-        assertEquals("找到 2 个闹钟 · 还有更多", summarize("list_alarms", """
+        assertEquals("Found 2 alarms · more available", summarize("list_alarms", """
             {"ok":true,"items":[{"label":"private-one"},{"label":"private-two"}],"has_more":true}
         """))
         assertEquals("No alarms", summarize("list_alarms", """{"ok":true,"items":[]}"""))
-        assertEquals("找到 1 个可用日历", summarize("list_calendars", """{"ok":true,"items":[{"id":"1"}]}"""))
+        assertEquals("Found 1 available calendars", summarize("list_calendars", """{"ok":true,"items":[{"id":"1"}]}"""))
         assertEquals("No available calendars", summarize("list_calendars", """{"ok":true,"items":[]}"""))
-        assertEquals("找到 1 个计时器", summarize("list_active_timers", """{"ok":true,"items":[{"id":"1"}]}"""))
+        assertEquals("Found 1 timers", summarize("list_active_timers", """{"ok":true,"items":[{"id":"1"}]}"""))
         assertEquals("No active timers", summarize("list_active_timers", """{"ok":true,"items":[]}"""))
     }
 

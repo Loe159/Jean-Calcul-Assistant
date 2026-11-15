@@ -18,7 +18,7 @@ internal class CharacterMemoryTools(
     private val enabled: () -> Boolean,
 ) {
     fun execute(call: AgentModelClient.ToolCall): AgentModelClient.ToolResult {
-        if (!enabled()) return result(error("MEMORY_DISABLED", "记忆已在设置中关闭"))
+        if (!enabled()) return result(error("MEMORY_DISABLED", "Memory is disabled in settings"))
         return try {
             val args = JSONObject(call.argumentsJson)
             val value = when (call.name) {

@@ -19,7 +19,7 @@ class SpeechTextTest {
             完成。
         """.trimIndent())
         assertTrue(text.contains("操作说明"))
-        assertTrue(text.contains("Settings"))
+        assertTrue(text.contains("设置"))
         assertTrue(text.contains("帮助"))
         assertTrue(text.contains("user_name"))
         assertFalse(text.contains("请查看正文"))
@@ -131,7 +131,7 @@ class SpeechTextTest {
             [疑难解答]: https://example.invalid/faq
         """.trimIndent())
 
-        for (label in listOf("帮助中心", "安装说明", "疑难解答", "Advanced settings")) {
+        for (label in listOf("帮助中心", "安装说明", "疑难解答", "高级设置")) {
             assertTrue(label, text.contains(label))
         }
         assertFalse(text.contains("example.invalid"))

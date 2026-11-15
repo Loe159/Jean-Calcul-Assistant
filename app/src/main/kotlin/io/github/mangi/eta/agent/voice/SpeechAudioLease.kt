@@ -54,7 +54,7 @@ internal class SpeechAudioLease(
         if (current !== this) throw CancellationException("Speech owner replaced")
         beforeFocus()
         focused = manager.requestAudioFocus(focus) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-        if (!focused) throw SpeechFailure(SpeechErrorCode.AUDIO, "当前无法获得音频焦点，请稍后重试")
+        if (!focused) throw SpeechFailure(SpeechErrorCode.AUDIO, "Could not obtain audio focus. Try again later.")
     }
 
     override fun close() {

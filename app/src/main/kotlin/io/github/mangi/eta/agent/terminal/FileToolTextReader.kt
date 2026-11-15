@@ -14,7 +14,7 @@ internal data class FileToolTextChunk(
 internal class FileToolTextReader(private val backend: FileToolBackend) {
     fun read(stat: FileToolStat, offset: Long, maxBytes: Int, maxChars: Int = 16_000): FileToolTextChunk {
         val bytes = backend.readBytes(stat.path, offset, maxBytes.coerceIn(1, 16_000))
-        if (bytes.any { it == 0.toByte() }) throw FileToolException("BINARY_FILE", "文件包含二进制内容，请使用文件导出或终端工具处理")
+        if (bytes.any { it == 0.toByte() }) throw FileToolException("BINARY_FILE", "File contains binary data. Use file export or terminal tools.")
         val eof = offset + bytes.size >= stat.sizeBytes
         val input = ByteBuffer.wrap(bytes)
         val output = CharBuffer.allocate(maxChars.coerceIn(2, 16_000))
@@ -22,11 +22,11 @@ internal class FileToolTextReader(private val backend: FileToolBackend) {
             .onMalformedInput(CodingErrorAction.REPORT)
             .onUnmappableCharacter(CodingErrorAction.REPORT)
         val result = decoder.decode(input, output, eof)
-        if (result.isError) throw FileToolException("NOT_UTF8_TEXT", "内容不是有效 UTF-8 文本，或字节游标位于字符中间")
+        if (result.isError) throw FileToolException("NOT_UTF8_TEXT", "Content is not valid UTF-8 or the byte cursor is inside a character")
         if (bytes.isNotEmpty() && input.position() == 0) {
-            throw FileToolException("READ_LIMIT_TOO_SMALL", "字节上限不足以读取一个完整字符，请使用至少 4 字节")
+            throw FileToolException("READ_LIMIT_TOO_SMALL", "Byte limit cannot fit a complete character. Use at least 4 bytes.")
         }
-        if (bytes.isEmpty() && offset < stat.sizeBytes) throw FileToolException("FILE_CHANGED", "文件在读取期间已变化")
+        if (bytes.isEmpty() && offset < stat.sizeBytes) throw FileToolException("FILE_CHANGED", "File changed while being read")
         output.flip()
         return FileToolTextChunk(output.toString(), input.position(), eof && input.position() == bytes.size)
     }

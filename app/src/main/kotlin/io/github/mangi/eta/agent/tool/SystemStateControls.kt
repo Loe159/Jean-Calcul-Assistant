@@ -51,9 +51,9 @@ internal class SystemStateControls(
     fun set(target: String, enabled: Boolean): JSONObject {
         val command =
             command(target, enabled, DeviceToolContract.appUserId(context))
-                ?: return DeviceToolContract.failure("INVALID_ARGUMENT", "不支持的系统开关")
+                ?: return DeviceToolContract.failure("INVALID_ARGUMENT", "Unsupported system switch")
         if (target == "nfc" && NfcAdapter.getDefaultAdapter(context) == null)
-            return DeviceToolContract.failure("DEVICE_UNSUPPORTED", "设备不支持 NFC")
+            return DeviceToolContract.failure("DEVICE_UNSUPPORTED", "Device does not support NFC")
         val before = read(target)
         if (before == enabled)
             return DeviceMutationResult.observed(

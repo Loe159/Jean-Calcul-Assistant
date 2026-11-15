@@ -115,14 +115,14 @@ internal class AgentMemoryStore(
         } catch (throwable: IOException) {
             throw AgentMemoryException(
                 code = "MEMORY_READ_FAILED",
-                message = "无法读取记忆文件",
+                message = "Could not read memory file",
                 cause = throwable,
             )
         }
         if (bytes.size > MAX_FILE_BYTES) {
             throw AgentMemoryException(
                 code = "MEMORY_TOO_LARGE",
-                message = "记忆文件超过 1 MiB 安全上限",
+                message = "Memory file exceeds the 1 MiB safety limit",
             )
         }
         val content = bytes.toString(Charsets.UTF_8)
@@ -134,13 +134,13 @@ internal class AgentMemoryStore(
         if (bytes.size > MAX_FILE_BYTES) {
             throw AgentMemoryException(
                 code = "MEMORY_TOO_LARGE",
-                message = "记忆文件不能超过 1 MiB UTF-8 字节",
+                message = "Memory file must not exceed 1 MiB of UTF-8 data",
             )
         }
         if (!memoryDir.exists() && !memoryDir.mkdirs() && !memoryDir.isDirectory) {
             throw AgentMemoryException(
                 code = "MEMORY_WRITE_FAILED",
-                message = "无法创建记忆目录",
+                message = "Could not create memory directory",
             )
         }
         val output = try {
@@ -148,7 +148,7 @@ internal class AgentMemoryStore(
         } catch (throwable: IOException) {
             throw AgentMemoryException(
                 code = "MEMORY_WRITE_FAILED",
-                message = "无法开始写入记忆文件",
+                message = "Could not start writing memory file",
                 cause = throwable,
             )
         }
@@ -159,7 +159,7 @@ internal class AgentMemoryStore(
             atomicFile.failWrite(output)
             throw AgentMemoryException(
                 code = "MEMORY_WRITE_FAILED",
-                message = "无法保存记忆文件",
+                message = "Could not save memory file",
                 cause = throwable,
             )
         }
@@ -177,7 +177,7 @@ internal class AgentMemoryStore(
         ) {
             throw AgentMemoryException(
                 code = "MEMORY_RANGE_INVALID",
-                message = "替换行范围无效；请重新读取记忆后再试",
+                message = "Invalid replacement line range. Read memory again and retry.",
             )
         }
         val replacement = mutation.content.memoryLines()

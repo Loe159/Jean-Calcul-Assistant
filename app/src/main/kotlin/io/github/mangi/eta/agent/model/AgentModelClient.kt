@@ -131,8 +131,8 @@ internal object AgentModelClient {
         )
         if (rewriteReply) {
             messages.put(messages.length() - 1, AgentConversationCodec.userTextMessage(
-                "请只改写下面这条角色回复，保持已有事实与实际工具结果，以当前角色设定改善表达。" +
-                    "这不是重新执行任务；不得调用任何工具、重读设备、更新记忆或编造缺失证据。只输出替代正文。\n" +
+                "Rewrite only the following character reply. Preserve facts and actual tool results, improving expression according to the current character settings." +
+                    "This is not task re-execution. Do not call tools, reread the device, update memory or invent missing evidence. Output only the replacement text.\n" +
                     "<reply_to_rewrite>\n$prompt\n</reply_to_rewrite>",
             ))
         } else if (!compactOnly) {
@@ -225,7 +225,7 @@ internal object AgentModelClient {
                 } else {
                     ToolResult(
                         JSONObject().put("ok", false).put("code", unavailable)
-                            .put("message", "该工具当前不可用（$unavailable），本次未执行").toString(),
+                            .put("message", "This tool is currently unavailable ($unavailable); no action performed").toString(),
                     )
                 }
             },
@@ -269,24 +269,24 @@ internal object AgentModelClient {
         (0 until tools.length()).mapNotNullTo(mutableSetOf()) { toolName(tools.getJSONObject(it)) }
 
     private fun ModelConfig.validate() {
-        require(baseUrl.isNotBlank()) { "请先配置 API 地址" }
+        require(baseUrl.isNotBlank()) { "Configure the API URL first" }
         when {
             authMode == ProviderAuthModes.API_KEY -> require(apiKey.isNotBlank() || providerSourceType in setOf("", ProviderSourceTypes.CUSTOM)) { "Veuillez configurer la clé API." }
             ProviderAuthModes.isOAuth(authMode) -> {
-                require(providerId.isNotBlank()) { "账号登录缺少服务商标识，请重新选择服务商" }
-                require(apiKey.isEmpty()) { "账号登录配置不能包含 API Key" }
+                require(providerId.isNotBlank()) { "Account sign-in is missing a provider ID. Select the provider again." }
+                require(apiKey.isEmpty()) { "Account sign-in configuration cannot include an API key" }
             }
-            else -> error("不支持的服务商认证方式")
+            else -> error("Unsupported provider authentication method")
         }
-        require(model.isNotBlank()) { "请先配置模型名" }
+        require(model.isNotBlank()) { "Configure the model name first" }
         require(
             reasoningCapabilities?.mandatory != true ||
                 effectiveReasoningEffort != ReasoningEffort.OFF
-        ) { "当前模型强制启用思考，不能选择 Off 或禁用思考权限" }
+        ) { "This model requires reasoning. You cannot select Off or disable reasoning permission." }
         if (extraBodyJson.isNotBlank()) {
             runCatching { JSONObject(extraBodyJson) }
                 .getOrElse { throwable ->
-                    error("额外请求体 JSON 无效：${throwable.message ?: throwable.javaClass.simpleName}")
+                    error("Invalid extra request body JSON: ${throwable.message ?: throwable.javaClass.simpleName}")
                 }
         }
     }

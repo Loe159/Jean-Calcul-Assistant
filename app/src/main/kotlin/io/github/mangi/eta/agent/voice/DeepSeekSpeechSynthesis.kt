@@ -72,7 +72,7 @@ internal suspend fun streamDeepSeekSpeech(
     val totalBillingChars = chunks.sumOf(::deepSeekBillingCharCount)
     val totalBytes = chunks.sumOf { it.toByteArray(Charsets.UTF_8).size }
     if (totalBillingChars > MAX_WS_BILLING_CHARS || totalBytes > MAX_WS_UTF8_BYTES) {
-        throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "正文超过 DeepSeek 流式会话字符上限")
+        throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Text exceeds the DeepSeek streaming session character limit")
     }
     SpeechSocket(deepSeekTtsStreamRequest(config, key), typed = true).use { socket ->
         socket.awaitReady()
@@ -87,7 +87,7 @@ internal suspend fun streamDeepSeekSpeech(
                 if (frame.bytes.isNotEmpty()) {
                     audioBytes += frame.bytes.size
                     if (audioBytes > MAX_DEEPSEEK_STREAM_AUDIO_BYTES) {
-                        throw SpeechFailure(SpeechErrorCode.PROTOCOL, "语音音频格式或长度无效")
+                        throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Invalid speech audio format or length")
                     }
                     pcm.write(frame.bytes)
                 }
@@ -98,27 +98,27 @@ internal suspend fun streamDeepSeekSpeech(
                 when (val code = message.optString("code")) {
                     "success" -> {
                         if (audioBytes == 0L) {
-                            throw SpeechFailure(SpeechErrorCode.PROTOCOL, "语音音频不完整，请重试")
+                            throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Incomplete speech audio. Try again.")
                         }
                         pcm.end()
                         return@coroutineScope
                     }
                     "content_filter" -> throw SpeechFailure(
                         SpeechErrorCode.SERVER,
-                        "DeepSeek 未能合成这段文本，请调整后重试",
+                        "DeepSeek could not synthesize this text. Adjust it and retry.",
                     )
                     "invalid_input" -> throw SpeechFailure(
                         SpeechErrorCode.CONFIGURATION,
-                        "DeepSeek 语音合成参数或文本无效",
+                        "Invalid DeepSeek speech synthesis parameters or text",
                     )
                     else -> throw SpeechFailure(
                         SpeechErrorCode.SERVER,
-                        "DeepSeek 语音合成失败（${code.ifBlank { "unknown" }}）",
+                        "DeepSeek speech synthesis failed (${code.ifBlank { "unknown" }}）",
                     )
                 }
             }
         }
-        throw SpeechFailure(SpeechErrorCode.PROTOCOL, "DeepSeek 语音合成连接提前结束")
+        throw SpeechFailure(SpeechErrorCode.PROTOCOL, "DeepSeek speech synthesis connection ended early")
     }
 }
 

@@ -76,10 +76,10 @@ internal class SpeechOssUpload(
 
     private fun remember(entry: String) = synchronized(LOCK) {
         val pending = preferences.getStringSet("pending", emptySet())!!.toMutableSet()
-        if (pending.size >= 100) throw SpeechFailure(SpeechErrorCode.STORAGE, "待清理录音较多，请检查 OSS 删除权限后重启 Jean-Calcul")
+        if (pending.size >= 100) throw SpeechFailure(SpeechErrorCode.STORAGE, "Many recordings await cleanup. Check OSS delete permissions and restart Jean-Calcul.")
         pending += entry
         if (!preferences.edit().putStringSet("pending", pending).commit()) {
-            throw SpeechFailure(SpeechErrorCode.STORAGE, "无法记录录音清理信息")
+            throw SpeechFailure(SpeechErrorCode.STORAGE, "Could not record audio cleanup information")
         }
         active += entry
     }

@@ -111,7 +111,7 @@ class AgentConversationCodecTest {
 
     @Test
     fun responsesOutputItemsStayInMemoryAndNeverEnterStableTranscript() {
-        val source = JSONObject().put("role", "assistant").put("content", "Done")
+        val source = JSONObject().put("role", "assistant").put("content", "完成")
         ResponsesEphemeralState.attachOutputItems(
             source,
             JSONArray().put(

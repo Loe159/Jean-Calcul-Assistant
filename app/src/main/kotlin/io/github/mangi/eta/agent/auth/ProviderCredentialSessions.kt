@@ -75,7 +75,7 @@ internal class ProviderCredentialSessions(
             if (!rejected && !expiresSoon && credential.expiresAt > now()) return credential.accessToken
             if (credential.refreshToken.isBlank()) {
                 invalidate(providerId, session, generation)
-                throw ProviderAuthException("oauth_session_expired", "登录已失效，请重新登录")
+                throw ProviderAuthException("oauth_session_expired", "Sign-in expired. Sign in again.")
             }
             val refreshed = try {
                 oauth.refresh(credential, controller)
@@ -129,9 +129,9 @@ internal class ProviderCredentialSessions(
 
     private fun requireCredential(credential: ProviderCredential?, authMode: String): ProviderCredential {
         if (credential == null || credential.subject == null || credential.authMode != authMode || credential.accessToken.isBlank()) {
-            throw ProviderAuthException("oauth_login_required", "请先登录此服务商账号")
+            throw ProviderAuthException("oauth_login_required", "Sign in to this provider first")
         }
-        if (!credential.planEnabled) throw ProviderAuthException("oauth_plan_permission_required", "账号凭据不能用于当前订阅连接，请重新登录")
+        if (!credential.planEnabled) throw ProviderAuthException("oauth_plan_permission_required", "Credentials cannot be used with this subscription connection. Sign in again.")
         return credential
     }
 
@@ -141,7 +141,7 @@ internal class ProviderCredentialSessions(
     }
 
     private fun requireGeneration(current: Long, expected: Long) {
-        if (current != expected) throw ProviderAuthException("oauth_session_changed", "登录状态已变更，请重试")
+        if (current != expected) throw ProviderAuthException("oauth_session_changed", "Sign-in session changed. Try again.")
     }
 
     private companion object { const val REFRESH_MARGIN_MS = 60_000L }

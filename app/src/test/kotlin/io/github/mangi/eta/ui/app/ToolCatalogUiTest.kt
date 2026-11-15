@@ -53,8 +53,8 @@ class ToolCatalogUiTest {
 
     @Test
     fun hostedSearchNamesAndDynamicMcpNamesUseTheirToolIcons() {
-        assertEquals(Icons.Rounded.TravelExplore, iconForTool("Web search"))
-        assertEquals(iconForTool("Web search"), iconForTool("web_search"))
+        assertEquals(Icons.Rounded.TravelExplore, iconForTool("网页搜索"))
+        assertEquals(iconForTool("网页搜索"), iconForTool("web_search"))
         assertEquals(Icons.Rounded.Language, iconForTool("browser_use"))
         assertEquals(Icons.AutoMirrored.Rounded.Article, iconForTool("fetch_url"))
         assertEquals(Icons.Rounded.Extension, iconForTool("mcp_server_search_012345"))

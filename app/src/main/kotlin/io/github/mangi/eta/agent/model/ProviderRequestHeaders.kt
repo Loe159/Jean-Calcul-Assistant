@@ -23,7 +23,7 @@ internal object ProviderRequestHeaders {
         val profile = ProviderConnectionProfile.forAuthMode(authMode)
         if (profile != null) {
             require(customHeaders.none { isSubscriptionManagedHeader(it.name) }) {
-                "订阅连接的认证、Cookie 与路由请求头由 Jean-Calcul 管理，不能自定义覆盖"
+                "Jean-Calcul manages subscription authentication, Cookie and routing headers. Custom overrides are not allowed."
             }
         }
         builder.set("User-Agent", "Jean-Calcul")

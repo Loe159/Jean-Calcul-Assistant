@@ -32,7 +32,7 @@ internal class SpeechTranscriptRefiner(
         val input = transcript.trim()
         if (input.length < MIN_CHARS || input.length > MAX_CHARS) return transcript
         val config = loadConfig()?.let(::lightweight)
-            ?: throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "请先配置对话模型")
+            ?: throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Configure a conversation model first")
         val output = withTimeout(TIMEOUT_MS) { request(config, input) }
         return output.takeIf { plausible(input, it) } ?: transcript
     }
@@ -50,11 +50,11 @@ internal class SpeechTranscriptRefiner(
             ) { event ->
                 if (event is ProviderEvent.HostedToolStarted ||
                     event is ProviderEvent.BlockStart && event.kind == AssistantBlockKind.TOOL_CALL) {
-                    throw SpeechFailure(SpeechErrorCode.PROTOCOL, "纠错模型返回了工具调用")
+                    throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Proofreading model returned a tool call")
                 }
             }
             if (response.stopReason != AssistantStopReason.END_TURN) {
-                throw SpeechFailure(SpeechErrorCode.PROTOCOL, "纠错模型未完整返回")
+                throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Proofreading model returned an incomplete result")
             }
             response.assistantMessage.optString("content").trim()
         }
