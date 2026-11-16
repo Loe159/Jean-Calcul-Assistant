@@ -147,7 +147,9 @@ internal fun NowBriefScreen(
         item(key = "date") {
             BriefReveal("date", visible, openCount, 0, visited) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 0.dp)
+                        .padding(bottom = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     CouiText(
@@ -246,7 +248,7 @@ internal fun NowBriefScreen(
         item(key = "notifications:recent-title") {
             BriefReveal("recent", visible, openCount, 3, visited) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 14.dp, start = 4.dp, end = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 14.dp, start = 18.dp, end = 18.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 BriefHeading("Activité récente", color = colors.title, size = 21)
