@@ -13,7 +13,6 @@ import java.nio.LongBuffer
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
-import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -31,8 +30,8 @@ class NotificationOnnxAndroidPocTest {
     fun pinnedOnnxRunsOnAndroidWithReferenceInputs() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
-        val model = File(context.getExternalFilesDir(null), "notification-model/model_quantized.onnx")
-        assumeTrue("Model is not installed: $model", model.exists())
+        val model = File(context.filesDir, "notification-model/model_quantized.onnx")
+        assertTrue("Model is missing from app-private files: $model", model.isFile)
         val fixtures = JSONObject(
             instrumentation.context.assets.open("notification_nli_reference.json")
                 .bufferedReader().use { it.readText() },
