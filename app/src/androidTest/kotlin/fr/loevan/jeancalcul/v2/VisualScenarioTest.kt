@@ -161,6 +161,40 @@ class VisualScenarioTest {
                         assertTrue("Brief stays accessible on second opening",
                             device.hasObject(By.text("Votre tranquillité")))
                     }
+                    "brief_style_a", "brief_style_b", "brief_style_c" -> {
+                        device.findObject(By.desc("Ouvrir mon briefing")).click()
+                        assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
+                        val label = when (scenario) {
+                            "brief_style_a" -> "A · ETA fidèle"
+                            "brief_style_b" -> "B · ETA Glass"
+                            else -> "C · ETA Dashboard"
+                        }
+                        val choice = device.wait(Until.findObject(By.desc("Style $label")), 10000)
+                            ?: throw AssertionError("Variant missing: $label")
+                        choice.click()
+                        assertTrue(device.hasObject(By.text("Votre tranquillité")))
+                    }
+                    "brief_styles" -> {
+                        device.findObject(By.desc("Ouvrir mon briefing")).click()
+                        assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
+                        for (option in listOf(
+                            "Style A · ETA fidèle" to "Sombre, sobre et proche des panneaux ETA",
+                            "Style B · ETA Glass" to "Reflets fins et profondeur, lisibilité renforcée",
+                            "Style C · ETA Dashboard" to "Contraste élevé, lecture rapide et dense",
+                        )) {
+                            val choice = device.wait(Until.findObject(By.desc(option.first)), 10000)
+                                ?: throw AssertionError("Style control missing: ${option.first}")
+                            choice.click()
+                            assertTrue("Variant must update without navigating",
+                                device.wait(Until.hasObject(By.text(option.second)), 6000))
+                            assertTrue(device.hasObject(By.text("Votre tranquillité")))
+                        }
+                        device.findObject(By.desc("Style B · ETA Glass")).click()
+                        device.findObject(By.desc("Fermer le briefing")).click()
+                        device.findObject(By.desc("Ouvrir mon briefing")).click()
+                        assertTrue(device.wait(Until.hasObject(
+                            By.text("Reflets fins et profondeur, lisibilité renforcée")), 12000))
+                    }
                     "menu" -> {
                         assertTrue("New conversation is a direct toolbar action",
                             device.hasObject(By.desc(context.getString(R.string.action_new_conversation))))

@@ -15,12 +15,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,6 +42,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CalendarMonth
@@ -102,13 +107,18 @@ internal fun NowBriefScreen(
     val dark = CouiTheme.isDark
     val colors = CouiPageDefaults.themeColors(dark)
     val context = LocalContext.current
+    var cardStyleName by rememberSaveable {
+        mutableStateOf(NowBriefStyleSettings.read(context).name)
+    }
+    val cardStyle = NowBriefCardStyle.parse(cardStyleName)
+    val palette = nowBriefGlassPalette(cardStyle, dark)
+    val heroPalette = nowBriefGlassPalette(cardStyle, dark, prominent = true)
     val summary by NotificationObservation.summary.collectAsState()
     val dateText = LocalDate.now().format(
         DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH),
     ).replaceFirstChar { it.uppercaseChar() }
-    // Translucent COUI glass: the green/orange ambient lights live BEHIND the cards.
-    val cardSurface = if (dark) Color(0xFF919CB6).copy(alpha = 0.18f)
-        else Color.White.copy(alpha = 0.72f)
+    // The existing ambient wallpaper is intentionally shared by every variant.
+    val cardSurface = palette.metricColor
     val listState = rememberLazyListState()
     val motionAllowed = remember(context, visible) { briefMotionAllowed(context) }
     val visited = BriefMotionSession.revealedCards
@@ -133,8 +143,13 @@ internal fun NowBriefScreen(
     val heroPress = remember { MutableInteractionSource() }
     val pressed by heroPress.collectIsPressedAsState()
     val heroScale by animateFloatAsState(
-        targetValue = if (pressed && motionAllowed) 0.978f else 1f,
+        targetValue = if (pressed && motionAllowed) heroPalette.pressX else 1f,
         animationSpec = spring(dampingRatio = 0.72f, stiffness = 450f), label = "brief-card-press",
+    )
+    val heroStretchY by animateFloatAsState(
+        targetValue = if (pressed && motionAllowed) heroPalette.pressY else 1f,
+        animationSpec = spring(dampingRatio = 0.72f, stiffness = 450f),
+        label = "brief-hero-stretch",
     )
     var heroExpanded by remember { mutableStateOf(false) }
     var categoryExpanded by remember { mutableStateOf(false) }
@@ -170,19 +185,83 @@ internal fun NowBriefScreen(
             }
         }
 
+        item(key = "card-style-switcher") {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+                    .padding(horizontal = 28.dp)
+                    .padding(bottom = 15.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CouiText(
+                        text = "Style des cartes",
+                        kind = CouiTextKind.ItemSummary,
+                        color = colors.title,
+                        modifier = Modifier.weight(1f),
+                    )
+                    CouiText(
+                        text = "APERÇU",
+                        kind = CouiTextKind.GroupFooter,
+                        color = colors.summary,
+                    )
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    NowBriefCardStyle.entries.forEach { option ->
+                        val active = cardStyle == option
+                        val shape = CouiShape(15.dp, 2f)
+                        val selectedFill = if (dark) Color(0xFF3D485B).copy(alpha = 0.93f)
+                            else Color.White.copy(alpha = 0.96f)
+                        val idleFill = if (dark) Color(0xFF202733).copy(alpha = 0.82f)
+                            else Color.White.copy(alpha = 0.62f)
+                        val borderColor = if (active) colors.accent.copy(alpha = 0.78f)
+                            else colors.title.copy(alpha = 0.10f)
+                        Box(
+                            modifier = Modifier.weight(1f)
+                                .heightIn(min = 48.dp)
+                                .clip(shape)
+                                .background(if (active) selectedFill else idleFill, shape)
+                                .border(if (active) 1.5.dp else 0.8.dp, borderColor, shape)
+                                .clickable(role = Role.RadioButton, onClickLabel = "Style ${option.label}") {
+                                    cardStyleName = option.name
+                                    NowBriefStyleSettings.save(context, option)
+                                }
+                                .semantics { selected = active; contentDescription = "Style ${option.label}" },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CouiText(
+                                text = option.label,
+                                kind = CouiTextKind.ItemSummary,
+                                color = if (active) colors.accent else colors.title,
+                                maxLines = 2,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 10.dp),
+                            )
+                        }
+                    }
+                }
+                CouiText(
+                    text = cardStyle.detail,
+                    kind = CouiTextKind.GroupFooter,
+                    color = colors.summary,
+                )
+            }
+        }
+
         item(key = "notifications:hero") {
             BriefReveal("hero", visible, 1, visited) {
             Column(
                 modifier = Modifier.fillMaxWidth()
                     .padding(horizontal = 28.dp).padding(bottom = 14.dp)
-                    .graphicsLayer { scaleX = heroScale; scaleY = heroScale }
+                    .graphicsLayer { scaleX = heroScale; scaleY = heroStretchY }
                     .clickable(
                         interactionSource = heroPress, indication = null,
                         role = Role.Button, onClickLabel = "Détails des notifications filtrées",
                         onClick = { heroExpanded = !heroExpanded },
                     )
-                    .clip(CouiShape(25.dp, 2f))
-                    .briefGlass(CouiShape(25.dp, 2f), dark, prominent = true)
+                    .clip(CouiShape(heroPalette.cornerDp.dp, 2f))
+                    .briefGlass(CouiShape(heroPalette.cornerDp.dp, 2f), heroPalette)
                     .padding(horizontal = 18.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(9.dp),
             ) {
@@ -217,7 +296,7 @@ internal fun NowBriefScreen(
 
         item(key = "notifications:categories") {
             BriefReveal("categories", visible, 2, visited) {
-            BriefCard(onClick = { categoryExpanded = !categoryExpanded }) {
+            BriefCard(style = cardStyle, onClick = { categoryExpanded = !categoryExpanded }) {
                 SectionHeader("Ce qui a été filtré", "", colors.title, colors.summary)
                 Spacer(Modifier.height(11.dp))
                 val classified = summary.filtered
@@ -254,7 +333,7 @@ internal fun NowBriefScreen(
         if (summary.events.isEmpty()) {
             item(key = "notifications:empty") {
                 BriefReveal("empty", visible, 4, visited) {
-                BriefCard {
+                BriefCard(style = cardStyle) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconBubble(Icons.Rounded.NotificationsNone, colors.summary)
                         Spacer(Modifier.width(12.dp))
@@ -269,7 +348,7 @@ internal fun NowBriefScreen(
             items(summary.events.take(5), key = { it.timestampMs.toString() + ":" + it.packageName + ":" + it.outcome.name }) { event ->
                 BriefNotificationArrival(
                     event = event, visible = visible,
-                    cardSurface = cardSurface, title = colors.title,
+                    cardSurface = cardSurface, style = cardStyle, title = colors.title,
                     summary = colors.summary, accent = colors.accent,
                 )
             }
@@ -297,7 +376,7 @@ internal fun NowBriefScreen(
 
         item(key = "future") {
             BriefReveal("future", visible, 6, visited) {
-            BriefCard {
+            BriefCard(style = cardStyle) {
                 SectionHeader("À venir", "", colors.title, colors.summary)
                 Spacer(Modifier.height(11.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -332,6 +411,7 @@ private fun BriefNotificationArrival(
     event: NotificationBriefEvent,
     visible: Boolean,
     cardSurface: Color,
+    style: NowBriefCardStyle,
     title: Color,
     summary: Color,
     accent: Color,
@@ -351,7 +431,7 @@ private fun BriefNotificationArrival(
             ),
         exit = fadeOut(tween(100)),
     ) {
-        BriefEventRow(event, cardSurface, title, summary, accent)
+        BriefEventRow(event, cardSurface, style, title, summary, accent)
     }
 }
 
@@ -363,63 +443,43 @@ private fun BriefHeading(text: String, color: Color, size: Int) {
 }
 
 /**
- * COUI/ETA inspired frosted glass. Background halos are exclusively rendered by
- * BriefAmbientBackground; cards only reflect them through a fine glass rim.
- * Alpha is deliberately below 1 so the moving background is visible.
+ * COUI/ETA glass surfaces: three interchangeable palettes sharing the same
+ * animated background, native COUI squircle and low-cost gradient renderer.
  */
 private fun Modifier.briefGlass(
     shape: Shape,
-    dark: Boolean,
-    prominent: Boolean = false,
-): Modifier {
-    val tint = if (dark) {
-        if (prominent) 0.22f else 0.17f
-    } else {
-        if (prominent) 0.80f else 0.72f
-    }
-    val fill = if (dark) {
-        Brush.linearGradient(
-            listOf(
-                Color(0xFFB2BDD6).copy(alpha = tint),
-                Color(0xFF77819B).copy(alpha = tint * 0.75f),
-                Color(0xFF9296BA).copy(alpha = tint * 0.90f),
-            ),
-        )
-    } else {
-        Brush.linearGradient(
-            listOf(
-                Color.White.copy(alpha = tint),
-                Color(0xFFE9ECF7).copy(alpha = tint * 0.78f),
-            ),
-        )
-    }
-    val rim = Brush.linearGradient(
-        0.00f to Color(0xFF78D9B0).copy(alpha = if (dark) 0.54f else 0.38f),
-        0.23f to Color.White.copy(alpha = if (dark) 0.26f else 0.50f),
-        0.60f to Color.White.copy(alpha = if (dark) 0.14f else 0.30f),
-        1.00f to Color(0xFFFFB487).copy(alpha = if (dark) 0.58f else 0.40f),
-    )
-    return this.background(fill, shape).border(0.9.dp, rim, shape)
-}
+    palette: NowBriefGlassPalette,
+): Modifier = this
+    .background(Brush.linearGradient(palette.stops), shape)
+    .border(palette.rimWidthDp.dp, Brush.linearGradient(palette.rimStops), shape)
 
 @Composable
 private fun BriefCard(
+    style: NowBriefCardStyle,
     onClick: (() -> Unit)? = null,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
     val dark = CouiTheme.isDark
+    val palette = nowBriefGlassPalette(style, dark)
+    val context = LocalContext.current
+    val animate = remember(context) { briefMotionAllowed(context) }
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.986f else 1f,
+    val scaleX by animateFloatAsState(
+        targetValue = if (pressed && animate) palette.pressX else 1f,
         animationSpec = spring(dampingRatio = 0.72f, stiffness = 450f),
-        label = "brief-section-press",
+        label = "brief-section-stretch-x",
     )
-    val shape = CouiShape(22.dp, 2f)
+    val scaleY by animateFloatAsState(
+        targetValue = if (pressed && animate) palette.pressY else 1f,
+        animationSpec = spring(dampingRatio = 0.72f, stiffness = 450f),
+        label = "brief-section-stretch-y",
+    )
+    val shape = CouiShape(palette.cornerDp.dp, 2f)
     Column(
         modifier = Modifier.fillMaxWidth()
             .padding(horizontal = 28.dp).padding(bottom = 15.dp)
-            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .graphicsLayer { this.scaleX = scaleX; this.scaleY = scaleY }
             .clip(shape)
             .then(
                 if (onClick != null) Modifier.clickable(
@@ -428,8 +488,11 @@ private fun BriefCard(
                     onClick = onClick,
                 ) else Modifier,
             )
-            .briefGlass(shape, dark)
-            .padding(horizontal = 17.dp, vertical = 16.dp),
+            .briefGlass(shape, palette)
+            .padding(
+                horizontal = if (style == NowBriefCardStyle.DASHBOARD) 15.dp else 17.dp,
+                vertical = if (style == NowBriefCardStyle.DASHBOARD) 13.dp else 16.dp,
+            ),
         content = content,
     )
 }
@@ -502,7 +565,7 @@ private fun CategoryBar(
 }
 
 @Composable
-private fun BriefEventRow(event: NotificationBriefEvent, surface: Color, title: Color, summary: Color, accent: Color) {
+private fun BriefEventRow(event: NotificationBriefEvent, surface: Color, style: NowBriefCardStyle, title: Color, summary: Color, accent: Color) {
     val context = LocalContext.current
     val appName = remember(event.packageName) {
         runCatching {
@@ -531,8 +594,11 @@ private fun BriefEventRow(event: NotificationBriefEvent, surface: Color, title: 
     }
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp)
-            .padding(bottom = 9.dp).clip(CouiShape(17.dp, 2f))
-            .briefGlass(CouiShape(17.dp, 2f), CouiTheme.isDark)
+            .padding(bottom = 9.dp).clip(CouiShape(nowBriefGlassPalette(style, CouiTheme.isDark).cornerDp.dp, 2f))
+            .briefGlass(
+                CouiShape(nowBriefGlassPalette(style, CouiTheme.isDark).cornerDp.dp, 2f),
+                nowBriefGlassPalette(style, CouiTheme.isDark),
+            )
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
