@@ -2,11 +2,13 @@ name: Jean-Calcul V2 - Test intelligent notifications and publish APK
 on:
   push:
     branches: [feat/v2-notification-onnx-poc]
+    paths:
+      - '.github/workflows/notification-user-preview.yml'
 permissions:
   contents: read
 concurrency:
   group: notification-v2-preview
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   build:
     name: Build signed ARM64 APK and test
