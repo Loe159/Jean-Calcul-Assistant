@@ -58,6 +58,17 @@ internal object BriefMotionSession {
 
 internal fun shouldAnimateBriefEntrance(hasOpened: Boolean): Boolean = !hasOpened
 
+/** Fast, coordinated entrance: the whole first viewport is readable in ~300 ms. */
+internal object BriefMotionTiming {
+    const val TITLE_MS = 230
+    const val CARD_MS = 190
+    const val CARD_STAGGER_MS = 20
+    const val CARD_MAX_DELAY_MS = 80
+    const val COUNTER_MS = 300
+    const val BAR_MS = 280
+    const val NOTIFICATION_MS = 210
+}
+
 /**
  * Single, slowly moving ambient halo (B2), plus capped scroll parallax (B4).
  * No bitmap allocation or GPU blur.
@@ -87,7 +98,7 @@ internal fun BriefAmbientBackground(
     ) {
         val w = size.width
         val h = size.height
-        val intensity = if (dark) 0.14f else 0.09f
+        val intensity = if (dark) 0.065f else 0.035f
         val center = Offset(w * (0.35f + 0.35f * phase), h * (0.17f + 0.19f * phase))
         drawCircle(
             brush = Brush.radialGradient(
@@ -113,23 +124,26 @@ internal fun BriefReveal(
 ) {
     val context = LocalContext.current
     val enabled = remember(context) { briefMotionAllowed(context) }
-    var revealed by remember(id) { mutableStateOf(alreadySeen.containsKey(id)) }
+    var revealed by remember(id) {
+        mutableStateOf(alreadySeen.containsKey(id) || BriefMotionSession.hasClosedAfterOpening)
+    }
     LaunchedEffect(id, visible, enabled) {
         if (!visible || revealed) return@LaunchedEffect
         if (enabled && !BriefMotionSession.hasClosedAfterOpening &&
             !alreadySeen.containsKey(id)) {
-            delay((order.coerceAtMost(6) * 75).toLong())
+            delay((order * BriefMotionTiming.CARD_STAGGER_MS)
+                .coerceAtMost(BriefMotionTiming.CARD_MAX_DELAY_MS).toLong())
         }
         alreadySeen[id] = true
         revealed = true
     }
     val progress by animateFloatAsState(
         targetValue = if (revealed || !enabled) 1f else 0f,
-        animationSpec = tween(440, easing = FastOutSlowInEasing),
+        animationSpec = tween(BriefMotionTiming.CARD_MS, easing = FastOutSlowInEasing),
         label = "brief-card-entrance-$id",
     )
     Box(Modifier.fillMaxWidth().graphicsLayer {
         alpha = progress
-        translationY = (1f - progress) * 18.dp.toPx()
+        translationY = (1f - progress) * 8.dp.toPx()
     }) { content() }
 }

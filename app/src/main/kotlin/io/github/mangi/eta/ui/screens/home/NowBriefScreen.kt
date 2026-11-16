@@ -104,7 +104,9 @@ internal fun NowBriefScreen(
     val dateText = LocalDate.now().format(
         DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH),
     ).replaceFirstChar { it.uppercaseChar() }
-    val cardSurface = if (dark) Color(0xFF24262C) else Color.White
+    // Like the reference: quiet blue-violet surfaces, distinct from the page background.
+    val cardSurface = if (dark) Color(0xFF292936) else Color.White
+    val heroSurface = if (dark) Color(0xFF2B3041) else Color(0xFFF9FAFF)
     val listState = rememberLazyListState()
     val motionAllowed = remember(context, visible) { briefMotionAllowed(context) }
     val visited = BriefMotionSession.revealedCards
@@ -123,7 +125,7 @@ internal fun NowBriefScreen(
     }
     val titleProgress by animateFloatAsState(
         targetValue = if (visible || BriefMotionSession.hasOpened || !motionAllowed) 1f else 0f,
-        animationSpec = tween(530, easing = FastOutSlowInEasing),
+        animationSpec = tween(BriefMotionTiming.TITLE_MS, easing = FastOutSlowInEasing),
         label = "brief-title-reveal",
     )
     val heroPress = remember { MutableInteractionSource() }
@@ -142,7 +144,7 @@ internal fun NowBriefScreen(
         backgroundEffect = {
             BriefAmbientBackground(
                 visible = visible,
-                accent = colors.accent,
+                accent = if (dark) Color(0xFF8C81BC) else colors.accent,
                 dark = dark,
                 scrollOffsetPx = scrollDistance,
             )
@@ -153,7 +155,7 @@ internal fun NowBriefScreen(
             BriefReveal("date", visible, 0, visited) {
                 Row(
                     modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 0.dp)
+                        .padding(horizontal = 20.dp)
                         .padding(bottom = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -171,7 +173,7 @@ internal fun NowBriefScreen(
             BriefReveal("hero", visible, 1, visited) {
             Column(
                 modifier = Modifier.fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 0.dp).padding(bottom = 18.dp)
+                    .padding(horizontal = 20.dp).padding(bottom = 18.dp)
                     .graphicsLayer { scaleX = heroScale; scaleY = heroScale }
                     .clickable(
                         interactionSource = heroPress, indication = null,
@@ -180,7 +182,7 @@ internal fun NowBriefScreen(
                     )
                     .clip(CouiShape(28.dp, 2f))
                     .briefHaloBackground(
-                        cardSurface, Color(0xFF35C98A), Color(0xFFFF9E4D), dark,
+                        heroSurface, Color(0xFF79AE9F), Color(0xFFD1A27D), dark,
                     )
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(15.dp),
@@ -218,7 +220,7 @@ internal fun NowBriefScreen(
             BriefReveal("categories", visible, 2, visited) {
             BriefCard(
                 cardSurface, onClick = { categoryExpanded = !categoryExpanded },
-                haloStart = Color(0xFFFFA04D), haloEnd = Color(0xFFFFD45C),
+                haloStart = Color(0xFFCEA580), haloEnd = Color(0xFFD4C28E),
             ) {
                 SectionHeader("Ce qui a été filtré", "", colors.title, colors.summary)
                 Spacer(Modifier.height(17.dp))
@@ -257,7 +259,7 @@ internal fun NowBriefScreen(
             item(key = "notifications:empty") {
                 BriefReveal("empty", visible, 4, visited) {
                 BriefCard(
-                    cardSurface, haloStart = Color(0xFFFFD45C), haloEnd = Color(0xFF35C98A),
+                    cardSurface, haloStart = Color(0xFFD4C28E), haloEnd = Color(0xFF79AE9F),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconBubble(Icons.Rounded.NotificationsNone, colors.summary)
@@ -292,7 +294,7 @@ internal fun NowBriefScreen(
             .forEach { extension ->
                 item(key = "extension:${extension.id}") {
                     BriefReveal(extension.id, visible, 5, visited) {
-                        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                        Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
                             extension.content()
                         }
                     }
@@ -302,7 +304,7 @@ internal fun NowBriefScreen(
         item(key = "future") {
             BriefReveal("future", visible, 6, visited) {
             BriefCard(
-                cardSurface, haloStart = Color(0xFFFFD45C), haloEnd = Color(0xFF35C98A),
+                cardSurface, haloStart = Color(0xFFD4C28E), haloEnd = Color(0xFF79AE9F),
             ) {
                 SectionHeader("À venir", "", colors.title, colors.summary)
                 Spacer(Modifier.height(15.dp))
@@ -327,7 +329,7 @@ private fun BriefAnimatedNumber(value: Int, visible: Boolean, size: Int, color: 
     val enabled = remember(context) { briefMotionAllowed(context) }
     val display by animateIntAsState(
         targetValue = if (visible || BriefMotionSession.hasOpened || !enabled) value else 0,
-        animationSpec = tween(850, easing = FastOutSlowInEasing),
+        animationSpec = tween(BriefMotionTiming.COUNTER_MS, easing = FastOutSlowInEasing),
         label = "brief-stat-count",
     )
     BriefHeading(display.toString(), color, size)
@@ -350,10 +352,12 @@ private fun BriefNotificationArrival(
     }
     AnimatedVisibility(
         visible = shown,
-        enter = fadeIn(tween(260)) +
-            slideInVertically(animationSpec = tween(400, easing = FastOutSlowInEasing),
-                initialOffsetY = { -(it / 3) }),
-        exit = fadeOut(tween(120)),
+        enter = fadeIn(tween(BriefMotionTiming.NOTIFICATION_MS)) +
+            slideInVertically(
+                animationSpec = tween(BriefMotionTiming.NOTIFICATION_MS, easing = FastOutSlowInEasing),
+                initialOffsetY = { -(it / 8) },
+            ),
+        exit = fadeOut(tween(100)),
     ) {
         BriefEventRow(event, cardSurface, title, summary, accent)
     }
@@ -377,8 +381,8 @@ private fun Modifier.briefHaloBackground(
     dark: Boolean,
 ): Modifier = drawBehind {
     drawRect(surface)
-    val alpha = if (dark) 0.21f else 0.14f
-    val radius = size.width * 0.92f
+    val alpha = if (dark) 0.065f else 0.035f
+    val radius = size.width * 1.18f
     drawRect(
         Brush.radialGradient(
             colors = listOf(first.copy(alpha = alpha), Color.Transparent),
@@ -399,8 +403,8 @@ private fun Modifier.briefHaloBackground(
 private fun BriefCard(
     color: Color,
     onClick: (() -> Unit)? = null,
-    haloStart: Color = Color(0xFFFFA04D),
-    haloEnd: Color = Color(0xFFFFD45C),
+    haloStart: Color = Color(0xFFCEA580),
+    haloEnd: Color = Color(0xFFD4C28E),
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -412,7 +416,7 @@ private fun BriefCard(
     )
     Column(
         modifier = Modifier.fillMaxWidth()
-            .padding(horizontal = 16.dp).padding(bottom = 18.dp)
+            .padding(horizontal = 20.dp).padding(bottom = 20.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(CouiShape(24.dp, 2f))
             .then(
@@ -473,7 +477,7 @@ private fun CategoryBar(
         targetValue = if (visible || BriefMotionSession.hasOpened || !enabled) {
             if (total > 0) (amount.toFloat() / total).coerceIn(0f, 1f) else 0f
         } else 0f,
-        animationSpec = tween(780, easing = FastOutSlowInEasing),
+        animationSpec = tween(BriefMotionTiming.BAR_MS, easing = FastOutSlowInEasing),
         label = "brief-bar-fill",
     )
     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -524,9 +528,9 @@ private fun BriefEventRow(event: NotificationBriefEvent, surface: Color, title: 
         )
     }
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)
             .padding(bottom = 10.dp).clip(CouiShape(18.dp, 2f))
-            .briefHaloBackground(surface, Color(0xFFFFD45C), Color(0xFF35C98A), CouiTheme.isDark)
+            .briefHaloBackground(surface, Color(0xFFD4C28E), Color(0xFF79AE9F), CouiTheme.isDark)
             .padding(18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
