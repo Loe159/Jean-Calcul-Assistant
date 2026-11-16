@@ -35,8 +35,8 @@ jobs:
         run: |
           export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$ANDROID_HOME/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android33-clang"
           cargo build --release --manifest-path native/notification-tokenizer/Cargo.toml --target x86_64-linux-android
-          mkdir -p app/src/androidTest/jniLibs/x86_64
-          cp native/notification-tokenizer/target/x86_64-linux-android/release/libjeancalcul_hf_tokenizer.so app/src/androidTest/jniLibs/x86_64/
+          mkdir -p app/src/main/jniLibs/x86_64
+          cp native/notification-tokenizer/target/x86_64-linux-android/release/libjeancalcul_hf_tokenizer.so app/src/main/jniLibs/x86_64/
       - name: Get immutable model (development CI only; no real notifications)
         run: |
           mkdir -p "$RUNNER_TEMP/notification-model"
@@ -73,8 +73,8 @@ jobs:
             adb shell 'cat /data/local/tmp/notification-tokenizer-test.json | run-as fr.loevan.jeancalcul.v2 sh -c "cat > files/notification-model/tokenizer.json"'
             adb shell 'run-as fr.loevan.jeancalcul.v2 ls -l files/notification-model/tokenizer.json'
             adb shell rm /data/local/tmp/notification-tokenizer-test.json
-            adb shell am instrument -w -r -e class io.github.mangi.eta.agent.device.notifications.NotificationOnnxAndroidPocTest,io.github.mangi.eta.agent.device.notifications.AndroidHfTokenizerParityTest fr.loevan.jeancalcul.v2.test/androidx.test.runner.AndroidJUnitRunner | tee notification-onnx-instrumentation.txt
-            grep -q 'OK (2 tests)' notification-onnx-instrumentation.txt
+            adb shell am instrument -w -r -e class io.github.mangi.eta.agent.device.notifications.NotificationOnnxAndroidPocTest,io.github.mangi.eta.agent.device.notifications.AndroidHfTokenizerParityTest,io.github.mangi.eta.agent.device.notifications.LocalNotificationModelIntegrationTest fr.loevan.jeancalcul.v2.test/androidx.test.runner.AndroidJUnitRunner | tee notification-onnx-instrumentation.txt
+            grep -q 'OK (3 tests)' notification-onnx-instrumentation.txt
             grep -q 'HF_TOKENIZER_ANDROID_POC' notification-onnx-instrumentation.txt
             adb logcat -d -s System.out:I '*:S' > notification-onnx-logcat.txt || true
       - name: Upload POC test reports
