@@ -16,6 +16,7 @@ internal class DevelopmentTools(
     private val sourceContext: String,
     private val authorized: Boolean,
 ) {
+    private var questionAsked = false
     constructor(context: Context, runId: String, userRequest: String, sourceContext: String, authorized: Boolean, ensureActive: () -> Unit = {}) :
         this(DevelopmentStore(context), DevelopmentGitHubClient(token = { ensureActive(); DevelopmentStore(context).token() }), runId, userRequest, sourceContext, authorized)
 
@@ -23,8 +24,18 @@ internal class DevelopmentTools(
     fun execute(call: AgentModelClient.ToolCall): AgentModelClient.ToolResult {
         val result = runCatching {
             check(authorized && store.enabled) { "App improvements are not enabled for this request" }
+            store.markRunUsed(runId)
             val args = JSONObject(call.argumentsJson)
+            check(!questionAsked) { "Wait for the user's answer in this conversation before continuing" }
             when (args.getString("action")) {
+                "ask" -> {
+                    val question = args.getString("question").trim()
+                    require(question.length in 1..1000) { "A short question is required" }
+                    store.setQuestionPending(true)
+                    store.markQuestionRun(runId)
+                    questionAsked = true
+                    DevelopmentPolicy.status(true, "Question saved. End this turn by asking the user exactly: $question")
+                }
                 "status" -> store.proposal()?.let(github::status)
                     ?: DevelopmentPolicy.status(true, "No app improvement has been submitted yet")
                 "build_log" -> github.buildLog(store.proposal() ?: error("No improvement PR has been submitted"))
@@ -182,7 +193,6 @@ internal class DevelopmentTools(
     }
 
     companion object {
-        fun available(context: Context, ownApp: Boolean): Boolean = ownApp && DevelopmentStore(context).enabled
         fun schema(): JSONObject {
             fun string() = JSONObject().put("type", "string")
             val edit = JSONObject().put("type", "object").put("required", JSONArray(listOf("before", "after")))
@@ -192,8 +202,9 @@ internal class DevelopmentTools(
                     .put("delete", JSONObject().put("type", "boolean"))
                     .put("edits", JSONObject().put("type", "array").put("items", edit)))
             val properties = JSONObject()
-                .put("action", string().put("enum", JSONArray(listOf("status", "build_log", "tree", "read", "propose", "revise"))))
+                .put("action", string().put("enum", JSONArray(listOf("status", "build_log", "tree", "read", "propose", "revise", "ask"))))
                 .put("query", string()).put("path", string())
+                .put("question", string())
                 .put("offset", JSONObject().put("type", "integer"))
                 .put("max_chars", JSONObject().put("type", "integer"))
                 .put("title", string()).put("summary", string())
@@ -204,6 +215,7 @@ internal class DevelopmentTools(
                     "Use exact unique before/after edits and blob_sha returned by read. New files use blob_sha=new and content. " +
                     "propose opens a PR and starts GitHub Actions. status shows progress; build_log reads bounded, redacted failed-job output; revise updates that PR. " +
                     "When CI is pending, finish with the PR link; the app monitors completion and offers its signed update automatically. " +
+                    "If a missing user decision blocks the change, call ask with one concrete question, then end your turn with that exact question. The app will notify the user and keep development access for this conversation. Continue only after their answer. " +
                     "Do not claim compilation, tests, installation or visual approval before their actual results. Merging is available only through the user's native approval button. " +
                     "For a request to summarize or explain the app, only read; do not propose changes.",
                 JSONObject().put("type", "object").put("required", JSONArray().put("action")).put("properties", properties))

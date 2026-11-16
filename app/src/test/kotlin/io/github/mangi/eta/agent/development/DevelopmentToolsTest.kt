@@ -15,15 +15,40 @@ class DevelopmentToolsTest {
     private class State : DevelopmentState {
         override var enabled = true
         var current: JSONObject? = null
+        var waiting = false
+        var usedRun: String? = null
+        var questionRun: String? = null
         override fun token() = "fixture-github-token-never-persisted"
         override fun proposal() = current
         override fun saveProposal(proposal: JSONObject) { current = JSONObject(proposal.toString()) }
+        override fun setQuestionPending(pending: Boolean) { waiting = pending }
+        override fun markRunUsed(runId: String) { usedRun = runId }
+        override fun markQuestionRun(runId: String) { questionRun = runId }
     }
     private fun args(action: String) = JSONObject().put("action", action).put("title", "fix: capitalize label")
         .put("summary", "Capitalize a visible label")
         .put("files", org.json.JSONArray().put(JSONObject().put("path", "app/src/main/Label.kt").put("blob_sha", blob)
             .put("edits", org.json.JSONArray().put(JSONObject().put("before", "tools").put("after", "Tools")))))
     private fun call(args: JSONObject) = AgentModelClient.ToolCall("fixture-call", DevelopmentPolicy.TOOL, args.toString())
+
+    @Test fun explicitQuestionStopsFurtherToolCallsUntilUserReplies() {
+        val state = State()
+        val requests = mutableListOf<Request>()
+        val client = DevelopmentGitHubClient(state::token) { request ->
+            requests += request
+            error("Question should not contact GitHub")
+        }
+        val tools = DevelopmentTools(state, client, "question-run", "Improve this", "Home", true)
+        val question = JSONObject(tools.execute(call(JSONObject().put("action", "ask")
+            .put("question", "Which wording should I use?"))).content)
+        assertTrue(question.getBoolean("ok"))
+        assertTrue(state.waiting)
+        assertEquals("question-run", state.usedRun)
+        assertEquals("question-run", state.questionRun)
+        assertTrue(question.getString("message").contains("Which wording should I use?"))
+        assertFalse(JSONObject(tools.execute(call(args("propose"))).content).getBoolean("ok"))
+        assertTrue(requests.isEmpty())
+    }
 
     @Test fun proposesRealGitObjectsAndPrWithoutUploadingScreenshotContextOrLeakingToken() {
         val state = State()
