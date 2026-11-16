@@ -120,7 +120,7 @@ internal fun BriefAmbientBackground(
                     val y = h * ((0.05f + seed * 0.217f + phase * 0.04f) % 1f)
                     val shimmer = 0.6f + 0.4f * sin((phase + seed * 0.17f) * PI * 2f).toFloat()
                     drawCircle(
-                        color = accent.copy(alpha = (intensity * 0.5f * shimmer).coerceIn(0f, 0.2f)),
+                        color = accent.copy(alpha = ((if (dark) 0.26f else 0.20f) * shimmer).coerceIn(0f, 0.3f)),
                         radius = (1.5f + seed % 3f) * density,
                         center = Offset(x + cos(seed * 1.7f).toFloat() * phase * 9f, y),
                     )
