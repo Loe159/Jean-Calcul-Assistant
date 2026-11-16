@@ -314,6 +314,7 @@ fun ConversationSidePaneScaffold(
                     )
                     Box(
                         modifier = Modifier.fillMaxSize()
+                            .clipToBounds() // Keep D1 parallax inside the 12dp actual page peek.
                             .focusProperties { onEnter = { if (!isBriefRevealed) cancelFocusChange() } }
                             .focusGroup()
                             .then(if (!isBriefRevealed) Modifier.clearAndSetSemantics {} else Modifier),
@@ -392,7 +393,7 @@ fun ConversationSidePaneScaffold(
             if (!currentVisible && progress < 0.98f) {
                 Box(
                     modifier = Modifier.align(Alignment.CenterEnd)
-                        .width(19.dp).height(104.dp)
+                        .width(14.dp).height(96.dp)
                         .graphicsLayer { alpha = (1f - progress * 2.2f).coerceIn(0f, 1f) }
                         .clip(CircleShape)
                         .background(Brush.horizontalGradient(
@@ -408,8 +409,8 @@ fun ConversationSidePaneScaffold(
             }
             if (!currentVisible && progress < 0.98f) {
                 Row(
-                    modifier = Modifier.align(Alignment.TopCenter)
-                        .padding(top = 92.dp)
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                        .padding(bottom = 140.dp)
                         .graphicsLayer { alpha = (1f - progress).coerceIn(0f, 1f) }
                         .semantics {
                             contentDescription = if (progress < 0.5f) "Chat, page 1 sur 2"
