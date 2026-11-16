@@ -74,7 +74,7 @@ internal object NotificationProtection {
         val n = sbn.notification
         val value = listOf(
             sbn.key, sbn.packageName, sbn.id.toString(), sbn.tag.orEmpty(),
-            sbn.postTime.toString(), n.when.toString(),
+            sbn.postTime.toString(), n.`when`.toString(),
             n.flags.toString(), n.category.orEmpty(), n.group.orEmpty(),
             n.channelId.orEmpty(),
             n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty(),
