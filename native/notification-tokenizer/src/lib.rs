@@ -62,3 +62,13 @@ pub extern "system" fn Java_io_github_mangi_eta_agent_device_notifications_Andro
     }
     array.into_raw()
 }
+
+#[no_mangle]
+pub extern "system" fn Java_io_github_mangi_eta_agent_device_notifications_AndroidHfTokenizer_release(
+    _env: JNIEnv,
+    _this: JObject,
+) {
+    if let Ok(mut guard) = current().lock() {
+        *guard = None;
+    }
+}
