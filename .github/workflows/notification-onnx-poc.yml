@@ -44,8 +44,8 @@ jobs:
             --output "$RUNNER_TEMP/notification-model/model_quantized.onnx" \
             "https://huggingface.co/Horizon-Labs/multilingual-zeroshot-small/resolve/17af5f8a728d101ce33a9bffad227b0cd005e95e/onnx/model_quantized.onnx"
           echo "0ac394942a086fb1c02beb0fde0357bf7f3bd739ca07af7fa6c9fa11c9c05512  $RUNNER_TEMP/notification-model/model_quantized.onnx" | sha256sum -c -
-          curl --fail --location --retry 3 --connect-timeout 30 \\
-            --output "$RUNNER_TEMP/notification-model/tokenizer.json" \\
+          curl --fail --location --retry 3 --connect-timeout 30 \
+            --output "$RUNNER_TEMP/notification-model/tokenizer.json" \
             "https://huggingface.co/Horizon-Labs/multilingual-zeroshot-small/resolve/17af5f8a728d101ce33a9bffad227b0cd005e95e/tokenizer.json"
           echo "aebee76d0312011b0d73b08a255d4d11d25c83e9639324870c7b916ea102e13e  $RUNNER_TEMP/notification-model/tokenizer.json" | sha256sum -c -
       - name: Enable KVM
