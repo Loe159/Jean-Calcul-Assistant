@@ -137,21 +137,24 @@ class VisualScenarioTest {
                         device.swipe(device.displayWidth * 4 / 5, midY,
                             device.displayWidth / 6, midY, 30)
                         assertTrue("Left swipe must reveal Now Brief",
-                            device.wait(Until.hasObject(By.text("MON BRIEFING")), 12000))
-                        assertTrue(device.hasObject(By.text("Notifications intelligentes")))
+                            device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
+                        assertTrue("Settings card must not appear in briefing",
+                            !device.hasObject(By.text("Notifications intelligentes")))
                         assertTrue(device.hasObject(By.text("Votre tranquillité")))
                         // Return to the conversation with the same spring gesture.
                         device.swipe(device.displayWidth / 6, midY,
                             device.displayWidth * 4 / 5, midY, 30)
                         assertTrue("Right swipe must return to conversation",
-                            device.wait(Until.gone(By.text("MON BRIEFING")), 12000))
+                            device.wait(Until.gone(By.text("Mon briefing")), 12000))
                         // Re-open using the accessible button; screenshot shows the briefing.
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
-                        assertTrue(device.wait(Until.hasObject(By.text("MON BRIEFING")), 12000))
+                        assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
                     }
                     "menu" -> {
-                        device.findObject(By.desc(context.getString(R.string.action_more))).click()
-                        assertTrue(device.wait(Until.hasObject(By.text(context.getString(R.string.action_new_conversation))), 10000))
+                        assertTrue("New conversation is a direct toolbar action",
+                            device.hasObject(By.desc(context.getString(R.string.action_new_conversation))))
+                        assertTrue("Three-dot overflow is absent",
+                            !device.hasObject(By.desc(context.getString(R.string.action_more))))
                     }
                     "keyboard" -> {
                         device.findObject(By.clazz("android.widget.EditText")).apply { click(); text = "Synthetic multiline draft\nLine two" }

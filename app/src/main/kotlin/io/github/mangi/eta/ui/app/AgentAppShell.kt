@@ -209,17 +209,12 @@ internal fun AgentAppShell(
                                                 dark = dark,
                                                 colors = colors,
                                             )
-                                            CouiTopBarOverflowMenu(
+                                            CouiTopAppBarIconButton(
+                                                icon = ChatActionIcons.NewChat,
+                                                contentDescription = stringResource(R.string.action_new_conversation),
+                                                onClick = onNewConversation,
                                                 dark = dark,
                                                 colors = colors,
-                                                onNewConversation = onNewConversation,
-                                                onOpenTerminal = onOpenTerminal,
-                                                onLaunchKimiWeb = onLaunchKimiWeb,
-                                                kimiWebLabel = kimiWebLabel,
-                                                canStopKimiWeb = canStopKimiWeb,
-                                                onStopKimiWeb = onStopKimiWeb,
-                                                onRefreshKimiWeb = onRefreshKimiWeb,
-                                                onOpenBrowser = onOpenBrowser,
                                             )
                                         }
                                     }
@@ -323,10 +318,6 @@ internal fun AgentAppShell(
                     NowBriefScreen(
                         visible = briefOpen,
                         onClose = { briefOpen = false },
-                        onOpenNotificationSettings = {
-                            briefOpen = false
-                            onOpenNotifications()
-                        },
                     )
                 },
             ) {
@@ -549,16 +540,13 @@ private fun HomeMiuixTopBar(
         ) {
             centerContent()
         }
-        TopBarOverflowMenu(
-            onNewConversation = onNewConversation,
-            onOpenTerminal = onOpenTerminal,
-            onLaunchKimiWeb = onLaunchKimiWeb,
-            kimiWebLabel = kimiWebLabel,
-            canStopKimiWeb = canStopKimiWeb,
-            onStopKimiWeb = onStopKimiWeb,
-            onRefreshKimiWeb = onRefreshKimiWeb,
-            onOpenBrowser = onOpenBrowser,
-        )
+        IconButton(onClick = onNewConversation) {
+            Icon(
+                imageVector = ChatActionIcons.NewChat,
+                contentDescription = stringResource(R.string.action_new_conversation),
+                modifier = Modifier.size(24.dp),
+            )
+        }
     }
 }
 
