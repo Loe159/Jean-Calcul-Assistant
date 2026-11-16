@@ -131,6 +131,24 @@ class VisualScenarioTest {
                                 device.wait(Until.hasObject(By.text(context.getString(R.string.appearance_theme_mode))), 10000))
                         }
                     }
+                    "brief" -> {
+                        // Native mirrored drag: home -> left reveals the full-screen COUI briefing.
+                        val midY = device.displayHeight / 2
+                        device.swipe(device.displayWidth * 4 / 5, midY,
+                            device.displayWidth / 6, midY, 30)
+                        assertTrue("Left swipe must reveal Now Brief",
+                            device.wait(Until.hasObject(By.text("MON BRIEFING")), 12000))
+                        assertTrue(device.hasObject(By.text("Notifications intelligentes")))
+                        assertTrue(device.hasObject(By.text("Votre tranquillité")))
+                        // Return to the conversation with the same spring gesture.
+                        device.swipe(device.displayWidth / 6, midY,
+                            device.displayWidth * 4 / 5, midY, 30)
+                        assertTrue("Right swipe must return to conversation",
+                            device.wait(Until.gone(By.text("MON BRIEFING")), 12000))
+                        // Re-open using the accessible button; screenshot shows the briefing.
+                        device.findObject(By.desc("Ouvrir mon briefing")).click()
+                        assertTrue(device.wait(Until.hasObject(By.text("MON BRIEFING")), 12000))
+                    }
                     "menu" -> {
                         device.findObject(By.desc(context.getString(R.string.action_more))).click()
                         assertTrue(device.wait(Until.hasObject(By.text(context.getString(R.string.action_new_conversation))), 10000))

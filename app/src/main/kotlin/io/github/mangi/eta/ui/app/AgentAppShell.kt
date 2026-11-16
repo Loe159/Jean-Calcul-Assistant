@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.outlined.ShortText
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.rounded.DashboardCustomize
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Stop
@@ -75,6 +76,7 @@ import io.github.mangi.eta.ui.components.coui.CouiBackButton
 import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
 import io.github.mangi.eta.ui.components.rememberTopBarBackdrop
 import io.github.mangi.eta.ui.components.topBarContainerColor
+import io.github.mangi.eta.ui.screens.home.NowBriefScreen
 import io.github.mangi.eta.ui.model.AgentModelPickerUiState
 import io.github.mangi.eta.ui.model.ConversationPaneUiState
 import io.github.mangi.eta.ui.model.ConversationSummaryUi
@@ -131,6 +133,7 @@ internal fun AgentAppShell(
     onOpenCharacters: () -> Unit,
     onOpenPermissions: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenNotifications: () -> Unit,
     onOpenModelProviders: () -> Unit,
     modifier: Modifier = Modifier,
     homeTitle: String? = null,
@@ -143,6 +146,7 @@ internal fun AgentAppShell(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val uiStyle = LocalUiStyle.current
+    var briefOpen by remember { mutableStateOf(false) }
     val pageContent: @Composable () -> Unit = {
         when (uiStyle) {
             AppearanceUiStyle.COUI -> {
@@ -198,6 +202,13 @@ internal fun AgentAppShell(
                                 actions = {
                                     if (isHome) {
                                         TopAppBarButtonGroup {
+                                            CouiTopAppBarIconButton(
+                                                icon = Icons.Rounded.DashboardCustomize,
+                                                contentDescription = "Ouvrir mon briefing",
+                                                onClick = { briefOpen = true },
+                                                dark = dark,
+                                                colors = colors,
+                                            )
                                             CouiTopBarOverflowMenu(
                                                 dark = dark,
                                                 colors = colors,
@@ -287,7 +298,10 @@ internal fun AgentAppShell(
             ConversationSidePaneScaffold(
                 state = conversationPaneState,
                 visible = isConversationPaneOpen,
+                briefVisible = briefOpen,
                 backHandlerEnabled = isCurrentRoute,
+                onOpenBrief = { briefOpen = true },
+                onDismissBrief = { briefOpen = false },
                 onOpen = onOpenConversationPane,
                 onDismiss = onDismissConversationPane,
                 onSearchChange = onSearchConversations,
@@ -305,6 +319,16 @@ internal fun AgentAppShell(
                 onOpenPermissions = onOpenPermissions,
                 activeModelLabel = homeModelPickerState?.selectedModel?.displayName,
                 hasPermissionAttention = hasPermissionAttention,
+                briefContent = {
+                    NowBriefScreen(
+                        visible = briefOpen,
+                        onClose = { briefOpen = false },
+                        onOpenNotificationSettings = {
+                            briefOpen = false
+                            onOpenNotifications()
+                        },
+                    )
+                },
             ) {
                 pageContent()
             }

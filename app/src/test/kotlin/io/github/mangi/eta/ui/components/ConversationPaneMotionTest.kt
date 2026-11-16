@@ -54,6 +54,26 @@ class ConversationPaneMotionTest {
     }
 
     @Test
+    fun nowBriefSlidesFromRightAsAFullWidthNeighbor() {
+        for (width in listOf(320f, 390f, 600f)) {
+            val closed = briefPaneMotion(0f, width)
+            val half = briefPaneMotion(-width / 2, width)
+            val open = briefPaneMotion(-width, width)
+            assertEquals(width, closed.panelOffset, 0.001f)
+            assertEquals(0f, open.panelOffset, 0.001f)
+            assertEquals(-width, open.foregroundOffset, 0.001f)
+            assertEquals(0.5f, half.progress, 0.00001f)
+            assertEquals(1f, open.progress, 0f)
+            listOf(closed, half, open).forEach {
+                assertEquals(width, it.panelOffset - it.foregroundOffset, 0.0001f)
+            }
+            assertEquals(closed, briefPaneMotion(20f, width))
+            assertEquals(open, briefPaneMotion(-width * 2, width))
+            assertEquals(closed, briefPaneMotion(Float.NaN, width))
+        }
+    }
+
+    @Test
     fun resizedWindowsKeepTheSameProgressAtEquivalentDragFractions() {
         val compact = conversationPaneMotion(140f, 280f)
         val wide = conversationPaneMotion(170f, 340f)

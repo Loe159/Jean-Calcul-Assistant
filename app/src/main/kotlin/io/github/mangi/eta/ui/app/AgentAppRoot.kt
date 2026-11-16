@@ -381,6 +381,7 @@ fun AgentAppRoot(
             onOpenCharacters = { pushRoute(AppRoute.Characters) },
             onOpenPermissions = { pushRoute(AppRoute.Permissions) },
             onOpenSettings = { pushRoute(AppRoute.Settings) },
+            onOpenNotifications = { pushRoute(AppRoute.IntelligentNotifications) },
             onOpenModelProviders = { pushRoute(AppRoute.ModelProviders) },
             homeTitle = if (isHome) agentState.currentConversationTitle else null,
             homeCharacter = if (isHome) agentState.homeState.roleplayChatUi() else null,
