@@ -1,0 +1,80 @@
+name: Publish reviewed V2 POC APK to in-app preview
+
+on:
+  push:
+    branches: [feat/v2-notification-onnx-poc]
+    paths: [.github/workflows/publish-notification-poc-preview.yml]
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: preview-channel-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish exact CI-tested APK without merging
+    if: github.repository == 'Loe159/Jean-Calcul-Assistant' && github.ref == 'refs/heads/feat/v2-notification-onnx-poc'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      UPDATE_CHANNEL: preview-pr-62
+      PREVIEW_VERSION_CODE: '2030011301'
+      SOURCE_COMMIT: 8f9e1f7ec4627925e19813d7eaf768134c376ea4
+      SOURCE_RUN: '43870495708'
+      SOURCE_ARTIFACT: JeanCalcul-V2-8f9e1f7ec4627925e19813d7eaf768134c376ea4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify trusted source CI and artifact
+        run: |
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" --jq .head_sha)" = "$SOURCE_COMMIT"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/jobs?per_page=100" --jq '.jobs[] | select(.name == "Build APK, unit tests and lint") | .conclusion')" = success
+          mkdir -p app/build/outputs/apk/debug
+          gh run download "$SOURCE_RUN" --repo "$GITHUB_REPOSITORY" --name "$SOURCE_ARTIFACT" --dir app/build/outputs/apk/debug
+          test "$(find app/build/outputs/apk/debug -maxdepth 1 -name '*.apk' | wc -l)" -eq 1
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: android-actions/setup-android@v4
+      - name: Verify package, version and update signing key
+        run: |
+          sdkmanager "build-tools;37.0.0"
+          python3 - <<'PY'
+          import os, pathlib, re, subprocess
+          apk, = pathlib.Path('app/build/outputs/apk/debug').glob('*.apk')
+          sdk = pathlib.Path(os.environ['ANDROID_HOME']) / 'build-tools' / '37.0.0'
+          badging = subprocess.check_output([str(sdk / 'aapt'), 'dump', 'badging', str(apk)], text=True)
+          package_line = next(line for line in badging.splitlines() if line.startswith('package:'))
+          assert "name='fr.loevan.jeancalcul.v2'" in package_line, package_line
+          assert "versionCode='2030011301'" in package_line, package_line
+          signature = subprocess.check_output([str(sdk / 'apksigner'), 'verify', '--print-certs', str(apk)], text=True)
+          key = subprocess.check_output(['keytool', '-list', '-v', '-keystore', '.github/preview-signing.jks',
+             '-storepass', 'android', '-alias', 'androiddebugkey'], text=True)
+          apk_digest = re.search(r'Signer #1 certificate SHA-256 digest:\s*([0-9a-f:]+)', signature, re.I)
+          key_digest = re.search(r'SHA256:\s*([0-9a-f:]+)', key, re.I)
+          assert apk_digest and key_digest, 'Unable to parse signing certificate fingerprints'
+          assert apk_digest.group(1).replace(':','').lower() == key_digest.group(1).replace(':','').lower(), 'Signing mismatch'
+          print('Package, versionCode and signing key validated')
+          PY
+      - name: Publish to existing in-app channel, keeping PR unmerged
+        env:
+          GITHUB_SHA: 8f9e1f7ec4627925e19813d7eaf768134c376ea4
+          GITHUB_REF_NAME: feat/v2-notification-onnx-poc
+        run: python3 scripts/publish-preview.py
+      - name: Verify published update manifest
+        run: |
+          gh release download "$UPDATE_CHANNEL" --repo "$GITHUB_REPOSITORY" --pattern update.json --output published-update.json
+          python3 - <<'PY'
+          import json, os
+          doc = json.load(open('published-update.json'))
+          assert doc['applicationId'] == 'fr.loevan.jeancalcul.v2'
+          assert doc['channel'] == 'preview-pr-62'
+          assert doc['versionCode'] == 2030011301
+          assert doc['commit'] == '8f9e1f7ec4627925e19813d7eaf768134c376ea4'
+          assert doc['apkUrl'].startswith('https://github.com/Loe159/Jean-Calcul-Assistant/releases/download/preview-pr-62/')
+          print('In-app update manifest verified:', doc['apkUrl'])
+          PY
