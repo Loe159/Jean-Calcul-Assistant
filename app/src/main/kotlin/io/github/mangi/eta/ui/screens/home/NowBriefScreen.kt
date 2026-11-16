@@ -26,7 +26,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.CheckCircleOutline
 import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.LockOutline
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Settings
@@ -135,14 +135,14 @@ internal fun NowBriefScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        IconDecor(Icons.Rounded.LockOutline, colors.accent, 14)
-                        CouiText("Sur cet appareil", kind = CouiTextKind.ItemSummary, color = colors.accent)
+                        IconDecor(Icons.Rounded.Lock, colors.accent, 14)
+                        CouiText(text = "Sur cet appareil", kind = CouiTextKind.ItemSummary, color = colors.accent)
                     }
                 }
-                CouiText("MON BRIEFING", kind = CouiTextKind.ItemSummary, color = colors.accent)
+                CouiText(text = "MON BRIEFING", kind = CouiTextKind.ItemSummary, color = colors.accent)
                 BriefHeading(dateText, color = colors.title, size = 32)
                 CouiText(
-                    "L'essentiel de votre journée, sans le bruit.",
+                    text = "L'essentiel de votre journée, sans le bruit.",
                     kind = CouiTextKind.ItemSummary,
                     color = colors.summary,
                 )
@@ -170,11 +170,11 @@ internal fun NowBriefScreen(
                     horizontalArrangement = Arrangement.spacedBy(9.dp),
                 ) {
                     IconBubble(Icons.Rounded.AutoAwesome, colors.accent)
-                    CouiText("Votre tranquillité", kind = CouiTextKind.ItemTitle, color = colors.title)
+                    CouiText(text = "Votre tranquillité", kind = CouiTextKind.ItemTitle, color = colors.title)
                 }
                 BriefHeading(summary.filtered.toString(), color = colors.title, size = 48)
                 CouiText(
-                    if (summary.filtered == 1) "notification filtrée pendant cette session"
+                    text = if (summary.filtered == 1) "notification filtrée pendant cette session"
                     else "notifications filtrées pendant cette session",
                     kind = CouiTextKind.ItemSummary,
                     color = colors.summary,
@@ -193,8 +193,8 @@ internal fun NowBriefScreen(
                     IconBubble(Icons.Rounded.Shield, colors.accent)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        CouiText("Notifications intelligentes", kind = CouiTextKind.ItemTitle, color = colors.title)
-                        CouiText(statusLabel, kind = CouiTextKind.ItemSummary, color = colors.summary)
+                        CouiText(text = "Notifications intelligentes", kind = CouiTextKind.ItemTitle, color = colors.title)
+                        CouiText(text = statusLabel, kind = CouiTextKind.ItemSummary, color = colors.summary)
                     }
                     CouiTopAppBarIconButton(
                         icon = Icons.Rounded.Settings,
@@ -204,7 +204,7 @@ internal fun NowBriefScreen(
                 }
                 Spacer(Modifier.height(12.dp))
                 CouiText(
-                    when {
+                    text = when {
                         !ready -> "Installez le modèle local et autorisez l'accès aux notifications pour commencer."
                         config.mode == NotificationFilterMode.OFF -> "Le filtre est désactivé. Vos notifications restent inchangées."
                         config.mode == NotificationFilterMode.OBSERVE -> "Les notifications sont classées localement, sans action automatique."
@@ -223,7 +223,7 @@ internal fun NowBriefScreen(
                         .padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    CouiText("Gérer mes règles et protections", kind = CouiTextKind.ItemTitle, color = colors.accent,
+                    CouiText(text = "Gérer mes règles et protections", kind = CouiTextKind.ItemTitle, color = colors.accent,
                         modifier = Modifier.weight(1f))
                     IconDecor(Icons.Rounded.ChevronRight, colors.accent, 18)
                 }
@@ -241,14 +241,14 @@ internal fun NowBriefScreen(
                 if (summary.dismissed > 0) {
                     Spacer(Modifier.height(13.dp))
                     CouiText(
-                        "${summary.dismissed} suppression(s) définitive(s) · irréversibles",
+                        text = "${summary.dismissed} suppression(s) définitive(s) · irréversibles",
                         kind = CouiTextKind.ItemSummary, color = colors.summary,
                     )
                 }
                 if (classified == 0) {
                     Spacer(Modifier.height(14.dp))
                     CouiText(
-                        "Aucun masquage confirmé pour l'instant. Les notifications protégées ne sont jamais supprimées automatiquement par cette vue.",
+                        text = "Aucun masquage confirmé pour l'instant. Les notifications protégées ne sont jamais supprimées automatiquement par cette vue.",
                         kind = CouiTextKind.ItemSummary, color = colors.summary,
                     )
                 }
@@ -262,7 +262,7 @@ internal fun NowBriefScreen(
             ) {
                 BriefHeading("Activité récente", color = colors.title, size = 21)
                 Spacer(Modifier.weight(1f))
-                CouiText("50 max.", kind = CouiTextKind.ItemSummary, color = colors.summary)
+                CouiText(text = "50 max.", kind = CouiTextKind.ItemSummary, color = colors.summary)
             }
         }
         if (summary.events.isEmpty()) {
@@ -272,8 +272,8 @@ internal fun NowBriefScreen(
                         IconBubble(Icons.Rounded.NotificationsNone, colors.summary)
                         Spacer(Modifier.width(12.dp))
                         Column {
-                            CouiText("Rien à signaler", kind = CouiTextKind.ItemTitle, color = colors.title)
-                            CouiText("Les analyses apparaîtront ici au fil de la journée.",
+                            CouiText(text = "Rien à signaler", kind = CouiTextKind.ItemTitle, color = colors.title)
+                            CouiText(text = "Les analyses apparaîtront ici au fil de la journée.",
                                 kind = CouiTextKind.ItemSummary, color = colors.summary)
                         }
                     }
@@ -286,7 +286,7 @@ internal fun NowBriefScreen(
             if (summary.events.size > 5) {
                 item(key = "notifications:more") {
                     val remaining = summary.events.size - 5
-                    CouiText("Et $remaining autres événements en mémoire", kind = CouiTextKind.ItemSummary,
+                    CouiText(text = "Et $remaining autres événements en mémoire", kind = CouiTextKind.ItemSummary,
                         color = colors.summary, modifier = Modifier.padding(horizontal = 6.dp))
                 }
             }
@@ -317,7 +317,7 @@ internal fun NowBriefScreen(
         }
         item(key = "footer") {
             CouiText(
-                "Récapitulatif local, sans texte de notification. Historique temporaire en mémoire vive, réinitialisé à l'arrêt du processus. Aucune analyse n'est lancée par l'ouverture du briefing.",
+                text = "Récapitulatif local, sans texte de notification. Historique temporaire en mémoire vive, réinitialisé à l'arrêt du processus. Aucune analyse n'est lancée par l'ouverture du briefing.",
                 kind = CouiTextKind.GroupFooter,
                 color = colors.summary,
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
@@ -363,15 +363,15 @@ private fun BriefMetric(label: String, value: String, surface: Color, title: Col
         verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         BriefHeading(value, title, 22)
-        CouiText(label, kind = CouiTextKind.GroupFooter, color = summary, maxLines = 1)
+        CouiText(text = label, kind = CouiTextKind.GroupFooter, color = summary, maxLines = 1)
     }
 }
 
 @Composable
 private fun SectionHeader(title: String, subtitle: String, color: Color, secondary: Color) {
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        CouiText(title, kind = CouiTextKind.ItemTitle, color = color)
-        CouiText(subtitle, kind = CouiTextKind.ItemSummary, color = secondary)
+        CouiText(text = title, kind = CouiTextKind.ItemTitle, color = color)
+        CouiText(text = subtitle, kind = CouiTextKind.ItemSummary, color = secondary)
     }
 }
 
@@ -381,8 +381,8 @@ private fun CategoryBar(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            CouiText(name, kind = CouiTextKind.ItemSummary, color = title, modifier = Modifier.weight(1f))
-            CouiText(amount.toString(), kind = CouiTextKind.ItemSummary, color = summary)
+            CouiText(text = name, kind = CouiTextKind.ItemSummary, color = title, modifier = Modifier.weight(1f))
+            CouiText(text = amount.toString(), kind = CouiTextKind.ItemSummary, color = summary)
         }
         Box(
             modifier = Modifier.fillMaxWidth().height(7.dp)
@@ -439,12 +439,12 @@ private fun BriefEventRow(event: NotificationBriefEvent, surface: Color, title: 
             actionColor,
         )
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            CouiText(appName, kind = CouiTextKind.ItemTitle, color = title,
+            CouiText(text = appName, kind = CouiTextKind.ItemTitle, color = title,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-            CouiText("$category · $state", kind = CouiTextKind.ItemSummary, color = summary,
+            CouiText(text = "$category · $state", kind = CouiTextKind.ItemSummary, color = summary,
                 maxLines = 2)
         }
-        CouiText(time, kind = CouiTextKind.GroupFooter, color = summary)
+        CouiText(text = time, kind = CouiTextKind.GroupFooter, color = summary)
     }
 }
 
@@ -457,6 +457,6 @@ private fun FutureChip(icon: ImageVector, title: String, color: Color, modifier:
         horizontalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         IconDecor(icon, color, 17)
-        CouiText(title, kind = CouiTextKind.ItemSummary, color = color, maxLines = 1)
+        CouiText(text = title, kind = CouiTextKind.ItemSummary, color = color, maxLines = 1)
     }
 }
