@@ -1,0 +1,19 @@
+[package]
+name = "jeancalcul-hf-tokenizer"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+name = "jeancalcul_hf_tokenizer"
+
+[dependencies]
+jni = { version = "=0.21.1", default-features = false }
+tokenizers = { version = "=0.22.2", default-features = false, features = ["fancy-regex"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = true
