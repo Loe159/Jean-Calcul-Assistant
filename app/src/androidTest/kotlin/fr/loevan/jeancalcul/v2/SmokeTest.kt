@@ -24,7 +24,11 @@ class SmokeTest {
         val manager = context.getSystemService(android.app.NotificationManager::class.java)
         try {
             store.connect("synthetic-token-for-isolated-test-123")
-            store.authorizeConversation("assistant-synthetic", "synthetic-key")
+            store.authorizeConversation("assistant-synthetic", "synthetic-key", "Settings", "Translate app labels", "a".repeat(40))
+            val beforeQuestion = io.github.mangi.eta.agent.development.DevelopmentStore(context)
+            assertTrue("Pre-PR work must survive an interrupted run", beforeQuestion.mayContinue("assistant-synthetic"))
+            assertEquals("Settings", beforeQuestion.context()!!.getString("screen"))
+            assertEquals("Translate app labels", beforeQuestion.context()!!.getString("task"))
             store.setQuestionPending(true)
             val reopened = io.github.mangi.eta.agent.development.DevelopmentStore(context)
             assertTrue(reopened.mayContinue("assistant-synthetic"))
@@ -57,7 +61,7 @@ class SmokeTest {
             assertFalse(posted.extras.getString(android.app.Notification.EXTRA_TEXT).orEmpty().contains("Private question"))
             assertNotNull(posted.contentIntent)
             reopened.revokeConversation("assistant-synthetic")
-            assertFalse("Stopping the task must revoke its conversation grant", store.mayContinue("assistant-synthetic"))
+            assertFalse("Explicit revocation must remove its conversation grant", store.mayContinue("assistant-synthetic"))
             reopened.disconnect()
             assertFalse(store.mayContinue("assistant-synthetic"))
         } finally {

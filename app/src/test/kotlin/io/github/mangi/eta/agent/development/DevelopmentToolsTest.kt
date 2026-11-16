@@ -15,6 +15,9 @@ class DevelopmentToolsTest {
     private class State : DevelopmentState {
         override var enabled = true
         var current: JSONObject? = null
+        var recovery: JSONObject? = null
+        override fun context() = recovery
+        override fun saveContext(context: JSONObject) { recovery = JSONObject(context.toString()) }
         var waiting = false
         var usedRun: String? = null
         var questionRun: String? = null
