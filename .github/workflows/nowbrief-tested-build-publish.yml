@@ -1,0 +1,51 @@
+name: Jean-Calcul Now Brief - publish tested-build preview
+on:
+  push:
+    branches: [feat/v2-now-brief-pr69]
+    paths: ['.github/workflows/nowbrief-tested-build-publish.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    name: Publish ARM64 preview for device testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: preview-channel-publish
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      UPDATE_CHANNEL: preview-pr-62
+      PREVIEW_VERSION_CODE: '2030011618'
+      APK_SOURCE_COMMIT: 50f3b009961d0a67e36d63b602dbdf6898b9866f
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve APK from successful compile, unit-test and lint job
+        uses: actions/download-artifact@v4
+        with:
+          name: JeanCalcul-Filtering-V2-APK-50f3b009961d0a67e36d63b602dbdf6898b9866f
+          repository: Loe159/Jean-Calcul-Assistant
+          run-id: '43913249763'
+          github-token: ${{ github.token }}
+          path: app/build/outputs/apk/debug
+      - name: Verify immutable APK identity and version
+        shell: bash
+        run: |
+          test -f app/build/outputs/apk/debug/JeanCalcul-v2.0.0-preview.2030011618-debug.apk
+          echo 'fd713046a26794aad0b450756b65042e26761413ac6016dd0b28f0f34d206b56  app/build/outputs/apk/debug/JeanCalcul-v2.0.0-preview.2030011618-debug.apk' | sha256sum -c -
+          test "$(find app/build/outputs/apk/debug -name '*.apk' -type f | wc -l)" -eq 1
+      - name: Publish versioned APK and update manifest
+        run: python3 scripts/publish-preview.py
+      - name: Verify published channel
+        shell: bash
+        run: |
+          gh release download "$UPDATE_CHANNEL" --repo "$GITHUB_REPOSITORY" --pattern update.json --output released-update.json
+          python3 - <<'PY'
+          import json, os
+          m = json.load(open('released-update.json', encoding='utf-8'))
+          assert m['versionCode'] == 2030011618, m
+          assert m['commit'] == os.environ['APK_SOURCE_COMMIT'], m
+          assert m['sha256'] == 'fd713046a26794aad0b450756b65042e26761413ac6016dd0b28f0f34d206b56', m
+          print('Preview channel published and verified')
+          PY
