@@ -20,6 +20,9 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.semantics.Role
+import com.itos.coui.effect.couiButtonFeedback
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -63,7 +66,6 @@ import io.github.mangi.eta.agent.device.notifications.NotificationFilterPolicy
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterSettings
 import io.github.mangi.eta.agent.device.notifications.NotificationObservation
 import io.github.mangi.eta.ui.components.coui.CouiIcon
-import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -122,7 +124,7 @@ internal fun NowBriefScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    CouiTopAppBarIconButton(
+                    BriefIconButton(
                         icon = Icons.AutoMirrored.Rounded.ArrowBack,
                         contentDescription = "Fermer le briefing",
                         onClick = onClose,
@@ -196,7 +198,7 @@ internal fun NowBriefScreen(
                         CouiText(text = "Notifications intelligentes", kind = CouiTextKind.ItemTitle, color = colors.title)
                         CouiText(text = statusLabel, kind = CouiTextKind.ItemSummary, color = colors.summary)
                     }
-                    CouiTopAppBarIconButton(
+                    BriefIconButton(
                         icon = Icons.Rounded.Settings,
                         contentDescription = "Configurer le filtrage",
                         onClick = onOpenNotificationSettings,
@@ -323,6 +325,42 @@ internal fun NowBriefScreen(
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
             )
         }
+    }
+}
+
+/**
+ * Standalone action, not a CouiTopAppBarButton: those require a Coui toolbar effect scope.
+ * This dashboard is a LazyColumn inside the home side-pane, not a toolbar.
+ */
+@Composable
+private fun BriefIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    val dark = CouiTheme.isDark
+    val colors = CouiPageDefaults.themeColors(dark)
+    val source = remember { MutableInteractionSource() }
+    Box(
+        modifier = Modifier.size(44.dp)
+            .clip(CouiShape(22.dp, 2f))
+            .background(colors.title.copy(alpha = if (dark) 0.12f else 0.06f))
+            .couiButtonFeedback(dark, source, enabled = true)
+            .clickable(
+                interactionSource = source,
+                indication = null,
+                role = Role.Button,
+                onClickLabel = contentDescription,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        CouiIcon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = colors.title,
+            modifier = Modifier.size(22.dp),
+        )
     }
 }
 
