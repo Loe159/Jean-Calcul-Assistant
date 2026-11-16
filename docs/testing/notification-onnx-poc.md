@@ -140,3 +140,14 @@ L'application n'effectue aucune suppression de notification.
 - Aucune mesure de PSS fiable sur téléphone, aucun coût énergétique mJ, aucune autonomie 24h, aucun test de suppression ou de confidentialité réseau sur téléphone. L'APK de POC ne contient pas encore de moteur de classification dans le listener ni de page COUI dédiée.
 
 La PR de ce POC doit demeurer **draft**, sans merge, jusqu'à la décision GO/NO-GO issue des mesures réelles.
+
+## Résultat Android émulateur validé (run 43870495709)
+
+Le job GitHub Actions [ONNX Android POC](https://github.com/Loe159/Jean-Calcul-Assistant/actions/runs/43870495709) s'est terminé en **succès** : les deux tests instrumentés ont été exécutés (pas ignorés).
+
+- Modèle quantifié SHA-256 vérifié ; inférence ONNX CPU sur les 10 jeux de 7 hypothèses synthétiques.
+- Logcat Android 35 x86_64 : `session_load_ms=694.710244`, `p50_ms=108.861329`, `p95_ms=139.700105`, `pss_delta_kib=290162` (~283.4 MiB), `max_logit_delta=1.0967254638671875E-5` versus l'ONNX Linux de référence.
+- Tokenizer officiel Hugging Face `tokenizers=0.22.2` compilé pour Android via Rust/JNI : **14/14 encodages de paires** concordent avec les IDs HF du banc ; la métrique `elapsed_ms=1543.627677` inclut le chargement du tokenizer depuis le JSON et les 14 paires, ce n'est pas une latence par notification.
+- Build Android Gradle passé en CI. Les `onnxruntime-extensions` n'ont pas donné la même parité ; choisir Rust JNI pour les essais suivants.
+
+**Limites de preuve :** la comparaison couvre ONNX quantifié versus le même ONNX Linux ; la parité avec les logits FP32 du pipeline Python Transformers reste à mesurer. Deux textes validés sur 7 labels pour JNI ne suffisent pas à généraliser la parité à tous les messages longs/Unicode. Ni Samsung physique ni baseline 24h batterie. Pas de suppression. Pas de mode automatique autorisé à ce stade.
