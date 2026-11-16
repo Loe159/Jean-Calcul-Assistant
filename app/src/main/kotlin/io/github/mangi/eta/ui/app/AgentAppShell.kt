@@ -699,6 +699,7 @@ private fun titleForRoute(route: AppRoute?): String = when (route) {
     is AppRoute.Skills -> stringResource(R.string.route_skills)
     is AppRoute.Subagents -> "Subagent"
     is AppRoute.ConversationTitleSettings -> stringResource(R.string.conversation_title_settings_title)
+    is AppRoute.IntelligentNotifications -> "Notifications intelligentes"
     is AppRoute.AppImprovements -> "App improvements"
     is AppRoute.AssistantOverlaySettings -> stringResource(R.string.assistant_overlay_settings_title)
     is AppRoute.Characters -> "Characters"
