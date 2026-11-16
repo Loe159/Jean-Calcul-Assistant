@@ -1,0 +1,147 @@
+{
+  "issue": 54,
+  "attempt": 1,
+  "attempt_budget": 3,
+  "budget_override": null,
+  "created_utc": "2026-11-15T23:44:17.008127+00:00",
+  "commit": "64e82cc9ff586ade2d2380a84e13c49d883747b7",
+  "working_tree_dirty": false,
+  "api": 35,
+  "serial": "emulator-5580",
+  "technical": {
+    "status": "PASS",
+    "build": "PASS",
+    "jvm_tests": "PASS",
+    "lint": "PASS",
+    "evidence": "logs/instrumentation-smoke.txt",
+    "instrumentation": "PASS"
+  },
+  "captures": {
+    "empty": {
+      "status": "PASS",
+      "path": "screenshots/empty.png",
+      "sha256": "82bc0338a78323d4ce4707cdeb90284997e0d53c10200ebb54d8bace0e4faec1",
+      "visual_status": "NOT_RUN"
+    },
+    "message": {
+      "status": "PASS",
+      "path": "screenshots/message.png",
+      "sha256": "4bf74b6e37f2458c2c325c20a0d6ff5f8e34b5c5435c9e5f53aed3697cc8326c",
+      "visual_status": "NOT_RUN"
+    },
+    "reset": {
+      "status": "PASS",
+      "path": "screenshots/reset.png",
+      "sha256": "9bc874f7b5481e3a651cbdb95994890cb9668e4771a2be9ae91d01f124a44957",
+      "visual_status": "NOT_RUN"
+    },
+    "settings": {
+      "status": "PASS",
+      "path": "screenshots/settings.png",
+      "sha256": "6aeccbec13985865f762e9bf52d37c28199104c85dd590bd0d16ac20af66e3bf",
+      "visual_status": "NOT_RUN"
+    },
+    "dark": {
+      "status": "PASS",
+      "path": "screenshots/dark.png",
+      "sha256": "119cc8f22ea8bf6fc67a469d3b7a836c229ba58f0981653227dcb4402f210c0f",
+      "visual_status": "NOT_RUN"
+    },
+    "small_screen": {
+      "status": "PASS",
+      "path": "screenshots/small_screen.png",
+      "sha256": "dec74030eab71b8263c5a484382df9366fa8d012fcdc739ab39eb00e8cd95d1f",
+      "visual_status": "NOT_RUN"
+    },
+    "large_text": {
+      "status": "PASS",
+      "path": "screenshots/large_text.png",
+      "sha256": "b5fe73c53dd8da3dfc14db8f19a6a99658f2f4de3ce12e55b662b2d313be0d05",
+      "visual_status": "NOT_RUN"
+    },
+    "keyboard": {
+      "status": "PASS",
+      "path": "screenshots/keyboard.png",
+      "sha256": "c39149daa46b877c0edd7ef3f3bc71d36ac965307c3e0f01103a9bfb656ee405",
+      "visual_status": "NOT_RUN"
+    },
+    "reduced_motion": {
+      "status": "PASS",
+      "path": "screenshots/reduced_motion.png",
+      "sha256": "f2c98ec89dbc49d45d026d277100437a8dd2627b1df05b0e87fdeb2d77bd81ef",
+      "visual_status": "NOT_RUN"
+    },
+    "menu": {
+      "status": "PASS",
+      "path": "screenshots/menu.png",
+      "sha256": "1952d7c4e4b59aba7220c526408a30474dfbc7cfd15c5296a01bf5ddc0230c21",
+      "visual_status": "NOT_RUN"
+    },
+    "providers": {
+      "status": "PASS",
+      "path": "screenshots/providers.png",
+      "sha256": "e865618d6cd906ad5f58fc351e2f9f89f0a661eabf91d93f6604d57c639225a1",
+      "visual_status": "NOT_RUN"
+    },
+    "tools": {
+      "status": "PASS",
+      "path": "screenshots/tools.png",
+      "sha256": "ed295d6693737ff17dd8a13f5095b1da88b17a59517abee05bb16d5c175011fd",
+      "visual_status": "NOT_RUN"
+    },
+    "appearance": {
+      "status": "PASS",
+      "path": "screenshots/appearance.png",
+      "sha256": "797b58f5e65fa949d5194f63c14be5e5bd9c6516221b9abb7d3638b369deca4b",
+      "visual_status": "NOT_RUN"
+    },
+    "improvements": {
+      "status": "PASS",
+      "path": "screenshots/improvements.png",
+      "sha256": "9c8cbd32d368a438c41bd268e38bee206f9f02eb750bab1713d6c9cb052ab228",
+      "visual_status": "NOT_RUN"
+    },
+    "regression_fixture": {
+      "status": "PASS",
+      "path": "screenshots/regression_fixture.png",
+      "sha256": "e867e28d8a9e5a0c2fbb018974974af7568abf7c6262cd0ba1e0af1aef7fe7ac",
+      "visual_status": "NOT_RUN"
+    }
+  },
+  "visual_review": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "reference_comparison": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "regression_detection": {
+    "status": "NOT_RUN",
+    "evidence": "visual-review.json"
+  },
+  "source_manifest": "source-manifest.json",
+  "system_image": "system-images;android-35;google_apis;x86_64",
+  "display": {
+    "pixels": [
+      720,
+      1280
+    ],
+    "density": 280,
+    "dp": [
+      411,
+      731
+    ]
+  },
+  "graphics_backend": "swangle",
+  "apk_sha256": "cdfbe152369b2931a0c197b1e430e6bdb289cb900bff2b2a30c3ae3545f8eda8",
+  "emulator_health": {
+    "samples": 160,
+    "peak_emulator_rss_kb": 4910140,
+    "min_host_available_kb": 10473720
+  },
+  "guest_available_kb_before_test": 2634144,
+  "guest_ram_mb": 4096,
+  "app_log_exit_before_cleanup": null,
+  "emulator_exit_before_cleanup": null
+}

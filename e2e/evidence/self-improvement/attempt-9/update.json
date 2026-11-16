@@ -1,0 +1,11 @@
+{
+  "applicationId": "fr.loevan.jeancalcul.v2",
+  "channel": "preview-pr-62",
+  "versionCode": 2030009801,
+  "versionName": "2.0.0-preview.2030009801-debug",
+  "apkUrl": "https://github.com/Loe159/Jean-Calcul-Assistant/releases/download/preview-pr-62/JeanCalcul-2030009801.apk",
+  "sha256": "d8acaef19b49af024c04a65472c51b872582e42e687ac1d8e98faa8e5415bc3e",
+  "size": 32588029,
+  "commit": "64e82cc9ff586ade2d2380a84e13c49d883747b7",
+  "branch": "self-improve/bootstrap"
+}
