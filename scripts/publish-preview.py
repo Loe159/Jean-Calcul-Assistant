@@ -30,7 +30,7 @@ def main():
     release = gh("release", "view", channel, "--repo", repository, check=False)
     if release.returncode != 0:
         gh("release", "create", channel, "--repo", repository, "--prerelease", "--target", commit,
-           "--title", "Jean-Calcul PR 62 previews", "--notes",
+           "--title", "Jean-Calcul development previews", "--notes",
            "Test builds from GitHub Actions. Development signing key; not a production release.")
     with tempfile.TemporaryDirectory() as directory:
         asset = Path(directory) / f"JeanCalcul-{code}.apk"
@@ -41,6 +41,7 @@ def main():
             "apkUrl": f"https://github.com/{repository}/releases/download/{channel}/{asset.name}",
             "sha256": hashlib.sha256(asset.read_bytes()).hexdigest(),
             "size": asset.stat().st_size, "commit": commit,
+            "branch": os.environ.get("GITHUB_REF_NAME", ""),
         }
         path = Path(directory) / "update.json"
         path.write_text(json.dumps(manifest, indent=2) + "\n")

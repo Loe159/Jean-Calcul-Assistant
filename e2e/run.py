@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = 'fr.loevan.jeancalcul.v2'
 RUNNER = APP + '.test/androidx.test.runner.AndroidJUnitRunner'
 SCENARIOS = ('empty', 'message', 'reset', 'settings', 'dark', 'small_screen',
-             'large_text', 'keyboard', 'reduced_motion', 'menu', 'providers', 'tools', 'appearance', 'regression_fixture')
+             'large_text', 'keyboard', 'reduced_motion', 'menu', 'providers', 'tools', 'appearance', 'improvements', 'regression_fixture')
 
 
 def redact(text):
@@ -307,6 +307,7 @@ def main():
             write_results(instrumented, out / 'test-results/TEST-smoke.xml', report['serial'], {
                 (APP + '.SmokeTest', 'localVllmWithoutKeyStreamsAndPersistsARealConversation'),
                 (APP + '.SmokeTest', 'settingsShowOnlyTheSelectedConversationProviders'),
+                (APP + '.SmokeTest', 'ownAppPowerContextCapturesTheScreenAndProtectsCredentialPages'),
             })
             check_instrumentation_results(out / 'test-results', report['serial'], since=instrumentation_started)
         except RuntimeError as error:

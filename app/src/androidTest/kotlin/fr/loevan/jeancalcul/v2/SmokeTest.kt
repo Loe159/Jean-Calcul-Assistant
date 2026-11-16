@@ -54,4 +54,59 @@ class SmokeTest {
             assertFalse(device.hasObject(By.text("Grok")))
         }
     }
+
+    @Test fun ownAppPowerContextCapturesTheScreenAndProtectsCredentialPages() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val device = UiDevice.getInstance(instrumentation)
+        ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { activity ->
+            assertNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 30000))
+            var capture: io.github.mangi.eta.agent.development.OwnAppScreenContext.Capture? = null
+            activity.onActivity {
+                assertNull(io.github.mangi.eta.agent.development.OwnAppScreenContext.capture(false, false))
+                capture = io.github.mangi.eta.agent.development.OwnAppScreenContext.capture(true, true)
+            }
+            assertNotNull(capture)
+            assertEquals("Home", capture!!.screen)
+            assertNotNull("Our own app must provide a fallback screenshot", capture!!.bitmap)
+            kotlinx.coroutines.runBlocking {
+                kotlinx.coroutines.withTimeout(5000) { capture!!.ready?.await() }
+            }
+            val bitmap = capture!!.bitmap!!
+            assertFalse(bitmap.isRecycled)
+            val colors = mutableSetOf<Int>()
+            for (y in 0 until bitmap.height step 8) {
+                for (x in 0 until bitmap.width step 8) colors += bitmap.getPixel(x, y)
+            }
+            assertTrue("Window capture must contain actual screen content, not a blank bitmap", colors.size > 10)
+            val entry = io.github.mangi.eta.agent.voice.EtaAssistantScreenContext(0, emptyList())
+            try {
+                entry.acceptOwnApp(capture!!)
+                entry.acceptScreenshot(null)
+                val snapshot = kotlinx.coroutines.runBlocking { entry.snapshot() }
+                assertNotNull(snapshot.image)
+                assertEquals("Home", snapshot.appScreen)
+                assertTrue(snapshot.text.contains("Jean-Calcul"))
+                val config = io.github.mangi.eta.agent.model.AgentModelClient.loadConfig()
+                val request = io.github.mangi.eta.agent.runtime.AgentRuntimeWire.RunRequest(
+                    runId = "synthetic-improvement", prompt = "There is a bug here", config = config,
+                    images = emptyList(), appDevelopmentScreen = snapshot.appScreen,
+                )
+                val restored = io.github.mangi.eta.agent.runtime.AgentRuntimeWire.runRequestFromBundle(
+                    io.github.mangi.eta.agent.runtime.AgentRuntimeWire.toLegacyBundle(request),
+                )
+                assertEquals("Home", restored.appDevelopmentScreen)
+            } finally { entry.close() }
+            activity.onActivity { it.startActivity(Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_APP_IMPROVEMENTS)) }
+            assertTrue(device.wait(Until.hasObject(By.text("Fine-grained GitHub token")), 15000))
+            activity.onActivity {
+                val private = io.github.mangi.eta.agent.development.OwnAppScreenContext.capture(true, true)
+                assertNotNull(private)
+                assertTrue(private!!.sensitive)
+                assertNull(private.bitmap)
+                assertNull(private.ready)
+                assertTrue(private.text.contains("withheld"))
+            }
+        }
+    }
 }

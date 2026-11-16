@@ -48,6 +48,16 @@ class AgentBrowserActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        io.github.mangi.eta.agent.development.OwnAppScreenContext.started(this)
+    }
+
+    override fun onStop() {
+        io.github.mangi.eta.agent.development.OwnAppScreenContext.stopped(this)
+        super.onStop()
+    }
+
     companion object {
         private const val EXTRA_SESSION_KEY = "io.github.mangi.eta.extra.BROWSER_SESSION_KEY"
 

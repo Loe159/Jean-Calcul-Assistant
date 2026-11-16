@@ -16,6 +16,10 @@ class PreviewUpdateTest {
     @Test fun acceptsPublishedManifest() {
         assertEquals(2030000101L, PreviewUpdate.parse(manifest()).versionCode)
     }
+    @Test fun recordsSourceRevisionAndRejectsMalformedRevision() {
+        assertEquals("a".repeat(40), PreviewUpdate.parse(manifest().put("commit", "a".repeat(40))).commit)
+        assertThrows(IllegalArgumentException::class.java) { PreviewUpdate.parse(manifest().put("commit", "not-a-revision")) }
+    }
     @Test fun rejectsAnotherApplication() {
         assertThrows(IllegalArgumentException::class.java) { PreviewUpdate.parse(manifest().put("applicationId", "other.app")) }
     }

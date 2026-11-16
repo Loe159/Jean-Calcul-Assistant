@@ -11,3 +11,5 @@ Un module Android `app`, Kotlin/Compose. Namespace interne `io.github.mangi.eta`
 - Module LSPosed : seul `system` est déclaré, pour accessibilité/écran virtuel. Les hooks constructeurs/Google ne sont plus installés.
 
 La documentation technique amont est conservée dans `docs/upstream/eta/` comme référence, sans valoir périmètre produit.
+
+`agent/development` réutilise la capture Power, le runtime/modèle configuré, les secrets chiffrés et le canal de mises à jour pour créer des PR et publier des versions de test. Voir [SELF-IMPROVEMENT.md](SELF-IMPROVEMENT.md).

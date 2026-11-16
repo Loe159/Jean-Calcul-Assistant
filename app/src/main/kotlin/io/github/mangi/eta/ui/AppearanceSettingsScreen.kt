@@ -138,6 +138,7 @@ internal fun AppearanceSettingsScreen(onBack: () -> Unit) {
             CouiScaffoldPage(
                 title = stringResource(R.string.appearance_title),
                 onBack = onBack,
+                compactTitle = true,
             ) {
                 Group(title = stringResource(R.string.appearance_group_color)) {
                     CouiDropdownPreference(

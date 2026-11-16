@@ -132,6 +132,8 @@ fun AgentAppRoot(
     onSharedContentAccepted: () -> Unit = {},
     openSpeechSettings: Boolean = false,
     openTerminal: Boolean = false,
+    openAppImprovements: Boolean = false,
+    onAppImprovementsOpened: () -> Unit = {},
     onTerminalOpened: () -> Unit = {},
     onSpeechSettingsOpened: () -> Unit = {},
     onAssistantConversationOpened: (Boolean) -> Unit = {},
@@ -154,6 +156,15 @@ fun AgentAppRoot(
         if (openTerminal) {
             if (backStack.lastOrNull() != AppRoute.Terminal) backStack.add(AppRoute.Terminal)
             onTerminalOpened()
+        }
+    }
+    androidx.compose.runtime.SideEffect {
+        io.github.mangi.eta.agent.development.OwnAppScreenContext.screen(backStack.lastOrNull() as? AppRoute ?: AppRoute.Home)
+    }
+    LaunchedEffect(openAppImprovements) {
+        if (openAppImprovements) {
+            if (backStack.lastOrNull() != AppRoute.AppImprovements) backStack.add(AppRoute.AppImprovements)
+            onAppImprovementsOpened()
         }
     }
     val navigator = remember(backStack) { AgentNavigator(backStack) }
@@ -511,6 +522,9 @@ fun AgentAppRoot(
             }
             entry<AppRoute.ConversationTitleSettings>(swipeDismiss = swipeDismiss) {
                 ConversationTitleSettingsScreen(onBack = ::popRoute)
+            }
+            entry<AppRoute.AppImprovements>(swipeDismiss = swipeDismiss) {
+                io.github.mangi.eta.ui.screens.settings.AppImprovementsScreen(onBack = ::popRoute)
             }
             entry<AppRoute.AssistantOverlaySettings>(swipeDismiss = swipeDismiss) {
                 AssistantOverlaySettingsScreen(onBack = ::popRoute)

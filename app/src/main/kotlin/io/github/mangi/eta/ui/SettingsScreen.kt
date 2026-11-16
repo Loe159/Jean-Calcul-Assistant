@@ -487,6 +487,14 @@ private fun SettingsPageContent(
 
 
 
+                Group(title = "App improvements") {
+                    CouiPreference(
+                        title = "Improve Jean-Calcul",
+                        summary = "Report an issue, test its update and validate the PR",
+                        icon = { CouiSettingsIcon(Icons.Rounded.AutoAwesome, SettingsIconColors.Blue) },
+                        onClick = { onNavigate(AppRoute.AppImprovements) },
+                    )
+                }
                 Group(title = stringResource(R.string.settings_general)) {
                     CouiPreference(
                         title = stringResource(R.string.appearance_title),

@@ -37,10 +37,37 @@ internal class EtaAssistantScreenContext(
     private var screenshotReceived = false
     private var image: AgentModelClient.ModelImage? = null
     private var closed = false
+    private var ownScreen = ""
+    private var ownText = ""
+    private var privateScreen = false
+    private var fallbackImage: AgentModelClient.ModelImage? = null
+    private var fallbackJob: kotlinx.coroutines.Job? = null
+
+    fun acceptOwnApp(capture: io.github.mangi.eta.agent.development.OwnAppScreenContext.Capture) {
+        ownScreen = capture.screen
+        ownText = capture.text
+        privateScreen = capture.sensitive
+        val bitmap = capture.bitmap ?: return
+        fallbackJob = scope.launch {
+            try {
+                val encoded = runCatching {
+                    capture.ready?.await()
+                    AgentImageCodec.fromScreenContextBitmap(bitmap, source = "jeancalcul_screen_context")
+                }.getOrNull()
+                synchronized(this@EtaAssistantScreenContext) { if (!closed) fallbackImage = encoded }
+            } finally {
+                // Joining this job must also observe cleanup, not race a completion callback.
+                capture.release()
+            }
+            // A job cancelled before it starts still has to release the copy destination.
+        }.also { job -> job.invokeOnCompletion { capture.release() } }
+    }
+
 
     init { completeIfReady() }
 
     fun acceptAssist(context: Context, state: VoiceInteractionSession.AssistState) {
+        if (privateScreen) { synchronized(this) { assistComplete = true; completeIfReady() }; return }
         synchronized(this) {
             if (closed || state.index in receivedActivities) return
             if (receivedActivities.size >= MAX_ACTIVITIES && !state.isFocused) return
@@ -66,6 +93,7 @@ internal class EtaAssistantScreenContext(
     }
 
     fun acceptScreenshot(bitmap: Bitmap?) {
+        if (privateScreen) { bitmap?.recycle(); synchronized(this) { screenshotComplete = true; completeIfReady() }; return }
         synchronized(this) {
             if (closed || screenshotReceived) {
                 bitmap?.recycle()
@@ -94,20 +122,23 @@ internal class EtaAssistantScreenContext(
     suspend fun snapshot(): Snapshot {
         val remaining = (WAIT_MILLIS - (SystemClock.elapsedRealtime() - startedAt)).coerceAtLeast(0)
         if (remaining > 0) withTimeoutOrNull(remaining) { ready.await() }
+        withTimeoutOrNull(WAIT_MILLIS) { fallbackJob?.join() }
         return synchronized(this) {
             if (closed) return@synchronized Snapshot()
+            val chosenImage = if (privateScreen) null else image ?: fallbackImage
             val text = buildString {
                 appendLine("Capture time (Unix milliseconds): $capturedAt; this is the screen at assistant invocation, not the live state after actions.")
                 if (foregroundApps.isNotEmpty()) {
                     appendLine("Foreground app: " + foregroundApps.take(MAX_ACTIVITIES)
                         .joinToString { it.flattenToShortString().take(512) })
                 }
-                appendLine(if (image != null) "A screenshot is attached." else "The system did not provide a usable screenshot.")
+                if (ownText.isNotEmpty()) appendLine(ownText)
+                appendLine(if (chosenImage != null) "A screenshot is attached." else "The system did not provide a usable screenshot.")
                 if (activities.isEmpty()) appendLine("The system has not provided app content.")
                 activities.entries.sortedWith(compareByDescending<Map.Entry<Int, Pair<Boolean, String>>> { it.value.first }
                     .thenBy { it.key }).take(MAX_ACTIVITIES).forEach { appendLine(it.value.second) }
             }
-            Snapshot(AssistantScreenContextProjection.bound(text), image)
+            Snapshot(AssistantScreenContextProjection.bound(text), chosenImage, ownScreen)
         }
     }
 
@@ -115,6 +146,7 @@ internal class EtaAssistantScreenContext(
         synchronized(this) {
             closed = true
             image = null
+            fallbackImage = null
             activities.clear()
             ready.complete(Unit)
         }
@@ -125,7 +157,7 @@ internal class EtaAssistantScreenContext(
         if (assistComplete && screenshotComplete) ready.complete(Unit)
     }
 
-    data class Snapshot(val text: String = "", val image: AgentModelClient.ModelImage? = null)
+    data class Snapshot(val text: String = "", val image: AgentModelClient.ModelImage? = null, val appScreen: String = "")
 
     companion object {
         private const val MAX_ACTIVITIES = 4

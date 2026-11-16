@@ -10,6 +10,9 @@ require(previewVersionCode in 2030000000..2100000000) { "Preview versionCode is 
 val updateChannel = providers.gradleProperty("jeancalcul.updateChannel").orNull ?: "preview-pr-62"
 require(updateChannel.matches(Regex("[a-z0-9-]+"))) { "Invalid update channel" }
 
+val sourceCommit = providers.environmentVariable("GITHUB_SHA").orNull.orEmpty()
+require(sourceCommit.isEmpty() || sourceCommit.matches(Regex("[0-9a-f]{40}"))) { "Invalid source commit" }
+
 val releaseStoreFile = System.getenv("ETA_RELEASE_STORE_FILE")
 val releaseStorePassword = System.getenv("ETA_RELEASE_STORE_PASSWORD")
 val releaseKeyAlias = System.getenv("ETA_RELEASE_KEY_ALIAS")
@@ -48,6 +51,9 @@ android {
         versionCode = previewVersionCode
         versionName = "2.0.0-preview.$previewVersionCode"
         buildConfigField("String", "UPDATE_CHANNEL", "\"$updateChannel\"")
+        buildConfigField("String", "SOURCE_COMMIT", "\"$sourceCommit\"")
+        // Synthetic AVD runs must not download a public preview or display its installer dialog.
+        buildConfigField("boolean", "SYNTHETIC_EMULATOR", (providers.gradleProperty("jeancalcul.emulator").orNull == "true").toString())
 
         ndk {
             // 同时过滤本地与依赖 AAR 的原生库，确保 APK 仅包含 ARM64。

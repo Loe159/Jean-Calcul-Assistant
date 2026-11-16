@@ -84,6 +84,11 @@ class MainActivity : ComponentActivity() {
                         },
                         openSpeechSettings = launchRequests.speechSettings,
                         openTerminal = launchRequests.terminal,
+                        openAppImprovements = launchRequests.appImprovements,
+                        onAppImprovementsOpened = {
+                            launchRequests = launchRequests.copy(appImprovements = false)
+                            intent?.action = null
+                        },
                         onTerminalOpened = {
                             launchRequests = launchRequests.copy(terminal = false)
                             intent?.action = null
@@ -109,12 +114,15 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         startedInstances.add(this)
+        io.github.mangi.eta.agent.development.OwnAppScreenContext.started(this)
         isInForeground = true
         io.github.mangi.eta.data.update.PreviewUpdates.check(this)
+        io.github.mangi.eta.agent.development.DevelopmentMonitor.start(this)
         AgentRuntimeService.onEtaUiVisibilityChanged()
     }
 
     override fun onStop() {
+        io.github.mangi.eta.agent.development.OwnAppScreenContext.stopped(this)
         startedInstances.remove(this)
         isInForeground = startedInstances.isNotEmpty() || isChangingConfigurations
         AgentRuntimeService.onEtaUiVisibilityChanged()
@@ -189,6 +197,7 @@ class MainActivity : ComponentActivity() {
         internal var isInForeground: Boolean = false
             private set
 
+        const val ACTION_APP_IMPROVEMENTS = "fr.loevan.jeancalcul.v2.action.APP_IMPROVEMENTS"
         const val ACTION_OPEN_TERMINAL = "fr.loevan.jeancalcul.v2.action.OPEN_TERMINAL"
         /** 运行浮层的结果卡片回到本体：App 发起的 run 带会话 ID，直接打开该会话。 */
         const val ACTION_OPEN_CONVERSATION_ID = "fr.loevan.jeancalcul.v2.action.OPEN_CONVERSATION_ID"

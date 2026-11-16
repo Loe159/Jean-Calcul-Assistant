@@ -63,6 +63,7 @@ internal class AgentTraceFormatter {
             "skills_list_curated" -> "Browse curated skills"
             "skills_inspect_github" -> "Skill details"
             "skills_install_from_github" -> "Install skill"
+            "develop_jean_calcul" -> "Improve Jean-Calcul"
             else -> {
                 val label = DEVICE_ACTION_LABELS[toolCall.name]
                     ?: AgentPhoneToolCatalog.entries.firstOrNull { it.name == toolCall.name }?.title
