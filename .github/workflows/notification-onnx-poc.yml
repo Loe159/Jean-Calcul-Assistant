@@ -1,0 +1,62 @@
+name: V2 Notification ONNX Android POC
+on:
+  pull_request:
+    branches: [feature/jean-calcul-v2-foundation]
+    paths:
+      - '.github/workflows/notification-onnx-poc.yml'
+      - 'app/build.gradle.kts'
+      - 'app/src/androidTest/assets/notification_nli_reference.json'
+      - 'app/src/androidTest/kotlin/io/github/mangi/eta/agent/device/notifications/**'
+      - 'app/src/main/kotlin/io/github/mangi/eta/agent/device/notifications/**'
+permissions:
+  contents: read
+jobs:
+  android-onnx-smoke:
+    name: ONNX parity on isolated Android 35 emulator
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v4
+      - name: Install Android 37 toolchain
+        run: sdkmanager --channel=3 "platforms;android-37.0" "build-tools;37.0.0"
+      - name: Get immutable model (development CI only; no real notifications)
+        run: |
+          mkdir -p "$RUNNER_TEMP/notification-model"
+          curl --fail --location --retry 3 --connect-timeout 30 \
+            --output "$RUNNER_TEMP/notification-model/model_quantized.onnx" \
+            "https://huggingface.co/Horizon-Labs/multilingual-zeroshot-small/resolve/17af5f8a728d101ce33a9bffad227b0cd005e95e/onnx/model_quantized.onnx"
+          echo "0ac394942a086fb1c02beb0fde0357bf7f3bd739ca07af7fa6c9fa11c9c05512  $RUNNER_TEMP/notification-model/model_quantized.onnx" | sha256sum -c -
+      - name: Enable KVM
+        run: sudo chmod a+rw /dev/kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 4096M
+          disk-size: 8192M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: |
+            ./gradlew --no-daemon -Pjeancalcul.emulator=true :app:assembleDebug :app:assembleDebugAndroidTest
+            adb install -r app/build/outputs/apk/debug/app-debug.apk
+            adb shell mkdir -p /sdcard/Android/data/fr.loevan.jeancalcul.v2/files/notification-model
+            adb push "$RUNNER_TEMP/notification-model/model_quantized.onnx" /sdcard/Android/data/fr.loevan.jeancalcul.v2/files/notification-model/model_quantized.onnx
+            ./gradlew --no-daemon -Pjeancalcul.emulator=true :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.mangi.eta.agent.device.notifications.NotificationOnnxAndroidPocTest
+      - name: Upload POC test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: V2-Notification-ONNX-Android-POC-${{ github.sha }}
+          path: |
+            app/build/outputs/androidTest-results/**
+            app/build/reports/androidTests/**
+          if-no-files-found: warn
+          retention-days: 21
