@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -347,6 +348,8 @@ internal fun CouiLazyScaffoldPage(
     colors: CouiPageColors = CouiPageDefaults.themeColors(dark),
     listState: LazyListState = rememberLazyListState(),
     compactTitle: Boolean = false,
+    titleMotionProgress: Float = 1f,
+    backgroundEffect: @Composable BoxScope.() -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     floatingAction: (@Composable BoxScope.() -> Unit)? = null,
     overlay: @Composable () -> Unit = {},
@@ -385,6 +388,10 @@ internal fun CouiLazyScaffoldPage(
                     title = {
                         BasicText(
                             text = title,
+                            modifier = Modifier.graphicsLayer {
+                                alpha = titleMotionProgress.coerceIn(0f, 1f)
+                                translationY = (1f - titleMotionProgress.coerceIn(0f, 1f)) * 12.dp.toPx()
+                            },
                             style = LocalCouiTextStyle.current,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -400,6 +407,10 @@ internal fun CouiLazyScaffoldPage(
                     title = {
                         BasicText(
                             text = title,
+                            modifier = Modifier.graphicsLayer {
+                                alpha = titleMotionProgress.coerceIn(0f, 1f)
+                                translationY = (1f - titleMotionProgress.coerceIn(0f, 1f)) * 12.dp.toPx()
+                            },
                             style = LocalCouiTextStyle.current,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -418,7 +429,9 @@ internal fun CouiLazyScaffoldPage(
             behavior?.state?.contentPadding(innerPadding, localDensity) ?: innerPadding
         }
         WidePageContent { sidePadding ->
-            LazyColumn(
+            Box(Modifier.fillMaxSize()) {
+                backgroundEffect()
+                LazyColumn(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
@@ -430,8 +443,9 @@ internal fun CouiLazyScaffoldPage(
                     bottom = topBarAdjustedPadding.calculateBottomPadding() + CouiPageDefaults.groupSpacing,
                 ),
                 overscrollEffect = overscroll,
-            ) {
-                content()
+                ) {
+                    content()
+                }
             }
         }
         overlay()
