@@ -190,7 +190,7 @@ class VisualScenarioTest {
                             assertTrue(device.hasObject(By.text("Votre tranquillité")))
                         }
                         device.findObject(By.desc("Style B · ETA Glass")).click()
-                        device.findObject(By.desc("Fermer le briefing")).click()
+                        device.pressBack()
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
                         assertTrue(device.wait(Until.hasObject(
                             By.text("Reflets fins et profondeur, lisibilité renforcée")), 12000))
