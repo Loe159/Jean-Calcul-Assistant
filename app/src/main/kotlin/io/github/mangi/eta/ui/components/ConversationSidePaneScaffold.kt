@@ -1,8 +1,5 @@
 package io.github.mangi.eta.ui.components
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
@@ -41,11 +38,9 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -66,7 +61,6 @@ import io.github.mangi.eta.ui.model.ConversationPaneUiState
 import io.github.mangi.eta.ui.model.ConversationSummaryUi
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -117,7 +111,6 @@ fun ConversationSidePaneScaffold(
         val paneWidth = minOf(maxWidth * ConversationPaneMetrics.PaneWidthFraction, ConversationPaneMetrics.PaneMaxWidth)
         val paneWidthPx = with(density) { paneWidth.toPx() }
         val fullWidthPx = with(density) { maxWidth.toPx() }
-        val previewEdgePx = with(density) { 12.dp.toPx() }
         val anchors = remember(paneWidthPx, fullWidthPx) {
             DraggableAnchors {
                 ConversationPaneAnchor.Closed at 0f
@@ -159,26 +152,6 @@ fun ConversationSidePaneScaffold(
         val currentHapticFeedback by rememberUpdatedState(hapticFeedback)
         val dragInteractions = remember { MutableInteractionSource() }
         val isDragging by dragInteractions.collectIsDraggedAsState()
-        // C: first-use nudge reveals the real adjacent page without changing navigation state.
-        val context = LocalContext.current
-        val discoveryPreferences = remember(context) {
-            context.getSharedPreferences("now_brief_discovery", android.content.Context.MODE_PRIVATE)
-        }
-        val nudge = remember { Animatable(0f) }
-        LaunchedEffect(sceneLifecycleState, backHandlerEnabled, fullWidthPx) {
-            if (sceneLifecycleState != Lifecycle.State.RESUMED || !backHandlerEnabled ||
-                discoveryPreferences.getBoolean("seen", false) ||
-                !io.github.mangi.eta.ui.screens.home.briefMotionAllowed(context)) return@LaunchedEffect
-            delay(850)
-            if (currentVisible || currentBriefVisible || isDragging) return@LaunchedEffect
-            discoveryPreferences.edit().putBoolean("seen", true).apply()
-            nudge.animateTo(-fullWidthPx * 0.17f,
-                tween(640, easing = FastOutSlowInEasing))
-            nudge.animateTo(0f, tween(520, easing = FastOutSlowInEasing))
-        }
-        LaunchedEffect(isDragging) {
-            if (isDragging) nudge.snapTo(0f)
-        }
         val isHistoryRevealed by remember(paneDragState) {
             derivedStateOf { paneDragState.offset > 0.5f }
         }
@@ -235,9 +208,6 @@ fun ConversationSidePaneScaffold(
                 if (settledValue != previousAnchor) {
                     // D4: haptic only when the page has actually snapped into place.
                     currentHapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                    if (settledValue == ConversationPaneAnchor.Brief) {
-                        discoveryPreferences.edit().putBoolean("seen", true).apply()
-                    }
                 }
                 previousAnchor = settledValue
                 val settledOpen = settledValue == ConversationPaneAnchor.Open
@@ -314,7 +284,7 @@ fun ConversationSidePaneScaffold(
                     )
                     Box(
                         modifier = Modifier.fillMaxSize()
-                            .clipToBounds() // Keep D1 parallax inside the 12dp actual page peek.
+                            .clipToBounds() // D1 parallax stays inside the full-screen Brief surface.
                             .focusProperties { onEnter = { if (!isBriefRevealed) cancelFocusChange() } }
                             .focusGroup()
                             .then(if (!isBriefRevealed) Modifier.clearAndSetSemantics {} else Modifier),
@@ -373,40 +343,17 @@ fun ConversationSidePaneScaffold(
                 )
                 layout(constraints.maxWidth, constraints.maxHeight) {
                     // Three physically adjacent surfaces: history | conversation | fullscreen brief.
-                    val offset = (paneDragState.offset + nudge.value).takeIf { it.isFinite() }
+                    val offset = paneDragState.offset.takeIf { it.isFinite() }
                         ?.coerceIn(-fullWidthPx, paneWidthPx) ?: 0f
                     val x = offset.roundToInt()
                     panel.placeWithLayer(x - panel.width, 0)
-                    val preview = 1f - briefPaneMotion(offset, fullWidthPx).progress
-                    // B: expose the actual brief surface by 12dp while the chat is at rest.
-                    // Its z-index makes the preview visible over the foreground conversation.
+                    // No exposed right-hand edge: the neighboring page is fully offscreen.
+                    brief.placeWithLayer(x + page.width, 0)
                     page.placeWithLayer(x, 0)
-                    brief.placeWithLayer(
-                        x + page.width - (preview * previewEdgePx).roundToInt(),
-                        0, zIndex = 1f,
-                    )
                 }
             }
-            // B: a slim right-edge glimpse is visible while the chat is the active page.
-            // D: two small segments follow the real swipe progress.
-            val progress = briefPaneMotion(paneDragState.offset + nudge.value, fullWidthPx).progress
-            if (!currentVisible && progress < 0.98f) {
-                Box(
-                    modifier = Modifier.align(Alignment.CenterEnd)
-                        .width(14.dp).height(96.dp)
-                        .graphicsLayer { alpha = (1f - progress * 2.2f).coerceIn(0f, 1f) }
-                        .clip(CircleShape)
-                        .background(Brush.horizontalGradient(
-                            listOf(Color.Transparent, MiuixTheme.colorScheme.primary.copy(alpha = 0.23f)),
-                        ))
-                        .clickable(onClickLabel = "Ouvrir mon briefing") { currentOnOpenBrief() }
-                        .semantics { contentDescription = "Ouvrir mon briefing, page à droite" },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(Modifier.width(3.dp).height(26.dp).clip(CircleShape)
-                        .background(MiuixTheme.colorScheme.primary.copy(alpha = 0.68f)))
-                }
-            }
+            // Only the unobtrusive lower pager remains visible on the chat.
+            val progress = briefPaneMotion(paneDragState.offset, fullWidthPx).progress
             if (!currentVisible && progress < 0.98f) {
                 Row(
                     modifier = Modifier.align(Alignment.BottomCenter)

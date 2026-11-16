@@ -29,9 +29,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
 
 /**
  * The display settings and battery saver always win over the experimental effects.
@@ -49,22 +46,25 @@ internal fun briefAmbientAllowed(context: Context): Boolean {
     return briefMotionAllowed(context) && power?.isPowerSaveMode != true
 }
 
-internal fun briefAmbienceIndex(openCount: Int): Int = ((openCount - 1).coerceAtLeast(0)) % 3
-
-internal fun briefAmbienceName(index: Int) = when (index % 3) {
-    0 -> "Dégradé"
-    1 -> "Halo"
-    else -> "Particules"
+/**
+ * Process-only memory. It intentionally resets when Android kills the app process,
+ * not when the user switches between chat and briefing.
+ */
+internal object BriefMotionSession {
+    var hasOpened by mutableStateOf(false)
+    var hasClosedAfterOpening by mutableStateOf(false)
+    val revealedCards = androidx.compose.runtime.mutableStateMapOf<String, Boolean>()
 }
 
+internal fun shouldAnimateBriefEntrance(hasOpened: Boolean): Boolean = !hasOpened
+
 /**
- * B1, B2 and B6 deliberately alternate per open. B4 applies to all three.
- * Draw 12 or fewer cheap shapes; never allocate bitmaps or blur layers.
+ * Single, slowly moving ambient halo (B2), plus capped scroll parallax (B4).
+ * No bitmap allocation or GPU blur.
  */
 @Composable
 internal fun BriefAmbientBackground(
     visible: Boolean,
-    variant: Int,
     accent: Color,
     dark: Boolean,
     scrollOffsetPx: Float,
@@ -88,45 +88,17 @@ internal fun BriefAmbientBackground(
         val w = size.width
         val h = size.height
         val intensity = if (dark) 0.14f else 0.09f
-        when (variant % 3) {
-            0 -> {
-                val shift = 0.1f + phase * 0.35f
-                drawRect(
-                    Brush.linearGradient(
-                        listOf(accent.copy(alpha = intensity), accent.copy(alpha = 0.01f),
-                            accent.copy(alpha = intensity * 0.45f)),
-                        start = Offset(w * shift, 0f),
-                        end = Offset(w * (1.3f - shift), h),
-                    ),
-                )
-            }
-            1 -> {
-                val center = Offset(w * (0.35f + 0.35f * phase), h * (0.17f + 0.19f * phase))
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        0f to accent.copy(alpha = intensity * 1.5f),
-                        1f to Color.Transparent,
-                        center = center,
-                        radius = w * 0.9f,
-                    ),
-                    radius = w * 0.9f,
-                    center = center,
-                )
-            }
-            else -> {
-                repeat(12) { index ->
-                    val seed = index.toFloat()
-                    val x = w * ((0.09f + seed * 0.137f) % 1f)
-                    val y = h * ((0.05f + seed * 0.217f + phase * 0.04f) % 1f)
-                    val shimmer = 0.6f + 0.4f * sin((phase + seed * 0.17f) * PI * 2f).toFloat()
-                    drawCircle(
-                        color = accent.copy(alpha = ((if (dark) 0.26f else 0.20f) * shimmer).coerceIn(0f, 0.3f)),
-                        radius = (1.5f + seed % 3f) * density,
-                        center = Offset(x + cos(seed * 1.7f).toFloat() * phase * 9f, y),
-                    )
-                }
-            }
-        }
+        val center = Offset(w * (0.35f + 0.35f * phase), h * (0.17f + 0.19f * phase))
+        drawCircle(
+            brush = Brush.radialGradient(
+                0f to accent.copy(alpha = intensity * 1.5f),
+                1f to Color.Transparent,
+                center = center,
+                radius = w * 0.9f,
+            ),
+            radius = w * 0.9f,
+            center = center,
+        )
     }
 }
 
@@ -135,23 +107,21 @@ internal fun BriefAmbientBackground(
 internal fun BriefReveal(
     id: String,
     visible: Boolean,
-    session: Int,
     order: Int,
     alreadySeen: MutableMap<String, Boolean>,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
     val enabled = remember(context) { briefMotionAllowed(context) }
-    var revealed by remember(id, session) { mutableStateOf(false) }
-    LaunchedEffect(id, session, visible, enabled) {
-        if (!visible) { revealed = false; return@LaunchedEffect }
-        if (!enabled || alreadySeen.containsKey(id)) {
-            revealed = true
-        } else {
+    var revealed by remember(id) { mutableStateOf(alreadySeen.containsKey(id)) }
+    LaunchedEffect(id, visible, enabled) {
+        if (!visible || revealed) return@LaunchedEffect
+        if (enabled && !BriefMotionSession.hasClosedAfterOpening &&
+            !alreadySeen.containsKey(id)) {
             delay((order.coerceAtMost(6) * 75).toLong())
-            revealed = true
-            alreadySeen[id] = true
         }
+        alreadySeen[id] = true
+        revealed = true
     }
     val progress by animateFloatAsState(
         targetValue = if (revealed || !enabled) 1f else 0f,

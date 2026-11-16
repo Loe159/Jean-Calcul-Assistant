@@ -137,8 +137,8 @@ class VisualScenarioTest {
                         // Discovery controls are present before swiping.
                         assertTrue("Page indicator exposes the second page",
                             device.wait(Until.hasObject(By.desc("Chat, page 1 sur 2")), 8000))
-                        assertTrue("Peek handle exposes the second page",
-                            device.hasObject(By.desc("Ouvrir mon briefing, page à droite")))
+                        assertTrue("No right-edge peek affordance",
+                            !device.hasObject(By.desc("Ouvrir mon briefing, page à droite")))
                         // Native mirrored drag: home -> left reveals the full-screen COUI briefing.
                         val midY = device.displayHeight / 2
                         device.swipe(device.displayWidth * 4 / 5, midY,
@@ -148,7 +148,8 @@ class VisualScenarioTest {
                         assertTrue("Settings card must not appear in briefing",
                             !device.hasObject(By.text("Notifications intelligentes")))
                         assertTrue(device.hasObject(By.text("Votre tranquillité")))
-                        assertTrue(device.hasObject(By.text("Ambiance 1/3 · Dégradé")))
+                        assertTrue("Single halo ambient, no cycle labels",
+                            !device.hasObject(By.textContains("Ambiance ")))
                         // Return to the conversation with the same spring gesture.
                         device.swipe(device.displayWidth / 6, midY,
                             device.displayWidth * 4 / 5, midY, 30)
@@ -157,8 +158,8 @@ class VisualScenarioTest {
                         // Re-open using the accessible button; screenshot shows the briefing.
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
                         assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
-                        assertTrue("Second visit cycles the ambience to halo",
-                            device.wait(Until.hasObject(By.text("Ambiance 2/3 · Halo")), 8000))
+                        assertTrue("Brief stays accessible on second opening",
+                            device.hasObject(By.text("Votre tranquillité")))
                     }
                     "menu" -> {
                         assertTrue("New conversation is a direct toolbar action",
