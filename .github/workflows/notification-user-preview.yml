@@ -29,7 +29,7 @@ jobs:
       - name: Build audited native tokenizer (ARM64)
         run: |
           export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$ANDROID_HOME/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android33-clang"
-          cargo build --locked --release --manifest-path native/notification-tokenizer/Cargo.toml --target aarch64-linux-android
+          cargo build --release --manifest-path native/notification-tokenizer/Cargo.toml --target aarch64-linux-android
           mkdir -p app/src/main/jniLibs/arm64-v8a
           cp native/notification-tokenizer/target/aarch64-linux-android/release/libjeancalcul_hf_tokenizer.so app/src/main/jniLibs/arm64-v8a/
       - name: Assign increasing preview version
@@ -85,7 +85,7 @@ jobs:
       - name: Build native tokenizer for AVD
         run: |
           export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$ANDROID_HOME/ndk/30.0.16248370/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android33-clang"
-          cargo build --locked --release --manifest-path native/notification-tokenizer/Cargo.toml --target x86_64-linux-android
+          cargo build --release --manifest-path native/notification-tokenizer/Cargo.toml --target x86_64-linux-android
           mkdir -p app/src/main/jniLibs/x86_64
           cp native/notification-tokenizer/target/x86_64-linux-android/release/libjeancalcul_hf_tokenizer.so app/src/main/jniLibs/x86_64/
       - name: Set up isolated Android emulator and run technical e2e
