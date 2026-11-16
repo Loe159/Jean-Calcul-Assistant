@@ -116,7 +116,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
         Footer(text = "Les scores représentent la correspondance entre hypothèses, pas une probabilité calibrée de spam. Aucun message n'est supprimé.")
         Group(title = "Observation sans suppression") {
             CouiPreference(title = if (enabled) "Observation activée" else "Observation désactivée",
-                summary = "Sur demande uniquement · maximum 1 notification par minute · aucune suppression",
+                summary = "Sur demande uniquement · maximum 1/min et 100/jour · aucune suppression",
                 enabled = installed && !busy,
                 onClick = {
                     if (!AgentNotificationHistoryService.isEnabled(context)) {
@@ -140,7 +140,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                 CouiPreference(title = row, showChevron = false)
             }
         }
-        Footer(text = "Le mode observation conserve uniquement l'application, la catégorie et un score en mémoire vive (20 entrées maximum). Les messages, appels, codes de connexion, rappels et notifications système sont protégés. L'observation s'arrête sans modèle.")
+        Footer(text = "Le mode observation conserve uniquement l'application, la catégorie et un score en mémoire vive (20 entrées maximum). Les messages, appels, codes de connexion, rappels et notifications système sont protégés. Le traitement est suspendu en économie d’énergie ou sous 20 % de batterie. L'observation s'arrête sans modèle.")
         if (status.isNotBlank()) Footer(text = status)
         CouiPageBottomSpacer()
     }
