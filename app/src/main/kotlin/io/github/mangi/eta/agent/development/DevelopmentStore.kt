@@ -35,8 +35,8 @@ internal class DevelopmentStore(context: Context) : DevelopmentState {
         require(id.isNotBlank() && key.isNotBlank() && enabled)
         val previous = context().takeIf { prefs.getString("conversation_id", null) == id }
         val context = previous ?: JSONObject().put("task", task.take(16000))
-            .put("source_revision", DevelopmentPolicy.sourceRef(sourceRevision))
-        if (screen.isNotBlank()) context.put("screen", screen.take(100))
+            .put("source_revision", DevelopmentPolicy.sourceRef(sourceRevision)).put("screen", screen.take(100))
+        if (screen.isNotBlank()) context.put("latest_screen", screen.take(100))
         check(prefs.edit().putString("conversation_id", id).putString("conversation_key", key)
             .putString("session_context", context.toString())
             .putBoolean("question_pending", false).commit()) { "Could not save improvement conversation" }

@@ -39,6 +39,8 @@ class DevelopmentRecoveryTest {
         // A later capture for this conversation must not replace its task/source with "continue".
         reopened.authorizeConversation("assistant-task", "voice-key", "Home", "continue", "c".repeat(40))
         assertEquals(revision, store().context()!!.getString("source_revision"))
+        assertEquals("Settings", store().context()!!.getString("screen"))
+        assertEquals("Home", store().context()!!.getString("latest_screen"))
         assertEquals("Translate smart notification settings to English", store().context()!!.getString("task"))
         reopened.disconnect()
         assertFalse(store().mayContinue("assistant-task"))
