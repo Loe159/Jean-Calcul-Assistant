@@ -83,6 +83,10 @@ def main():
     for example in EXAMPLES:
         oracle_results.append(oracle(example, candidate_labels=LABELS, hypothesis_template=TEMPLATE, multi_label=False))
     for i, item in enumerate(oracle_results):
+        # Pipeline uses its own max-length policy. Compare only inputs that fit
+        # into the configured bound; long-input parity needs the same truncation.
+        if any(len(tokenizer(EXAMPLES[i], TEMPLATE.format(label))["input_ids"]) > args.max_length for label in LABELS):
+            continue
         oracle_by_label = dict(zip(item["labels"], item["scores"]))
         for j, label in enumerate(LABELS):
             if abs(oracle_by_label[label] - float(ref_single[i, j])) > 1e-5:
