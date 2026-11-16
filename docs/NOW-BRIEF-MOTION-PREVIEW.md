@@ -18,3 +18,18 @@ backgrounding the app does not. New incoming notifications can still animate.
 
 The ambient halo stops when the brief is hidden; battery saver or disabled
 Android animations prevents the ambient effect. Notifications remain local.
+
+## Reference-inspired visual refinement
+
+Following the user-provided dark dashboard reference: quieter navy/violet
+surfaces (hero #2B3041, secondary cards #292936), 20dp side gutters, and
+muted sage/apricot/yellow corner tints rather than saturated light pools.
+Card-halo opacity is 0.065 (dark) / 0.035 (light), down from 0.21 / 0.14.
+The moving backdrop halo is similarly reduced, without adding continuous
+animations or GPU blur.
+
+The initial entrance is deliberately short: 230ms heading, 190ms card fade
+with at most 80ms of stagger, 300ms counters, and 280ms progress bars.
+The first viewport should be readable within roughly 300ms rather than
+waiting for a long cascade. Entrances still occur only once per app process;
+new notification events may animate independently.
