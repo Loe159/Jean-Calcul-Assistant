@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.filterNotNull
 internal enum class ConversationPaneAnchor {
     Closed,
     Open,
+    Brief,
 }
 
 internal fun conversationPaneSettledValues(
