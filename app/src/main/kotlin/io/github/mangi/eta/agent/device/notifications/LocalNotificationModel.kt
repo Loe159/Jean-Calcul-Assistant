@@ -87,12 +87,14 @@ internal object LocalNotificationModel {
     }
 
     /** Synchronous work: call only on IO dispatcher, never on the UI or listener callback. */
+    @Synchronized
     fun classify(context: Context, text: String): List<Pair<String, Double>> {
         require(installed(context)) { "Installer le modèle avant de commencer" }
         require(text.isNotBlank()) { "Saisir une notification à tester" }
         // Session per test: no inference threads or ~300 MiB session retained while idle.
         val tokenizer = AndroidHfTokenizer()
         check(tokenizer.initialize(file(context, "tokenizer.json").absolutePath)) { "Tokenizer indisponible" }
+        try {
         val labels = NotificationNliScores.validatedLabels
         val batches = labels.map { label ->
             tokenizer.encodePair(text.take(512), NotificationNliScores.hypothesis(label), 128)
@@ -132,5 +134,6 @@ internal object LocalNotificationModel {
                 }
             }
         } finally { options.close() }
+        } finally { tokenizer.release() }
     }
 }
