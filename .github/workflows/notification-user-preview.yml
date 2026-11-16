@@ -1,13 +1,13 @@
-name: Jean-Calcul V2 - Test intelligent notifications and publish APK
+name: Jean-Calcul V2 - Filter modes 2 and 3 · build/e2e/publish
 on:
   push:
-    branches: [feat/v2-notification-onnx-poc]
+    branches: [feat/v2-notification-onnx-poc, feat/v2-notification-filtering]
     paths:
       - '.github/workflows/notification-user-preview.yml'
 permissions:
   contents: read
 concurrency:
-  group: notification-v2-preview
+  group: notification-modes-2-3-preview
   cancel-in-progress: true
 jobs:
   build:
@@ -37,8 +37,8 @@ jobs:
       - name: Assign increasing preview version
         id: version
         run: |
-          code=$((2030011500 + GITHUB_RUN_NUMBER))
-          test "$code" -gt 2030011301
+          code=$((2030011600 + GITHUB_RUN_NUMBER))
+          test "$code" -gt 2030011510
           echo "code=$code" >> "$GITHUB_OUTPUT"
       - name: Build APK + Android instrumented APK + unit tests + lint
         run: |
@@ -56,14 +56,14 @@ jobs:
           echo "Native tokenizer included"
       - uses: actions/upload-artifact@v4
         with:
-          name: JeanCalcul-Notification-V2-APK-${{ github.sha }}
+          name: JeanCalcul-Filtering-V2-APK-${{ github.sha }}
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 21
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: JeanCalcul-Notification-V2-Reports-${{ github.sha }}
+          name: JeanCalcul-Filtering-V2-Reports-${{ github.sha }}
           path: |
             app/build/reports/**
             app/build/test-results/**
@@ -93,23 +93,23 @@ jobs:
       - name: Set up isolated Android emulator and run technical e2e
         run: |
           sudo chmod a+rw /dev/kvm
-          python3 e2e/run.py --run-id notifications_onnx --attempt 1
+          python3 e2e/run.py --run-id notifications_modes23 --attempt 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: JeanCalcul-Notifications-V2-E2E-${{ github.sha }}
+          name: JeanCalcul-Filtering-V2-E2E-${{ github.sha }}
           path: |
-            e2e-artifacts/notifications_onnx/attempt-1/screenshots/**
-            e2e-artifacts/notifications_onnx/attempt-1/test-results/**
-            e2e-artifacts/notifications_onnx/attempt-1/logs/*.txt
-            e2e-artifacts/notifications_onnx/attempt-1/report.*
-            e2e-artifacts/notifications_onnx/attempt-1/visual-review.json
-            e2e-artifacts/notifications_onnx/attempt-1/index.html
+            e2e-artifacts/notifications_modes23/attempt-1/screenshots/**
+            e2e-artifacts/notifications_modes23/attempt-1/test-results/**
+            e2e-artifacts/notifications_modes23/attempt-1/logs/*.txt
+            e2e-artifacts/notifications_modes23/attempt-1/report.*
+            e2e-artifacts/notifications_modes23/attempt-1/visual-review.json
+            e2e-artifacts/notifications_modes23/attempt-1/index.html
           if-no-files-found: warn
   publish:
     name: Publish in-app preview; do not merge
     needs: [build, emulator]
-    if: github.repository == 'Loe159/Jean-Calcul-Assistant' && github.ref == 'refs/heads/feat/v2-notification-onnx-poc'
+    if: github.repository == 'Loe159/Jean-Calcul-Assistant' && github.ref == 'refs/heads/feat/v2-notification-filtering'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -121,7 +121,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: JeanCalcul-Notification-V2-APK-${{ github.sha }}
+          name: JeanCalcul-Filtering-V2-APK-${{ github.sha }}
           path: app/build/outputs/apk/debug
       - name: Publish checked version
         run: python3 scripts/publish-preview.py
