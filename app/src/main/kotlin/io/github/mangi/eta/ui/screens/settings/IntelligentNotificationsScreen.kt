@@ -41,6 +41,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var installed by remember { mutableStateOf(LocalNotificationModel.installed(context)) }
+    var status by remember { mutableStateOf("") }
     var config by remember { mutableStateOf(NotificationFilterSettings.load(context)) }
     var selectedApp by remember { mutableStateOf("") }
     var confirmPermanent by remember { mutableStateOf(false) }
@@ -72,7 +73,6 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
     }
 
     var busy by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf("") }
     var text by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<Pair<String, Double>>>(emptyList()) }
     var events by remember { mutableStateOf(NotificationObservation.snapshot()) }
