@@ -130,3 +130,13 @@ Le banc Linux et le test Android instrumenté sont des outils de POC.
 La classification Android des notifications réelles, la page de paramètres,
 les tests E2E visuels et les métriques d'autonomie **ne sont pas livrés**.
 L'application n'effectue aucune suppression de notification.
+
+## Vérifications CI réalisées le 16 novembre 2026
+
+- GitHub Actions V2 a construit l'APK et les tests JVM. Le POC ONNX a été exécuté sur émulateur Android 35 x86_64 : SHA contrôlé, session initialisée et 10 jeux de logits traités par le test instrumenté (`OK (1 test)`, durée du test entier 2,877 s). Cette durée n'est **pas** la latence par notification. Le job a ensuite échoué sur un `grep` de métriques absent du flux shell ; il ne s'agit pas d'un échec d'inférence.
+- Deux défauts de tests précédents étaient des **tests ignorés**, malgré une CI partiellement verte. Le protocole exige désormais un fichier en stockage privé via `run-as` et refuse toute absence de poids.
+- ONNX Runtime Extensions `HfJsonTokenizer` (0.15.0, hôte Linux) n'a **pas** produit les mêmes token IDs que le tokenizer HF officiel sur une paire de test. Cette voie ne peut être utilisée telle quelle.
+- Une bibliothèque `tokenizers` Rust `0.22.2` via JNI a été compilée en cross-target Android x86_64 dans la CI. Le test exact de parité des 14 paires est en cours de qualification, ne pas déclarer son succès avant preuve.
+- Aucune mesure de PSS fiable sur téléphone, aucun coût énergétique mJ, aucune autonomie 24h, aucun test de suppression ou de confidentialité réseau sur téléphone. L'APK de POC ne contient pas encore de moteur de classification dans le listener ni de page COUI dédiée.
+
+La PR de ce POC doit demeurer **draft**, sans merge, jusqu'à la décision GO/NO-GO issue des mesures réelles.
