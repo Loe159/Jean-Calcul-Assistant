@@ -1,0 +1,58 @@
+name: Read PR 63 native review evidence
+on:
+  push:
+    branches: [evidence/pr63-native-review]
+permissions:
+  actions: read
+  contents: read
+jobs:
+  read:
+    name: Read ${{ matrix.scenario }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [empty, message, reset, settings, dark, small_screen, large_text, keyboard, reduced_motion, menu, providers, tools, appearance, improvements, regression_fixture]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: V2-Android-E2E-64e82cc9ff586ade2d2380a84e13c49d883747b7
+          run-id: 43776334724
+          github-token: ${{ github.token }}
+          path: evidence
+      - name: Forward original PNG for native inspection
+        env:
+          SCENARIO: ${{ matrix.scenario }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, json, os, urllib.request
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          root = Path("evidence/e2e-artifacts/ci/attempt-1")
+          report = json.loads((root / "report.json").read_text())
+          assert report["commit"] == "64e82cc9ff586ade2d2380a84e13c49d883747b7"
+          name = os.environ["SCENARIO"]
+          capture = report["captures"][name]
+          assert capture["status"] == "PASS"
+          path = root / capture["path"]
+          data = path.read_bytes()
+          digest = hashlib.sha256(data).hexdigest()
+          assert digest == capture["sha256"]
+          print("CAPTURE_META:" + json.dumps(dict(name=name, sha256=digest, size=len(data))), flush=True)
+          encoded = base64.b64encode(data).decode()
+          for i in range(0, len(encoded), 2000):
+              print("CAPTURE_PNG:" + name + ":" + str(i // 2000) + ":" + encoded[i:i+2000], flush=True)
+          if name == "empty":
+              print("TECHNICAL_REPORT:" + json.dumps(report), flush=True)
+              smoke = ET.parse(root / "test-results/TEST-smoke.xml").getroot()
+              print("SMOKE_REPORT:" + json.dumps(dict(smoke.attrib)), flush=True)
+              url = "https://github.com/Loe159/Jean-Calcul-Assistant/releases/download/preview-pr-62/update.json"
+              update = json.loads(urllib.request.urlopen(url, timeout=60).read())
+              print("UPDATE_MANIFEST:" + json.dumps(update), flush=True)
+              assert update["commit"] == report["commit"]
+              assert update["versionCode"] == 2030009801
+              assert update["sha256"] == "d8acaef19b49af024c04a65472c51b872582e42e687ac1d8e98faa8e5415bc3e"
+              assert update["size"] == 32588029
+          PY
