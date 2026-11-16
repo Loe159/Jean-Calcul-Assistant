@@ -120,9 +120,10 @@ class DevelopmentRecoveryTest {
                 assertTrue(request.config.systemPrompt.contains("Translate notification settings to English"))
                 assertTrue(request.config.systemPrompt.contains("Settings"))
                 assertTrue(request.config.systemPrompt.contains(revision))
-                assertTrue(request.config.systemPrompt.contains(path))
-                assertTrue(request.config.systemPrompt.contains(blob))
-                assertTrue(request.config.systemPrompt.contains(DevelopmentPolicy.REPOSITORY))
+                val recovered = JSONObject(request.config.systemPrompt.substringAfter("Recovery data (JSON):").trim())
+                assertEquals(path, recovered.getJSONArray("recent_actions").getJSONObject(0).getString("path"))
+                assertEquals(blob, recovered.getJSONArray("recent_actions").getJSONObject(0).getString("blob_sha"))
+                assertEquals(DevelopmentPolicy.REPOSITORY, recovered.getString("repository"))
                 assertFalse(request.config.systemPrompt.contains("synthetic-token-not-in-model-context"))
                 return if (++rounds == 1) toolResponse("reread-after-stop") else {
                     assertEquals("tools", JSONObject((0 until request.messages.length()).map { request.messages.getJSONObject(it) }.last { it.optString("role") == "tool" }.getString("content")).getString("content"))
