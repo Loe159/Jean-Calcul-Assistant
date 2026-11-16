@@ -76,39 +76,82 @@ internal object BriefMotionTiming {
 @Composable
 internal fun BriefAmbientBackground(
     visible: Boolean,
-    accent: Color,
     dark: Boolean,
     scrollOffsetPx: Float,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val enabled = remember(context, visible) { briefAmbientAllowed(context) }
-    if (!visible || !enabled) return
-    val transition = rememberInfiniteTransition(label = "brief-ambient")
-    val phase by transition.animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(16000, easing = LinearEasing), RepeatMode.Reverse),
-        label = "slow-ambient-phase",
-    )
+    if (!visible) return
+    // Reduced-motion and battery-saver still get the same static glass backdrop,
+    // but no infinite transition is composed.
+    val phase = if (enabled) {
+        val transition = rememberInfiniteTransition(label = "brief-ambient")
+        val animatedPhase by transition.animateFloat(
+            initialValue = 0f, targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                tween(16000, easing = LinearEasing), RepeatMode.Reverse,
+            ),
+            label = "slow-ambient-phase",
+        )
+        animatedPhase
+    } else 0.5f
     Canvas(
         modifier = modifier.fillMaxSize().graphicsLayer {
-            // B4, capped to prevent exposing areas around the canvas.
-            translationY = -(scrollOffsetPx * 0.05f).coerceIn(0f, 18f)
+            // A restrained background-only parallax. The cards do not draw glow blobs.
+            translationY = -(scrollOffsetPx * 0.026f).coerceIn(0f, 12f)
         },
     ) {
         val w = size.width
         val h = size.height
-        val intensity = if (dark) 0.065f else 0.035f
-        val center = Offset(w * (0.35f + 0.35f * phase), h * (0.17f + 0.19f * phase))
-        drawCircle(
-            brush = Brush.radialGradient(
-                0f to accent.copy(alpha = intensity * 1.5f),
-                1f to Color.Transparent,
+        // Ambient navy backdrop. The original COUI theme still controls the
+        // top bar and the typography, including its translucent scroll effect.
+        if (dark) {
+            drawRect(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF1D2636), Color(0xFF20223B), Color(0xFF201F33)),
+                ),
+            )
+        } else {
+            drawRect(
+                Brush.verticalGradient(
+                    listOf(Color(0xFFF2F6FB), Color(0xFFF5F3FA), Color(0xFFF8F6F3)),
+                ),
+            )
+        }
+
+        val green = Color(0xFF4BCDA2)
+        val orange = Color(0xFFFFAE78)
+        val violet = Color(0xFF8A84DC)
+        fun glow(center: Offset, radius: Float, tint: Color, opacity: Float) {
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(tint.copy(alpha = opacity), Color.Transparent),
+                    center = center,
+                    radius = radius,
+                ),
+                radius = radius,
                 center = center,
-                radius = w * 0.9f,
-            ),
-            radius = w * 0.9f,
-            center = center,
+            )
+        }
+        val breathe = (phase - 0.5f)
+        glow(
+            center = Offset(w * (0.05f + breathe * 0.09f), h * 0.06f),
+            radius = w * 1.06f,
+            tint = green,
+            opacity = if (dark) 0.23f else 0.095f,
+        )
+        glow(
+            center = Offset(w * (0.97f - breathe * 0.10f), h * 0.74f),
+            radius = w * 1.22f,
+            tint = orange,
+            opacity = if (dark) 0.18f else 0.085f,
+        )
+        glow(
+            center = Offset(w * 0.44f, h * (0.46f + breathe * 0.12f)),
+            radius = w * 0.94f,
+            tint = violet,
+            opacity = if (dark) 0.14f else 0.07f,
         )
     }
 }

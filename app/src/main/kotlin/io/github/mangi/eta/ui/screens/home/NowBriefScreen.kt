@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -53,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -104,9 +106,9 @@ internal fun NowBriefScreen(
     val dateText = LocalDate.now().format(
         DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH),
     ).replaceFirstChar { it.uppercaseChar() }
-    // Like the reference: quiet blue-violet surfaces, distinct from the page background.
-    val cardSurface = if (dark) Color(0xFF292936) else Color.White
-    val heroSurface = if (dark) Color(0xFF2B3041) else Color(0xFFF9FAFF)
+    // Translucent COUI glass: the green/orange ambient lights live BEHIND the cards.
+    val cardSurface = if (dark) Color(0xFF919CB6).copy(alpha = 0.18f)
+        else Color.White.copy(alpha = 0.72f)
     val listState = rememberLazyListState()
     val motionAllowed = remember(context, visible) { briefMotionAllowed(context) }
     val visited = BriefMotionSession.revealedCards
@@ -144,7 +146,6 @@ internal fun NowBriefScreen(
         backgroundEffect = {
             BriefAmbientBackground(
                 visible = visible,
-                accent = if (dark) Color(0xFF8C81BC) else colors.accent,
                 dark = dark,
                 scrollOffsetPx = scrollDistance,
             )
@@ -155,8 +156,8 @@ internal fun NowBriefScreen(
             BriefReveal("date", visible, 0, visited) {
                 Row(
                     modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 20.dp)
-                        .padding(bottom = 14.dp),
+                        .padding(horizontal = 28.dp)
+                        .padding(bottom = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     CouiText(
@@ -173,19 +174,17 @@ internal fun NowBriefScreen(
             BriefReveal("hero", visible, 1, visited) {
             Column(
                 modifier = Modifier.fillMaxWidth()
-                    .padding(horizontal = 20.dp).padding(bottom = 18.dp)
+                    .padding(horizontal = 28.dp).padding(bottom = 14.dp)
                     .graphicsLayer { scaleX = heroScale; scaleY = heroScale }
                     .clickable(
                         interactionSource = heroPress, indication = null,
                         role = Role.Button, onClickLabel = "Détails des notifications filtrées",
                         onClick = { heroExpanded = !heroExpanded },
                     )
-                    .clip(CouiShape(28.dp, 2f))
-                    .briefHaloBackground(
-                        heroSurface, Color(0xFF79AE9F), Color(0xFFD1A27D), dark,
-                    )
-                    .padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(15.dp),
+                    .clip(CouiShape(25.dp, 2f))
+                    .briefGlass(CouiShape(25.dp, 2f), dark, prominent = true)
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(9.dp),
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -194,14 +193,14 @@ internal fun NowBriefScreen(
                     IconBubble(Icons.Rounded.AutoAwesome, colors.accent)
                     CouiText(text = "Votre tranquillité", kind = CouiTextKind.ItemTitle, color = colors.title)
                 }
-                BriefAnimatedNumber(summary.filtered, visible, 48, colors.title)
+                BriefAnimatedNumber(summary.filtered, visible, 36, colors.title)
                 CouiText(
                     text = if (summary.filtered == 1) "notification filtrée pendant cette session"
                     else "notifications filtrées pendant cette session",
                     kind = CouiTextKind.ItemSummary,
                     color = colors.summary,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     BriefMetric("Analysées", summary.analyzed, visible, cardSurface, colors.title, colors.summary, Modifier.weight(1f))
                     BriefMetric("Conservées", summary.kept, visible, cardSurface, colors.title, colors.summary, Modifier.weight(1f))
                     BriefMetric("Reportées", summary.snoozed, visible, cardSurface, colors.title, colors.summary, Modifier.weight(1f))
@@ -218,15 +217,12 @@ internal fun NowBriefScreen(
 
         item(key = "notifications:categories") {
             BriefReveal("categories", visible, 2, visited) {
-            BriefCard(
-                cardSurface, onClick = { categoryExpanded = !categoryExpanded },
-                haloStart = Color(0xFFCEA580), haloEnd = Color(0xFFD4C28E),
-            ) {
+            BriefCard(onClick = { categoryExpanded = !categoryExpanded }) {
                 SectionHeader("Ce qui a été filtré", "", colors.title, colors.summary)
-                Spacer(Modifier.height(17.dp))
+                Spacer(Modifier.height(11.dp))
                 val classified = summary.filtered
                 CategoryBar("Publicités", summary.filteredAds, classified, visible, colors.accent, colors.title, colors.summary)
-                Spacer(Modifier.height(15.dp))
+                Spacer(Modifier.height(11.dp))
                 CategoryBar("Spams", summary.filteredSpam, classified, visible, Color(0xFFCA8358), colors.title, colors.summary)
                 AnimatedVisibility(visible = categoryExpanded) {
                     CouiText(
@@ -248,19 +244,17 @@ internal fun NowBriefScreen(
         item(key = "notifications:recent-title") {
             BriefReveal("recent", visible, 3, visited) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 14.dp, start = 18.dp, end = 18.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 11.dp, start = 30.dp, end = 30.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                BriefHeading("Activité récente", color = colors.title, size = 21)
+                BriefHeading("Activité récente", color = colors.title, size = 19)
             }
             }
         }
         if (summary.events.isEmpty()) {
             item(key = "notifications:empty") {
                 BriefReveal("empty", visible, 4, visited) {
-                BriefCard(
-                    cardSurface, haloStart = Color(0xFFD4C28E), haloEnd = Color(0xFF79AE9F),
-                ) {
+                BriefCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconBubble(Icons.Rounded.NotificationsNone, colors.summary)
                         Spacer(Modifier.width(12.dp))
@@ -283,7 +277,7 @@ internal fun NowBriefScreen(
                 item(key = "notifications:more") {
                     val remaining = summary.events.size - 5
                     CouiText(text = "Et $remaining autres événements en mémoire", kind = CouiTextKind.ItemSummary,
-                        color = colors.summary, modifier = Modifier.padding(horizontal = 6.dp))
+                        color = colors.summary, modifier = Modifier.padding(horizontal = 30.dp))
                 }
             }
         }
@@ -294,7 +288,7 @@ internal fun NowBriefScreen(
             .forEach { extension ->
                 item(key = "extension:${extension.id}") {
                     BriefReveal(extension.id, visible, 5, visited) {
-                        Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+                        Box(Modifier.fillMaxWidth().padding(horizontal = 28.dp)) {
                             extension.content()
                         }
                     }
@@ -303,17 +297,15 @@ internal fun NowBriefScreen(
 
         item(key = "future") {
             BriefReveal("future", visible, 6, visited) {
-            BriefCard(
-                cardSurface, haloStart = Color(0xFFD4C28E), haloEnd = Color(0xFF79AE9F),
-            ) {
+            BriefCard {
                 SectionHeader("À venir", "", colors.title, colors.summary)
-                Spacer(Modifier.height(15.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                Spacer(Modifier.height(11.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FutureChip(Icons.Rounded.CalendarMonth, "Agenda", colors.summary, Modifier.weight(1f))
                     FutureChip(Icons.Rounded.TaskAlt, "Tâches", colors.summary, Modifier.weight(1f))
                 }
-                Spacer(Modifier.height(9.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                Spacer(Modifier.height(7.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FutureChip(Icons.Rounded.Schedule, "Routines", colors.summary, Modifier.weight(1f))
                     FutureChip(Icons.Rounded.AutoAwesome, "Agents", colors.summary, Modifier.weight(1f))
                 }
@@ -371,54 +363,64 @@ private fun BriefHeading(text: String, color: Color, size: Int) {
 }
 
 /**
- * Soft, opposite-corner light pools. Only a small alpha overlays a solid COUI card;
- * the treatment is static and does not introduce any extra continuous animation.
+ * COUI/ETA inspired frosted glass. Background halos are exclusively rendered by
+ * BriefAmbientBackground; cards only reflect them through a fine glass rim.
+ * Alpha is deliberately below 1 so the moving background is visible.
  */
-private fun Modifier.briefHaloBackground(
-    surface: Color,
-    first: Color,
-    second: Color,
+private fun Modifier.briefGlass(
+    shape: Shape,
     dark: Boolean,
-): Modifier = drawBehind {
-    drawRect(surface)
-    val alpha = if (dark) 0.065f else 0.035f
-    val radius = size.width * 1.18f
-    drawRect(
-        Brush.radialGradient(
-            colors = listOf(first.copy(alpha = alpha), Color.Transparent),
-            center = Offset(size.width * 0.08f, size.height * 0.09f),
-            radius = radius,
-        ),
+    prominent: Boolean = false,
+): Modifier {
+    val tint = if (dark) {
+        if (prominent) 0.22f else 0.17f
+    } else {
+        if (prominent) 0.80f else 0.72f
+    }
+    val fill = if (dark) {
+        Brush.linearGradient(
+            listOf(
+                Color(0xFFB2BDD6).copy(alpha = tint),
+                Color(0xFF77819B).copy(alpha = tint * 0.75f),
+                Color(0xFF9296BA).copy(alpha = tint * 0.90f),
+            ),
+        )
+    } else {
+        Brush.linearGradient(
+            listOf(
+                Color.White.copy(alpha = tint),
+                Color(0xFFE9ECF7).copy(alpha = tint * 0.78f),
+            ),
+        )
+    }
+    val rim = Brush.linearGradient(
+        0.00f to Color(0xFF78D9B0).copy(alpha = if (dark) 0.54f else 0.38f),
+        0.23f to Color.White.copy(alpha = if (dark) 0.26f else 0.50f),
+        0.60f to Color.White.copy(alpha = if (dark) 0.14f else 0.30f),
+        1.00f to Color(0xFFFFB487).copy(alpha = if (dark) 0.58f else 0.40f),
     )
-    drawRect(
-        Brush.radialGradient(
-            colors = listOf(second.copy(alpha = alpha), Color.Transparent),
-            center = Offset(size.width * 0.96f, size.height * 0.94f),
-            radius = radius,
-        ),
-    )
+    return this.background(fill, shape).border(0.9.dp, rim, shape)
 }
 
 @Composable
 private fun BriefCard(
-    color: Color,
     onClick: (() -> Unit)? = null,
-    haloStart: Color = Color(0xFFCEA580),
-    haloEnd: Color = Color(0xFFD4C28E),
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
+    val dark = CouiTheme.isDark
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.978f else 1f,
+        targetValue = if (pressed) 0.986f else 1f,
         animationSpec = spring(dampingRatio = 0.72f, stiffness = 450f),
         label = "brief-section-press",
     )
+    val shape = CouiShape(22.dp, 2f)
     Column(
         modifier = Modifier.fillMaxWidth()
-            .padding(horizontal = 20.dp).padding(bottom = 20.dp)
+            .padding(horizontal = 28.dp).padding(bottom = 15.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(CouiShape(24.dp, 2f))
+            .clip(shape)
             .then(
                 if (onClick != null) Modifier.clickable(
                     interactionSource = interaction, indication = null,
@@ -426,8 +428,8 @@ private fun BriefCard(
                     onClick = onClick,
                 ) else Modifier,
             )
-            .briefHaloBackground(color, haloStart, haloEnd, CouiTheme.isDark)
-            .padding(24.dp),
+            .briefGlass(shape, dark)
+            .padding(horizontal = 17.dp, vertical = 16.dp),
         content = content,
     )
 }
@@ -440,19 +442,19 @@ private fun IconDecor(icon: ImageVector, color: Color, size: Int) {
 @Composable
 private fun IconBubble(icon: ImageVector, color: Color) {
     Box(
-        modifier = Modifier.size(42.dp).clip(CouiShape(14.dp, 2f)).background(color.copy(alpha = 0.13f)),
+        modifier = Modifier.size(34.dp).clip(CouiShape(12.dp, 2f)).background(color.copy(alpha = 0.12f)),
         contentAlignment = Alignment.Center,
-    ) { IconDecor(icon, color, 23) }
+    ) { IconDecor(icon, color, 19) }
 }
 
 @Composable
 private fun BriefMetric(label: String, value: Int, visible: Boolean, surface: Color, title: Color, summary: Color, modifier: Modifier) {
     Column(
-        modifier = modifier.clip(CouiShape(17.dp, 2f))
-            .background(surface.copy(alpha = 0.82f)).padding(horizontal = 11.dp, vertical = 12.dp),
+        modifier = modifier.clip(CouiShape(13.dp, 2f))
+            .background(surface.copy(alpha = 0.46f)).padding(horizontal = 7.dp, vertical = 7.dp),
         verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        BriefAnimatedNumber(value, visible, 22, title)
+        BriefAnimatedNumber(value, visible, 19, title)
         CouiText(text = label, kind = CouiTextKind.GroupFooter, color = summary, maxLines = 1)
     }
 }
@@ -528,10 +530,10 @@ private fun BriefEventRow(event: NotificationBriefEvent, surface: Color, title: 
         )
     }
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)
-            .padding(bottom = 10.dp).clip(CouiShape(18.dp, 2f))
-            .briefHaloBackground(surface, Color(0xFFD4C28E), Color(0xFF79AE9F), CouiTheme.isDark)
-            .padding(18.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp)
+            .padding(bottom = 9.dp).clip(CouiShape(17.dp, 2f))
+            .briefGlass(CouiShape(17.dp, 2f), CouiTheme.isDark)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -555,7 +557,7 @@ private fun BriefEventRow(event: NotificationBriefEvent, surface: Color, title: 
 private fun FutureChip(icon: ImageVector, title: String, color: Color, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier.clip(CouiShape(14.dp, 2f))
-            .background(color.copy(alpha = 0.08f)).padding(horizontal = 11.dp, vertical = 13.dp),
+            .background(color.copy(alpha = 0.09f)).padding(horizontal = 8.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(7.dp),
     ) {

@@ -33,3 +33,23 @@ with at most 80ms of stagger, 300ms counters, and 280ms progress bars.
 The first viewport should be readable within roughly 300ms rather than
 waiting for a long cascade. Entrances still occur only once per app process;
 new notification events may animate independently.
+
+
+## Glassmorphism proportions — visual reference
+
+The new mockup is a **style reference**, not real weather, map, health, news,
+or music data. The existing notification summaries continue to use real on-device
+values, and extension slots remain empty until actual providers are connected.
+
+The large bright color blobs are now rendered exclusively as **three gentle
+behind-the-content ambient lights** (sage green upper left, apricot lower right,
+soft violet center), animated slowly only while the Brief is open. In
+battery-saver/reduced-motion mode the same background is rendered statically.
+
+Cards are compact (28dp outer gutters, 14–16dp vertical content padding) and
+composited with a translucent COUI glass gradient. The only card highlights
+are narrow green-to-white-to-orange glass-edge reflections, **not** solid
+color fills or per-card halos. Both light and dark themes are supported.
+The existing COUI collapsing/frosted scroll header remains unchanged.
+
+The first-open-only reveal and dashboard content safety guarantees are retained.
