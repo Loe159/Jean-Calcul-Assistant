@@ -523,6 +523,9 @@ fun AgentAppRoot(
             entry<AppRoute.ConversationTitleSettings>(swipeDismiss = swipeDismiss) {
                 ConversationTitleSettingsScreen(onBack = ::popRoute)
             }
+            entry<AppRoute.IntelligentNotifications>(swipeDismiss = swipeDismiss) {
+                io.github.mangi.eta.ui.screens.settings.IntelligentNotificationsScreen(onBack = ::popRoute)
+            }
             entry<AppRoute.AppImprovements>(swipeDismiss = swipeDismiss) {
                 io.github.mangi.eta.ui.screens.settings.AppImprovementsScreen(onBack = ::popRoute)
             }
