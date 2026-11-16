@@ -50,8 +50,10 @@ class VisualScenarioTest {
                         assertTrue("Hiding the keyboard must keep the conversation visible",
                             device.wait(Until.hasObject(By.textContains("Synthetic local reply")), 10000))
                         if (scenario == "reset") {
-                            device.findObject(By.desc(context.getString(R.string.action_more))).click()
-                            device.wait(Until.findObject(By.text(context.getString(R.string.action_new_conversation))), 10000).click()
+                            val newChat = device.wait(
+                                Until.findObject(By.desc(context.getString(R.string.action_new_conversation))), 10000,
+                            ) ?: throw AssertionError("New conversation button is not accessible")
+                            newChat.click()
                             assertNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 10000))
                             assertTrue(device.wait(Until.gone(By.textContains("Synthetic local reply")), 10000))
                         }
