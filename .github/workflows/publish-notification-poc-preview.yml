@@ -24,13 +24,14 @@ jobs:
       UPDATE_CHANNEL: preview-pr-62
       PREVIEW_VERSION_CODE: '2030011301'
       SOURCE_COMMIT: 8f9e1f7ec4627925e19813d7eaf768134c376ea4
+      SOURCE_HEAD: 2807616f778ed22b17cbcf5a4bf07c73cfa5541d
       SOURCE_RUN: '43870495708'
       SOURCE_ARTIFACT: JeanCalcul-V2-8f9e1f7ec4627925e19813d7eaf768134c376ea4
     steps:
       - uses: actions/checkout@v4
       - name: Verify trusted source CI and artifact
         run: |
-          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" --jq .head_sha)" = "$SOURCE_COMMIT"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" --jq .head_sha)" = "$SOURCE_HEAD"
           test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/jobs?per_page=100" --jq '.jobs[] | select(.name == "Build APK, unit tests and lint") | .conclusion')" = success
           mkdir -p app/build/outputs/apk/debug
           gh run download "$SOURCE_RUN" --repo "$GITHUB_REPOSITORY" --name "$SOURCE_ARTIFACT" --dir app/build/outputs/apk/debug
