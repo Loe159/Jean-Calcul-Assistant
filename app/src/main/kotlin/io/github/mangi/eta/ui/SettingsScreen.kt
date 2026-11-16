@@ -491,6 +491,7 @@ private fun SettingsPageContent(
                     CouiPreference(
                         title = "Improve Jean-Calcul",
                         summary = "Report an issue, test its update and validate the PR",
+                        icon = { CouiSettingsIcon(Icons.Rounded.AutoAwesome, SettingsIconColors.Blue) },
                         onClick = { onNavigate(AppRoute.AppImprovements) },
                     )
                 }
