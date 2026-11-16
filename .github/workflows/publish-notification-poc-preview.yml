@@ -67,7 +67,7 @@ jobs:
           PY
       - name: Publish to existing in-app channel, keeping PR unmerged
         env:
-          GITHUB_SHA: 8f9e1f7ec4627925e19813d7eaf768134c376ea4
+          APK_SOURCE_COMMIT: 8f9e1f7ec4627925e19813d7eaf768134c376ea4
           GITHUB_REF_NAME: feat/v2-notification-onnx-poc
         run: python3 scripts/publish-preview.py
       - name: Verify published update manifest
