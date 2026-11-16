@@ -55,10 +55,14 @@ jobs:
           signature = subprocess.check_output([str(sdk / 'apksigner'), 'verify', '--print-certs', str(apk)], text=True)
           key = subprocess.check_output(['keytool', '-list', '-v', '-keystore', '.github/preview-signing.jks',
              '-storepass', 'android', '-alias', 'androiddebugkey'], text=True)
-          apk_digest = re.search(r'Signer #1 certificate SHA-256 digest:\s*([0-9a-f:]+)', signature, re.I)
-          key_digest = re.search(r'SHA256:\s*([0-9a-f:]+)', key, re.I)
-          assert apk_digest and key_digest, 'Unable to parse signing certificate fingerprints'
-          assert apk_digest.group(1).replace(':','').lower() == key_digest.group(1).replace(':','').lower(), 'Signing mismatch'
+          def fingerprints(value):
+              # apksigner and keytool may format SHA-256 digests differently.
+              return {m.replace(':', '').lower() for m in
+                  re.findall(r'(?:[0-9a-f]{2}:){31}[0-9a-f]{2}|[0-9a-f]{64}', value, re.I)}
+          apk_digests = fingerprints(signature)
+          key_digests = fingerprints(key)
+          assert apk_digests and key_digests, f'Unable to parse SHA-256: signer={signature!r} key={key!r}'
+          assert apk_digests & key_digests, 'Signing certificate does not match the existing preview key'
           print('Package, versionCode and signing key validated')
           PY
       - name: Publish to existing in-app channel, keeping PR unmerged
