@@ -487,6 +487,14 @@ private fun SettingsPageContent(
 
 
 
+                Group(title = "Notifications") {
+                    CouiPreference(
+                        title = "Notifications intelligentes",
+                        summary = "Classification locale · mode observation sans suppression",
+                        icon = { CouiSettingsIcon(Icons.Rounded.FilterAlt, SettingsIconColors.Blue) },
+                        onClick = { onNavigate(AppRoute.IntelligentNotifications) },
+                    )
+                }
                 Group(title = "App improvements") {
                     CouiPreference(
                         title = "Improve Jean-Calcul",
