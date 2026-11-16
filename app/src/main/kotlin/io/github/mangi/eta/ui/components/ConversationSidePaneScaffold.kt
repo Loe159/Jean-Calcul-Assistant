@@ -117,6 +117,7 @@ fun ConversationSidePaneScaffold(
         val paneWidth = minOf(maxWidth * ConversationPaneMetrics.PaneWidthFraction, ConversationPaneMetrics.PaneMaxWidth)
         val paneWidthPx = with(density) { paneWidth.toPx() }
         val fullWidthPx = with(density) { maxWidth.toPx() }
+        val previewEdgePx = with(density) { 12.dp.toPx() }
         val anchors = remember(paneWidthPx, fullWidthPx) {
             DraggableAnchors {
                 ConversationPaneAnchor.Closed at 0f
@@ -320,7 +321,7 @@ fun ConversationSidePaneScaffold(
                         Box(Modifier.fillMaxSize().graphicsLayer {
                             // D1: content lags behind the horizontal spring by at most 28dp.
                             val progress = briefPaneMotion(paneDragState.offset, fullWidthPx).progress
-                            translationX = (1f - progress) * 28.dp.toPx()
+                            translationX = -(1f - progress) * 18.dp.toPx()
                         }) {
                             briefContent()
                         }
@@ -375,8 +376,14 @@ fun ConversationSidePaneScaffold(
                         ?.coerceIn(-fullWidthPx, paneWidthPx) ?: 0f
                     val x = offset.roundToInt()
                     panel.placeWithLayer(x - panel.width, 0)
-                    brief.placeWithLayer(x + page.width, 0)
+                    val preview = 1f - briefPaneMotion(offset, fullWidthPx).progress
+                    // B: expose the actual brief surface by 12dp while the chat is at rest.
+                    // Its z-index makes the preview visible over the foreground conversation.
                     page.placeWithLayer(x, 0)
+                    brief.placeWithLayer(
+                        x + page.width - (preview * previewEdgePx).roundToInt(),
+                        0, zIndex = 1f,
+                    )
                 }
             }
             // B: a slim right-edge glimpse is visible while the chat is the active page.
