@@ -48,9 +48,11 @@ jobs:
             ./gradlew --no-daemon -Pjeancalcul.emulator=true :app:assembleDebug :app:assembleDebugAndroidTest
             adb install -r app/build/outputs/apk/debug/app-debug.apk
             adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            adb shell mkdir -p /sdcard/Android/data/fr.loevan.jeancalcul.v2/files/notification-model
-            adb push "$RUNNER_TEMP/notification-model/model_quantized.onnx" /sdcard/Android/data/fr.loevan.jeancalcul.v2/files/notification-model/model_quantized.onnx
-            adb shell ls -l /sdcard/Android/data/fr.loevan.jeancalcul.v2/files/notification-model/model_quantized.onnx
+            adb push "$RUNNER_TEMP/notification-model/model_quantized.onnx" /data/local/tmp/notification-onnx-test.onnx
+            adb shell 'run-as fr.loevan.jeancalcul.v2 mkdir -p files/notification-model'
+            adb shell 'cat /data/local/tmp/notification-onnx-test.onnx | run-as fr.loevan.jeancalcul.v2 sh -c "cat > files/notification-model/model_quantized.onnx"'
+            adb shell 'run-as fr.loevan.jeancalcul.v2 ls -l files/notification-model/model_quantized.onnx'
+            adb shell rm /data/local/tmp/notification-onnx-test.onnx
             adb shell am instrument -w -r -e class io.github.mangi.eta.agent.device.notifications.NotificationOnnxAndroidPocTest fr.loevan.jeancalcul.v2.test/androidx.test.runner.AndroidJUnitRunner | tee notification-onnx-instrumentation.txt
             grep -q 'OK (1 test)' notification-onnx-instrumentation.txt
             grep -q 'NOTIFICATION_ONNX_ANDROID_POC' notification-onnx-instrumentation.txt
