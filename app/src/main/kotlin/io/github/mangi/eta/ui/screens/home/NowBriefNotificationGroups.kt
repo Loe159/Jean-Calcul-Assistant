@@ -3,11 +3,14 @@ package io.github.mangi.eta.ui.screens.home
 import android.widget.ImageView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +29,7 @@ import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -58,6 +63,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.pow
 import kotlin.math.sign
 import kotlinx.coroutines.launch
 
@@ -79,6 +85,7 @@ internal fun groupBriefNotifications(
 internal fun BriefNotificationAppCard(
     group: BriefNotificationGroup,
     onDismiss: (List<String>) -> Unit,
+    onTouchChange: (Boolean) -> Unit = {},
 ) {
     val dark = CouiTheme.isDark
     val colors = CouiPageDefaults.themeColors(dark)
@@ -91,9 +98,22 @@ internal fun BriefNotificationAppCard(
     }
     var expanded by remember(group.packageName) { mutableStateOf(false) }
     val source = remember { MutableInteractionSource() }
+    val removed = group.entries.count { it.state == NotificationHistoryRepository.DecisionState.DISMISSED }
+    val pending = group.entries.count { it.state == NotificationHistoryRepository.DecisionState.PROPOSED }
+    val postponed = group.entries.count {
+        it.state == NotificationHistoryRepository.DecisionState.SNOOZED_1H ||
+            it.state == NotificationHistoryRepository.DecisionState.SNOOZED_24H
+    }
+    val statusSummary = buildList {
+        if (removed > 0) add("$removed supprimée(s)")
+        if (postponed > 0) add("$postponed reportée(s)")
+        if (pending > 0) add("$pending à vérifier")
+    }.joinToString(" · ")
     BriefDismissStretch(
         identity = group.packageName,
         onDismiss = { onDismiss(group.entries.map { it.key }) },
+        onTouchChange = onTouchChange,
+        swipeEnabled = !expanded, // When expanded, only individual rows can be dismissed.
         modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 5.dp),
     ) {
         Column(
@@ -125,6 +145,12 @@ internal fun BriefNotificationAppCard(
                         kind = CouiTextKind.ItemSummary, color = colors.summary,
                         maxLines = 2, overflow = TextOverflow.Ellipsis,
                     )
+                    if (statusSummary.isNotEmpty()) {
+                        CouiText(
+                            text = statusSummary, kind = CouiTextKind.GroupFooter,
+                            color = colors.accent, maxLines = 2,
+                        )
+                    }
                 }
                 CouiIcon(
                     imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
@@ -135,6 +161,8 @@ internal fun BriefNotificationAppCard(
             AnimatedVisibility(expanded) {
                 Column(modifier = Modifier.padding(start = 13.dp, end = 13.dp, bottom = 12.dp)) {
                     group.entries.forEach { entry ->
+                        val itemSource = remember(entry.key) { MutableInteractionSource() }
+                        var showFullText by remember(entry.key) { mutableStateOf(false) }
                         BriefDismissStretch(
                             identity = entry.key,
                             onDismiss = { onDismiss(listOf(entry.key)) },
@@ -147,6 +175,11 @@ internal fun BriefNotificationAppCard(
                                         if (dark) Color.White.copy(alpha = 0.075f)
                                         else Color.Black.copy(alpha = 0.045f),
                                     )
+                                    .couiButtonFeedback(dark, itemSource, enabled = true, list = true)
+                                    .clickable(
+                                        interactionSource = itemSource, indication = null,
+                                        role = Role.Button, onClickLabel = "Afficher le contenu",
+                                    ) { showFullText = !showFullText }
                                     .padding(start = 12.dp, end = 6.dp, top = 11.dp, bottom = 11.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -159,8 +192,36 @@ internal fun BriefNotificationAppCard(
                                     if (entry.text.isNotBlank()) {
                                         CouiText(
                                             text = entry.text, kind = CouiTextKind.ItemSummary,
-                                            color = colors.summary, maxLines = 3,
+                                            color = colors.summary, maxLines = if (showFullText) 20 else 3,
                                             overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                    val decisionText = when (entry.state) {
+                                        NotificationHistoryRepository.DecisionState.DISMISSED ->
+                                            "Supprimée sur Android · conservée ici"
+                                        NotificationHistoryRepository.DecisionState.SNOOZED_1H ->
+                                            "Reportée sur Android pendant 1 heure"
+                                        NotificationHistoryRepository.DecisionState.SNOOZED_24H ->
+                                            "Reportée sur Android pendant 24 heures"
+                                        NotificationHistoryRepository.DecisionState.PROPOSED ->
+                                            "Filtrage proposé · non confirmé par Android"
+                                        NotificationHistoryRepository.DecisionState.KEPT ->
+                                            "Conservée après analyse locale"
+                                        NotificationHistoryRepository.DecisionState.OBSERVED ->
+                                            "Analysée · mode observation"
+                                        else -> "Reçue · analyse non effectuée"
+                                    }
+                                    CouiText(
+                                        text = decisionText, kind = CouiTextKind.GroupFooter,
+                                        color = if (entry.state == NotificationHistoryRepository.DecisionState.DISMISSED)
+                                            colors.accent else colors.summary,
+                                        maxLines = 2,
+                                    )
+                                    if (entry.category != null && entry.score != null) {
+                                        CouiText(
+                                            text = "${entry.category} · " +
+                                                "${(entry.score * 100).toInt()} %",
+                                            kind = CouiTextKind.GroupFooter, color = colors.summary,
                                         )
                                     }
                                     val whenText = remember(entry.postedAt) {
@@ -219,82 +280,149 @@ private fun BriefApplicationIcon(packageName: String) {
 }
 
 /**
- * Native-notification-like swipe in both directions with ETA-style elastic
- * horizontal stretching. Dismissal occurs only after the threshold and spring,
- * never on incidental short drags. It removes the dashboard record only.
+ * Inverse-like sticky resistance: first centimetres move slowly, then the
+ * visual displacement accelerates as the finger approaches the edge.
+ * Derivative is monotonic and odd (same behaviour to the left and right).
+ * Input is cumulative finger travel, not previous visual offset.
  */
+internal fun briefStickySwipeOffset(rawPx: Float, widthPx: Float): Float {
+    if (!rawPx.isFinite() || !widthPx.isFinite() || widthPx <= 0f) return 0f
+    val t = (abs(rawPx) / (widthPx * 0.78f)).coerceIn(0f, 1.75f)
+    val movement = (t * 0.18f + t.pow(2.0f) * 0.82f) * widthPx
+    return sign(rawPx) * movement.coerceAtMost(widthPx * 1.4f)
+}
+
+/** Notification-like bidirectional dismissal with COUI press and elastic release. */
 @Composable
 private fun BriefDismissStretch(
     identity: String,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    onTouchChange: (Boolean) -> Unit = {},
+    swipeEnabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    val offset = remember(identity) { Animatable(0f) }
+    val settle = remember(identity) { Animatable(0f) }
+    var fingerDeltaX by remember(identity) { mutableFloatStateOf(0f) }
+    var horizontalDrag by remember(identity) { mutableStateOf(false) }
+    var pressedOffsetX by remember(identity) { mutableFloatStateOf(0f) }
+    val elasticPress by animateFloatAsState(
+        targetValue = pressedOffsetX,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "coui-notification-press-stretch",
+    )
     var widthPx by remember(identity) { mutableFloatStateOf(1f) }
     var active by remember(identity) { mutableStateOf(true) }
+    // If the card disappears during its release animation, the page must
+    // never remain permanently locked against navigation gestures.
+    DisposableEffect(identity) {
+        onDispose { onTouchChange(false) }
+    }
     if (!active) return
+
+    val visualOffset = if (horizontalDrag) briefStickySwipeOffset(fingerDeltaX, widthPx)
+        else settle.value
     Box(
-        modifier = modifier.onSizeChanged { widthPx = it.width.toFloat().coerceAtLeast(1f) },
+        modifier = modifier.onSizeChanged { widthPx = it.width.toFloat().coerceAtLeast(1f) }
+            // Initial pass claims the full touch lifetime, even before the
+            // horizontal slop threshold; the page-level gesture is disabled.
+            .pointerInput(identity) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    onTouchChange(true)
+                    try {
+                        do {
+                            val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                            val tracked = event.changes.firstOrNull { it.id == down.id }
+                            if (tracked != null) {
+                                pressedOffsetX = (tracked.position.x - down.position.x)
+                                    .coerceIn(-widthPx, widthPx)
+                            }
+                        } while (event.changes.any { it.pressed })
+                    } finally {
+                        pressedOffsetX = 0f
+                        onTouchChange(false)
+                    }
+                }
+            },
     ) {
-        // Same restrained destructive feedback in either swipe direction.
-        val shade = Color(0xFFC65A53)
+        val danger = Color(0xFFC65A53)
         Box(
             modifier = Modifier.matchParentSize()
-                .graphicsLayer { alpha = (abs(offset.value) / (widthPx * 0.5f)).coerceIn(0f, 1f) }
+                .graphicsLayer { alpha = (abs(visualOffset) / (widthPx * 0.5f)).coerceIn(0f, 1f) }
                 .clip(CouiShape(22.dp, 2f))
-                .background(shade.copy(alpha = 0.24f)),
+                .background(danger.copy(alpha = 0.24f)),
         ) {
-            CouiIcon(Icons.Rounded.DeleteOutline, null, tint = shade,
+            CouiIcon(Icons.Rounded.DeleteOutline, null, tint = danger,
                 modifier = Modifier.align(Alignment.CenterStart).padding(start = 17.dp)
-                    .size(23.dp).graphicsLayer { alpha = if (offset.value > 0f) 1f else 0f })
-            CouiIcon(Icons.Rounded.DeleteOutline, null, tint = shade,
+                    .size(23.dp).graphicsLayer { alpha = if (visualOffset > 0f) 1f else 0f })
+            CouiIcon(Icons.Rounded.DeleteOutline, null, tint = danger,
                 modifier = Modifier.align(Alignment.CenterEnd).padding(end = 17.dp)
-                    .size(23.dp).graphicsLayer { alpha = if (offset.value < 0f) 1f else 0f })
+                    .size(23.dp).graphicsLayer { alpha = if (visualOffset < 0f) 1f else 0f })
         }
         Box(
             modifier = Modifier.fillMaxWidth()
-            .pointerInput(identity, widthPx) {
-                detectHorizontalDragGestures(
-                    onDragEnd = {
-                        scope.launch {
-                            if (abs(offset.value) >= widthPx * 0.33f) {
-                                offset.animateTo(
-                                    targetValue = sign(offset.value) * widthPx * 1.2f,
-                                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                                )
-                                active = false
-                                onDismiss()
-                            } else {
-                                offset.animateTo(0f, spring(
+                .pointerInput(identity, widthPx, swipeEnabled) {
+                    if (swipeEnabled) detectHorizontalDragGestures(
+                        onDragStart = {
+                            scope.launch { settle.stop() }
+                            fingerDeltaX = 0f
+                            horizontalDrag = true
+                        },
+                        onDragEnd = {
+                            val drag = fingerDeltaX
+                            horizontalDrag = false
+                            scope.launch {
+                                settle.snapTo(briefStickySwipeOffset(drag, widthPx))
+                                if (abs(drag) >= widthPx * 0.43f) {
+                                    settle.animateTo(
+                                        targetValue = sign(drag) * widthPx * 1.35f,
+                                        animationSpec = spring(
+                                            dampingRatio = 0.82f,
+                                            stiffness = Spring.StiffnessMedium,
+                                        ),
+                                    )
+                                    active = false
+                                    onDismiss()
+                                } else {
+                                    settle.animateTo(0f, spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMedium,
+                                    ))
+                                }
+                            }
+                        },
+                        onDragCancel = {
+                            horizontalDrag = false
+                            val drag = fingerDeltaX
+                            scope.launch {
+                                settle.snapTo(briefStickySwipeOffset(drag, widthPx))
+                                settle.animateTo(0f, spring(
                                     dampingRatio = Spring.DampingRatioMediumBouncy,
                                     stiffness = Spring.StiffnessMedium,
                                 ))
                             }
-                        }
-                    },
-                    onDragCancel = {
-                        scope.launch { offset.animateTo(0f, spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMedium,
-                        )) }
-                    },
-                    onHorizontalDrag = { change, drag ->
-                        change.consume()
-                        scope.launch {
-                            offset.snapTo((offset.value + drag).coerceIn(-widthPx * 1.3f, widthPx * 1.3f))
-                        }
-                    },
-                )
-            }
-            .graphicsLayer {
-                translationX = offset.value
-                val fraction = (abs(offset.value) / widthPx).coerceIn(0f, 1f)
-                scaleX = 1f + fraction * 0.06f
-                scaleY = 1f - fraction * 0.025f
-                transformOrigin = TransformOrigin(if (offset.value >= 0f) 0f else 1f, 0.5f)
-            },
+                        },
+                        onHorizontalDrag = { change, delta ->
+                            change.consume()
+                            fingerDeltaX = (fingerDeltaX + delta).coerceIn(-widthPx * 1.3f, widthPx * 1.3f)
+                        },
+                    )
+                }
+                .graphicsLayer {
+                    translationX = visualOffset
+                    val fraction = (abs(visualOffset) / widthPx).coerceIn(0f, 1f)
+                    val heldStretch = (abs(elasticPress) / widthPx).coerceIn(0f, 1f) * 0.045f
+                    scaleX = 1f + fraction * 0.06f + heldStretch
+                    scaleY = 1f - fraction * 0.025f
+                    transformOrigin = TransformOrigin(
+                        if (visualOffset >= 0f) 0f else 1f, 0.5f,
+                    )
+                },
         ) { content() }
     }
 }

@@ -25,6 +25,7 @@ class AgentNotificationHistoryService : NotificationListenerService() {
     private data class Pending(
         val pkg: String, val label: String, val score: Double,
         val expected: NotificationFilterDecision,
+        val postedAt: Long,
     )
 
 
@@ -65,6 +66,12 @@ class AgentNotificationHistoryService : NotificationListenerService() {
             else -> reason == REASON_SNOOZED
         }
         if (confirmed) {
+            // The model's proposal is not proof of removal. Persist the state
+            // only after Android confirms the actual listener action.
+            NotificationHistoryRepository.confirmedState(action.expected)?.let { state ->
+                repository.updateDecision(sbn.key, action.postedAt, state, action.label, action.score)
+                NotificationActivityFeed.notifyChanged()
+            }
             NotificationObservation.recordAction(action.pkg, action.label, action.score, action.expected)
         }
     }
@@ -99,7 +106,7 @@ class AgentNotificationHistoryService : NotificationListenerService() {
         val existing = processed[token]
         if (existing != null && now - existing < 48L * 60 * 60 * 1000) return false
         // Store before the call; a synchronous onNotificationRemoved callback is possible.
-        pending[original.key] = Pending(current.packageName, scores.first().first, scores.first().second, desired)
+        pending[original.key] = Pending(current.packageName, scores.first().first, scores.first().second, desired, current.postTime)
         return try {
             when (desired) {
                 NotificationFilterDecision.SNOOZE_1H -> snoozeNotification(current.key, 60L * 60 * 1000)

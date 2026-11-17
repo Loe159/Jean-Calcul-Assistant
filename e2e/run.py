@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = 'fr.loevan.jeancalcul.v2'
 RUNNER = APP + '.test/androidx.test.runner.AndroidJUnitRunner'
 SCENARIOS = ('empty', 'message', 'reset', 'settings', 'dark', 'small_screen',
-             'large_text', 'keyboard', 'reduced_motion', 'menu', 'providers', 'tools', 'appearance', 'improvements', 'notifications', 'brief', 'brief_notifications', 'regression_fixture')
+             'large_text', 'keyboard', 'reduced_motion', 'menu', 'providers', 'tools', 'appearance', 'improvements', 'notifications', 'brief', 'brief_notifications', 'brief_decisions', 'regression_fixture')
 
 
 def redact(text):

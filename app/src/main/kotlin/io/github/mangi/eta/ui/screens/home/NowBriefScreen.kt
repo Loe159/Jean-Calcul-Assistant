@@ -73,6 +73,11 @@ import io.github.mangi.eta.agent.device.notifications.NotificationBriefOutcome
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterPolicy
 import io.github.mangi.eta.agent.device.notifications.NotificationObservation
 import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
+import io.github.mangi.eta.agent.device.AgentNotificationHistoryService
+import io.github.mangi.eta.agent.device.notifications.LocalNotificationModel
+import io.github.mangi.eta.agent.device.notifications.NotificationFilterSettings
+import io.github.mangi.eta.agent.device.notifications.NotificationFilterMode
+import io.github.mangi.eta.agent.device.notifications.NotificationFilterAction
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -101,6 +106,8 @@ internal data class NowBriefCardExtension(
 internal fun NowBriefScreen(
     visible: Boolean,
     onClose: () -> Unit,
+    onNotificationTouchChange: (Boolean) -> Unit = {},
+    onManageFiltering: () -> Unit = {},
     revealProgress: () -> Float = { if (visible) 1f else 0f },
     modifier: Modifier = Modifier,
     extensions: List<NowBriefCardExtension> = emptyList(),
@@ -122,7 +129,29 @@ internal fun NowBriefScreen(
                 .onFailure { activityError = true }
         }
     }
-    val notificationGroups = remember(activityEntries) { groupBriefNotifications(activityEntries) }
+    val reviewedEntries = remember(activityEntries) {
+        activityEntries.filter { it.state in setOf(
+            NotificationHistoryRepository.DecisionState.PROPOSED,
+            NotificationHistoryRepository.DecisionState.SNOOZED_1H,
+            NotificationHistoryRepository.DecisionState.SNOOZED_24H,
+            NotificationHistoryRepository.DecisionState.DISMISSED,
+        ) }
+    }
+    val recentEntries = remember(activityEntries) { activityEntries - reviewedEntries.toSet() }
+    val reviewedGroups = remember(reviewedEntries) { groupBriefNotifications(reviewedEntries) }
+    val notificationGroups = remember(recentEntries) { groupBriefNotifications(recentEntries) }
+    val removedCount = reviewedEntries.count {
+        it.state == NotificationHistoryRepository.DecisionState.DISMISSED
+    }
+    val proposedCount = reviewedEntries.count {
+        it.state == NotificationHistoryRepository.DecisionState.PROPOSED
+    }
+    val snoozedCount = reviewedEntries.size - removedCount - proposedCount
+    val filterConfig = remember(visible) { NotificationFilterSettings.load(context) }
+    val filteringReady = remember(visible) {
+        AgentNotificationHistoryService.isEnabled(context) &&
+            LocalNotificationModel.installed(context)
+    }
     val dismissActivityEntries: (List<String>) -> Unit = { keys ->
         // Removing from the briefing is deliberately distinct from cancelling
         // notifications in Android's system shade.
@@ -266,6 +295,61 @@ internal fun NowBriefScreen(
             }
         }
 
+        item(key = "notification-filter:settings") {
+            BriefCard(onClick = onManageFiltering) {
+                SectionHeader("Filtrage automatique", "Paramètres", colors.title, colors.summary)
+                Spacer(Modifier.height(8.dp))
+                val description = when {
+                    !filteringReady -> "Modèle local ou accès aux notifications à configurer"
+                    filterConfig.mode == NotificationFilterMode.OFF -> "Désactivé"
+                    filterConfig.mode == NotificationFilterMode.OBSERVE ->
+                        "Observation uniquement · aucune suppression sur Android"
+                    filterConfig.mode == NotificationFilterMode.CAUTIOUS ->
+                        "Prudent · publicités très certaines reportées 1 h"
+                    filterConfig.action == NotificationFilterAction.DISMISS ->
+                        "Suppression automatique · uniquement dans les applications autorisées"
+                    else -> "Personnalisé · filtrage limité aux applications autorisées"
+                }
+                CouiText(text = description, kind = CouiTextKind.ItemSummary, color = colors.summary)
+                Spacer(Modifier.height(6.dp))
+                CouiText(
+                    text = "Analyse locale limitée à 1/minute et 100/jour pour préserver la batterie.",
+                    kind = CouiTextKind.GroupFooter, color = colors.summary,
+                )
+            }
+        }
+        item(key = "notification-filter:review-title") {
+            Row(
+                modifier = Modifier.fillMaxWidth()
+                    .padding(top = 9.dp, bottom = 8.dp, start = 30.dp, end = 30.dp),
+            ) {
+                BriefHeading("À vérifier / Supprimées", color = colors.title, size = 19)
+            }
+        }
+        item(key = "notification-filter:review-counts") {
+            CouiText(
+                text = "$removedCount supprimée(s) · $snoozedCount reportée(s) · " +
+                    "$proposedCount à vérifier",
+                kind = CouiTextKind.GroupFooter, color = colors.summary,
+                modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp),
+            )
+        }
+        if (reviewedGroups.isEmpty()) {
+            item(key = "notification-filter:none") {
+                BriefCard {
+                    CouiText(
+                        text = "Aucune action de filtrage enregistrée. Les décisions " +
+                            "confirmées par Android apparaîtront ici.",
+                        kind = CouiTextKind.ItemSummary, color = colors.summary,
+                    )
+                }
+            }
+        } else {
+            items(reviewedGroups, key = { "review:" + it.packageName }) { group ->
+                BriefNotificationAppCard(group, dismissActivityEntries, onNotificationTouchChange)
+            }
+        }
+
         item(key = "notifications:recent-title") {
             BriefReveal("recent", visible, 3, visited) {
             Row(
@@ -300,7 +384,7 @@ internal fun NowBriefScreen(
                         IconBubble(Icons.Rounded.NotificationsNone, colors.summary)
                         Spacer(Modifier.width(12.dp))
                         CouiText(
-                            text = "Aucune notification enregistrée",
+                            text = "Aucune autre notification récente",
                             kind = CouiTextKind.ItemTitle, color = colors.title,
                         )
                     }
@@ -308,12 +392,13 @@ internal fun NowBriefScreen(
             }
         } else {
             items(notificationGroups, key = { "app:" + it.packageName }) { group ->
-                BriefNotificationAppCard(group, dismissActivityEntries)
+                BriefNotificationAppCard(group, dismissActivityEntries, onNotificationTouchChange)
             }
             item(key = "notification-feed:privacy") {
                 CouiText(
-                    text = "Glissez dans les deux sens pour retirer du briefing. " +
-                        "Les notifications Android restent intactes.",
+                    text = "Glissez pour retirer une entrée du briefing. " +
+                        "Le filtrage automatique (mode personnalisé) agit sur Android ; " +
+                        "ce geste ne supprime que la copie locale.",
                     kind = CouiTextKind.GroupFooter, color = colors.summary,
                     modifier = Modifier.padding(horizontal = 30.dp, vertical = 6.dp),
                 )

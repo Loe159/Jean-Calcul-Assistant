@@ -60,6 +60,51 @@ class NotificationHistoryRepositoryTest {
     }
 
     @Test
+    fun `model proposal and Android confirmed removal remain in local history`() {
+        val now = System.currentTimeMillis()
+        repository.record("ad-1", "com.example.shop", "Offre -70 %", "Ventes flash", null, now)
+        assertEquals(NotificationHistoryRepository.DecisionState.RECEIVED,
+            repository.recent().single().state)
+        assertFalse(repository.updateDecision("ad-1", now + 1,
+            NotificationHistoryRepository.DecisionState.DISMISSED))
+        assertEquals(NotificationHistoryRepository.DecisionState.RECEIVED,
+            repository.recent().single().state)
+
+        assertEquals(true, repository.updateDecision("ad-1", now,
+            NotificationHistoryRepository.DecisionState.PROPOSED, "a promotional advertisement", 0.999))
+        assertEquals(NotificationHistoryRepository.DecisionState.PROPOSED,
+            repository.recent().single().state)
+
+        assertEquals(true, repository.updateDecision("ad-1", now,
+            NotificationHistoryRepository.DecisionState.DISMISSED))
+        val removed = repository.recent().single()
+        assertEquals(NotificationHistoryRepository.DecisionState.DISMISSED, removed.state)
+        assertEquals("Offre -70 %", removed.title)
+        assertEquals("Ventes flash", removed.text)
+        assertEquals("a promotional advertisement", removed.category)
+        assertEquals(0.999, removed.score!!, 0.00001)
+        // A reconnect re-records still-active notifications. Keep classification.
+        repository.record("ad-1", "com.example.shop", "Offre -70 %", "Ventes flash", null, now)
+        assertEquals(NotificationHistoryRepository.DecisionState.DISMISSED,
+            repository.recent().single().state)
+        // But a newly posted update with a different post time gets a fresh state.
+        repository.record("ad-1", "com.example.shop", "New promotion", "Another sale", null, now + 200)
+        assertEquals(NotificationHistoryRepository.DecisionState.RECEIVED,
+            repository.recent().single().state)
+    }
+
+    @Test
+    fun `system filtering outcomes map to distinct dashboard states`() {
+        val repo = NotificationHistoryRepository
+        assertEquals(NotificationHistoryRepository.DecisionState.DISMISSED,
+            repo.confirmedState(io.github.mangi.eta.agent.device.notifications.NotificationFilterDecision.DISMISS))
+        assertEquals(NotificationHistoryRepository.DecisionState.SNOOZED_1H,
+            repo.confirmedState(io.github.mangi.eta.agent.device.notifications.NotificationFilterDecision.SNOOZE_1H))
+        assertEquals(null,
+            repo.confirmedState(io.github.mangi.eta.agent.device.notifications.NotificationFilterDecision.KEEP))
+    }
+
+    @Test
     fun `same notification key replaces prior content and expired records are excluded`() {
         val now = System.currentTimeMillis()
         repository.record("same", "com.example.food", "旧状态", null, null, now - 1)
