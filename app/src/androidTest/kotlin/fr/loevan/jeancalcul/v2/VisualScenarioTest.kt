@@ -79,7 +79,7 @@ class VisualScenarioTest {
                             while (!device.hasObject(target) && attempts++ < 15) {
                                 device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
                                     device.displayWidth / 2, device.displayHeight / 3, 26)
-                                device.waitForIdle()
+                                device.waitForIdle(750)
                             }
                             val item = device.wait(Until.findObject(target), 10000)
                                 ?: throw AssertionError("Notification preferences are not reachable")
@@ -99,7 +99,7 @@ class VisualScenarioTest {
                                 if (prudentSeen && personalSeen) break
                                 device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
                                     device.displayWidth / 2, device.displayHeight / 3, 26)
-                                device.waitForIdle()
+                                device.waitForIdle(750)
                             }
                             assertTrue("Prudent mode must be reachable", prudentSeen)
                             assertTrue("Personalized mode must be reachable", personalSeen)

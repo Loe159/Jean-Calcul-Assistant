@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.NotificationsNone
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -117,9 +118,9 @@ internal fun BriefNotificationAppCard(
             ) {
                 BriefApplicationIcon(group.packageName)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    CouiText(appName, kind = CouiTextKind.ItemTitle, color = colors.title, maxLines = 1)
+                    CouiText(text = appName, kind = CouiTextKind.ItemTitle, color = colors.title, maxLines = 1)
                     CouiText(
-                        "${group.entries.size} notification${if (group.entries.size > 1) "s" else ""} · " +
+                        text = "${group.entries.size} notification${if (group.entries.size > 1) "s" else ""} · " +
                             group.entries.first().title.ifBlank { "Activité récente" },
                         kind = CouiTextKind.ItemSummary, color = colors.summary,
                         maxLines = 2, overflow = TextOverflow.Ellipsis,
@@ -151,13 +152,13 @@ internal fun BriefNotificationAppCard(
                             ) {
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     CouiText(
-                                        entry.title.ifBlank { appName },
+                                        text = entry.title.ifBlank { appName },
                                         kind = CouiTextKind.ItemTitle, color = colors.title,
                                         maxLines = 2, overflow = TextOverflow.Ellipsis,
                                     )
                                     if (entry.text.isNotBlank()) {
                                         CouiText(
-                                            entry.text, kind = CouiTextKind.ItemSummary,
+                                            text = entry.text, kind = CouiTextKind.ItemSummary,
                                             color = colors.summary, maxLines = 3,
                                             overflow = TextOverflow.Ellipsis,
                                         )
@@ -167,7 +168,7 @@ internal fun BriefNotificationAppCard(
                                             .format(Instant.ofEpochMilli(entry.postedAt)
                                                 .atZone(ZoneId.systemDefault()))
                                     }
-                                    CouiText(whenText, kind = CouiTextKind.GroupFooter, color = colors.summary)
+                                    CouiText(text = whenText, kind = CouiTextKind.GroupFooter, color = colors.summary)
                                 }
                                 Spacer(Modifier.width(6.dp))
                                 Box(
@@ -235,8 +236,25 @@ private fun BriefDismissStretch(
     var active by remember(identity) { mutableStateOf(true) }
     if (!active) return
     Box(
-        modifier = modifier
-            .onSizeChanged { widthPx = it.width.toFloat().coerceAtLeast(1f) }
+        modifier = modifier.onSizeChanged { widthPx = it.width.toFloat().coerceAtLeast(1f) },
+    ) {
+        // Same restrained destructive feedback in either swipe direction.
+        val shade = Color(0xFFC65A53)
+        Box(
+            modifier = Modifier.matchParentSize()
+                .graphicsLayer { alpha = (abs(offset.value) / (widthPx * 0.5f)).coerceIn(0f, 1f) }
+                .clip(CouiShape(22.dp, 2f))
+                .background(shade.copy(alpha = 0.24f)),
+        ) {
+            CouiIcon(Icons.Rounded.DeleteOutline, null, tint = shade,
+                modifier = Modifier.align(Alignment.CenterStart).padding(start = 17.dp)
+                    .size(23.dp).graphicsLayer { alpha = if (offset.value > 0f) 1f else 0f })
+            CouiIcon(Icons.Rounded.DeleteOutline, null, tint = shade,
+                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 17.dp)
+                    .size(23.dp).graphicsLayer { alpha = if (offset.value < 0f) 1f else 0f })
+        }
+        Box(
+            modifier = Modifier.fillMaxWidth()
             .pointerInput(identity, widthPx) {
                 detectHorizontalDragGestures(
                     onDragEnd = {
@@ -277,5 +295,6 @@ private fun BriefDismissStretch(
                 scaleY = 1f - fraction * 0.025f
                 transformOrigin = TransformOrigin(if (offset.value >= 0f) 0f else 1f, 0.5f)
             },
-    ) { content() }
+        ) { content() }
+    }
 }
