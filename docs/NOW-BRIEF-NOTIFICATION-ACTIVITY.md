@@ -75,3 +75,36 @@ Previously saved v1 configuration is migrated to the v2 format without
 package rules. If the old settings allowed irreversible deletion for only
 specific apps, the action falls back to snoozing for 1 hour until the user
 explicitly reconfirms the expanded **all-app** deletion scope.
+
+
+## Why a notification may have no model decision (analysis queue)
+
+The original model entry point dropped events silently when one of these
+conditions held: the model was missing, the alert was protected, Android battery
+saver was on, battery was below 20%, the previous inference was less than
+60 seconds ago, or the daily limit had been reached. Since the history was
+written before inference, all those events appeared as "Received, not analyzed"
+without explaining why. This did not mean the listener had stopped working.
+
+The new version assigns an explicit local status:
+- MODEL_MISSING / PROTECTED / BATTERY_PAUSED / LIMIT_REACHED
+- QUEUED: eligible, pending an inference slot
+- ANALYSIS_ERROR: inference failed; its exception type only appears in
+  the Settings diagnostic, not the notification text
+- EXPIRED: notification left Android before the queued inference could run
+- KEPT, OBSERVED, PROPOSED, SNOOZED_*, DISMISSED: actual decision/result.
+
+At most eight eligible notifications are queued in RAM, one inference is
+started per minute, and no more than 100 inferences are started per day.
+A delayed callback is scheduled only while this listener/process exists;
+no additional service, network request or wake lock is introduced. If an
+alert has disappeared before its turn, it is not acted upon; saved history
+remains available. This means bursts might take several minutes and alerts
+outside the queue or quota are not automatically processed.
+
+On listener reconnection, up to eight recent, still-active unclassified
+notifications can be requeued. In Settings > Notifications intelligentes,
+"Réessayer l'analyse des notifications actives" performs the same bounded
+recovery on demand. "Diagnostic de l'analyse locale" reports installation,
+listener access, power limits, queue count, daily quota and the last error
+class without exposing any private notification text.

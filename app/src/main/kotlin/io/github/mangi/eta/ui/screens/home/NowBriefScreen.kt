@@ -132,6 +132,11 @@ internal fun NowBriefScreen(
     val reviewedEntries = remember(activityEntries) {
         activityEntries.filter { it.state in setOf(
             NotificationHistoryRepository.DecisionState.PROPOSED,
+            NotificationHistoryRepository.DecisionState.QUEUED,
+            NotificationHistoryRepository.DecisionState.MODEL_MISSING,
+            NotificationHistoryRepository.DecisionState.BATTERY_PAUSED,
+            NotificationHistoryRepository.DecisionState.LIMIT_REACHED,
+            NotificationHistoryRepository.DecisionState.ANALYSIS_ERROR,
             NotificationHistoryRepository.DecisionState.SNOOZED_1H,
             NotificationHistoryRepository.DecisionState.SNOOZED_24H,
             NotificationHistoryRepository.DecisionState.DISMISSED,
@@ -146,7 +151,13 @@ internal fun NowBriefScreen(
     val proposedCount = reviewedEntries.count {
         it.state == NotificationHistoryRepository.DecisionState.PROPOSED
     }
-    val snoozedCount = reviewedEntries.size - removedCount - proposedCount
+    val snoozedCount = reviewedEntries.count {
+        it.state in setOf(
+            NotificationHistoryRepository.DecisionState.SNOOZED_1H,
+            NotificationHistoryRepository.DecisionState.SNOOZED_24H,
+        )
+    }
+    val pendingAnalysisCount = reviewedEntries.size - removedCount - proposedCount - snoozedCount
     val filterConfig = remember(visible) { NotificationFilterSettings.load(context) }
     val filteringReady = remember(visible) {
         AgentNotificationHistoryService.isEnabled(context) &&
@@ -313,7 +324,8 @@ internal fun NowBriefScreen(
                 CouiText(text = description, kind = CouiTextKind.ItemSummary, color = colors.summary)
                 Spacer(Modifier.height(6.dp))
                 CouiText(
-                    text = "Analyse locale limitée à 1/minute et 100/jour pour préserver la batterie.",
+                    text = "Analyse locale : 1/minute, 100/jour. Les notifications éligibles " +
+                        "reçues entre deux analyses sont mises en attente.",
                     kind = CouiTextKind.GroupFooter, color = colors.summary,
                 )
             }
@@ -329,7 +341,7 @@ internal fun NowBriefScreen(
         item(key = "notification-filter:review-counts") {
             CouiText(
                 text = "$removedCount supprimée(s) · $snoozedCount reportée(s) · " +
-                    "$proposedCount à vérifier",
+                    "$proposedCount à vérifier · $pendingAnalysisCount en attente ou non analysée(s)",
                 kind = CouiTextKind.GroupFooter, color = colors.summary,
                 modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp),
             )
@@ -338,8 +350,8 @@ internal fun NowBriefScreen(
             item(key = "notification-filter:none") {
                 BriefCard {
                     CouiText(
-                        text = "Aucune action de filtrage enregistrée. Les décisions " +
-                            "confirmées par Android apparaîtront ici.",
+                        text = "Aucune suppression ni analyse en attente. Les notifications " +
+                            "conservées ou protégées restent dans Activité récente.",
                         kind = CouiTextKind.ItemSummary, color = colors.summary,
                     )
                 }

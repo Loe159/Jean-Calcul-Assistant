@@ -75,6 +75,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
     var results by remember { mutableStateOf<List<Pair<String, Double>>>(emptyList()) }
     var events by remember { mutableStateOf(NotificationObservation.snapshot()) }
     var stats by remember { mutableStateOf(NotificationObservation.statistics()) }
+    var diagnostic by remember { mutableStateOf(NotificationObservation.diagnostics(context)) }
 
     fun action(task: suspend () -> Unit) {
         if (busy) return
@@ -243,9 +244,33 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                 onClick = {
                     context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                 })
+            CouiPreference(
+                title = "Réessayer l'analyse des notifications actives",
+                summary = "Reprend les notifications non analysées toujours présentes " +
+                    "sur Android · sans dépasser 1 analyse/minute",
+                enabled = installed && AgentNotificationHistoryService.isEnabled(context),
+                onClick = {
+                    val count = NotificationObservation.retryActive(context)
+                    status = if (count == 0)
+                        "Aucune notification active récente en attente d'analyse"
+                    else "$count notification(s) remise(s) dans la file locale"
+                    diagnostic = NotificationObservation.diagnostics(context)
+                    stats = NotificationObservation.statistics()
+                },
+            )
+            CouiPreference(
+                title = "Diagnostic de l'analyse locale",
+                summary = diagnostic,
+                onClick = {
+                    diagnostic = NotificationObservation.diagnostics(context)
+                    stats = NotificationObservation.statistics()
+                    events = NotificationObservation.snapshot()
+                },
+            )
             CouiPreference(title = "Actualiser les résultats", summary = stats, onClick = {
                 events = NotificationObservation.snapshot()
                 stats = NotificationObservation.statistics()
+                diagnostic = NotificationObservation.diagnostics(context)
             })
             events.forEach { row ->
                 CouiPreference(title = row, showChevron = false)

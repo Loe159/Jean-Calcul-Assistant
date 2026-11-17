@@ -225,7 +225,23 @@ internal fun BriefNotificationAppCard(
                                             "Conservée après analyse locale"
                                         NotificationHistoryRepository.DecisionState.OBSERVED ->
                                             "Analysée · mode observation"
-                                        else -> "Reçue · analyse non effectuée"
+                                        NotificationHistoryRepository.DecisionState.QUEUED ->
+                                            if (System.currentTimeMillis() - entry.postedAt > 10 * 60_000L)
+                                                "Analyse interrompue · relancer dans les paramètres"
+                                            else "Analyse locale en attente · maximum 1 par minute"
+                                        NotificationHistoryRepository.DecisionState.PROTECTED ->
+                                            "Notification protégée · aucune suppression automatique"
+                                        NotificationHistoryRepository.DecisionState.MODEL_MISSING ->
+                                            "Analyse impossible · modèle local non installé"
+                                        NotificationHistoryRepository.DecisionState.BATTERY_PAUSED ->
+                                            "Analyse suspendue · économie d'énergie ou batterie faible"
+                                        NotificationHistoryRepository.DecisionState.LIMIT_REACHED ->
+                                            "Analyse reportée · quota quotidien ou file pleine"
+                                        NotificationHistoryRepository.DecisionState.EXPIRED ->
+                                            "Analyse interrompue · notification absente ou service relancé"
+                                        NotificationHistoryRepository.DecisionState.ANALYSIS_ERROR ->
+                                            "Analyse locale échouée · vérifier le modèle"
+                                        else -> "Reçue · aucune analyse encore enregistrée"
                                     }
                                     CouiText(
                                         text = decisionText, kind = CouiTextKind.GroupFooter,

@@ -37,11 +37,18 @@ class AgentNotificationHistoryService : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         connectedService = this
-        activeNotifications?.forEach(::record)
+        NotificationObservation.attachService(this)
+        val active = activeNotifications.orEmpty()
+        active.forEach(::record)
+        // The old implementation left rows as RECEIVED when throttled and
+        // silently lost work on process restart. Recover recent still-active
+        // alerts, but never reprocess already classified or dismissed entries.
+        NotificationObservation.recoverActive(this, active)
         NotificationActivityFeed.notifyChanged()
     }
 
     override fun onListenerDisconnected() {
+        NotificationObservation.detachService()
         pending.clear()
         processed.clear()
         if (connectedService === this) connectedService = null
@@ -49,6 +56,7 @@ class AgentNotificationHistoryService : NotificationListenerService() {
     }
 
     override fun onDestroy() {
+        NotificationObservation.detachService()
         pending.clear()
         processed.clear()
         if (connectedService === this) connectedService = null
@@ -60,6 +68,7 @@ class AgentNotificationHistoryService : NotificationListenerService() {
         rankingMap: RankingMap,
         reason: Int,
     ) {
+        NotificationObservation.notificationGone(this, sbn)
         val action = pending.remove(sbn.key) ?: return
         val confirmed = when (action.expected) {
             NotificationFilterDecision.DISMISS -> reason == REASON_LISTENER_CANCEL
