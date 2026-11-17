@@ -346,6 +346,9 @@ internal fun CouiLazyScaffoldPage(
     modifier: Modifier = Modifier,
     dark: Boolean = CouiTheme.isDark,
     colors: CouiPageColors = CouiPageDefaults.themeColors(dark),
+    // The Brief shares the chat surface while its halo is transparent.
+    // Other COUI pages continue using the normal page background.
+    containerColor: Color = colors.background,
     listState: LazyListState = rememberLazyListState(),
     compactTitle: Boolean = false,
     titleMotionProgress: Float = 1f,
@@ -380,7 +383,7 @@ internal fun CouiLazyScaffoldPage(
             .fillMaxSize()
             .then(imePadding)
             .then(if (behavior != null) Modifier.nestedScroll(behavior.nestedScrollConnection) else Modifier),
-        containerColor = colors.background,
+        containerColor = containerColor,
         floatingActionButton = floatingAction,
         topBar = {
             if (useCompact) {

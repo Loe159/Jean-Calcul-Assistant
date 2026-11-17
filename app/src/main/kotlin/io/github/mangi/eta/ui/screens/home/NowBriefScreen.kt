@@ -78,6 +78,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
  * Extensibility slot for independent dashboard cards (agenda, tasks, automations, A2UI).
@@ -133,6 +134,9 @@ internal fun NowBriefScreen(
     CouiLazyScaffoldPage(
         title = "Mon briefing",
         onBack = onClose,
+        // Same surface as AgentAppShell's conversation scaffold, so the
+        // first swipe frame has no abrupt black-to-COUI color transition.
+        containerColor = MiuixTheme.colorScheme.surface,
         listState = listState,
         titleMotionProgress = titleProgress,
         backgroundEffect = {
