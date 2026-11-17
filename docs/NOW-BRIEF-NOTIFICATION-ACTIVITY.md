@@ -41,8 +41,8 @@ separate. An unconfirmed proposal is never displayed as a successful delete.
 The session-level classifier counters are unchanged.
 
 Actual automatic permanent dismissal still requires the user's existing
-explicit personalized-mode opt-in, allowed application, AD/SPAM category
-setting, ≥0.999 classifier score, ≥0.50 label margin, live notification
+explicit personalized-mode opt-in for **all eligible third-party apps**,
+AD/SPAM category setting, ≥0.999 classifier score, ≥0.50 label margin, live notification
 existence/fingerprint, non-system/low-importance status, and sensitive-content
 protections. The default modes do not permanently delete notifications.
 The dashboard has a direct entry to those filtering settings and states the
@@ -57,3 +57,21 @@ at the start, faster near the edge), the actual pinned `COUI-Kit` `rememberCouiT
 `Modifier.couiTouchMotion` deformation and rubber springs used by Menu,
 `couiButtonFeedback` for the press mask, stretched edges,
 and a damped spring on release; rightward swipe never opens the chat.
+
+
+## All-app classification (V2 settings migration)
+
+The mode 3 app/package allowlist and its input field were removed.
+Every eligible third-party application now goes through the same local
+policy; the model's classification determines whether to keep, snooze
+or (after explicit global confirmation) permanently dismiss the Android
+notification. Protected system apps, conversations, payments, OTP, alarms,
+high-priority or non-clearable notifications remain exempt, even if the
+classifier assigns an advertisement/spam label. All received notifications
+continue to be stored in the local Now Brief history, regardless of whether
+they were classified.
+
+Previously saved v1 configuration is migrated to the v2 format without
+package rules. If the old settings allowed irreversible deletion for only
+specific apps, the action falls back to snoozing for 1 hour until the user
+explicitly reconfirms the expanded **all-app** deletion scope.

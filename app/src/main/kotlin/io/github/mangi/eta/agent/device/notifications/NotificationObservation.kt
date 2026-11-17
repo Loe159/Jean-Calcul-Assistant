@@ -100,7 +100,7 @@ internal object NotificationObservation : NotificationBriefSource {
             outcome = outcome, timestampMs = System.currentTimeMillis(),
         ))
         while (recent.size > 50) recent.removeLast()
-        if (NotificationFilterSettings.isValidPackageName(packageName)) {
+        if (packageName.length in 3..200 && packageName.contains('.')) {
             packages.add(packageName)
             while (packages.size > 60) packages.remove(packages.first())
         }

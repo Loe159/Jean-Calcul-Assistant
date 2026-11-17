@@ -20,10 +20,8 @@ internal object NotificationFilterPolicy {
 
     fun decide(config: NotificationFilterConfig, candidate: NotificationFilterCandidate): NotificationFilterDecision {
         if (!candidate.safe || config.mode == NotificationFilterMode.OFF) return NotificationFilterDecision.KEEP
-        if (config.appRules[candidate.app] == NotificationAppRule.KEEP) return NotificationFilterDecision.KEEP
         if (config.mode == NotificationFilterMode.OBSERVE) return NotificationFilterDecision.OBSERVE
         if (config.mode == NotificationFilterMode.PERSONALIZED) {
-            if (config.appRules[candidate.app] != NotificationAppRule.FILTER) return NotificationFilterDecision.KEEP
             if (config.onlyQuietHours && !config.inQuietHours(candidate.localHour)) return NotificationFilterDecision.KEEP
         }
 

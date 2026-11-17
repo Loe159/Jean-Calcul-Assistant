@@ -22,7 +22,6 @@ import io.github.mangi.eta.agent.device.notifications.NotificationFilterSettings
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterConfig
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterMode
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterAction
-import io.github.mangi.eta.agent.device.notifications.NotificationAppRule
 import io.github.mangi.eta.ui.components.coui.CouiSwitchPreference
 import io.github.mangi.eta.ui.components.coui.CouiButton
 import io.github.mangi.eta.ui.components.coui.CouiButtonRole
@@ -43,9 +42,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
     var installed by remember { mutableStateOf(LocalNotificationModel.installed(context)) }
     var status by remember { mutableStateOf("") }
     var config by remember { mutableStateOf(NotificationFilterSettings.load(context)) }
-    var selectedApp by remember { mutableStateOf("") }
     var confirmPermanent by remember { mutableStateOf(false) }
-    var recentApps by remember { mutableStateOf(NotificationObservation.recentPackages()) }
 
     fun saveConfig(next: NotificationFilterConfig) {
         NotificationFilterSettings.save(context, next)
@@ -67,7 +64,8 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                 NotificationFilterMode.OFF -> "Filtrage désactivé"
                 NotificationFilterMode.OBSERVE -> "Observation activée : aucune notification masquée"
                 NotificationFilterMode.CAUTIOUS -> "Filtrage prudent : publicités très certaines, masquées 1 heure"
-                NotificationFilterMode.PERSONALIZED -> "Personnalisé : configure les applications autorisées ci-dessous"
+                NotificationFilterMode.PERSONALIZED ->
+                    "Personnalisé : toutes les applications éligibles · définis les catégories et l'action"
             }
         }
     }
@@ -153,7 +151,8 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                 NotificationFilterMode.OFF to ("Désactivé" to "Aucune classification en arrière-plan"),
                 NotificationFilterMode.OBSERVE to ("1 · Observer" to "Analyser sans jamais modifier les notifications"),
                 NotificationFilterMode.CAUTIOUS to ("2 · Prudent" to "Masquer 1 heure uniquement les publicités très certaines"),
-                NotificationFilterMode.PERSONALIZED to ("3 · Personnalisé" to "Catégories, applications et plages horaires"),
+                NotificationFilterMode.PERSONALIZED to
+                    ("3 · Filtrage automatique" to "Toutes les applications éligibles · catégories et plages horaires"),
             )
             options.forEach { (mode, text) ->
                 CouiPreference(
@@ -169,10 +168,10 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
         if (config.mode == NotificationFilterMode.PERSONALIZED) {
             Group(title = "Règles personnalisées") {
                 CouiSwitchPreference(title = "Publicités", checked = config.filterAds,
-                    summary = "Autoriser le filtrage des promotions dans les applications choisies",
+                    summary = "Détecter les publicités de toutes les applications éligibles",
                     onCheckedChange = { saveConfig(config.copy(filterAds = it)) })
                 CouiSwitchPreference(title = "Spams et arnaques", checked = config.filterSpam,
-                    summary = "Activable seulement pour les applications autorisées · prudence recommandée",
+                    summary = "Détecter les spams dans toutes les applications éligibles · prudence recommandée",
                     onCheckedChange = { saveConfig(config.copy(filterSpam = it)) })
                 CouiSwitchPreference(title = "Seulement pendant une plage horaire", checked = config.onlyQuietHours,
                     summary = "Par défaut : 22 h à 7 h, heure locale",
@@ -202,71 +201,38 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                             else -> NotificationFilterAction.SNOOZE_1H
                         }))
                     })
-                CouiPreference(title = "Suppression définitive (risquée)",
-                    summary = "Désactivée par défaut · aucun retour arrière possible · confiance 99,9 % minimum",
-                    onClick = { confirmPermanent = true })
+                CouiPreference(
+                    title = if (config.action == NotificationFilterAction.DISMISS)
+                        "Suppression automatique activée" else "Activer la suppression automatique",
+                    summary = if (config.action == NotificationFilterAction.DISMISS)
+                        "Supprime du panneau Android, conserve dans Now Brief · toucher pour désactiver"
+                    else "Toutes les applications éligibles · confirmation obligatoire · score ≥ 99,9 %",
+                    onClick = {
+                        if (config.action == NotificationFilterAction.DISMISS) {
+                            saveConfig(config.copy(action = NotificationFilterAction.SNOOZE_1H))
+                            status = "Suppression automatique désactivée : report 1 h"
+                        } else {
+                            confirmPermanent = true
+                        }
+                    },
+                )
                 if (confirmPermanent) {
-                    Footer(text = "Attention : supprimer une notification est irréversible. Android ne peut pas la restaurer. Cette option n'agit que sur les applications explicitement autorisées et conserve les protections sensibles.")
+                    Footer(text = "Cette confirmation autorise le filtrage de toutes les applications tierces éligibles, et non uniquement celles ajoutées auparavant. Android ne peut pas restaurer une notification supprimée. Une copie locale reste dans Now Brief pendant 7 jours. Messages, OTP, banques, alarmes, système et alertes critiques restent protégés.")
                     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                        CouiButton(text = "Confirmer la suppression définitive", role = CouiButtonRole.Destructive,
+                        CouiButton(
+                            text = "Confirmer pour toutes les applications éligibles",
+                            role = CouiButtonRole.Destructive,
                             onClick = {
                                 saveConfig(config.copy(action = NotificationFilterAction.DISMISS))
                                 confirmPermanent = false
-                            })
+                                status = "Suppression automatique activée · historique conservé dans Now Brief"
+                            },
+                        )
                         CouiButton(text = "Annuler", onClick = { confirmPermanent = false })
                     }
                 }
             }
-            Footer(text = "Mode personnalisé : par défaut, aucune application n'est filtrée. Ajoute explicitement les applications ci-dessous. Les conversations, OTP, banques, alertes et notifications système restent protégés.")
-
-            Group(title = "Applications autorisées") {
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    CouiTextField(value = selectedApp, onValueChange = { selectedApp = it.take(200) },
-                        label = "Identifiant de l'application",
-                        placeholder = "com.exemple.boutique",
-                        singleLine = true)
-                    CouiButton(text = "Autoriser le filtrage pour cette application",
-                        enabled = NotificationFilterSettings.isValidPackageName(selectedApp.trim()),
-                        role = CouiButtonRole.Primary,
-                        onClick = {
-                            val pkg = selectedApp.trim()
-                            if (NotificationFilterSettings.isValidPackageName(pkg)) {
-                                saveConfig(config.copy(appRules =
-                                    config.appRules + (pkg to NotificationAppRule.FILTER)))
-                                status = "$pkg : filtrage autorisé (avec protections)"
-                            }
-                        })
-                    CouiButton(text = "Toujours conserver les notifications de cette application",
-                        enabled = NotificationFilterSettings.isValidPackageName(selectedApp.trim()),
-                        onClick = {
-                            val pkg = selectedApp.trim()
-                            if (NotificationFilterSettings.isValidPackageName(pkg)) {
-                                saveConfig(config.copy(appRules =
-                                    config.appRules + (pkg to NotificationAppRule.KEEP)))
-                                status = "$pkg : notifications toujours conservées"
-                            }
-                        })
-                }
-                (config.appRules.keys + recentApps).distinct().sorted().take(100).forEach { pkg ->
-                    val rule = config.appRules[pkg] ?: NotificationAppRule.DEFAULT
-                    CouiPreference(title = pkg,
-                        summary = when (rule) {
-                            NotificationAppRule.DEFAULT -> "Non filtré · toucher pour autoriser"
-                            NotificationAppRule.FILTER -> "Filtrage autorisé · toucher pour protéger"
-                            NotificationAppRule.KEEP -> "Toujours conserver · toucher pour réinitialiser"
-                        },
-                        onClick = {
-                            val next = when (rule) {
-                                NotificationAppRule.DEFAULT -> NotificationAppRule.FILTER
-                                NotificationAppRule.FILTER -> NotificationAppRule.KEEP
-                                NotificationAppRule.KEEP -> NotificationAppRule.DEFAULT
-                            }
-                            val rules = config.appRules.toMutableMap()
-                            if (next == NotificationAppRule.DEFAULT) rules.remove(pkg) else rules[pkg] = next
-                            saveConfig(config.copy(appRules = rules))
-                        })
-                }
-            }
+            Footer(text = "Aucun identifiant de package à saisir : les applications tierces sont éligibles par défaut. Les notifications sensibles, non effaçables, système, importantes ou incertaines ne sont jamais supprimées automatiquement. Les notifications supprimées sont conservées dans Now Brief pendant 7 jours.")
         }
         Group(title = "Observation sans suppression") {
             CouiPreference(title = "Mode actif : ${config.mode.name.lowercase()}",
@@ -280,7 +246,6 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
             CouiPreference(title = "Actualiser les résultats", summary = stats, onClick = {
                 events = NotificationObservation.snapshot()
                 stats = NotificationObservation.statistics()
-                recentApps = NotificationObservation.recentPackages()
             })
             events.forEach { row ->
                 CouiPreference(title = row, showChevron = false)
