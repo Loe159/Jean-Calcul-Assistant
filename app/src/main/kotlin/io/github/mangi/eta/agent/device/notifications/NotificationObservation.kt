@@ -8,6 +8,7 @@ import android.os.PowerManager
 import android.os.SystemClock
 import android.service.notification.StatusBarNotification
 import io.github.mangi.eta.agent.device.AgentNotificationHistoryService
+import io.github.mangi.eta.data.repository.NotificationHistoryRepository
 import java.time.LocalTime
 import java.util.ArrayDeque
 import java.util.Locale
@@ -165,6 +166,20 @@ internal object NotificationObservation : NotificationBriefSource {
                 val decision = NotificationFilterPolicy.decide(liveConfig, NotificationFilterCandidate(
                     app = packageName, safe = true, scores = results, localHour = LocalTime.now().hour,
                 ))
+                // Persist the precise classification on the same on-device entry
+                // that was recorded when the notification first arrived. A
+                // proposed action stays "À vérifier" until Android confirms it.
+                val decisionState = when (decision) {
+                    NotificationFilterDecision.KEEP ->
+                        NotificationHistoryRepository.DecisionState.KEPT
+                    NotificationFilterDecision.OBSERVE ->
+                        NotificationHistoryRepository.DecisionState.OBSERVED
+                    else -> NotificationHistoryRepository.DecisionState.PROPOSED
+                }
+                if (NotificationHistoryRepository(app).updateDecision(
+                    sbn.key, sbn.postTime, decisionState,
+                    results.firstOrNull()?.first, results.firstOrNull()?.second,
+                )) NotificationActivityFeed.notifyChanged()
                 synchronized(this) {
                     if (decision == NotificationFilterDecision.KEEP) kept++ else reviewed++
                     if (decision in setOf(NotificationFilterDecision.SNOOZE_1H,

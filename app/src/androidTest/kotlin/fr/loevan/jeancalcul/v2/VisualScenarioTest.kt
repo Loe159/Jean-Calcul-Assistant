@@ -226,6 +226,33 @@ class VisualScenarioTest {
                         assertTrue("Only one entry should be removed",
                             device.wait(Until.hasObject(By.textContains("2 affichées")), 8000))
                     }
+                    "brief_decisions" -> {
+                        // Synthetic local history; no real Android notifications
+                        // are suppressed by this visual / status test.
+                        val repo = NotificationHistoryRepository(context)
+                        val now = System.currentTimeMillis()
+                        repo.record("deleted-ad", "com.android.settings",
+                            "Publicité test", "Réduction commerciale", null, now)
+                        assertTrue(repo.updateDecision(
+                            "deleted-ad", now,
+                            NotificationHistoryRepository.DecisionState.DISMISSED,
+                            "a promotional advertisement", 0.9998,
+                        ))
+                        NotificationActivityFeed.notifyChanged()
+                        device.findObject(By.desc("Ouvrir mon briefing")).click()
+                        assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
+                        val marker = By.textContains("1 supprimée(s)")
+                        var attempts = 0
+                        while (!device.hasObject(marker) && attempts++ < 12) {
+                            device.swipe(
+                                device.displayWidth / 2, device.displayHeight * 3 / 4,
+                                device.displayWidth / 2, device.displayHeight / 3, 26,
+                            )
+                            device.waitForIdle()
+                        }
+                        assertTrue("Confirmed removals must remain in the review section",
+                            device.wait(Until.hasObject(marker), 5000))
+                    }
                     "menu" -> {
                         assertTrue("New conversation is a direct toolbar action",
                             device.hasObject(By.desc(context.getString(R.string.action_new_conversation))))

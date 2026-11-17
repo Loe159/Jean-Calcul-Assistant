@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import io.github.mangi.eta.agent.device.notifications.NotificationFilterDecision
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -37,6 +38,16 @@ internal class NotificationHistoryRepository(context: Context) {
                 arrayOf(key.take(MAX_KEY_CHARS)), null, null, null, "1",
             ).use { it.moveToFirst() }
             if (alreadyDismissed) return@transaction
+            query(
+                TABLE, arrayOf("posted_at", "filter_state", "filter_label", "filter_score"),
+                "notification_key=?", arrayOf(key.take(MAX_KEY_CHARS)), null, null, null, "1",
+            ).use { cursor ->
+                if (cursor.moveToFirst() && cursor.getLong(0) == postedAt) {
+                    values.put("filter_state", cursor.getString(1))
+                    values.put("filter_label", cursor.getString(2))
+                    if (!cursor.isNull(3)) values.put("filter_score", cursor.getDouble(3))
+                }
+            }
             insertWithOnConflict(TABLE, null, values, SQLiteDatabase.CONFLICT_REPLACE)
             delete(TABLE, "posted_at<?", arrayOf((System.currentTimeMillis() - RETENTION_MS).toString()))
             execSQL(
@@ -44,6 +55,36 @@ internal class NotificationHistoryRepository(context: Context) {
                     "(SELECT notification_key FROM $TABLE ORDER BY posted_at DESC LIMIT $MAX_RECORDS)",
             )
         }
+    }
+
+    /** A confirmed Android listener result is distinct from the model's proposal. */
+    enum class DecisionState {
+        RECEIVED, KEPT, OBSERVED, PROPOSED, SNOOZED_1H, SNOOZED_24H, DISMISSED,
+    }
+
+    /**
+     * Called after local inference or a verified Android removal callback.
+     * Match the original post time to avoid attributing a stale classifier result
+     * to a newer notification reusing the same Android key.
+     */
+    fun updateDecision(
+        key: String,
+        postedAt: Long,
+        state: DecisionState,
+        label: String? = null,
+        score: Double? = null,
+    ): Boolean {
+        if (key.isBlank() || score?.let { !it.isFinite() || it !in 0.0..1.0 } == true) return false
+        val values = ContentValues().apply {
+            put("filter_state", state.name)
+            if (label != null) put("filter_label", label.take(100))
+            if (score != null) put("filter_score", score)
+        }
+        val changed = database.writableDatabase.update(
+            TABLE, values, "notification_key=? AND posted_at=?",
+            arrayOf(key.take(MAX_KEY_CHARS), postedAt.toString()),
+        )
+        return changed == 1
     }
 
     /** Last seven days, including notifications never sent to the AI classifier.
@@ -55,13 +96,17 @@ internal class NotificationHistoryRepository(context: Context) {
         val title: String,
         val text: String,
         val postedAt: Long,
+        val state: DecisionState = DecisionState.RECEIVED,
+        val category: String? = null,
+        val score: Double? = null,
     )
 
     fun recent(limit: Int = 200): List<RecentEntry> {
         val cutoff = System.currentTimeMillis() - RETENTION_MS
         return database.readableDatabase.query(
             TABLE,
-            arrayOf("notification_key", "package_name", "title", "text", "sub_text", "posted_at"),
+            arrayOf("notification_key", "package_name", "title", "text", "sub_text",
+                "posted_at", "filter_state", "filter_label", "filter_score"),
             "posted_at>=?", arrayOf(cutoff.toString()),
             null, null, "posted_at DESC", limit.coerceIn(1, MAX_RECORDS).toString(),
         ).use { cursor ->
@@ -73,6 +118,11 @@ internal class NotificationHistoryRepository(context: Context) {
                         title = cursor.getString(2).orEmpty(),
                         text = cursor.getString(3).orEmpty().ifBlank { cursor.getString(4).orEmpty() },
                         postedAt = cursor.getLong(5),
+                        state = runCatching {
+                            DecisionState.valueOf(cursor.getString(6))
+                        }.getOrDefault(DecisionState.RECEIVED),
+                        category = cursor.getString(7),
+                        score = if (cursor.isNull(8)) null else cursor.getDouble(8),
                     ))
                 }
             }
@@ -154,20 +204,27 @@ internal class NotificationHistoryRepository(context: Context) {
     private fun String.escapeLike(): String =
         replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
-    private class Database(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, 2) {
+    private class Database(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, 3) {
         override fun onCreate(db: SQLiteDatabase) {
             createHiddenTable(db)
             db.execSQL(
                 "CREATE TABLE $TABLE (" +
                     "notification_key TEXT PRIMARY KEY NOT NULL," +
                     "package_name TEXT NOT NULL," +
-                    "title TEXT,text TEXT,sub_text TEXT,posted_at INTEGER NOT NULL)",
+                    "title TEXT,text TEXT,sub_text TEXT,posted_at INTEGER NOT NULL," +
+                    "filter_state TEXT NOT NULL DEFAULT 'RECEIVED'," +
+                    "filter_label TEXT,filter_score REAL)",
             )
             db.execSQL("CREATE INDEX notification_history_posted_at ON $TABLE(posted_at DESC)")
         }
 
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
             if (oldVersion < 2) createHiddenTable(db)
+            if (oldVersion < 3) {
+                db.execSQL("ALTER TABLE $TABLE ADD COLUMN filter_state TEXT NOT NULL DEFAULT 'RECEIVED'")
+                db.execSQL("ALTER TABLE $TABLE ADD COLUMN filter_label TEXT")
+                db.execSQL("ALTER TABLE $TABLE ADD COLUMN filter_score REAL")
+            }
         }
 
         private fun createHiddenTable(db: SQLiteDatabase) {
@@ -178,16 +235,23 @@ internal class NotificationHistoryRepository(context: Context) {
         }
     }
 
-    private companion object {
-        const val DATABASE_NAME = "eta_notification_history.db"
-        const val TABLE = "notification_history"
-        const val HIDDEN_TABLE = "dismissed_from_brief"
-        const val MAX_RECORDS = 1_000
-        const val RETENTION_DAYS = 7
-        const val HOUR_MS = 60L * 60 * 1_000
-        const val RETENTION_MS = RETENTION_DAYS * 24L * HOUR_MS
-        const val MAX_FIELD_CHARS = 4_000
-        const val MAX_KEY_CHARS = 1_000
-        const val MAX_PACKAGE_CHARS = 255
+    companion object {
+        fun confirmedState(decision: NotificationFilterDecision): DecisionState? = when (decision) {
+            NotificationFilterDecision.DISMISS -> DecisionState.DISMISSED
+            NotificationFilterDecision.SNOOZE_1H -> DecisionState.SNOOZED_1H
+            NotificationFilterDecision.SNOOZE_24H -> DecisionState.SNOOZED_24H
+            else -> null
+        }
+
+        private const val DATABASE_NAME = "eta_notification_history.db"
+        private const val TABLE = "notification_history"
+        private const val HIDDEN_TABLE = "dismissed_from_brief"
+        private const val MAX_RECORDS = 1_000
+        private const val RETENTION_DAYS = 7
+        private const val HOUR_MS = 60L * 60 * 1_000
+        private const val RETENTION_MS = RETENTION_DAYS * 24L * HOUR_MS
+        private const val MAX_FIELD_CHARS = 4_000
+        private const val MAX_KEY_CHARS = 1_000
+        private const val MAX_PACKAGE_CHARS = 255
     }
 }

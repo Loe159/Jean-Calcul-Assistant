@@ -27,6 +27,8 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -100,7 +102,7 @@ fun ConversationSidePaneScaffold(
     modifier: Modifier = Modifier,
     activeModelLabel: String? = null,
     hasPermissionAttention: Boolean = false,
-    briefContent: @Composable (revealProgress: () -> Float) -> Unit = {},
+    briefContent: @Composable (revealProgress: () -> Float, onItemTouchChange: (Boolean) -> Unit) -> Unit = { _, _ -> },
     content: @Composable () -> Unit,
 ) {
     val sceneLifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
@@ -156,6 +158,9 @@ fun ConversationSidePaneScaffold(
         val hapticFeedback = LocalHapticFeedback.current
         val currentHapticFeedback by rememberUpdatedState(hapticFeedback)
         val dragInteractions = remember { MutableInteractionSource() }
+        // A touch on an activity card belongs to that card until pointer-up.
+        // Never let the full-page anchoredDraggable steal a rightward dismissal.
+        var notificationTouchActive by remember { mutableStateOf(false) }
         val isDragging by dragInteractions.collectIsDraggedAsState()
         val isHistoryRevealed by remember(paneDragState) {
             derivedStateOf { paneDragState.offset > 0.5f }
@@ -251,7 +256,8 @@ fun ConversationSidePaneScaffold(
                     state = paneDragState,
                     reverseDirection = false,
                     orientation = Orientation.Horizontal,
-                    enabled = backHandlerEnabled && sceneLifecycleState == Lifecycle.State.RESUMED,
+                    enabled = backHandlerEnabled && sceneLifecycleState == Lifecycle.State.RESUMED &&
+                        !notificationTouchActive,
                     flingBehavior = flingBehavior,
                     interactionSource = dragInteractions,
                 ),
@@ -300,7 +306,7 @@ fun ConversationSidePaneScaffold(
                             // D1: content lags behind the horizontal spring by at most 18dp.
                             translationX = -(1f - briefRevealProgress()) * 18.dp.toPx()
                         }) {
-                            briefContent(briefRevealProgress)
+                            briefContent(briefRevealProgress) { notificationTouchActive = it }
                         }
                     }
                     Box(
