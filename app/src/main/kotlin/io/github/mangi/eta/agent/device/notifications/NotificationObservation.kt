@@ -295,7 +295,7 @@ internal object NotificationObservation : NotificationBriefSource {
             try {
                 val config = NotificationFilterSettings.load(app)
                 if (config.mode == NotificationFilterMode.OFF) {
-                    updateState(app, live, NotificationHistoryRepository.DecisionState.EXPIRED)
+                    updateState(app, next, NotificationHistoryRepository.DecisionState.EXPIRED)
                     return@execute
                 }
                 if (body.isBlank() || body == ".") {
