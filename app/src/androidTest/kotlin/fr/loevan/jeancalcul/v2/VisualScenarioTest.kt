@@ -89,7 +89,7 @@ class VisualScenarioTest {
                             assertTrue("Manual input should be visible",
                                 device.wait(Until.hasObject(By.text("Titre et contenu d'une notification")), 10000))
                             val safeMode = By.text("2 · Prudent")
-                            val personalMode = By.text("3 · Personnalisé")
+                            val personalMode = By.text("3 · Filtrage automatique")
                             var modeScrolls = 0
                             var prudentSeen = false
                             var personalSeen = false
@@ -102,7 +102,7 @@ class VisualScenarioTest {
                                 device.waitForIdle(750)
                             }
                             assertTrue("Prudent mode must be reachable", prudentSeen)
-                            assertTrue("Personalized mode must be reachable", personalSeen)
+                            assertTrue("Automatic filtering mode must be reachable", personalSeen)
                         }
                         if (scenario == "providers") {
                             device.findObject(By.text(context.getString(R.string.ui_model_provider_e8c7f5))).click()
