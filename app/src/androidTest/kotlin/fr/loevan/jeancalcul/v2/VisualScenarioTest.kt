@@ -253,6 +253,40 @@ class VisualScenarioTest {
                         assertTrue("Confirmed removals must remain in the review section",
                             device.wait(Until.hasObject(marker), 5000))
                     }
+                    "brief_swipe_isolation" -> {
+                        val repo = NotificationHistoryRepository(context)
+                        val now = System.currentTimeMillis()
+                        repo.record("swipe-synthetic", "com.android.settings",
+                            "Test de glissement", "Test local", null, now)
+                        NotificationActivityFeed.notifyChanged()
+                        device.findObject(By.desc("Ouvrir mon briefing")).click()
+                        assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
+                        val selector = By.textContains("1 notification")
+                        var group = device.wait(Until.findObject(selector), 10000)
+                            ?: throw AssertionError("Synthetic notification group missing")
+                        var attempts = 0
+                        while (group.visibleBounds.centerY() !in
+                                device.displayHeight / 4..device.displayHeight * 3 / 4 &&
+                            attempts++ < 12
+                        ) {
+                            device.swipe(
+                                device.displayWidth / 2, device.displayHeight * 3 / 4,
+                                device.displayWidth / 2, device.displayHeight / 3, 26,
+                            )
+                            group = device.wait(Until.findObject(selector), 5000)
+                                ?: throw AssertionError("Notification group not reachable")
+                        }
+                        assertTrue("Group must be in swipe area",
+                            group.visibleBounds.centerY() in
+                                device.displayHeight / 4..device.displayHeight * 3 / 4)
+                        val y = group.visibleBounds.centerY()
+                        device.swipe(
+                            device.displayWidth / 6, y,
+                            device.displayWidth * 5 / 6, y, 30,
+                        )
+                        assertTrue("Swiping a notification right must not close the briefing",
+                            device.wait(Until.hasObject(By.text("Mon briefing")), 10000))
+                    }
                     "menu" -> {
                         assertTrue("New conversation is a direct toolbar action",
                             device.hasObject(By.desc(context.getString(R.string.action_new_conversation))))
