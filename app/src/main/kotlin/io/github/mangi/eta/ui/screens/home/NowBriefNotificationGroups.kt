@@ -3,7 +3,6 @@ package io.github.mangi.eta.ui.screens.home
 import android.widget.ImageView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -51,6 +50,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.itos.coui.effect.couiButtonFeedback
+import com.itos.coui.motion.couiTouchMotion
+import com.itos.coui.motion.rememberCouiTouchMotion
 import com.itos.coui.layout.CouiPageDefaults
 import com.itos.coui.shape.CouiShape
 import com.itos.coui.text.CouiTextKind
@@ -306,15 +307,9 @@ private fun BriefDismissStretch(
     val settle = remember(identity) { Animatable(0f) }
     var fingerDeltaX by remember(identity) { mutableFloatStateOf(0f) }
     var horizontalDrag by remember(identity) { mutableStateOf(false) }
-    var pressedOffsetX by remember(identity) { mutableFloatStateOf(0f) }
-    val elasticPress by animateFloatAsState(
-        targetValue = pressedOffsetX,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
-        label = "coui-notification-press-stretch",
-    )
+    // The same native rubber/deformation animator that COUI Menu uses.
+    // It tracks finger position without stealing drags from child rows.
+    val touchMotion = rememberCouiTouchMotion(swipeEnabled)
     var widthPx by remember(identity) { mutableFloatStateOf(1f) }
     var active by remember(identity) { mutableStateOf(true) }
     // If the card disappears during its release animation, the page must
@@ -328,23 +323,18 @@ private fun BriefDismissStretch(
         else settle.value
     Box(
         modifier = modifier.onSizeChanged { widthPx = it.width.toFloat().coerceAtLeast(1f) }
+            .couiTouchMotion(touchMotion, expanded = swipeEnabled)
             // Initial pass claims the full touch lifetime, even before the
             // horizontal slop threshold; the page-level gesture is disabled.
             .pointerInput(identity) {
                 awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                     onTouchChange(true)
                     try {
                         do {
                             val event = awaitPointerEvent(pass = PointerEventPass.Initial)
-                            val tracked = event.changes.firstOrNull { it.id == down.id }
-                            if (tracked != null) {
-                                pressedOffsetX = (tracked.position.x - down.position.x)
-                                    .coerceIn(-widthPx, widthPx)
-                            }
                         } while (event.changes.any { it.pressed })
                     } finally {
-                        pressedOffsetX = 0f
                         onTouchChange(false)
                     }
                 }
@@ -414,14 +404,15 @@ private fun BriefDismissStretch(
                     )
                 }
                 .graphicsLayer {
-                    translationX = visualOffset
+                    translationX = visualOffset + touchMotion.translationX.value
+                    translationY = touchMotion.translationY.value
                     val fraction = (abs(visualOffset) / widthPx).coerceIn(0f, 1f)
-                    val heldStretch = (abs(elasticPress) / widthPx).coerceIn(0f, 1f) * 0.045f
-                    scaleX = 1f + fraction * 0.06f + heldStretch
-                    scaleY = 1f - fraction * 0.025f
-                    transformOrigin = TransformOrigin(
-                        if (visualOffset >= 0f) 0f else 1f, 0.5f,
-                    )
+                    scaleX = touchMotion.scaleX.value * (1f + fraction * 0.06f)
+                    scaleY = touchMotion.scaleY.value * (1f - fraction * 0.025f)
+                    // COUI Menu scales around its centre; only an actual swipe
+                    // anchors the stretched edge to the drag direction.
+                    transformOrigin = if (abs(visualOffset) < 1f) TransformOrigin.Center
+                        else TransformOrigin(if (visualOffset >= 0f) 0f else 1f, 0.5f)
                 },
         ) { content() }
     }

@@ -53,5 +53,7 @@ pretending to be classified.
 Touch on a notification card acquires a local horizontal-gesture lock before
 the navigation scaffold receives the pointer drag. It releases on pointer-up
 or disposal. The sticky swipe uses a monotonic curved motion profile (resistant
-at the start, faster near the edge), COUI press feedback, stretched edges,
+at the start, faster near the edge), the actual pinned `COUI-Kit` `rememberCouiTouchMotion` /
+`Modifier.couiTouchMotion` deformation and rubber springs used by Menu,
+`couiButtonFeedback` for the press mask, stretched edges,
 and a damped spring on release; rightward swipe never opens the chat.
