@@ -46,13 +46,17 @@ class NotificationHistoryRepositoryTest {
         repository.record("n1", "com.example.chat", "Alerte", "Message privé", null, now)
         repository.record("n2", "com.example.chat", "Nouveau", "Autre message", null, now - 10)
         repository.record("n3", "com.example.calendar", "Agenda", "Événement", null, now - 20)
+        repository.record("silent", "com.example.system", null, null, null, now - 30)
         val entries = repository.recent(100)
-        assertEquals(3, entries.size)
-        assertEquals(listOf("n1", "n2", "n3"), entries.map { it.key })
+        assertEquals(4, entries.size)
+        assertEquals(listOf("n1", "n2", "n3", "silent"), entries.map { it.key })
         repository.removeFromBrief(listOf("n2"))
-        assertEquals(listOf("n1", "n3"), repository.recent(100).map { it.key })
+        // Listener reconnect may re-post currently active notifications.
+        // A dismissed key must not silently reappear in Now Brief.
+        repository.record("n2", "com.example.chat", "Nouveau", "Autre message", null, now)
+        assertEquals(listOf("n1", "n3", "silent"), repository.recent(100).map { it.key })
         // Deleting a briefing entry doesn't change classifier counters.
-        assertEquals(2, repository.recent(100).size)
+        assertEquals(3, repository.recent(100).size)
     }
 
     @Test

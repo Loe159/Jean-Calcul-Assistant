@@ -19,7 +19,8 @@ internal class NotificationHistoryRepository(context: Context) {
         subText: String?,
         postedAt: Long,
     ) {
-        if (title.isNullOrBlank() && text.isNullOrBlank() && subText.isNullOrBlank()) return
+        // A silent notification still belongs in the received history.
+        if (key.isBlank() || packageName.isBlank()) return
         val values = ContentValues().apply {
             put("notification_key", key.take(MAX_KEY_CHARS))
             put("package_name", packageName.take(MAX_PACKAGE_CHARS))
@@ -29,6 +30,13 @@ internal class NotificationHistoryRepository(context: Context) {
             put("posted_at", postedAt)
         }
         database.writableDatabase.transaction {
+            // A swiped-away row remains hidden even when Android replays
+            // active notifications after the listener reconnects.
+            val alreadyDismissed = query(
+                HIDDEN_TABLE, arrayOf("notification_key"), "notification_key=?",
+                arrayOf(key.take(MAX_KEY_CHARS)), null, null, null, "1",
+            ).use { it.moveToFirst() }
+            if (alreadyDismissed) return@transaction
             insertWithOnConflict(TABLE, null, values, SQLiteDatabase.CONFLICT_REPLACE)
             delete(TABLE, "posted_at<?", arrayOf((System.currentTimeMillis() - RETENTION_MS).toString()))
             execSQL(
@@ -53,7 +61,7 @@ internal class NotificationHistoryRepository(context: Context) {
         val cutoff = System.currentTimeMillis() - RETENTION_MS
         return database.readableDatabase.query(
             TABLE,
-            arrayOf("notification_key", "package_name", "title", "text", "posted_at"),
+            arrayOf("notification_key", "package_name", "title", "text", "sub_text", "posted_at"),
             "posted_at>=?", arrayOf(cutoff.toString()),
             null, null, "posted_at DESC", limit.coerceIn(1, MAX_RECORDS).toString(),
         ).use { cursor ->
@@ -63,8 +71,8 @@ internal class NotificationHistoryRepository(context: Context) {
                         key = cursor.getString(0),
                         packageName = cursor.getString(1),
                         title = cursor.getString(2).orEmpty(),
-                        text = cursor.getString(3).orEmpty(),
-                        postedAt = cursor.getLong(4),
+                        text = cursor.getString(3).orEmpty().ifBlank { cursor.getString(4).orEmpty() },
+                        postedAt = cursor.getLong(5),
                     ))
                 }
             }
@@ -76,8 +84,14 @@ internal class NotificationHistoryRepository(context: Context) {
         if (keys.isEmpty()) return
         database.writableDatabase.transaction {
             keys.forEach { key ->
+                insertWithOnConflict(HIDDEN_TABLE, null, ContentValues().apply {
+                    put("notification_key", key.take(MAX_KEY_CHARS))
+                    put("dismissed_at", System.currentTimeMillis())
+                }, SQLiteDatabase.CONFLICT_REPLACE)
                 delete(TABLE, "notification_key=?", arrayOf(key))
             }
+            delete(HIDDEN_TABLE, "dismissed_at<?",
+                arrayOf((System.currentTimeMillis() - RETENTION_MS).toString()))
         }
     }
 
@@ -140,8 +154,9 @@ internal class NotificationHistoryRepository(context: Context) {
     private fun String.escapeLike(): String =
         replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
-    private class Database(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, 1) {
+    private class Database(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, 2) {
         override fun onCreate(db: SQLiteDatabase) {
+            createHiddenTable(db)
             db.execSQL(
                 "CREATE TABLE $TABLE (" +
                     "notification_key TEXT PRIMARY KEY NOT NULL," +
@@ -151,12 +166,22 @@ internal class NotificationHistoryRepository(context: Context) {
             db.execSQL("CREATE INDEX notification_history_posted_at ON $TABLE(posted_at DESC)")
         }
 
-        override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+        override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+            if (oldVersion < 2) createHiddenTable(db)
+        }
+
+        private fun createHiddenTable(db: SQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS $HIDDEN_TABLE (" +
+                    "notification_key TEXT PRIMARY KEY NOT NULL, dismissed_at INTEGER NOT NULL)",
+            )
+        }
     }
 
     private companion object {
         const val DATABASE_NAME = "eta_notification_history.db"
         const val TABLE = "notification_history"
+        const val HIDDEN_TABLE = "dismissed_from_brief"
         const val MAX_RECORDS = 1_000
         const val RETENTION_DAYS = 7
         const val HOUR_MS = 60L * 60 * 1_000
