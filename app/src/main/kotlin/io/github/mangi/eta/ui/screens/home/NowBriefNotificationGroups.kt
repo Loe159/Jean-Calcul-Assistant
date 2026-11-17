@@ -220,9 +220,9 @@ internal fun BriefNotificationAppCard(
                                         NotificationHistoryRepository.DecisionState.SNOOZED_24H ->
                                             "Reportée sur Android pendant 24 heures"
                                         NotificationHistoryRepository.DecisionState.PROPOSED ->
-                                            "Filtrage proposé · non confirmé par Android"
+                                            "Filtrage proposé · ${entry.reason ?: "en attente de confirmation Android"}"
                                         NotificationHistoryRepository.DecisionState.KEPT ->
-                                            "Conservée après analyse locale"
+                                            "Conservée · ${entry.reason ?: "après analyse locale"}"
                                         NotificationHistoryRepository.DecisionState.OBSERVED ->
                                             "Analysée · mode observation"
                                         NotificationHistoryRepository.DecisionState.QUEUED ->
@@ -232,7 +232,7 @@ internal fun BriefNotificationAppCard(
                                         NotificationHistoryRepository.DecisionState.PROTECTED ->
                                             "Notification protégée · aucune suppression automatique"
                                         NotificationHistoryRepository.DecisionState.ANALYZED_PROTECTED ->
-                                            "Analysée · aucune suppression auto (protection ou déjà retirée)"
+                                            "Analysée · ${entry.reason ?: "protection ou déjà retirée"}"
                                         NotificationHistoryRepository.DecisionState.NO_CONTENT ->
                                             "Aucun texte exploitable pour l'analyse IA"
                                         NotificationHistoryRepository.DecisionState.MODEL_MISSING ->
@@ -257,7 +257,7 @@ internal fun BriefNotificationAppCard(
                                         val categoryLabel = when (entry.category) {
                                             NotificationFilterPolicy.AD -> "Publicité"
                                             NotificationFilterPolicy.SPAM -> "Spam ou arnaque"
-                                            else -> "Autre catégorie"
+                                            else -> entry.category
                                         }
                                         CouiText(
                                             text = "$categoryLabel · correspondance " +

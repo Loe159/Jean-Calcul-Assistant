@@ -94,8 +94,7 @@ internal object NotificationObservation : NotificationBriefSource {
         val ready = LocalNotificationModel.installed(context)
         val battery = isBatteryRestricted(context)
         return "Mode : ${config.mode} · Action : ${config.action} · " +
-            "Publicités : ${if (config.filterAds) "oui" else "non"} · " +
-            "Spam : ${if (config.filterSpam) "oui" else "non"} · " +
+            "Catégories à filtrer : ${config.labelRules.count { it.enabled }}/${config.labelRules.size} · " +
             "Modèle : ${if (ready) "installé" else "absent"} · " +
             "Accès notifications : ${if (AgentNotificationHistoryService.isEnabled(context)) "accordé" else "manquant"} · " +
             "Batterie : ${if (battery) "analyse suspendue" else "OK"} · " +
@@ -302,15 +301,16 @@ internal object NotificationObservation : NotificationBriefSource {
                     updateState(app, next, NotificationHistoryRepository.DecisionState.NO_CONTENT)
                     return@execute
                 }
-                val result = LocalNotificationModel.classify(app, body)
+                val result = LocalNotificationModel.classify(app, body, config.inferenceLabels())
                 // Classification is independent of deletion safety. A protected
                 // message can still be identified as advertising/spam.
-                val decision = NotificationFilterPolicy.decide(
+                val evaluation = NotificationFilterPolicy.evaluate(
                     config, NotificationFilterCandidate(
                         app = next.packageName, safe = true, scores = result,
                         localHour = LocalTime.now().hour,
                     ),
                 )
+                val decision = evaluation.decision
                 val state = when {
                     !canRemove -> NotificationHistoryRepository.DecisionState.ANALYZED_PROTECTED
                     decision == NotificationFilterDecision.KEEP ->
@@ -322,6 +322,7 @@ internal object NotificationObservation : NotificationBriefSource {
                 if (NotificationHistoryRepository(app).updateDecision(
                     next.key, next.postTime, state,
                     result.firstOrNull()?.first, result.firstOrNull()?.second,
+                    reason = if (!canRemove) "Protection Android ou notification plus active" else evaluation.reason,
                 )) NotificationActivityFeed.notifyChanged()
                 synchronized(this) {
                     if (decision == NotificationFilterDecision.KEEP || !canRemove) kept++ else reviewed++
@@ -332,8 +333,8 @@ internal object NotificationObservation : NotificationBriefSource {
                         )) proposed++
                     append(next.packageName, result.first().first, result.first().second,
                         when {
-                            !canRemove -> "Analysée · protégée ou déjà retirée d'Android"
-                            decision == NotificationFilterDecision.KEEP -> "Conservée"
+                            !canRemove -> "Conservée · protégée ou absente d'Android"
+                            decision == NotificationFilterDecision.KEEP -> "Conservée · ${evaluation.reason}"
                             decision == NotificationFilterDecision.OBSERVE -> "Observation"
                             else -> "À filtrer : $decision"
                         },
@@ -353,6 +354,18 @@ internal object NotificationObservation : NotificationBriefSource {
                     AgentNotificationHistoryService.requestSafeFilter(
                         next, fingerprint, result, decision,
                     ) { applied ->
+                        if (!applied) {
+                            if (NotificationHistoryRepository(app).updateDecision(
+                                next.key, next.postTime,
+                                NotificationHistoryRepository.DecisionState.KEPT,
+                                reason = "Action refusée par les protections Android ou notification modifiée",
+                            )) NotificationActivityFeed.notifyChanged()
+                            synchronized(this) {
+                                append(next.packageName, result.first().first, result.first().second,
+                                    "Conservée · action refusée (protection Android, priorité ou notification modifiée)",
+                                    NotificationBriefOutcome.KEPT)
+                            }
+                        }
                         synchronized(this) {
                             if (applied) requested++ else skipped++
                             publish()
@@ -424,6 +437,7 @@ internal object NotificationObservation : NotificationBriefSource {
                             (includeClassified && entry.state in setOf(
                                 NotificationHistoryRepository.DecisionState.KEPT,
                                 NotificationHistoryRepository.DecisionState.OBSERVED,
+                                NotificationHistoryRepository.DecisionState.ANALYZED_PROTECTED,
                             )))
                 } == true
             }

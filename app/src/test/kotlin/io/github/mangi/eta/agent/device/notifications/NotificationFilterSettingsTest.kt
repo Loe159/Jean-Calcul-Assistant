@@ -24,14 +24,15 @@ class NotificationFilterSettingsTest {
         prefs().edit().clear().commit()
         val config = NotificationFilterConfig(
             mode = NotificationFilterMode.PERSONALIZED,
-            filterAds = true, filterSpam = true,
+            labelRules = NotificationLabelRules.defaults(ads = true, spam = true),
             onlyQuietHours = true, quietFrom = 23, quietUntil = 6,
             action = NotificationFilterAction.DISMISS,
         )
         NotificationFilterSettings.save(app, config)
         assertEquals(config, NotificationFilterSettings.load(app))
-        val stored = JSONObject(prefs().getString("filter_config_v2", "{}")!!)
+        val stored = JSONObject(prefs().getString("filter_config_v3", "{}")!!)
         assertFalse(stored.has("apps"))
+        assertEquals(7, stored.getJSONArray("labels").length())
         assertEquals("DISMISS", stored.getString("action"))
         NotificationFilterSettings.setMode(app, NotificationFilterMode.OFF)
         assertEquals(NotificationFilterMode.OFF, NotificationFilterSettings.load(app).mode)
@@ -48,12 +49,39 @@ class NotificationFilterSettingsTest {
         val migrated = NotificationFilterSettings.load(app)
         assertEquals(NotificationFilterMode.PERSONALIZED, migrated.mode)
         assertEquals(NotificationFilterAction.SNOOZE_1H, migrated.action)
-        assertTrue(migrated.filterSpam)
+        assertTrue(migrated.labelRules.first { it.label == NotificationFilterPolicy.SPAM }.enabled)
         // Saving the migrated settings persists the new all-apps format.
         NotificationFilterSettings.save(app, migrated)
         assertFalse(prefs().contains("filter_config_v1"))
         assertEquals(NotificationFilterAction.SNOOZE_1H,
             NotificationFilterSettings.load(app).action)
+    }
+
+    @Test fun v2SettingsPreserveExplicitGlobalDeletionConsentAndThresholdDefaults() {
+        prefs().edit().clear().putString("filter_config_v2", JSONObject()
+            .put("mode", "PERSONALIZED").put("action", "DISMISS")
+            .put("ads", true).put("spam", true).toString()).commit()
+        val migrated = NotificationFilterSettings.load(app)
+        assertEquals(NotificationFilterAction.DISMISS, migrated.action)
+        assertTrue(migrated.labelRules.first { it.label == NotificationFilterPolicy.SPAM }.enabled)
+        NotificationFilterSettings.save(app, migrated)
+        assertFalse(prefs().contains("filter_config_v2"))
+    }
+
+    @Test fun customLabelsAndThresholdsRoundTrip() {
+        prefs().edit().clear().commit()
+        val modified = NotificationLabelRules.defaults().dropLast(1) +
+            NotificationLabelRule("a social media promotion", true, 28, 3)
+        val config = NotificationFilterConfig(mode = NotificationFilterMode.PERSONALIZED,
+            action = NotificationFilterAction.DISMISS, labelRules = modified)
+        NotificationFilterSettings.save(app, config)
+        assertEquals(config, NotificationFilterSettings.load(app))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun duplicateLabelsCannotBePersisted() {
+        NotificationFilterSettings.save(app, NotificationFilterConfig(labelRules =
+            NotificationLabelRules.defaults() + NotificationLabelRule("A PROMOTIONAL ADVERTISEMENT")))
     }
 
     @Test(expected = IllegalArgumentException::class)

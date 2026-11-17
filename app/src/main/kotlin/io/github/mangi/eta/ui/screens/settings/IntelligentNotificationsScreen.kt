@@ -22,6 +22,10 @@ import io.github.mangi.eta.agent.device.notifications.NotificationFilterSettings
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterConfig
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterMode
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterAction
+import io.github.mangi.eta.agent.device.notifications.NotificationLabelRule
+import io.github.mangi.eta.agent.device.notifications.NotificationLabelRules
+import io.github.mangi.eta.agent.device.notifications.NotificationFilterCandidate
+import io.github.mangi.eta.agent.device.notifications.NotificationFilterPolicy
 import io.github.mangi.eta.ui.components.coui.CouiSwitchPreference
 import io.github.mangi.eta.ui.components.coui.CouiButton
 import io.github.mangi.eta.ui.components.coui.CouiButtonRole
@@ -29,10 +33,23 @@ import io.github.mangi.eta.ui.components.coui.CouiPageBottomSpacer
 import io.github.mangi.eta.ui.components.coui.CouiPreference
 import io.github.mangi.eta.ui.components.coui.CouiScaffoldPage
 import io.github.mangi.eta.ui.components.coui.CouiTextField
+import io.github.mangi.eta.ui.components.coui.CouiSliderPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
+import kotlin.math.roundToInt
+
+private fun labelTitle(label: String): String = when (label) {
+    "a promotional advertisement" -> "Publicité"
+    "spam or a scam" -> "Spam ou arnaque"
+    "a personal message" -> "Message personnel"
+    "a security alert" -> "Alerte de sécurité"
+    "a delivery update" -> "Suivi de livraison"
+    "an appointment reminder" -> "Rappel de rendez-vous"
+    "a useful service update" -> "Information utile"
+    else -> label
+}
 
 /** The page is the only place where a model download can be requested. */
 @Composable
@@ -43,10 +60,24 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
     var status by remember { mutableStateOf("") }
     var config by remember { mutableStateOf(NotificationFilterSettings.load(context)) }
     var confirmPermanent by remember { mutableStateOf(false) }
+    var expandedRule by remember { mutableStateOf<String?>(null) }
+    var editedLabel by remember { mutableStateOf("") }
+    var newLabel by remember { mutableStateOf("") }
+    var scoreDrafts by remember { mutableStateOf<Map<String, Float>>(emptyMap()) }
+    var marginDrafts by remember { mutableStateOf<Map<String, Float>>(emptyMap()) }
 
     fun saveConfig(next: NotificationFilterConfig) {
         NotificationFilterSettings.save(context, next)
         config = next
+    }
+
+    fun changeRule(old: String, new: NotificationLabelRule) {
+        val updated = config.labelRules.map { if (it.label == old) new else it }
+        if (!NotificationLabelRules.valid(updated)) {
+            status = "Label invalide ou déjà utilisé (3–96 caractères, sans doublon)."
+            return
+        }
+        saveConfig(config.copy(labelRules = updated))
     }
 
     fun selectMode(mode: NotificationFilterMode) {
@@ -133,12 +164,30 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                         results = emptyList()
                         action {
                             val classified = withContext(Dispatchers.IO) {
-                                LocalNotificationModel.classify(context, text)
+                                LocalNotificationModel.classify(context, text, config.inferenceLabels())
                             }
                             results = classified
                             status = "Inférence terminée sur cet appareil"
                         }
                     })
+            }
+            if (results.isNotEmpty()) {
+                val evaluation = NotificationFilterPolicy.evaluate(config, NotificationFilterCandidate(
+                    app = "simulation.locale", safe = true, scores = results,
+                    localHour = java.time.LocalTime.now().hour,
+                ))
+                CouiPreference(
+                    title = "Simulation : " + when (evaluation.decision) {
+                        io.github.mangi.eta.agent.device.notifications.NotificationFilterDecision.DISMISS ->
+                            "Suppression envisagée"
+                        io.github.mangi.eta.agent.device.notifications.NotificationFilterDecision.SNOOZE_1H,
+                        io.github.mangi.eta.agent.device.notifications.NotificationFilterDecision.SNOOZE_24H ->
+                            "Report envisagé"
+                        else -> "Conservation"
+                    },
+                    summary = evaluation.reason + " · les protections Android ne sont pas simulées",
+                    showChevron = false,
+                )
             }
             results.forEach { (label, score) ->
                 CouiPreference(title = label,
@@ -168,12 +217,116 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
 
         if (config.mode == NotificationFilterMode.PERSONALIZED) {
             Group(title = "Règles personnalisées") {
-                CouiSwitchPreference(title = "Publicités", checked = config.filterAds,
-                    summary = "Détecter les publicités de toutes les applications éligibles",
-                    onCheckedChange = { saveConfig(config.copy(filterAds = it)) })
-                CouiSwitchPreference(title = "Spams et arnaques", checked = config.filterSpam,
-                    summary = "Détecter les spams dans toutes les applications éligibles · prudence recommandée",
-                    onCheckedChange = { saveConfig(config.copy(filterSpam = it)) })
+                CouiPreference(
+                    title = "Labels et seuils de décision",
+                    summary = "Ajoute, modifie ou désactive les catégories. Le modèle local compare toutes les hypothèses, puis filtre uniquement les catégories activées.",
+                    showChevron = false,
+                )
+                config.labelRules.forEach { rule ->
+                    CouiSwitchPreference(
+                        title = labelTitle(rule.label),
+                        summary = rule.label + " · score ≥ ${rule.minimumScore} % · écart ≥ ${rule.minimumMargin} points",
+                        checked = rule.enabled,
+                        onCheckedChange = { changeRule(rule.label, rule.copy(enabled = it)) },
+                    )
+                    CouiPreference(
+                        title = if (expandedRule == rule.label) "Masquer les réglages" else "Régler : ${labelTitle(rule.label)}",
+                        summary = if (expandedRule == rule.label) "Modifier le label et ses deux seuils" else
+                            "Seuils de filtrage indépendants pour cette catégorie",
+                        onClick = {
+                            expandedRule = if (expandedRule == rule.label) null else rule.label
+                            editedLabel = rule.label
+                        },
+                    )
+                    if (expandedRule == rule.label) {
+                        CouiSliderPreference(
+                            title = "Score minimum · ${labelTitle(rule.label)}",
+                            value = scoreDrafts[rule.label] ?: rule.minimumScore.toFloat(),
+                            valueText = "${(scoreDrafts[rule.label] ?: rule.minimumScore.toFloat()).roundToInt()} %",
+                            valueRange = 0f..100f,
+                            onValueChange = { value -> scoreDrafts = scoreDrafts + (rule.label to value) },
+                            onValueChangeFinished = {
+                                val score = (scoreDrafts[rule.label] ?: rule.minimumScore.toFloat()).roundToInt()
+                                changeRule(rule.label, rule.copy(minimumScore = score))
+                                scoreDrafts = scoreDrafts - rule.label
+                            },
+                        )
+                        CouiSliderPreference(
+                            title = "Avance sur le 2e label · ${labelTitle(rule.label)}",
+                            value = marginDrafts[rule.label] ?: rule.minimumMargin.toFloat(),
+                            valueText = "${(marginDrafts[rule.label] ?: rule.minimumMargin.toFloat()).roundToInt()} points",
+                            valueRange = 0f..100f,
+                            onValueChange = { value -> marginDrafts = marginDrafts + (rule.label to value) },
+                            onValueChangeFinished = {
+                                val margin = (marginDrafts[rule.label] ?: rule.minimumMargin.toFloat()).roundToInt()
+                                changeRule(rule.label, rule.copy(minimumMargin = margin))
+                                marginDrafts = marginDrafts - rule.label
+                            },
+                        )
+                        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            CouiTextField(
+                                value = editedLabel,
+                                onValueChange = { editedLabel = it.take(96) },
+                                label = "Hypothèse en anglais (ex. : a gaming promotion)",
+                                singleLine = true,
+                            )
+                            CouiButton(text = "Enregistrer le label", onClick = {
+                                val proposed = editedLabel.trim()
+                                if (proposed != rule.label) {
+                                    val newRule = rule.copy(label = proposed, enabled = false)
+                                    val updated = config.labelRules.map {
+                                        if (it.label == rule.label) newRule else it
+                                    }
+                                    if (NotificationLabelRules.valid(updated)) {
+                                        saveConfig(config.copy(labelRules = updated))
+                                        expandedRule = proposed
+                                        status = "Label modifié. Réactive la catégorie si tu veux la filtrer."
+                                    } else status = "Label invalide ou déjà présent."
+                                }
+                            })
+                            if (config.labelRules.size > 2) {
+                                CouiButton(text = "Retirer ce label", role = CouiButtonRole.Destructive,
+                                    onClick = {
+                                        saveConfig(config.copy(
+                                            labelRules = config.labelRules.filterNot { it.label == rule.label }))
+                                        expandedRule = null
+                                        status = "Label retiré de la classification locale."
+                                    })
+                            }
+                        }
+                    }
+                }
+                if (config.labelRules.size < NotificationLabelRules.MAX_LABELS) {
+                    Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                        CouiTextField(
+                            value = newLabel,
+                            onValueChange = { newLabel = it.take(96) },
+                            label = "Nouvelle catégorie (en anglais)",
+                            placeholder = "Ex. : a social media promotion",
+                            singleLine = true,
+                        )
+                        CouiButton(text = "Ajouter le label", onClick = {
+                            val proposed = newLabel.trim()
+                            val updated = config.labelRules + NotificationLabelRule(proposed)
+                            if (NotificationLabelRules.valid(updated)) {
+                                saveConfig(config.copy(labelRules = updated))
+                                expandedRule = proposed
+                                editedLabel = proposed
+                                newLabel = ""
+                                status = "Label ajouté, filtrage désactivé par défaut."
+                            } else status = "Label invalide, en doublon ou limite atteinte."
+                        })
+                    }
+                }
+                CouiPreference(
+                    title = "Restaurer les 7 labels d'origine",
+                    summary = "Restaure les seuils 40 % / 8 points pour la publicité et 65 % / 20 points pour le spam.",
+                    onClick = {
+                        saveConfig(config.copy(labelRules = NotificationLabelRules.defaults()))
+                        expandedRule = null
+                        status = "Labels et seuils d'origine restaurés."
+                    },
+                )
                 CouiSwitchPreference(title = "Seulement pendant une plage horaire", checked = config.onlyQuietHours,
                     summary = "Par défaut : 22 h à 7 h, heure locale",
                     onCheckedChange = { saveConfig(config.copy(onlyQuietHours = it)) })
@@ -207,7 +360,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                         "Suppression automatique activée" else "Activer la suppression automatique",
                     summary = if (config.action == NotificationFilterAction.DISMISS)
                         "Supprime du panneau Android, conserve dans Now Brief · toucher pour désactiver"
-                    else "Toutes les applications éligibles · confirmation obligatoire · publicité ≥ 40 % et écart ≥ 8 points",
+                    else "Toutes les applications éligibles · confirmation obligatoire · seuils ajustables par catégorie",
                     onClick = {
                         if (config.action == NotificationFilterAction.DISMISS) {
                             saveConfig(config.copy(action = NotificationFilterAction.SNOOZE_1H))
@@ -218,7 +371,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                     },
                 )
                 if (confirmPermanent) {
-                    Footer(text = "La suppression utilise des scores relatifs du modèle (pas des probabilités) : publicité ≥ 40 % avec 8 points d'avance sur la catégorie suivante ; spam ≥ 65 % avec 20 points d'avance. Les erreurs de classification sont possibles. Cette confirmation autorise le filtrage de toutes les applications tierces éligibles. Android ne peut pas restaurer une notification supprimée. Une copie locale reste dans Now Brief pendant 7 jours. Messages, OTP, banques, alarmes, système et alertes critiques restent protégés.")
+                    Footer(text = "La suppression utilise les labels et les seuils que tu as choisis. Les scores sont relatifs et non des probabilités. Les erreurs de classification sont possibles. Cette confirmation autorise le filtrage de toutes les applications tierces éligibles. Android ne peut pas restaurer une notification supprimée. Une copie locale reste dans Now Brief pendant 7 jours. Messages, OTP, banques, alarmes, système et alertes critiques restent protégés.")
                     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                         CouiButton(
                             text = "Confirmer pour toutes les applications éligibles",
@@ -233,6 +386,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                     }
                 }
             }
+            Footer(text = "Modifier le nombre ou le texte des labels change les scores relatifs. Chaque label supplémentaire augmente le coût d'inférence. Tester sur des notifications réelles en mode observation est recommandé avant d'activer la suppression définitive.")
             Footer(text = "Aucun identifiant de package à saisir : les applications tierces sont éligibles par défaut. Les notifications sensibles, non effaçables, système, importantes ou incertaines ne sont jamais supprimées automatiquement. Les notifications supprimées sont conservées dans Now Brief pendant 7 jours.")
         }
         Group(title = "Observation sans suppression") {

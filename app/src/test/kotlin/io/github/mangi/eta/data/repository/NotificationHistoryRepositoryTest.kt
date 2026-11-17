@@ -120,6 +120,21 @@ class NotificationHistoryRepositoryTest {
     }
 
     @Test
+    fun `reason persists after Android cancellation and listener reconnect`() {
+        val now = System.currentTimeMillis()
+        repository.record("reason-test", "fr.leboncoin", "Offre spéciale", "Offre promotionnelle", null, now)
+        assertEquals(true, repository.updateDecision("reason-test", now,
+            NotificationHistoryRepository.DecisionState.KEPT,
+            "a promotional advertisement", 0.448, "Écart insuffisant : 2,6 < 8 points"))
+        assertEquals("Écart insuffisant : 2,6 < 8 points", repository.recent().single().reason)
+        repository.record("reason-test", "fr.leboncoin", "Offre spéciale", "Offre promotionnelle", null, now)
+        assertEquals("Écart insuffisant : 2,6 < 8 points", repository.recent().single().reason)
+        assertEquals(true, repository.updateDecision("reason-test", now,
+            NotificationHistoryRepository.DecisionState.DISMISSED))
+        assertEquals("Écart insuffisant : 2,6 < 8 points", repository.recent().single().reason)
+    }
+
+    @Test
     fun `system filtering outcomes map to distinct dashboard states`() {
         val repo = NotificationHistoryRepository
         assertEquals(NotificationHistoryRepository.DecisionState.DISMISSED,

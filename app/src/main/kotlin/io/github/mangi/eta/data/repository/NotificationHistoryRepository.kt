@@ -39,13 +39,14 @@ internal class NotificationHistoryRepository(context: Context) {
             ).use { it.moveToFirst() }
             if (alreadyDismissed) return@transaction
             query(
-                TABLE, arrayOf("posted_at", "filter_state", "filter_label", "filter_score"),
+                TABLE, arrayOf("posted_at", "filter_state", "filter_label", "filter_score", "filter_reason"),
                 "notification_key=?", arrayOf(key.take(MAX_KEY_CHARS)), null, null, null, "1",
             ).use { cursor ->
                 if (cursor.moveToFirst() && cursor.getLong(0) == postedAt) {
                     values.put("filter_state", cursor.getString(1))
                     values.put("filter_label", cursor.getString(2))
                     if (!cursor.isNull(3)) values.put("filter_score", cursor.getDouble(3))
+                    values.put("filter_reason", cursor.getString(4))
                 }
             }
             insertWithOnConflict(TABLE, null, values, SQLiteDatabase.CONFLICT_REPLACE)
@@ -75,12 +76,14 @@ internal class NotificationHistoryRepository(context: Context) {
         state: DecisionState,
         label: String? = null,
         score: Double? = null,
+        reason: String? = null,
     ): Boolean {
         if (key.isBlank() || score?.let { !it.isFinite() || it !in 0.0..1.0 } == true) return false
         val values = ContentValues().apply {
             put("filter_state", state.name)
             if (label != null) put("filter_label", label.take(100))
             if (score != null) put("filter_score", score)
+            if (reason != null) put("filter_reason", reason.take(180))
         }
         val changed = database.writableDatabase.update(
             TABLE, values, "notification_key=? AND posted_at=?",
@@ -101,6 +104,7 @@ internal class NotificationHistoryRepository(context: Context) {
         val state: DecisionState = DecisionState.RECEIVED,
         val category: String? = null,
         val score: Double? = null,
+        val reason: String? = null,
     )
 
     fun recent(limit: Int = 200): List<RecentEntry> {
@@ -108,7 +112,7 @@ internal class NotificationHistoryRepository(context: Context) {
         return database.readableDatabase.query(
             TABLE,
             arrayOf("notification_key", "package_name", "title", "text", "sub_text",
-                "posted_at", "filter_state", "filter_label", "filter_score"),
+                "posted_at", "filter_state", "filter_label", "filter_score", "filter_reason"),
             "posted_at>=?", arrayOf(cutoff.toString()),
             null, null, "posted_at DESC", limit.coerceIn(1, MAX_RECORDS).toString(),
         ).use { cursor ->
@@ -125,6 +129,7 @@ internal class NotificationHistoryRepository(context: Context) {
                         }.getOrDefault(DecisionState.RECEIVED),
                         category = cursor.getString(7),
                         score = if (cursor.isNull(8)) null else cursor.getDouble(8),
+                        reason = cursor.getString(9),
                     ))
                 }
             }
@@ -206,7 +211,7 @@ internal class NotificationHistoryRepository(context: Context) {
     private fun String.escapeLike(): String =
         replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
-    private class Database(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, 3) {
+    private class Database(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, 4) {
         override fun onCreate(db: SQLiteDatabase) {
             createHiddenTable(db)
             db.execSQL(
@@ -215,7 +220,7 @@ internal class NotificationHistoryRepository(context: Context) {
                     "package_name TEXT NOT NULL," +
                     "title TEXT,text TEXT,sub_text TEXT,posted_at INTEGER NOT NULL," +
                     "filter_state TEXT NOT NULL DEFAULT 'RECEIVED'," +
-                    "filter_label TEXT,filter_score REAL)",
+                    "filter_label TEXT,filter_score REAL,filter_reason TEXT)",
             )
             db.execSQL("CREATE INDEX notification_history_posted_at ON $TABLE(posted_at DESC)")
         }
@@ -226,6 +231,9 @@ internal class NotificationHistoryRepository(context: Context) {
                 db.execSQL("ALTER TABLE $TABLE ADD COLUMN filter_state TEXT NOT NULL DEFAULT 'RECEIVED'")
                 db.execSQL("ALTER TABLE $TABLE ADD COLUMN filter_label TEXT")
                 db.execSQL("ALTER TABLE $TABLE ADD COLUMN filter_score REAL")
+            }
+            if (oldVersion < 4) {
+                db.execSQL("ALTER TABLE $TABLE ADD COLUMN filter_reason TEXT")
             }
         }
 

@@ -46,8 +46,7 @@ class NotificationFilterPolicyTest {
     @Test fun personalizedUsesAllEligibleAppsWithoutAnyPackageAllowlist() {
         val config = NotificationFilterConfig(
             mode = NotificationFilterMode.PERSONALIZED,
-            filterAds = true,
-            filterSpam = true,
+            labelRules = NotificationLabelRules.defaults(ads = true, spam = true),
         )
         for (pkg in listOf("com.example.shop", "org.other.store", "net.publisher.social")) {
             assertEquals("$pkg should be eligible", NotificationFilterDecision.SNOOZE_1H,
@@ -57,7 +56,7 @@ class NotificationFilterPolicyTest {
                 NotificationFilterPolicy.decide(config, candidate(app = pkg, top = NotificationFilterPolicy.SPAM)))
         }
         assertEquals(NotificationFilterDecision.KEEP,
-            NotificationFilterPolicy.decide(config.copy(filterAds = false, filterSpam = false), candidate()))
+            NotificationFilterPolicy.decide(config.copy(labelRules = NotificationLabelRules.defaults(ads = false, spam = false)), candidate()))
         assertEquals(NotificationFilterDecision.KEEP,
             NotificationFilterPolicy.decide(config, candidate(top = "a personal message")))
         // NotificationProtection.safe() performs the strict system/sensitive checks first.
@@ -69,7 +68,7 @@ class NotificationFilterPolicyTest {
         val config = NotificationFilterConfig(
             mode = NotificationFilterMode.PERSONALIZED,
             action = NotificationFilterAction.DISMISS,
-            filterSpam = true,
+            labelRules = NotificationLabelRules.defaults(ads = true, spam = true),
         )
         assertEquals(NotificationFilterDecision.KEEP,
             NotificationFilterPolicy.decide(config, candidate(confidence = .399)))
@@ -123,7 +122,8 @@ class NotificationFilterPolicyTest {
     @Test fun spamNeedsMoreEvidenceThanAdvertisement() {
         val config = NotificationFilterConfig(
             mode = NotificationFilterMode.PERSONALIZED,
-            action = NotificationFilterAction.DISMISS, filterSpam = true,
+            action = NotificationFilterAction.DISMISS,
+            labelRules = NotificationLabelRules.defaults(ads = true, spam = true),
         )
         assertEquals(NotificationFilterDecision.KEEP,
             NotificationFilterPolicy.decide(config,
@@ -138,6 +138,39 @@ class NotificationFilterPolicyTest {
             mode = NotificationFilterMode.PERSONALIZED, action = NotificationFilterAction.SNOOZE_24H)
         assertEquals(NotificationFilterDecision.SNOOZE_24H,
             NotificationFilterPolicy.decide(config, candidate(confidence = .992)))
+    }
+
+    @Test fun userCanAdjustScoreAndMarginIndependently() {
+        val c = candidate()
+        val scores = listOf(.448, .422, .030, .030, .030, .020, .020)
+        val input = c.copy(scores = NotificationNliScores.validatedLabels.zip(scores))
+        val original = NotificationFilterConfig(mode = NotificationFilterMode.PERSONALIZED,
+            action = NotificationFilterAction.DISMISS)
+        assertEquals(NotificationFilterDecision.KEEP, NotificationFilterPolicy.decide(original, input))
+        val tuned = original.copy(labelRules = original.labelRules.map {
+            if (it.label == NotificationFilterPolicy.AD) it.copy(minimumScore = 42, minimumMargin = 2)
+            else it
+        })
+        assertEquals(NotificationFilterDecision.DISMISS, NotificationFilterPolicy.decide(tuned, input))
+        assertTrue(NotificationFilterPolicy.evaluate(original, input).reason.contains("Écart"))
+    }
+
+    @Test fun customNewCategoryRequiresExplicitOptIn() {
+        val custom = "a social media promotion"
+        val labels = NotificationNliScores.validatedLabels + custom
+        val scores = labels.map { it to if (it == custom) .67 else .33 / 7 }
+        val config = NotificationFilterConfig(mode = NotificationFilterMode.PERSONALIZED,
+            action = NotificationFilterAction.DISMISS,
+            labelRules = NotificationLabelRules.defaults() + NotificationLabelRule(custom))
+        val candidate = candidate().copy(scores = scores)
+        assertEquals(NotificationFilterDecision.KEEP, NotificationFilterPolicy.decide(config, candidate))
+        val enabled = config.copy(labelRules = config.labelRules.map {
+            if (it.label == custom) it.copy(enabled = true, minimumScore = 60, minimumMargin = 15)
+            else it
+        })
+        assertEquals(NotificationFilterDecision.DISMISS, NotificationFilterPolicy.decide(enabled, candidate))
+        assertEquals(NotificationFilterDecision.KEEP, NotificationFilterPolicy.decide(enabled,
+            candidate.copy(scores = scores.dropLast(1))))
     }
 
     @Test fun failClosedOnBadScores() {
