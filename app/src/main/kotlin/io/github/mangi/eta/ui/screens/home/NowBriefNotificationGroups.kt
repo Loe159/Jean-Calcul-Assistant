@@ -228,9 +228,13 @@ internal fun BriefNotificationAppCard(
                                         NotificationHistoryRepository.DecisionState.QUEUED ->
                                             if (System.currentTimeMillis() - entry.postedAt > 10 * 60_000L)
                                                 "Analyse interrompue · relancer dans les paramètres"
-                                            else "Analyse locale en attente · maximum 1 par minute"
+                                            else "Analyse locale en attente · jusqu'à 5 par minute"
                                         NotificationHistoryRepository.DecisionState.PROTECTED ->
                                             "Notification protégée · aucune suppression automatique"
+                                        NotificationHistoryRepository.DecisionState.ANALYZED_PROTECTED ->
+                                            "Analysée · aucune suppression auto (protection ou déjà retirée)"
+                                        NotificationHistoryRepository.DecisionState.NO_CONTENT ->
+                                            "Aucun texte exploitable pour l'analyse IA"
                                         NotificationHistoryRepository.DecisionState.MODEL_MISSING ->
                                             "Analyse impossible · modèle local non installé"
                                         NotificationHistoryRepository.DecisionState.BATTERY_PAUSED ->

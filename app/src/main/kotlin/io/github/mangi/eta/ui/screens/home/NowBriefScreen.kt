@@ -324,8 +324,8 @@ internal fun NowBriefScreen(
                 CouiText(text = description, kind = CouiTextKind.ItemSummary, color = colors.summary)
                 Spacer(Modifier.height(6.dp))
                 CouiText(
-                    text = "Analyse locale : 1/minute, 100/jour. Les notifications éligibles " +
-                        "reçues entre deux analyses sont mises en attente.",
+                    text = "Analyse locale : jusqu’à 5/minute, 500/jour. Toutes les notifications " +
+                        "sont candidates à l’analyse, même si leur suppression est protégée.",
                     kind = CouiTextKind.GroupFooter, color = colors.summary,
                 )
             }

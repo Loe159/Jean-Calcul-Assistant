@@ -247,7 +247,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
             CouiPreference(
                 title = "Réessayer l'analyse des notifications actives",
                 summary = "Reprend les notifications non analysées toujours présentes " +
-                    "sur Android · sans dépasser 1 analyse/minute",
+                    "sur Android · sans dépasser 5 analyses/minute",
                 enabled = installed && AgentNotificationHistoryService.isEnabled(context),
                 onClick = {
                     val count = NotificationObservation.retryActive(context)
@@ -276,7 +276,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                 CouiPreference(title = row, showChevron = false)
             }
         }
-        Footer(text = "Historique en mémoire vive (50 entrées maximum), sans texte ni identifiant de notification. Maximum 1 inférence/minute et 100/jour ; suspendu en économie d'énergie ou sous 20 % de batterie. Les changements de modes sont immédiats. Les notifications déjà reportées restent soumises au délai Android.")
+        Footer(text = "Historique en mémoire vive (50 entrées maximum), sans texte ni identifiant de notification. Maximum 5 inférences/minute et 500/jour ; suspendu en économie d'énergie ou sous 20 % de batterie. Les changements de modes sont immédiats. Les notifications déjà reportées restent soumises au délai Android.")
         if (status.isNotBlank()) Footer(text = status)
         CouiPageBottomSpacer()
     }

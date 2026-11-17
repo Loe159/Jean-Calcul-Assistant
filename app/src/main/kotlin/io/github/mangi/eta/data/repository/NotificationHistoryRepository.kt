@@ -59,7 +59,7 @@ internal class NotificationHistoryRepository(context: Context) {
 
     /** A confirmed Android listener result is distinct from the model's proposal. */
     enum class DecisionState {
-        RECEIVED, QUEUED, PROTECTED, MODEL_MISSING, BATTERY_PAUSED,
+        RECEIVED, QUEUED, PROTECTED, ANALYZED_PROTECTED, NO_CONTENT, MODEL_MISSING, BATTERY_PAUSED,
         LIMIT_REACHED, EXPIRED, ANALYSIS_ERROR,
         KEPT, OBSERVED, PROPOSED, SNOOZED_1H, SNOOZED_24H, DISMISSED,
     }
