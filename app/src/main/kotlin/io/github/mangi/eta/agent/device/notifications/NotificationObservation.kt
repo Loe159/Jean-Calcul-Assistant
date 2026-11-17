@@ -395,7 +395,7 @@ internal object NotificationObservation : NotificationBriefSource {
     }
 
     /** Retry only active, recently received, not-yet-classified notifications. */
-    fun recoverActive(context: Context, active: Array<StatusBarNotification>): Int {
+    fun recoverActive(context: Context, active: Array<out StatusBarNotification>): Int {
         if (active.isEmpty()) return 0
         if (NotificationFilterSettings.load(context).mode == NotificationFilterMode.OFF) return 0
         val latest = runCatching {
