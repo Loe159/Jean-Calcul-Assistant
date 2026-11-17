@@ -8,7 +8,7 @@ class NotificationObservationDelayTest {
         assertEquals(0L, notificationInferenceDelayMs(250L, 0L))
     }
 
-    @Test fun otherNotificationsRespectTheOneMinuteInterval() {
+    @Test fun otherNotificationsRespectTheTwelveSecondInterval() {
         val last = 90_000L
         assertEquals(12_000L, notificationInferenceDelayMs(last, last))
         assertEquals(9_000L, notificationInferenceDelayMs(last + 3_000L, last))
@@ -17,6 +17,6 @@ class NotificationObservationDelayTest {
     }
 
     @Test fun negativeElapsedAfterRebootNeverAllowsPrematureInference() {
-        assertEquals(60_000L, notificationInferenceDelayMs(1_000L, 99_000L))
+        assertEquals(12_000L, notificationInferenceDelayMs(1_000L, 99_000L))
     }
 }

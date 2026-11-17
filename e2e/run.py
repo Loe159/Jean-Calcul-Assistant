@@ -19,7 +19,10 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = 'fr.loevan.jeancalcul.v2'
 RUNNER = APP + '.test/androidx.test.runner.AndroidJUnitRunner'
 SCENARIOS = ('empty', 'message', 'reset', 'settings', 'dark', 'small_screen',
-             'large_text', 'keyboard', 'reduced_motion', 'menu', 'providers', 'tools', 'appearance', 'improvements', 'notifications', 'brief', 'brief_notifications', 'brief_decisions', 'brief_swipe_isolation', 'regression_fixture')
+             'large_text', 'keyboard', 'reduced_motion', 'menu', 'providers', 'tools', 'appearance',
+             'improvements', 'notifications_modes', 'notifications_large_text', 'notifications', 'brief', 'brief_dark',
+             'brief_large_text', 'brief_notifications', 'brief_decisions', 'brief_swipe_isolation',
+             'regression_fixture')
 
 
 def redact(text):
@@ -325,12 +328,12 @@ def main():
             baseline()
             shell('am', 'force-stop', APP)
             # Each scenario owns fresh synthetic Room/DataStore state.
-            if scenario == 'dark':
+            if scenario in ('dark', 'brief_dark'):
                 shell('cmd', 'uimode', 'night', 'yes')
             if scenario == 'small_screen':
                 shell('wm', 'size', '720x1280')  # 360 x 640 dp
                 shell('wm', 'density', '320')
-            if scenario == 'large_text':
+            if scenario in ('large_text', 'brief_large_text', 'notifications_large_text'):
                 shell('settings', 'put', 'system', 'font_scale', '2.0')
             remote = f'files/e2e/{scenario}.png'
             result = run(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',

@@ -60,6 +60,26 @@ class NotificationHistoryRepositoryTest {
     }
 
     @Test
+    fun `undo restores only dismissed local copies with their decision details`() {
+        val now = System.currentTimeMillis()
+        repository.record("ad", "com.example.shop", "Promotion", "Réduction", null, now)
+        repository.updateDecision("ad", now,
+            NotificationHistoryRepository.DecisionState.DISMISSED,
+            "a promotional advertisement", 0.8, "Retrait confirmé")
+        val original = repository.recent().single()
+        repository.removeFromBrief(listOf("ad"))
+        assertEquals(emptyList<NotificationHistoryRepository.RecentEntry>(), repository.recent())
+
+        repository.restoreToBrief(listOf(original))
+        val restored = repository.recent().single()
+        assertEquals(original, restored)
+        // Repeated Undo cannot overwrite a later notification with the same key.
+        repository.record("ad", "com.example.shop", "Nouvelle offre", null, null, now + 1)
+        repository.restoreToBrief(listOf(original))
+        assertEquals("Nouvelle offre", repository.recent().single().title)
+    }
+
+    @Test
     fun `queued and skipped statuses are local and can transition to a confirmed decision`() {
         val now = System.currentTimeMillis()
         repository.record("queue-test", "com.example.store",

@@ -21,6 +21,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +35,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,11 +44,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.CheckCircleOutline
 import androidx.compose.material.icons.rounded.NotificationsNone
-import androidx.compose.material.icons.rounded.Schedule
-import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -83,6 +85,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import io.github.mangi.eta.ui.components.coui.CouiIcon
+import io.github.mangi.eta.ui.components.coui.CouiButton
 import io.github.mangi.eta.ui.components.coui.CouiLazyScaffoldPage
 import java.time.Instant
 import java.time.LocalDate
@@ -119,6 +122,7 @@ internal fun NowBriefScreen(
     val notificationsChanged by NotificationActivityFeed.changes.collectAsState()
     var activityEntries by remember { mutableStateOf<List<NotificationHistoryRepository.RecentEntry>>(emptyList()) }
     var activityError by remember { mutableStateOf(false) }
+    var undoEntries by remember { mutableStateOf<List<NotificationHistoryRepository.RecentEntry>>(emptyList()) }
     val scope = rememberCoroutineScope()
     val repository = remember(context) { NotificationHistoryRepository(context) }
     LaunchedEffect(visible, notificationsChanged) {
@@ -159,23 +163,42 @@ internal fun NowBriefScreen(
     }
     val pendingAnalysisCount = reviewedEntries.size - removedCount - proposedCount - snoozedCount
     val filterConfig = remember(visible) { NotificationFilterSettings.load(context) }
-    val filteringReady = remember(visible) {
-        AgentNotificationHistoryService.isEnabled(context) &&
-            LocalNotificationModel.installed(context)
-    }
+    val listenerReady = remember(visible) { AgentNotificationHistoryService.isEnabled(context) }
+    val modelReady = remember(visible) { LocalNotificationModel.installed(context) }
     val dismissActivityEntries: (List<String>) -> Unit = { keys ->
-        // Removing from the briefing is deliberately distinct from cancelling
-        // notifications in Android's system shade.
-        activityEntries = activityEntries.filterNot { it.key in keys }
+        val removed = activityEntries.filter { it.key in keys }
+        if (removed.isNotEmpty()) {
+            activityEntries = activityEntries.filterNot { it.key in keys }
+            scope.launch {
+                runCatching { withContext(Dispatchers.IO) { repository.removeFromBrief(keys) } }
+                    .onSuccess { undoEntries = (undoEntries + removed).distinctBy { it.key } }
+                    .onFailure {
+                        activityEntries = (activityEntries + removed).distinctBy { it.key }
+                            .sortedByDescending { it.postedAt }
+                        activityError = true
+                    }
+            }
+        }
+    }
+    val undoDismissal: () -> Unit = {
+        val restoring = undoEntries
+        undoEntries = emptyList()
         scope.launch {
-            runCatching { withContext(Dispatchers.IO) { repository.removeFromBrief(keys) } }
-                .onFailure { activityError = true }
+            runCatching { withContext(Dispatchers.IO) { repository.restoreToBrief(restoring) } }
+                .onSuccess {
+                    activityEntries = (activityEntries + restoring).distinctBy { it.key }
+                        .sortedByDescending { it.postedAt }
+                    activityError = false
+                }
+                .onFailure { undoEntries = restoring; activityError = true }
         }
     }
     val dateText = LocalDate.now().format(
         DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH),
     ).replaceFirstChar { it.uppercaseChar() }
     val cardSurface = if (dark) Color(0xFF464A51) else Color(0xFFE9E9E9)
+    val showSessionSummary = summary.analyzed > 0 || summary.filtered > 0 ||
+        summary.kept > 0 || summary.proposed > 0
     val listState = rememberLazyListState()
     val motionAllowed = remember(context, visible) { briefMotionAllowed(context) }
     val visited = BriefMotionSession.revealedCards
@@ -200,6 +223,7 @@ internal fun NowBriefScreen(
     val heroPress = remember { MutableInteractionSource() }
     var heroExpanded by remember { mutableStateOf(false) }
     var categoryExpanded by remember { mutableStateOf(false) }
+    Box(modifier = modifier) {
     CouiLazyScaffoldPage(
         title = "Mon briefing",
         onBack = onClose,
@@ -216,7 +240,7 @@ internal fun NowBriefScreen(
                 revealProgress = revealProgress,
             )
         },
-        modifier = modifier,
+        modifier = Modifier.fillMaxSize(),
     ) {
         item(key = "date") {
             BriefReveal("date", visible, 0, visited) {
@@ -236,7 +260,7 @@ internal fun NowBriefScreen(
             }
         }
 
-        item(key = "notifications:hero") {
+        if (showSessionSummary) item(key = "notifications:hero") {
             BriefReveal("hero", visible, 1, visited) {
             Column(
                 modifier = Modifier.fillMaxWidth()
@@ -248,6 +272,7 @@ internal fun NowBriefScreen(
                         role = Role.Button, onClickLabel = "Détails des notifications filtrées",
                         onClick = { heroExpanded = !heroExpanded },
                     )
+                    .semantics { stateDescription = if (heroExpanded) "Développé" else "Réduit" }
                     .padding(horizontal = 18.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(9.dp),
             ) {
@@ -265,14 +290,23 @@ internal fun NowBriefScreen(
                     kind = CouiTextKind.ItemSummary,
                     color = colors.summary,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    BriefMetric("Analysées", summary.analyzed, visible, cardSurface, colors.title, colors.summary, Modifier.weight(1f))
-                    BriefMetric("Conservées", summary.kept, visible, cardSurface, colors.title, colors.summary, Modifier.weight(1f))
-                    BriefMetric("Reportées", summary.snoozed, visible, cardSurface, colors.title, colors.summary, Modifier.weight(1f))
+                if (LocalDensity.current.fontScale >= 1.25f) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        BriefMetric("Analysées", summary.analyzed, visible, cardSurface, colors.title, colors.summary, Modifier.fillMaxWidth())
+                        BriefMetric("Conservées", summary.kept, visible, cardSurface, colors.title, colors.summary, Modifier.fillMaxWidth())
+                        BriefMetric("Reportées", summary.snoozed, visible, cardSurface, colors.title, colors.summary, Modifier.fillMaxWidth())
+                    }
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        BriefMetric("Analysées", summary.analyzed, visible, cardSurface, colors.title, colors.summary, Modifier.weight(1f))
+                        BriefMetric("Conservées", summary.kept, visible, cardSurface, colors.title, colors.summary, Modifier.weight(1f))
+                        BriefMetric("Reportées", summary.snoozed, visible, cardSurface, colors.title, colors.summary, Modifier.weight(1f))
+                    }
                 }
                 AnimatedVisibility(visible = heroExpanded) {
                     CouiText(
-                        text = "${summary.dismissed} suppressions confirmées · ${summary.proposed} filtrages proposés",
+                        text = briefCount(summary.dismissed, "suppression confirmée", "suppressions confirmées") +
+                            " · " + briefCount(summary.proposed, "filtrage proposé", "filtrages proposés"),
                         kind = CouiTextKind.ItemSummary, color = colors.summary,
                     )
                 }
@@ -280,9 +314,10 @@ internal fun NowBriefScreen(
             }
         }
 
-        item(key = "notifications:categories") {
+        if (summary.filtered > 0) item(key = "notifications:categories") {
             BriefReveal("categories", visible, 2, visited) {
-            BriefCard(onClick = { categoryExpanded = !categoryExpanded }) {
+            BriefCard(onClick = { categoryExpanded = !categoryExpanded },
+                onClickLabel = "Afficher ou masquer le détail des catégories") {
                 SectionHeader("Ce qui a été filtré", "", colors.title, colors.summary)
                 Spacer(Modifier.height(11.dp))
                 val classified = summary.filtered
@@ -298,7 +333,8 @@ internal fun NowBriefScreen(
                 if (summary.dismissed > 0) {
                     Spacer(Modifier.height(13.dp))
                     CouiText(
-                        text = "${summary.dismissed} suppression(s) définitive(s) · irréversibles",
+                        text = briefCount(summary.dismissed, "suppression définitive", "suppressions définitives") +
+                            " · irréversible sur Android",
                         kind = CouiTextKind.ItemSummary, color = colors.summary,
                     )
                 }
@@ -307,11 +343,13 @@ internal fun NowBriefScreen(
         }
 
         item(key = "notification-filter:settings") {
-            BriefCard(onClick = { onClose(); onManageFiltering() }) {
-                SectionHeader("Filtrage automatique", "Paramètres", colors.title, colors.summary)
+            BriefCard(onClick = { onClose(); onManageFiltering() },
+                onClickLabel = "Ouvrir les paramètres du filtrage") {
+                SectionHeader("Filtrage des notifications", "Paramètres", colors.title, colors.summary)
                 Spacer(Modifier.height(8.dp))
                 val description = when {
-                    !filteringReady -> "Modèle local ou accès aux notifications à configurer"
+                    !listenerReady -> "Accès aux notifications à autoriser"
+                    !modelReady -> "Modèle local à installer"
                     filterConfig.mode == NotificationFilterMode.OFF -> "Désactivé"
                     filterConfig.mode == NotificationFilterMode.OBSERVE ->
                         "Observation uniquement · aucune suppression sur Android"
@@ -322,98 +360,100 @@ internal fun NowBriefScreen(
                     else -> "Filtrage automatique · toutes les applications éligibles"
                 }
                 CouiText(text = description, kind = CouiTextKind.ItemSummary, color = colors.summary)
-                Spacer(Modifier.height(6.dp))
-                CouiText(
-                    text = "Analyse locale : jusqu’à 5/minute, 500/jour. Toutes les notifications " +
-                        "sont candidates à l’analyse, même si leur suppression est protégée.",
-                    kind = CouiTextKind.GroupFooter, color = colors.summary,
-                )
-            }
-        }
-        item(key = "notification-filter:review-title") {
-            Row(
-                modifier = Modifier.fillMaxWidth()
-                    .padding(top = 9.dp, bottom = 8.dp, start = 30.dp, end = 30.dp),
-            ) {
-                BriefHeading("À vérifier / Supprimées", color = colors.title, size = 19)
-            }
-        }
-        item(key = "notification-filter:review-counts") {
-            CouiText(
-                text = "$removedCount supprimée(s) · $snoozedCount reportée(s) · " +
-                    "$proposedCount à vérifier · $pendingAnalysisCount en attente ou non analysée(s)",
-                kind = CouiTextKind.GroupFooter, color = colors.summary,
-                modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp),
-            )
-        }
-        if (reviewedGroups.isEmpty()) {
-            item(key = "notification-filter:none") {
-                BriefCard {
+                if (pendingAnalysisCount + proposedCount > 0) {
                     CouiText(
-                        text = "Aucune suppression ni analyse en attente. Les notifications " +
-                            "conservées ou protégées restent dans Activité récente.",
-                        kind = CouiTextKind.ItemSummary, color = colors.summary,
+                        text = briefCount(pendingAnalysisCount + proposedCount,
+                            "analyse à suivre", "analyses à suivre") + " · ouvrir le diagnostic",
+                        kind = CouiTextKind.GroupFooter, color = colors.summary,
                     )
                 }
             }
-        } else {
+        }
+        if (reviewedGroups.isNotEmpty() || notificationGroups.isNotEmpty()) {
+            item(key = "notification-feed:gesture-help") {
+                CouiText(
+                    text = "Glisser retire uniquement la copie de ce briefing. " +
+                        "Les notifications Android restent intactes.",
+                    kind = CouiTextKind.GroupFooter, color = colors.summary,
+                    modifier = Modifier.padding(horizontal = 30.dp, vertical = 6.dp),
+                )
+            }
+        }
+        if (reviewedGroups.isNotEmpty()) {
+            item(key = "notification-filter:review-title") {
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(top = 9.dp, bottom = 8.dp, start = 30.dp, end = 30.dp),
+                ) {
+                    BriefHeading("Suivi du filtrage", color = colors.title, size = 19)
+                }
+            }
+            item(key = "notification-filter:review-counts") {
+                val counts = buildList {
+                    if (removedCount > 0) add(briefCount(removedCount, "suppression définitive", "suppressions définitives"))
+                    if (snoozedCount > 0) add(briefCount(snoozedCount, "report", "reports"))
+                    if (proposedCount > 0) add(briefCount(proposedCount, "proposition", "propositions"))
+                    if (pendingAnalysisCount > 0) add(briefCount(pendingAnalysisCount, "analyse à suivre", "analyses à suivre"))
+                }
+                CouiText(
+                    text = counts.joinToString(" · "),
+                    kind = CouiTextKind.GroupFooter, color = colors.summary,
+                    modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp),
+                )
+            }
             items(reviewedGroups, key = { "review:" + it.packageName }) { group ->
                 BriefNotificationAppCard(group, dismissActivityEntries, onNotificationTouchChange)
             }
         }
 
-        item(key = "notifications:recent-title") {
-            BriefReveal("recent", visible, 3, visited) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 11.dp, start = 30.dp, end = 30.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                BriefHeading("Activité récente", color = colors.title, size = 19)
-            }
-            }
-        }
-        item(key = "notification-feed:description") {
-            CouiText(
-                text = "Notifications reçues · 7 derniers jours · ${activityEntries.size} affichées"
-                    + if (activityEntries.size >= 300) " (limite d'affichage)" else "",
-                kind = CouiTextKind.GroupFooter, color = colors.summary,
-                modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 11.dp),
-            )
-        }
-        if (activityError) {
-            item(key = "notification-feed:error") {
-                CouiText(
-                    text = "Historique indisponible. Vérifiez l'accès aux notifications.",
-                    kind = CouiTextKind.ItemSummary, color = colors.summary,
-                    modifier = Modifier.padding(horizontal = 30.dp, vertical = 8.dp),
-                )
-            }
-        }
-        if (notificationGroups.isEmpty()) {
-            item(key = "notification-feed:empty") {
-                BriefCard {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconBubble(Icons.Rounded.NotificationsNone, colors.summary)
-                        Spacer(Modifier.width(12.dp))
-                        CouiText(
-                            text = "Aucune autre notification récente",
-                            kind = CouiTextKind.ItemTitle, color = colors.title,
-                        )
+        if (reviewedGroups.isEmpty() || notificationGroups.isNotEmpty()) {
+            item(key = "notifications:recent-title") {
+                BriefReveal("recent", visible, 3, visited) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 11.dp, start = 30.dp, end = 30.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        BriefHeading("Activité récente", color = colors.title, size = 19)
                     }
                 }
             }
-        } else {
-            items(notificationGroups, key = { "app:" + it.packageName }) { group ->
-                BriefNotificationAppCard(group, dismissActivityEntries, onNotificationTouchChange)
-            }
-            item(key = "notification-feed:privacy") {
+            item(key = "notification-feed:description") {
                 CouiText(
-                    text = "Glissez pour retirer une entrée du briefing. " +
-                        "Le filtrage automatique (mode personnalisé) agit sur Android ; " +
-                        "ce geste ne supprime que la copie locale.",
+                    text = "7 derniers jours · " +
+                        briefCount(activityEntries.size, "notification reçue", "notifications reçues") +
+                        " · ${recentEntries.size} dans cette section"
+                        + if (activityEntries.size >= 300) " (limite d'affichage)" else "",
                     kind = CouiTextKind.GroupFooter, color = colors.summary,
-                    modifier = Modifier.padding(horizontal = 30.dp, vertical = 6.dp),
+                    modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 11.dp),
                 )
+            }
+            if (activityError) {
+                item(key = "notification-feed:error") {
+                    CouiText(
+                        text = "Historique indisponible. Vérifiez l'accès aux notifications.",
+                        kind = CouiTextKind.ItemSummary, color = colors.summary,
+                        modifier = Modifier.padding(horizontal = 30.dp, vertical = 8.dp),
+                    )
+                }
+            }
+            if (notificationGroups.isEmpty()) {
+                item(key = "notification-feed:empty") {
+                    BriefCard {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconBubble(Icons.Rounded.NotificationsNone, colors.summary)
+                            Spacer(Modifier.width(12.dp))
+                            CouiText(
+                                text = if (!listenerReady) "L’activité apparaîtra ici après autorisation"
+                                    else "Aucune notification récente",
+                                kind = CouiTextKind.ItemTitle, color = colors.title,
+                            )
+                        }
+                    }
+                }
+            } else {
+                items(notificationGroups, key = { "app:" + it.packageName }) { group ->
+                    BriefNotificationAppCard(group, dismissActivityEntries, onNotificationTouchChange)
+                }
             }
         }
 
@@ -430,25 +470,34 @@ internal fun NowBriefScreen(
                 }
             }
 
-        item(key = "future") {
-            BriefReveal("future", visible, 6, visited) {
-            BriefCard() {
-                SectionHeader("À venir", "", colors.title, colors.summary)
-                Spacer(Modifier.height(11.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FutureChip(Icons.Rounded.CalendarMonth, "Agenda", colors.summary, Modifier.weight(1f))
-                    FutureChip(Icons.Rounded.TaskAlt, "Tâches", colors.summary, Modifier.weight(1f))
-                }
-                Spacer(Modifier.height(7.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FutureChip(Icons.Rounded.Schedule, "Routines", colors.summary, Modifier.weight(1f))
-                    FutureChip(Icons.Rounded.AutoAwesome, "Agents", colors.summary, Modifier.weight(1f))
-                }
-            }
+    }
+    if (undoEntries.isNotEmpty()) {
+        Column(
+            modifier = Modifier.align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .fillMaxWidth()
+                .menuCardSurface(dark)
+                .semantics { liveRegion = LiveRegionMode.Polite }
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            CouiText(
+                text = briefCount(undoEntries.size, "copie retirée", "copies retirées") +
+                    " du briefing uniquement. Les notifications Android restent intactes.",
+                kind = CouiTextKind.ItemSummary, color = colors.title,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CouiButton(text = "Annuler", onClick = undoDismissal, modifier = Modifier.weight(1f))
+                CouiButton(text = "Fermer", onClick = { undoEntries = emptyList() },
+                    modifier = Modifier.weight(1f))
             }
         }
     }
+    }
 }
+private fun briefCount(count: Int, singular: String, plural: String): String =
+    "$count ${if (count == 1) singular else plural}"
 
 @Composable
 private fun BriefAnimatedNumber(value: Int, visible: Boolean, size: Int, color: Color) {
@@ -514,6 +563,7 @@ private fun Modifier.menuCardSurface(dark: Boolean, prominent: Boolean = false):
 @Composable
 private fun BriefCard(
     onClick: (() -> Unit)? = null,
+    onClickLabel: String = "Afficher les détails",
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
     val dark = CouiTheme.isDark
@@ -527,7 +577,7 @@ private fun BriefCard(
                     .couiButtonFeedback(dark, source, enabled = true, list = true)
                     .clickable(
                         interactionSource = source, indication = null,
-                        role = Role.Button, onClickLabel = "Afficher les détails",
+                        role = Role.Button, onClickLabel = onClickLabel,
                         onClick = onClick,
                     )
                 else Modifier,
@@ -558,7 +608,7 @@ private fun BriefMetric(label: String, value: Int, visible: Boolean, surface: Co
         verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         BriefAnimatedNumber(value, visible, 19, title)
-        CouiText(text = label, kind = CouiTextKind.GroupFooter, color = summary, maxLines = 1)
+        CouiText(text = label, kind = CouiTextKind.GroupFooter, color = summary, maxLines = 2)
     }
 }
 
@@ -653,18 +703,5 @@ private fun BriefEventRow(event: NotificationBriefEvent, surface: Color, title: 
                 maxLines = 2)
         }
         CouiText(text = time, kind = CouiTextKind.GroupFooter, color = summary)
-    }
-}
-
-@Composable
-private fun FutureChip(icon: ImageVector, title: String, color: Color, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.clip(CouiShape(14.dp, 2f))
-            .background(color.copy(alpha = 0.09f)).padding(horizontal = 8.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
-    ) {
-        IconDecor(icon, color, 17)
-        CouiText(text = title, kind = CouiTextKind.ItemSummary, color = color, maxLines = 1)
     }
 }

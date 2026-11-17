@@ -69,27 +69,22 @@ class VisualScenarioTest {
                         device.wait(Until.findObject(By.text(context.getString(R.string.route_tools))), 10000).click()
                         assertTrue(device.wait(Until.hasObject(By.text(context.getString(R.string.capability_current_device))), 10000))
                     }
-                    "settings", "providers", "appearance", "notifications" -> {
-                        device.findObject(By.desc(context.getString(R.string.action_conversation_history))).click()
-                        device.wait(Until.findObject(By.desc(context.getString(R.string.route_settings))), 10000).click()
-                        assertTrue(device.wait(Until.hasObject(By.text(context.getString(R.string.ui_model_provider_e8c7f5))), 10000))
-                        if (scenario == "notifications") {
-                            val target = By.text("Notifications intelligentes")
-                            var attempts = 0
-                            while (!device.hasObject(target) && attempts++ < 15) {
-                                device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
-                                    device.displayWidth / 2, device.displayHeight / 3, 26)
-                                device.waitForIdle(750)
+                    "settings", "providers", "appearance", "notifications", "notifications_modes",
+                    "notifications_large_text" -> {
+                        if (scenario in setOf("notifications", "notifications_modes", "notifications_large_text")) {
+                            device.findObject(By.desc("Ouvrir mon briefing")).click()
+                            val filterSettings = device.wait(
+                                Until.findObject(By.text("Filtrage des notifications")), 10000,
+                            ) ?: throw AssertionError("Filtering settings card is missing from briefing")
+                            filterSettings.click()
+                            if (scenario == "notifications_large_text") {
+                                assertTrue("Large text needs a complete settings title",
+                                    device.wait(Until.hasObject(By.text("Notifications")), 10000))
                             }
-                            val item = device.wait(Until.findObject(target), 10000)
-                                ?: throw AssertionError("Notification preferences are not reachable")
-                            item.click()
                             assertTrue("Offline model install entry should appear",
                                 device.wait(Until.hasObject(By.text("Installer le modèle")), 10000))
-                            assertTrue("Manual input should be visible",
-                                device.wait(Until.hasObject(By.text("Titre et contenu d'une notification")), 10000))
-                            val safeMode = By.text("2 · Prudent")
-                            val personalMode = By.text("3 · Filtrage automatique")
+                            val safeMode = By.text("Prudent")
+                            val personalMode = By.text("Filtrage automatique")
                             var modeScrolls = 0
                             var prudentSeen = false
                             var personalSeen = false
@@ -103,6 +98,20 @@ class VisualScenarioTest {
                             }
                             assertTrue("Prudent mode must be reachable", prudentSeen)
                             assertTrue("Automatic filtering mode must be reachable", personalSeen)
+                            if (scenario == "notifications") {
+                                val input = By.text("Titre et contenu d'une notification")
+                                var inputScrolls = 0
+                                while (!device.hasObject(input) && inputScrolls++ < 12) {
+                                    device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
+                                        device.displayWidth / 2, device.displayHeight / 3, 26)
+                                }
+                                assertTrue("Manual input must be reachable",
+                                    device.wait(Until.hasObject(input), 5000))
+                            }
+                        } else {
+                            device.findObject(By.desc(context.getString(R.string.action_conversation_history))).click()
+                            device.wait(Until.findObject(By.desc(context.getString(R.string.route_settings))), 10000).click()
+                            assertTrue(device.wait(Until.hasObject(By.text(context.getString(R.string.ui_model_provider_e8c7f5))), 10000))
                         }
                         if (scenario == "providers") {
                             device.findObject(By.text(context.getString(R.string.ui_model_provider_e8c7f5))).click()
@@ -135,7 +144,7 @@ class VisualScenarioTest {
                                 device.wait(Until.hasObject(By.text(context.getString(R.string.appearance_theme_mode))), 10000))
                         }
                     }
-                    "brief" -> {
+                    "brief", "brief_dark", "brief_large_text" -> {
                         // Discovery controls are present before swiping.
                         assertTrue("Page indicator exposes the second page",
                             device.wait(Until.hasObject(By.desc("Chat, page 1 sur 2")), 8000))
@@ -149,7 +158,8 @@ class VisualScenarioTest {
                             device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
                         assertTrue("Settings card must not appear in briefing",
                             !device.hasObject(By.text("Notifications intelligentes")))
-                        assertTrue(device.hasObject(By.text("Votre tranquillité")))
+                        assertTrue("Filtering status must be visible without activity",
+                            device.hasObject(By.text("Filtrage des notifications")))
                         assertTrue("Single halo ambient, no cycle labels",
                             !device.hasObject(By.textContains("Ambiance ")))
                         // Return to the conversation with the same spring gesture.
@@ -161,7 +171,7 @@ class VisualScenarioTest {
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
                         assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
                         assertTrue("Brief stays accessible on second opening",
-                            device.hasObject(By.text("Votre tranquillité")))
+                            device.hasObject(By.text("Filtrage des notifications")))
                     }
                     "brief_notifications" -> {
                         val repo = NotificationHistoryRepository(context)
@@ -174,8 +184,14 @@ class VisualScenarioTest {
                             "Information", "Alerte synthétique", null, now - 200)
                         NotificationActivityFeed.notifyChanged()
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
+                        val total = By.textContains("3 notifications reçues")
+                        var countScrolls = 0
+                        while (!device.hasObject(total) && countScrolls++ < 6) {
+                            device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
+                                device.displayWidth / 2, device.displayHeight / 3, 26)
+                        }
                         assertTrue("Three notifications must be visible without classification",
-                            device.wait(Until.hasObject(By.textContains("3 affichées")), 15000))
+                            device.wait(Until.hasObject(total), 5000))
                         // The group initially sits below the visible fold of the
                         // Now Brief dashboard. UIAutomator can find its clipped
                         // text but cannot safely tap it until it is on screen.
@@ -223,8 +239,21 @@ class VisualScenarioTest {
                                 ?: throw AssertionError("Dismiss button disappeared")
                         }
                         remove.click()
-                        assertTrue("Only one entry should be removed",
-                            device.wait(Until.hasObject(By.textContains("2 affichées")), 8000))
+                        var persisted = false
+                        repeat(30) {
+                            if (repo.recent(100).size == 2) persisted = true
+                            if (!persisted) SystemClock.sleep(100)
+                        }
+                        assertTrue("Only one local copy should be removed", persisted)
+                        val undo = device.wait(Until.findObject(By.text("Annuler")), 8000)
+                            ?: throw AssertionError("Undo action missing after local removal")
+                        undo.click()
+                        var restored = false
+                        repeat(30) {
+                            if (repo.recent(100).size == 3) restored = true
+                            if (!restored) SystemClock.sleep(100)
+                        }
+                        assertTrue("Undo must restore the local copy", restored)
                     }
                     "brief_decisions" -> {
                         // Synthetic local history; no real Android notifications
@@ -241,7 +270,7 @@ class VisualScenarioTest {
                         NotificationActivityFeed.notifyChanged()
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
                         assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
-                        val marker = By.textContains("1 supprimée(s)")
+                        val marker = By.textContains("1 suppression")
                         var attempts = 0
                         while (!device.hasObject(marker) && attempts++ < 12) {
                             device.swipe(

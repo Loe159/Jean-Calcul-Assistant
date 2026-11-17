@@ -26,10 +26,10 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.NotificationsNone
-import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,6 +60,7 @@ import com.itos.coui.theme.CouiTheme
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterPolicy
 import io.github.mangi.eta.ui.components.coui.CouiIcon
+import io.github.mangi.eta.ui.components.coui.CouiButton
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -99,6 +100,7 @@ internal fun BriefNotificationAppCard(
         }.getOrDefault(group.packageName.substringAfterLast('.'))
     }
     var expanded by remember(group.packageName) { mutableStateOf(false) }
+    var visibleCount by remember(group.packageName) { mutableIntStateOf(20) }
     val source = remember { MutableInteractionSource() }
     val headerMotion = rememberCouiTouchMotion(expanded)
     val removed = group.entries.count { it.state == NotificationHistoryRepository.DecisionState.DISMISSED }
@@ -108,8 +110,8 @@ internal fun BriefNotificationAppCard(
             it.state == NotificationHistoryRepository.DecisionState.SNOOZED_24H
     }
     val statusSummary = buildList {
-        if (removed > 0) add("$removed supprimée(s)")
-        if (postponed > 0) add("$postponed reportée(s)")
+        if (removed > 0) add("$removed ${if (removed == 1) "supprimée" else "supprimées"} sur Android")
+        if (postponed > 0) add("$postponed ${if (postponed == 1) "reportée" else "reportées"}")
         if (pending > 0) add("$pending à vérifier")
     }.joinToString(" · ")
     BriefDismissStretch(
@@ -176,7 +178,7 @@ internal fun BriefNotificationAppCard(
             }
             AnimatedVisibility(expanded) {
                 Column(modifier = Modifier.padding(start = 13.dp, end = 13.dp, bottom = 12.dp)) {
-                    group.entries.forEach { entry ->
+                    group.entries.take(visibleCount).forEach { entry ->
                         val itemSource = remember(entry.key) { MutableInteractionSource() }
                         var showFullText by remember(entry.key) { mutableStateOf(false) }
                         BriefDismissStretch(
@@ -274,7 +276,7 @@ internal fun BriefNotificationAppCard(
                                 }
                                 Spacer(Modifier.width(6.dp))
                                 Box(
-                                    modifier = Modifier.size(36.dp)
+                                    modifier = Modifier.size(48.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .clickable(role = Role.Button, onClickLabel = "Retirer du briefing") {
                                             onDismiss(listOf(entry.key))
@@ -287,6 +289,18 @@ internal fun BriefNotificationAppCard(
                             }
                         }
                     }
+                    if (visibleCount < group.entries.size) {
+                        CouiButton(
+                            text = "Afficher les notifications suivantes",
+                            onClick = { visibleCount += 20 },
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        )
+                    }
+                    CouiButton(
+                        text = "Retirer toutes les copies de $appName",
+                        onClick = { onDismiss(group.entries.map { it.key }) },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    )
                 }
             }
         }
@@ -380,17 +394,17 @@ private fun BriefDismissStretch(
                 }
             },
     ) {
-        val danger = Color(0xFFC65A53)
+        val swipeColor = CouiPageDefaults.themeColors(CouiTheme.isDark).summary
         Box(
             modifier = Modifier.matchParentSize()
                 .graphicsLayer { alpha = (abs(visualOffset) / (widthPx * 0.5f)).coerceIn(0f, 1f) }
                 .clip(CouiShape(22.dp, 2f))
-                .background(danger.copy(alpha = 0.24f)),
+                .background(swipeColor.copy(alpha = 0.16f)),
         ) {
-            CouiIcon(Icons.Rounded.DeleteOutline, null, tint = danger,
+            CouiIcon(Icons.Rounded.Close, null, tint = swipeColor,
                 modifier = Modifier.align(Alignment.CenterStart).padding(start = 17.dp)
                     .size(23.dp).graphicsLayer { alpha = if (visualOffset > 0f) 1f else 0f })
-            CouiIcon(Icons.Rounded.DeleteOutline, null, tint = danger,
+            CouiIcon(Icons.Rounded.Close, null, tint = swipeColor,
                 modifier = Modifier.align(Alignment.CenterEnd).padding(end = 17.dp)
                     .size(23.dp).graphicsLayer { alpha = if (visualOffset < 0f) 1f else 0f })
         }

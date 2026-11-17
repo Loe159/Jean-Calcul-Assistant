@@ -152,6 +152,34 @@ internal class NotificationHistoryRepository(context: Context) {
         }
     }
 
+    /** Restore the exact local copies after an explicit Undo, without touching Android alerts. */
+    fun restoreToBrief(entries: Collection<RecentEntry>) {
+        if (entries.isEmpty()) return
+        database.writableDatabase.transaction {
+            entries.forEach { entry ->
+                val key = entry.key.take(MAX_KEY_CHARS)
+                val hidden = query(HIDDEN_TABLE, arrayOf("notification_key"),
+                    "notification_key=?", arrayOf(key), null, null, null, "1")
+                    .use { it.moveToFirst() }
+                if (!hidden || entry.postedAt < System.currentTimeMillis() - RETENTION_MS) return@forEach
+                insertWithOnConflict(TABLE, null, ContentValues().apply {
+                    put("notification_key", key)
+                    put("package_name", entry.packageName.take(MAX_PACKAGE_CHARS))
+                    put("title", entry.title.take(MAX_FIELD_CHARS))
+                    put("text", entry.text.take(MAX_FIELD_CHARS))
+                    put("posted_at", entry.postedAt)
+                    put("filter_state", entry.state.name)
+                    put("filter_label", entry.category)
+                    entry.score?.let { put("filter_score", it) }
+                    put("filter_reason", entry.reason)
+                }, SQLiteDatabase.CONFLICT_REPLACE)
+                delete(HIDDEN_TABLE, "notification_key=?", arrayOf(key))
+            }
+            execSQL("DELETE FROM $TABLE WHERE notification_key NOT IN " +
+                "(SELECT notification_key FROM $TABLE ORDER BY posted_at DESC LIMIT $MAX_RECORDS)")
+        }
+    }
+
     fun search(query: String, packageName: String, maxAgeHours: Int, limit: Int): String {
         val clauses = mutableListOf("posted_at>=?")
         val args = mutableListOf((System.currentTimeMillis() - maxAgeHours * HOUR_MS).toString())

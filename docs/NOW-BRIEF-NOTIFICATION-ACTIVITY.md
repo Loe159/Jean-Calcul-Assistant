@@ -2,8 +2,8 @@
 
 The filtering summary and recent activity are intentionally separate.
 
-- Filtering statistics come from `NotificationObservation`, which intentionally skips
-  protected or rate-limited notifications (up to 1 inference/minute, 100/day).
+- Filtering statistics come from `NotificationObservation` for the current Android
+  process (up to 5 inferences/minute, 500/day). Empty statistics cards stay hidden.
 - Recent activity comes from the existing on-device `NotificationHistoryRepository`
   filled by `AgentNotificationHistoryService.onNotificationPosted()`. It includes
   notifications that did not pass through the classifier, provided the listener
@@ -15,7 +15,8 @@ The filtering summary and recent activity are intentionally separate.
   transmitted to a service.
 - Expand an app to see individual entries. Swipe left or right on the app
   group (all stored entries) or a single entry to dismiss from this dashboard.
-  Pressing the row's close button provides an accessible alternative.
+  The 48dp row close button and the expanded group's bulk action provide accessible
+  alternatives. An on-screen Undo restores removed local copies and decisions.
 - Dismissal changes the **local briefing history only** and never calls
   NotificationListenerService.cancelNotification. It therefore cannot silently
   delete a security message, reminder or other Android system notification.
@@ -36,17 +37,17 @@ second live recheck determine whether Android is asked to snooze or dismiss.
 **Only Android's `onNotificationRemoved` callback with the expected reason**
 marks the record as `SNOOZED_1H`, `SNOOZED_24H` or `DISMISSED`.
 The record remains available in the local seven-day history and is grouped
-by application under **À vérifier / Supprimées**; the ordinary receipt feed is
+by application under **Suivi du filtrage**; the ordinary receipt feed is
 separate. An unconfirmed proposal is never displayed as a successful delete.
 The session-level classifier counters are unchanged.
 
 Actual automatic permanent dismissal still requires the user's existing
 explicit personalized-mode opt-in for **all eligible third-party apps**,
-AD/SPAM category setting, ≥0.999 classifier score, ≥0.50 label margin, live notification
+AD/SPAM category setting, advertisement score ≥0.40 with margin ≥0.08 or spam
+score ≥0.65 with margin ≥0.20, live notification
 existence/fingerprint, non-system/low-importance status, and sensitive-content
 protections. The default modes do not permanently delete notifications.
-The dashboard has a direct entry to those filtering settings and states the
-power-saving classification limit (1 per minute; 100 per day). Notifications
+The dashboard has a direct entry to those filtering settings. Notifications
 skipped by these limits remain in recent activity rather than silently
 pretending to be classified.
 
@@ -94,15 +95,15 @@ The new version assigns an explicit local status:
 - EXPIRED: notification left Android before the queued inference could run
 - KEPT, OBSERVED, PROPOSED, SNOOZED_*, DISMISSED: actual decision/result.
 
-At most eight eligible notifications are queued in RAM, one inference is
-started per minute, and no more than 100 inferences are started per day.
+At most 64 eligible notifications are queued in RAM, one inference can start
+every 12 seconds, and no more than 500 inferences are started per day.
 A delayed callback is scheduled only while this listener/process exists;
 no additional service, network request or wake lock is introduced. If an
 alert has disappeared before its turn, it is not acted upon; saved history
 remains available. This means bursts might take several minutes and alerts
 outside the queue or quota are not automatically processed.
 
-On listener reconnection, up to eight recent, still-active unclassified
+On listener reconnection, up to 64 recent, still-active unclassified
 notifications can be requeued. In Settings > Notifications intelligentes,
 "Réessayer l'analyse des notifications actives" performs the same bounded
 recovery on demand. "Diagnostic de l'analyse locale" reports installation,
