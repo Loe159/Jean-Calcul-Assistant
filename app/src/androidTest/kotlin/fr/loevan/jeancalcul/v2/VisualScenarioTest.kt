@@ -191,7 +191,10 @@ class VisualScenarioTest {
                         }
                         device.findObject(By.desc("Style B · ETA Glass")).click()
                         device.pressBack()
-                        device.findObject(By.desc("Ouvrir mon briefing")).click()
+                        // The side pane closes with a spring; do not race its toolbar re-entry.
+                        val reopen = device.wait(Until.findObject(By.desc("Ouvrir mon briefing")), 12000)
+                            ?: throw AssertionError("Brief did not return to chat after Back")
+                        reopen.click()
                         assertTrue(device.wait(Until.hasObject(
                             By.text("Reflets fins et profondeur, lisibilité renforcée")), 12000))
                     }
