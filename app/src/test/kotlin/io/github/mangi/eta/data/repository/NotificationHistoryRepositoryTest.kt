@@ -60,6 +60,32 @@ class NotificationHistoryRepositoryTest {
     }
 
     @Test
+    fun `queued and skipped statuses are local and can transition to a confirmed decision`() {
+        val now = System.currentTimeMillis()
+        repository.record("queue-test", "com.example.store",
+            "Promotion", "Une offre locale", null, now)
+        assertEquals(true, repository.updateDecision("queue-test", now,
+            NotificationHistoryRepository.DecisionState.QUEUED))
+        assertEquals(NotificationHistoryRepository.DecisionState.QUEUED,
+            repository.recent().single().state)
+        assertEquals(true, repository.updateDecision("queue-test", now,
+            NotificationHistoryRepository.DecisionState.KEPT,
+            "a personal message", 0.93))
+        assertEquals(NotificationHistoryRepository.DecisionState.KEPT,
+            repository.recent().single().state)
+        assertEquals(false, repository.updateDecision("queue-test", now + 1,
+            NotificationHistoryRepository.DecisionState.DISMISSED))
+        assertEquals(NotificationHistoryRepository.DecisionState.KEPT,
+            repository.recent().single().state)
+        repository.record("system", "com.android.systemui",
+            "Alerte protégée", "Une alerte système", null, now - 1)
+        assertEquals(true, repository.updateDecision("system", now - 1,
+            NotificationHistoryRepository.DecisionState.PROTECTED))
+        assertEquals(NotificationHistoryRepository.DecisionState.PROTECTED,
+            repository.recent().last().state)
+    }
+
+    @Test
     fun `model proposal and Android confirmed removal remain in local history`() {
         val now = System.currentTimeMillis()
         repository.record("ad-1", "com.example.shop", "Offre -70 %", "Ventes flash", null, now)
