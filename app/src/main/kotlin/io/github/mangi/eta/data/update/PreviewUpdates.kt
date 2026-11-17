@@ -40,13 +40,10 @@ internal object PreviewUpdates {
                 val update = withContext(Dispatchers.IO) { AppUpdateChecker.fetchPreview() }
                 @Suppress("DEPRECATION")
                 val installed = app.packageManager.getPackageInfo(app.packageName, 0).longVersionCode
-                val development = io.github.mangi.eta.agent.development.DevelopmentStore(app)
-                val proposal = development.proposal().takeIf { development.enabled }
-                val expectedCommit = proposal?.takeUnless { it.optBoolean("merged") || it.optBoolean("closed") }?.optString("head")
-                if (!expectedCommit.isNullOrBlank() && update != null && update.commit != expectedCommit) {
-                    if (manual) Toast.makeText(app, "Your improvement preview is not published yet. Check App improvements for progress.", Toast.LENGTH_LONG).show()
-                    return@launch
-                }
+                // The global preview channel publishes the most recent signed build.
+                // An improvement PR's initial head SHA is intentionally NOT a version
+                // lock: later fixes advance that same branch and must stay installable.
+                // PR-specific validation is handled by DevelopmentMonitor, separately.
                 if (update != null && update.versionCode > installed) {
                     if (manual || update.versionCode != dismissedVersion) {
                         val current = mutableState.value
