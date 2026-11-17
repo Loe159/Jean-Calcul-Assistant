@@ -314,9 +314,10 @@ internal fun AgentAppShell(
                 onOpenPermissions = onOpenPermissions,
                 activeModelLabel = homeModelPickerState?.selectedModel?.displayName,
                 hasPermissionAttention = hasPermissionAttention,
-                briefContent = {
+                briefContent = { revealProgress ->
                     NowBriefScreen(
                         visible = briefOpen,
+                        revealProgress = revealProgress,
                         onClose = { briefOpen = false },
                     )
                 },

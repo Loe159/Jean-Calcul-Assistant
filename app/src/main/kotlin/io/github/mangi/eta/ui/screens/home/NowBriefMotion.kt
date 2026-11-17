@@ -69,6 +69,10 @@ internal object BriefMotionTiming {
     const val NOTIFICATION_MS = 210
 }
 
+/** Direct finger-to-halo mapping, including cancellation and spring settling. */
+internal fun briefHaloAlpha(revealProgress: Float): Float =
+    revealProgress.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: 0f
+
 /**
  * Single, slowly moving ambient halo (B2), plus capped scroll parallax (B4).
  * No bitmap allocation or GPU blur.
@@ -78,27 +82,38 @@ internal fun BriefAmbientBackground(
     visible: Boolean,
     dark: Boolean,
     scrollOffsetPx: Float,
+    revealProgress: () -> Float = { if (visible) 1f else 0f },
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val enabled = remember(context, visible) { briefAmbientAllowed(context) }
-    if (!visible) return
+    // Only animate the ambient colors when fully open; while dragging, use
+    // the static halo and let the compositing layer track the finger directly.
+    val enabled = remember(context, visible) { visible && briefAmbientAllowed(context) }
     // Reduced-motion and battery-saver still get the same static glass backdrop,
     // but no infinite transition is composed.
-    val phase = if (enabled) {
+    val animatedPhase = if (enabled) {
         val transition = rememberInfiniteTransition(label = "brief-ambient")
-        val animatedPhase by transition.animateFloat(
-            initialValue = 0f, targetValue = 1f,
+        val movingPhase by transition.animateFloat(
+            initialValue = 0.5f, targetValue = 1f,
             animationSpec = infiniteRepeatable(
                 tween(16000, easing = LinearEasing), RepeatMode.Reverse,
             ),
             label = "slow-ambient-phase",
         )
-        animatedPhase
+        movingPhase
     } else 0.5f
+    // No phase jump when switching between a static finger-driven halo and
+    // the slow breathing animation (especially on programmatic Back).
+    val phase by animateFloatAsState(
+        targetValue = animatedPhase,
+        animationSpec = tween(360, easing = LinearEasing),
+        label = "brief-ambient-phase-continuity",
+    )
     Canvas(
         modifier = modifier.fillMaxSize().graphicsLayer {
-            // A restrained background-only parallax. The cards do not draw glow blobs.
+            // Match the same anchored-draggable X fraction on every drag frame.
+            // Alpha is read in the layer, not separately animated on a timer.
+            this.alpha = briefHaloAlpha(revealProgress())
             translationY = -(scrollOffsetPx * 0.026f).coerceIn(0f, 12f)
         },
     ) {

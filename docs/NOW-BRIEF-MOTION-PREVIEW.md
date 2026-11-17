@@ -53,3 +53,23 @@ color fills or per-card halos. Both light and dark themes are supported.
 The existing COUI collapsing/frosted scroll header remains unchanged.
 
 The first-open-only reveal and dashboard content safety guarantees are retained.
+
+
+## COUI menu cards & finger-driven halo (PR #71)
+
+Briefing cards use near-black COUI-menu-inspired smooth shapes with a subtle
+shadow and **86% dark-mode opacity** (90% in light mode), so the atmospheric
+halo is faintly visible through the cards without sacrificing contrast.
+There is no A/B/C theme selector.
+
+The backdrop alpha follows the actual `AnchoredDraggableState.offset`:
+`progress = clamp(-offset / viewportWidth, 0, 1)`. While chat is at rest
+the halo is transparent (0); at half swipe it is 50% visible; at the fully
+open Brief it is 100% visible. Closing reverses the same path, including
+spring settling and gesture cancellation. The opacity is read in
+`graphicsLayer` without recomposing dashboard cards on pointer movement.
+
+During drag the halo remains static to save battery. Its gentle infinite
+animation only runs once the Brief is open, with phase continuity to avoid
+a secondary visual pop. The app still respects battery-saver and Android
+reduced-motion settings. No notification data or filtering behavior changed.
