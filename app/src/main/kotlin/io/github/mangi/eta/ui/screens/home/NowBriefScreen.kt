@@ -306,13 +306,9 @@ internal fun NowBriefScreen(
                         "Observation uniquement · aucune suppression sur Android"
                     filterConfig.mode == NotificationFilterMode.CAUTIOUS ->
                         "Prudent · publicités très certaines reportées 1 h"
-                    filterConfig.action == NotificationFilterAction.DISMISS &&
-                        filterConfig.appRules.values.any {
-                            it == io.github.mangi.eta.agent.device.notifications.NotificationAppRule.FILTER
-                        } -> "Suppression automatique · uniquement dans les applications autorisées"
                     filterConfig.action == NotificationFilterAction.DISMISS ->
-                        "Suppression configurée · aucune application autorisée pour l'instant"
-                    else -> "Personnalisé · filtrage limité aux applications autorisées"
+                        "Suppression automatique · toutes les applications éligibles"
+                    else -> "Filtrage automatique · toutes les applications éligibles"
                 }
                 CouiText(text = description, kind = CouiTextKind.ItemSummary, color = colors.summary)
                 Spacer(Modifier.height(6.dp))
