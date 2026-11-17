@@ -38,6 +38,49 @@ internal class NotificationHistoryRepository(context: Context) {
         }
     }
 
+    /** Last seven days, including notifications never sent to the AI classifier.
+     * Keep the key private to this on-device UI, for safe per-item dismissal.
+     */
+    data class RecentEntry(
+        val key: String,
+        val packageName: String,
+        val title: String,
+        val text: String,
+        val postedAt: Long,
+    )
+
+    fun recent(limit: Int = 200): List<RecentEntry> {
+        val cutoff = System.currentTimeMillis() - RETENTION_MS
+        return database.readableDatabase.query(
+            TABLE,
+            arrayOf("notification_key", "package_name", "title", "text", "posted_at"),
+            "posted_at>=?", arrayOf(cutoff.toString()),
+            null, null, "posted_at DESC", limit.coerceIn(1, MAX_RECORDS).toString(),
+        ).use { cursor ->
+            buildList {
+                while (cursor.moveToNext()) {
+                    add(RecentEntry(
+                        key = cursor.getString(0),
+                        packageName = cursor.getString(1),
+                        title = cursor.getString(2).orEmpty(),
+                        text = cursor.getString(3).orEmpty(),
+                        postedAt = cursor.getLong(4),
+                    ))
+                }
+            }
+        }
+    }
+
+    /** Dismiss a row from the personal briefing only; never cancel Android alerts. */
+    fun removeFromBrief(keys: Collection<String>) {
+        if (keys.isEmpty()) return
+        database.writableDatabase.transaction {
+            keys.forEach { key ->
+                delete(TABLE, "notification_key=?", arrayOf(key))
+            }
+        }
+    }
+
     fun search(query: String, packageName: String, maxAgeHours: Int, limit: Int): String {
         val clauses = mutableListOf("posted_at>=?")
         val args = mutableListOf((System.currentTimeMillis() - maxAgeHours * HOUR_MS).toString())

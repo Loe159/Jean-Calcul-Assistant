@@ -14,6 +14,8 @@ import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import io.github.mangi.eta.R
 import io.github.mangi.eta.ui.MainActivity
+import io.github.mangi.eta.data.repository.NotificationHistoryRepository
+import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Before
@@ -160,6 +162,30 @@ class VisualScenarioTest {
                         assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
                         assertTrue("Brief stays accessible on second opening",
                             device.hasObject(By.text("Votre tranquillité")))
+                    }
+                    "brief_notifications" -> {
+                        val repo = NotificationHistoryRepository(context)
+                        val now = System.currentTimeMillis()
+                        repo.record("brief-test-1", "com.android.settings",
+                            "Test de sécurité", "Réglage de test", null, now)
+                        repo.record("brief-test-2", "com.android.settings",
+                            "Mise à jour", "Version de test", null, now - 100)
+                        repo.record("brief-test-3", "com.android.systemui",
+                            "Information", "Alerte synthétique", null, now - 200)
+                        NotificationActivityFeed.notifyChanged()
+                        device.findObject(By.desc("Ouvrir mon briefing")).click()
+                        assertTrue("Three notifications must be visible without classification",
+                            device.wait(Until.hasObject(By.textContains("3 affichées")), 15000))
+                        val app = device.wait(Until.findObject(By.textContains("2 notifications")), 10000)
+                            ?: throw AssertionError("App grouping did not aggregate the two records")
+                        app.click()
+                        assertTrue("Expanded group exposes the actual notification title",
+                            device.wait(Until.hasObject(By.text("Test de sécurité")), 10000))
+                        val remove = device.wait(Until.findObject(By.desc("Retirer du briefing")), 8000)
+                            ?: throw AssertionError("Explicit dismissal control missing")
+                        remove.click()
+                        assertTrue("Only one entry should be removed",
+                            device.wait(Until.hasObject(By.textContains("2 affichées")), 8000))
                     }
                     "menu" -> {
                         assertTrue("New conversation is a direct toolbar action",

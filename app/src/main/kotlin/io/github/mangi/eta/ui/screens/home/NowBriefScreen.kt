@@ -13,6 +13,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.setValue
@@ -71,6 +72,11 @@ import io.github.mangi.eta.agent.device.notifications.NotificationBriefEvent
 import io.github.mangi.eta.agent.device.notifications.NotificationBriefOutcome
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterPolicy
 import io.github.mangi.eta.agent.device.notifications.NotificationObservation
+import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
+import io.github.mangi.eta.data.repository.NotificationHistoryRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import io.github.mangi.eta.ui.components.coui.CouiIcon
 import io.github.mangi.eta.ui.components.coui.CouiLazyScaffoldPage
 import java.time.Instant
@@ -103,6 +109,29 @@ internal fun NowBriefScreen(
     val colors = CouiPageDefaults.themeColors(dark)
     val context = LocalContext.current
     val summary by NotificationObservation.summary.collectAsState()
+    val notificationsChanged by NotificationActivityFeed.changes.collectAsState()
+    var activityEntries by remember { mutableStateOf<List<NotificationHistoryRepository.RecentEntry>>(emptyList()) }
+    var activityError by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val repository = remember(context) { NotificationHistoryRepository(context) }
+    LaunchedEffect(visible, notificationsChanged) {
+        if (visible) {
+            runCatching {
+                withContext(Dispatchers.IO) { repository.recent(limit = 300) }
+            }.onSuccess { activityEntries = it; activityError = false }
+                .onFailure { activityError = true }
+        }
+    }
+    val notificationGroups = remember(activityEntries) { groupBriefNotifications(activityEntries) }
+    val dismissActivityEntries: (List<String>) -> Unit = { keys ->
+        // Removing from the briefing is deliberately distinct from cancelling
+        // notifications in Android's system shade.
+        activityEntries = activityEntries.filterNot { it.key in keys }
+        scope.launch {
+            runCatching { withContext(Dispatchers.IO) { repository.removeFromBrief(keys) } }
+                .onFailure { activityError = true }
+        }
+    }
     val dateText = LocalDate.now().format(
         DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH),
     ).replaceFirstChar { it.uppercaseChar() }
@@ -247,34 +276,47 @@ internal fun NowBriefScreen(
             }
             }
         }
-        if (summary.events.isEmpty()) {
-            item(key = "notifications:empty") {
-                BriefReveal("empty", visible, 4, visited) {
-                BriefCard() {
+        item(key = "notification-feed:description") {
+            CouiText(
+                text = "Notifications reçues · 7 derniers jours · ${activityEntries.size} affichées"
+                    + if (activityEntries.size >= 300) " (limite d'affichage)" else "",
+                kind = CouiTextKind.GroupFooter, color = colors.summary,
+                modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 11.dp),
+            )
+        }
+        if (activityError) {
+            item(key = "notification-feed:error") {
+                CouiText(
+                    text = "Historique indisponible. Vérifiez l'accès aux notifications.",
+                    kind = CouiTextKind.ItemSummary, color = colors.summary,
+                    modifier = Modifier.padding(horizontal = 30.dp, vertical = 8.dp),
+                )
+            }
+        }
+        if (notificationGroups.isEmpty()) {
+            item(key = "notification-feed:empty") {
+                BriefCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconBubble(Icons.Rounded.NotificationsNone, colors.summary)
                         Spacer(Modifier.width(12.dp))
-                        Column {
-                            CouiText(text = "Rien à signaler", kind = CouiTextKind.ItemTitle, color = colors.title)
-                        }
+                        CouiText(
+                            text = "Aucune notification enregistrée",
+                            kind = CouiTextKind.ItemTitle, color = colors.title,
+                        )
                     }
-                }
                 }
             }
         } else {
-            items(summary.events.take(5), key = { it.timestampMs.toString() + ":" + it.packageName + ":" + it.outcome.name }) { event ->
-                BriefNotificationArrival(
-                    event = event, visible = visible,
-                    cardSurface = cardSurface, title = colors.title,
-                    summary = colors.summary, accent = colors.accent,
-                )
+            items(notificationGroups, key = { "app:" + it.packageName }) { group ->
+                BriefNotificationAppCard(group, dismissActivityEntries)
             }
-            if (summary.events.size > 5) {
-                item(key = "notifications:more") {
-                    val remaining = summary.events.size - 5
-                    CouiText(text = "Et $remaining autres événements en mémoire", kind = CouiTextKind.ItemSummary,
-                        color = colors.summary, modifier = Modifier.padding(horizontal = 30.dp))
-                }
+            item(key = "notification-feed:privacy") {
+                CouiText(
+                    text = "Glissez dans les deux sens pour retirer du briefing. " +
+                        "Les notifications Android restent intactes.",
+                    kind = CouiTextKind.GroupFooter, color = colors.summary,
+                    modifier = Modifier.padding(horizontal = 30.dp, vertical = 6.dp),
+                )
             }
         }
 

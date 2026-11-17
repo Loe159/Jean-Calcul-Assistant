@@ -8,6 +8,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
 import io.github.mangi.eta.agent.device.notifications.NotificationObservation
+import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
 import io.github.mangi.eta.agent.device.notifications.NotificationProtection
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterDecision
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterPolicy
@@ -36,6 +37,7 @@ class AgentNotificationHistoryService : NotificationListenerService() {
         super.onListenerConnected()
         connectedService = this
         activeNotifications?.forEach(::record)
+        NotificationActivityFeed.notifyChanged()
     }
 
     override fun onListenerDisconnected() {
@@ -124,6 +126,7 @@ class AgentNotificationHistoryService : NotificationListenerService() {
             subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString(),
             postedAt = sbn.postTime,
         )
+        NotificationActivityFeed.notifyChanged()
     }
 
     companion object {
