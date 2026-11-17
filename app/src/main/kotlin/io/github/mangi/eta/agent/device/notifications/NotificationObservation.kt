@@ -394,7 +394,11 @@ internal object NotificationObservation : NotificationBriefSource {
     }
 
     /** Retry only active, recently received, not-yet-classified notifications. */
-    fun recoverActive(context: Context, active: Array<out StatusBarNotification>): Int {
+    fun recoverActive(
+        context: Context,
+        active: Array<out StatusBarNotification>,
+        includeClassified: Boolean = false,
+    ): Int {
         if (active.isEmpty()) return 0
         if (NotificationFilterSettings.load(context).mode == NotificationFilterMode.OFF) return 0
         val latest = runCatching {
@@ -415,7 +419,12 @@ internal object NotificationObservation : NotificationBriefSource {
             }
             .filter { sbn ->
                 latest[sbn.key]?.let { entry ->
-                    entry.state in retryStates && entry.postedAt == sbn.postTime
+                    entry.postedAt == sbn.postTime &&
+                        (entry.state in retryStates ||
+                            (includeClassified && entry.state in setOf(
+                                NotificationHistoryRepository.DecisionState.KEPT,
+                                NotificationHistoryRepository.DecisionState.OBSERVED,
+                            )))
                 } == true
             }
             .take(MAX_QUEUE)
@@ -425,8 +434,11 @@ internal object NotificationObservation : NotificationBriefSource {
     }
 
     fun retryActive(context: Context): Int =
-        recoverActive(context,
-            AgentNotificationHistoryService.currentNotifications().orEmpty())
+        recoverActive(
+            context,
+            AgentNotificationHistoryService.currentNotifications().orEmpty(),
+            includeClassified = true,
+        )
 
     fun detachService() {
         val app = serviceApp

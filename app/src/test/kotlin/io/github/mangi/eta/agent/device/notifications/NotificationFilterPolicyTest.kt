@@ -65,14 +65,14 @@ class NotificationFilterPolicyTest {
             NotificationFilterPolicy.decide(config, candidate(app = "com.example.bank", safe = false)))
     }
 
-    @Test fun permanentRemovalOfAnyEligibleAppNeedsVeryHighThreshold() {
+    @Test fun permanentRemovalOfDominantAdvertisementsInEligibleApps() {
         val config = NotificationFilterConfig(
             mode = NotificationFilterMode.PERSONALIZED,
             action = NotificationFilterAction.DISMISS,
             filterSpam = true,
         )
         assertEquals(NotificationFilterDecision.KEEP,
-            NotificationFilterPolicy.decide(config, candidate(confidence = .998)))
+            NotificationFilterPolicy.decide(config, candidate(confidence = .399)))
         for (pkg in listOf("com.example.shop", "net.example.promo")) {
             assertEquals(NotificationFilterDecision.DISMISS,
                 NotificationFilterPolicy.decide(config, candidate(app = pkg, confidence = .9995)))
@@ -81,6 +81,56 @@ class NotificationFilterPolicyTest {
             NotificationFilterPolicy.decide(config, candidate(top = NotificationFilterPolicy.SPAM)))
         assertEquals(NotificationFilterDecision.KEEP,
             NotificationFilterPolicy.decide(config, candidate(safe = false)))
+    }
+
+    @Test fun leboncoinAdvertisingScore448MayBeDismissedWhenClearlyTop() {
+        val config = NotificationFilterConfig(
+            mode = NotificationFilterMode.PERSONALIZED,
+            action = NotificationFilterAction.DISMISS,
+        )
+        // The label set order follows NotificationNliScores.validatedLabels.
+        val relativeScores = listOf(.448, .260, .100, .070, .040, .042, .040)
+        assertEquals(1.0, relativeScores.sum(), 0.00001)
+        val candidate = NotificationFilterCandidate(
+            app = "fr.leboncoin",
+            safe = true,
+            scores = NotificationNliScores.validatedLabels.zip(relativeScores),
+            localHour = 11,
+        )
+        assertEquals(NotificationFilterDecision.DISMISS,
+            NotificationFilterPolicy.decide(config, candidate))
+        // The app name alone must never override Android safety checks.
+        assertEquals(NotificationFilterDecision.KEEP,
+            NotificationFilterPolicy.decide(config, candidate.copy(safe = false)))
+    }
+
+    @Test fun nearlyTied448AdvertisementIsNotDeleted() {
+        val config = NotificationFilterConfig(
+            mode = NotificationFilterMode.PERSONALIZED,
+            action = NotificationFilterAction.DISMISS,
+        )
+        val scores = listOf(.448, .422, .030, .030, .030, .020, .020)
+        assertEquals(1.0, scores.sum(), 0.00001)
+        val candidate = NotificationFilterCandidate(
+            app = "fr.leboncoin", safe = true,
+            scores = NotificationNliScores.validatedLabels.zip(scores),
+            localHour = 11,
+        )
+        assertEquals(NotificationFilterDecision.KEEP,
+            NotificationFilterPolicy.decide(config, candidate))
+    }
+
+    @Test fun spamNeedsMoreEvidenceThanAdvertisement() {
+        val config = NotificationFilterConfig(
+            mode = NotificationFilterMode.PERSONALIZED,
+            action = NotificationFilterAction.DISMISS, filterSpam = true,
+        )
+        assertEquals(NotificationFilterDecision.KEEP,
+            NotificationFilterPolicy.decide(config,
+                candidate(top = NotificationFilterPolicy.SPAM, confidence = .60)))
+        assertEquals(NotificationFilterDecision.DISMISS,
+            NotificationFilterPolicy.decide(config,
+                candidate(top = NotificationFilterPolicy.SPAM, confidence = .75)))
     }
 
     @Test fun personalizedCanStillSnoozeOneDay() {

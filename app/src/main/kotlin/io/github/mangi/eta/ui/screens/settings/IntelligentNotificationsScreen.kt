@@ -207,7 +207,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                         "Suppression automatique activée" else "Activer la suppression automatique",
                     summary = if (config.action == NotificationFilterAction.DISMISS)
                         "Supprime du panneau Android, conserve dans Now Brief · toucher pour désactiver"
-                    else "Toutes les applications éligibles · confirmation obligatoire · score ≥ 99,9 %",
+                    else "Toutes les applications éligibles · confirmation obligatoire · publicité ≥ 40 % et écart ≥ 8 points",
                     onClick = {
                         if (config.action == NotificationFilterAction.DISMISS) {
                             saveConfig(config.copy(action = NotificationFilterAction.SNOOZE_1H))
@@ -218,7 +218,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                     },
                 )
                 if (confirmPermanent) {
-                    Footer(text = "Cette confirmation autorise le filtrage de toutes les applications tierces éligibles, et non uniquement celles ajoutées auparavant. Android ne peut pas restaurer une notification supprimée. Une copie locale reste dans Now Brief pendant 7 jours. Messages, OTP, banques, alarmes, système et alertes critiques restent protégés.")
+                    Footer(text = "La suppression utilise des scores relatifs du modèle (pas des probabilités) : publicité ≥ 40 % avec 8 points d'avance sur la catégorie suivante ; spam ≥ 65 % avec 20 points d'avance. Les erreurs de classification sont possibles. Cette confirmation autorise le filtrage de toutes les applications tierces éligibles. Android ne peut pas restaurer une notification supprimée. Une copie locale reste dans Now Brief pendant 7 jours. Messages, OTP, banques, alarmes, système et alertes critiques restent protégés.")
                     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                         CouiButton(
                             text = "Confirmer pour toutes les applications éligibles",
@@ -252,7 +252,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                 onClick = {
                     val count = NotificationObservation.retryActive(context)
                     status = if (count == 0)
-                        "Aucune notification active récente en attente d'analyse"
+                        "Aucune notification active récente à réévaluer"
                     else "$count notification(s) remise(s) dans la file locale"
                     diagnostic = NotificationObservation.diagnostics(context)
                     stats = NotificationObservation.statistics()
