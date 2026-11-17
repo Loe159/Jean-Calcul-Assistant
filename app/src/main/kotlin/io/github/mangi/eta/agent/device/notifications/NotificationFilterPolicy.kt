@@ -47,8 +47,17 @@ internal object NotificationFilterPolicy {
                 if ((first.first == AD && !config.filterAds) ||
                     (first.first == SPAM && !config.filterSpam) ||
                     first.first !in setOf(AD, SPAM)) return NotificationFilterDecision.KEEP
-                threshold = if (config.action == NotificationFilterAction.DISMISS) 0.999 else 0.990
-                marginRequired = if (config.action == NotificationFilterAction.DISMISS) 0.50 else 0.30
+                // This is a 7-way relative NLI softmax, NOT a calibrated
+                // probability that the alert is harmless. Requiring 99.9%
+                // meant almost every real advertisement was kept.
+                // Only the winning ad/spam label is eligible, and it must
+                // also clearly outrank the runner-up.
+                //
+                // The independent Android safety guard still protects
+                // conversations, OTPs, alarms, system/high-priority alerts,
+                // and all other notifications that aren't safe to dismiss.
+                threshold = if (first.first == AD) 0.40 else 0.65
+                marginRequired = if (first.first == AD) 0.08 else 0.20
             }
             else -> return NotificationFilterDecision.KEEP
         }
