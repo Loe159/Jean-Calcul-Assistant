@@ -161,59 +161,6 @@ class VisualScenarioTest {
                         assertTrue("Brief stays accessible on second opening",
                             device.hasObject(By.text("Votre tranquillité")))
                     }
-                    "brief_style_a", "brief_style_b", "brief_style_c" -> {
-                        device.findObject(By.desc("Ouvrir mon briefing")).click()
-                        assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
-                        val label = when (scenario) {
-                            "brief_style_a" -> "A · ETA fidèle"
-                            "brief_style_b" -> "B · ETA Glass"
-                            else -> "C · ETA Dashboard"
-                        }
-                        // A is the default. B/C exercise the native popup; A also
-                        // proves the initial screenshot matches the COUI reference.
-                        if (scenario != "brief_style_a") {
-                            val styleSelector = device.wait(
-                                Until.findObject(By.desc("Choisir le style des cartes")), 10000)
-                                ?: throw AssertionError("Native COUI selector missing")
-                            styleSelector.click()
-                            val choice = device.wait(Until.findObject(By.text(label)), 10000)
-                                ?: throw AssertionError("Native COUI popup missing variant: $label")
-                            choice.click()
-                        }
-                        assertTrue(device.hasObject(By.text("Votre tranquillité")))
-                    }
-                    "brief_styles" -> {
-                        device.findObject(By.desc("Ouvrir mon briefing")).click()
-                        assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
-                        for (option in listOf(
-                            "Style B · ETA Glass" to "Reflets fins et profondeur, lisibilité renforcée",
-                            "Style A · ETA fidèle" to "Sombre, sobre et proche des panneaux ETA",
-                            "Style C · ETA Dashboard" to "Contraste élevé, lecture rapide et dense",
-                        )) {
-                            val selector = device.wait(
-                                Until.findObject(By.desc("Choisir le style des cartes")), 10000)
-                                ?: throw AssertionError("Native COUI style selector missing")
-                            selector.click()
-                            val choice = device.wait(
-                                Until.findObject(By.text(option.first.removePrefix("Style "))), 10000)
-                                ?: throw AssertionError("Style popup item missing: ${option.first}")
-                            choice.click()
-                            assertTrue("Variant must update without navigating",
-                                device.wait(Until.hasObject(By.text(option.second)), 6000))
-                            assertTrue(device.hasObject(By.text("Votre tranquillité")))
-                        }
-                        device.findObject(By.desc("Choisir le style des cartes")).click()
-                        val glass = device.wait(Until.findObject(By.text("B · ETA Glass")), 10000)
-                            ?: throw AssertionError("Glass style option missing")
-                        glass.click()
-                        device.pressBack()
-                        // The side pane closes with a spring; do not race its toolbar re-entry.
-                        val reopen = device.wait(Until.findObject(By.desc("Ouvrir mon briefing")), 12000)
-                            ?: throw AssertionError("Brief did not return to chat after Back")
-                        reopen.click()
-                        assertTrue(device.wait(Until.hasObject(
-                            By.text("Reflets fins et profondeur, lisibilité renforcée")), 12000))
-                    }
                     "menu" -> {
                         assertTrue("New conversation is a direct toolbar action",
                             device.hasObject(By.desc(context.getString(R.string.action_new_conversation))))
