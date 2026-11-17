@@ -176,13 +176,52 @@ class VisualScenarioTest {
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
                         assertTrue("Three notifications must be visible without classification",
                             device.wait(Until.hasObject(By.textContains("3 affichées")), 15000))
-                        val app = device.wait(Until.findObject(By.textContains("2 notifications")), 10000)
+                        // The group initially sits below the visible fold of the
+                        // Now Brief dashboard. UIAutomator can find its clipped
+                        // text but cannot safely tap it until it is on screen.
+                        val groupSelector = By.textContains("2 notifications")
+                        var app = device.wait(Until.findObject(groupSelector), 10000)
                             ?: throw AssertionError("App grouping did not aggregate the two records")
+                        var attempts = 0
+                        while (app.visibleBounds.centerY() !in
+                                device.displayHeight / 4..device.displayHeight * 3 / 4 &&
+                            attempts++ < 8
+                        ) {
+                            device.swipe(
+                                device.displayWidth / 2, device.displayHeight * 3 / 4,
+                                device.displayWidth / 2, device.displayHeight / 3, 26,
+                            )
+                            app = device.wait(Until.findObject(groupSelector), 5000)
+                                ?: throw AssertionError("Group disappeared while scrolling")
+                        }
+                        assertTrue("App group must be fully within the interactive viewport",
+                            app.visibleBounds.centerY() in
+                                device.displayHeight / 4..device.displayHeight * 3 / 4)
                         app.click()
+                        // The expanded rows can also be below the fold on small devices.
+                        attempts = 0
+                        while (!device.hasObject(By.text("Test de sécurité")) && attempts++ < 8) {
+                            device.swipe(
+                                device.displayWidth / 2, device.displayHeight * 3 / 4,
+                                device.displayWidth / 2, device.displayHeight / 3, 26,
+                            )
+                        }
                         assertTrue("Expanded group exposes the actual notification title",
-                            device.wait(Until.hasObject(By.text("Test de sécurité")), 10000))
-                        val remove = device.wait(Until.findObject(By.desc("Retirer du briefing")), 8000)
+                            device.wait(Until.hasObject(By.text("Test de sécurité")), 5000))
+                        var remove = device.wait(Until.findObject(By.desc("Retirer du briefing")), 8000)
                             ?: throw AssertionError("Explicit dismissal control missing")
+                        attempts = 0
+                        while (remove.visibleBounds.centerY() !in
+                                device.displayHeight / 4..device.displayHeight * 3 / 4 &&
+                            attempts++ < 6
+                        ) {
+                            device.swipe(
+                                device.displayWidth / 2, device.displayHeight * 3 / 4,
+                                device.displayWidth / 2, device.displayHeight / 3, 26,
+                            )
+                            remove = device.wait(Until.findObject(By.desc("Retirer du briefing")), 5000)
+                                ?: throw AssertionError("Dismiss button disappeared")
+                        }
                         remove.click()
                         assertTrue("Only one entry should be removed",
                             device.wait(Until.hasObject(By.textContains("2 affichées")), 8000))
