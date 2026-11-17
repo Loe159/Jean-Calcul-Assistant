@@ -73,3 +73,14 @@ During drag the halo remains static to save battery. Its gentle infinite
 animation only runs once the Brief is open, with phase continuity to avoid
 a secondary visual pop. The app still respects battery-saver and Android
 reduced-motion settings. No notification data or filtering behavior changed.
+
+
+## Conversation-matched base before halo reveal
+
+The COUI lazy scaffold for Now Brief now uses the same
+`MiuixTheme.colorScheme.surface` as the conversation's
+`AgentAppShell`, instead of the default COUI page background.
+Other pages keep their existing defaults. At horizontal progress 0,
+the ambient halo layer is transparent, revealing an **exact theme-color
+match** with the chat; at progress 1, the existing animated halo is fully
+visible. This works in light and dark mode without hard-coded RGB values.
