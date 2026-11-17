@@ -169,27 +169,43 @@ class VisualScenarioTest {
                             "brief_style_b" -> "B · ETA Glass"
                             else -> "C · ETA Dashboard"
                         }
-                        val choice = device.wait(Until.findObject(By.desc("Style $label")), 10000)
-                            ?: throw AssertionError("Variant missing: $label")
-                        choice.click()
+                        // A is the default. B/C exercise the native popup; A also
+                        // proves the initial screenshot matches the COUI reference.
+                        if (scenario != "brief_style_a") {
+                            val styleSelector = device.wait(
+                                Until.findObject(By.desc("Choisir le style des cartes")), 10000)
+                                ?: throw AssertionError("Native COUI selector missing")
+                            styleSelector.click()
+                            val choice = device.wait(Until.findObject(By.text(label)), 10000)
+                                ?: throw AssertionError("Native COUI popup missing variant: $label")
+                            choice.click()
+                        }
                         assertTrue(device.hasObject(By.text("Votre tranquillité")))
                     }
                     "brief_styles" -> {
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
                         assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
                         for (option in listOf(
-                            "Style A · ETA fidèle" to "Sombre, sobre et proche des panneaux ETA",
                             "Style B · ETA Glass" to "Reflets fins et profondeur, lisibilité renforcée",
+                            "Style A · ETA fidèle" to "Sombre, sobre et proche des panneaux ETA",
                             "Style C · ETA Dashboard" to "Contraste élevé, lecture rapide et dense",
                         )) {
-                            val choice = device.wait(Until.findObject(By.desc(option.first)), 10000)
-                                ?: throw AssertionError("Style control missing: ${option.first}")
+                            val selector = device.wait(
+                                Until.findObject(By.desc("Choisir le style des cartes")), 10000)
+                                ?: throw AssertionError("Native COUI style selector missing")
+                            selector.click()
+                            val choice = device.wait(
+                                Until.findObject(By.text(option.first.removePrefix("Style "))), 10000)
+                                ?: throw AssertionError("Style popup item missing: ${option.first}")
                             choice.click()
                             assertTrue("Variant must update without navigating",
                                 device.wait(Until.hasObject(By.text(option.second)), 6000))
                             assertTrue(device.hasObject(By.text("Votre tranquillité")))
                         }
-                        device.findObject(By.desc("Style B · ETA Glass")).click()
+                        device.findObject(By.desc("Choisir le style des cartes")).click()
+                        val glass = device.wait(Until.findObject(By.text("B · ETA Glass")), 10000)
+                            ?: throw AssertionError("Glass style option missing")
+                        glass.click()
                         device.pressBack()
                         // The side pane closes with a spring; do not race its toolbar re-entry.
                         val reopen = device.wait(Until.findObject(By.desc("Ouvrir mon briefing")), 12000)
