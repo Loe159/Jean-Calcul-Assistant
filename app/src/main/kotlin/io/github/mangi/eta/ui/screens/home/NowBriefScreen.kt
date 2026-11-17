@@ -296,7 +296,7 @@ internal fun NowBriefScreen(
         }
 
         item(key = "notification-filter:settings") {
-            BriefCard(onClick = onManageFiltering) {
+            BriefCard(onClick = { onClose(); onManageFiltering() }) {
                 SectionHeader("Filtrage automatique", "Paramètres", colors.title, colors.summary)
                 Spacer(Modifier.height(8.dp))
                 val description = when {
@@ -306,8 +306,12 @@ internal fun NowBriefScreen(
                         "Observation uniquement · aucune suppression sur Android"
                     filterConfig.mode == NotificationFilterMode.CAUTIOUS ->
                         "Prudent · publicités très certaines reportées 1 h"
+                    filterConfig.action == NotificationFilterAction.DISMISS &&
+                        filterConfig.appRules.values.any {
+                            it == io.github.mangi.eta.agent.device.notifications.NotificationAppRule.FILTER
+                        } -> "Suppression automatique · uniquement dans les applications autorisées"
                     filterConfig.action == NotificationFilterAction.DISMISS ->
-                        "Suppression automatique · uniquement dans les applications autorisées"
+                        "Suppression configurée · aucune application autorisée pour l'instant"
                     else -> "Personnalisé · filtrage limité aux applications autorisées"
                 }
                 CouiText(text = description, kind = CouiTextKind.ItemSummary, color = colors.summary)
