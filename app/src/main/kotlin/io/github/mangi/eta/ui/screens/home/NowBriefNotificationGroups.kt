@@ -58,6 +58,7 @@ import com.itos.coui.text.CouiTextKind
 import com.itos.coui.text.Text as CouiText
 import com.itos.coui.theme.CouiTheme
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
+import io.github.mangi.eta.agent.device.notifications.NotificationFilterPolicy
 import io.github.mangi.eta.ui.components.coui.CouiIcon
 import java.time.Instant
 import java.time.ZoneId
@@ -99,6 +100,7 @@ internal fun BriefNotificationAppCard(
     }
     var expanded by remember(group.packageName) { mutableStateOf(false) }
     val source = remember { MutableInteractionSource() }
+    val headerMotion = rememberCouiTouchMotion(expanded)
     val removed = group.entries.count { it.state == NotificationHistoryRepository.DecisionState.DISMISSED }
     val pending = group.entries.count { it.state == NotificationHistoryRepository.DecisionState.PROPOSED }
     val postponed = group.entries.count {
@@ -127,6 +129,19 @@ internal fun BriefNotificationAppCard(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth()
+                    // Collapsed group deformation is on the whole card.
+                    // Once expanded, its header gets the native menu motion
+                    // and child notifications deform independently.
+                    .couiTouchMotion(headerMotion, expanded = expanded)
+                    .graphicsLayer {
+                        if (expanded) {
+                            translationX = headerMotion.translationX.value
+                            translationY = headerMotion.translationY.value
+                            scaleX = headerMotion.scaleX.value
+                            scaleY = headerMotion.scaleY.value
+                            transformOrigin = TransformOrigin.Center
+                        }
+                    }
                     .couiButtonFeedback(dark, source, enabled = true, list = true)
                     .clickable(
                         interactionSource = source, indication = null,
@@ -219,9 +234,14 @@ internal fun BriefNotificationAppCard(
                                         maxLines = 2,
                                     )
                                     if (entry.category != null && entry.score != null) {
+                                        val categoryLabel = when (entry.category) {
+                                            NotificationFilterPolicy.AD -> "Publicité"
+                                            NotificationFilterPolicy.SPAM -> "Spam ou arnaque"
+                                            else -> "Autre catégorie"
+                                        }
                                         CouiText(
-                                            text = "${entry.category} · " +
-                                                "${(entry.score * 100).toInt()} %",
+                                            text = "$categoryLabel · correspondance " +
+                                                String.format(Locale.FRANCE, "%.1f %%", entry.score * 100),
                                             kind = CouiTextKind.GroupFooter, color = colors.summary,
                                         )
                                     }
