@@ -290,7 +290,7 @@ class VisualScenarioTest {
                         NotificationActivityFeed.notifyChanged()
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
                         assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
-                        val selector = By.textContains("1 notification")
+                        val selector = By.textContains("1 notification · Test de glissement")
                         var group = device.wait(Until.findObject(selector), 10000)
                             ?: throw AssertionError("Synthetic notification group missing")
                         var attempts = 0
