@@ -100,7 +100,7 @@ fun ConversationSidePaneScaffold(
     modifier: Modifier = Modifier,
     activeModelLabel: String? = null,
     hasPermissionAttention: Boolean = false,
-    briefContent: @Composable () -> Unit = {},
+    briefContent: @Composable (revealProgress: () -> Float) -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val sceneLifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
@@ -127,6 +127,11 @@ fun ConversationSidePaneScaffold(
                 },
                 anchors = anchors,
             )
+        }
+        // Read the drag offset in the layer's graphics block, not by
+        // recomposing the whole dashboard during every pointer movement.
+        val briefRevealProgress = remember(paneDragState, fullWidthPx) {
+            { briefPaneMotion(paneDragState.offset, fullWidthPx).progress }
         }
         val settleAnimation = remember {
             spring<Float>(
@@ -289,12 +294,13 @@ fun ConversationSidePaneScaffold(
                             .focusGroup()
                             .then(if (!isBriefRevealed) Modifier.clearAndSetSemantics {} else Modifier),
                     ) {
+                        // The same physical drag fraction drives both the panel position
+                        // and its ambient backdrop. No visibility-triggered fade or lag.
                         Box(Modifier.fillMaxSize().graphicsLayer {
-                            // D1: content lags behind the horizontal spring by at most 28dp.
-                            val progress = briefPaneMotion(paneDragState.offset, fullWidthPx).progress
-                            translationX = -(1f - progress) * 18.dp.toPx()
+                            // D1: content lags behind the horizontal spring by at most 18dp.
+                            translationX = -(1f - briefRevealProgress()) * 18.dp.toPx()
                         }) {
-                            briefContent()
+                            briefContent(briefRevealProgress)
                         }
                     }
                     Box(

@@ -94,6 +94,7 @@ internal data class NowBriefCardExtension(
 internal fun NowBriefScreen(
     visible: Boolean,
     onClose: () -> Unit,
+    revealProgress: () -> Float = { if (visible) 1f else 0f },
     modifier: Modifier = Modifier,
     extensions: List<NowBriefCardExtension> = emptyList(),
 ) {
@@ -104,7 +105,7 @@ internal fun NowBriefScreen(
     val dateText = LocalDate.now().format(
         DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH),
     ).replaceFirstChar { it.uppercaseChar() }
-    val cardSurface = if (dark) Color(0xFF363636) else Color(0xFFE9E9E9)
+    val cardSurface = if (dark) Color(0xFF464A51) else Color(0xFFE9E9E9)
     val listState = rememberLazyListState()
     val motionAllowed = remember(context, visible) { briefMotionAllowed(context) }
     val visited = BriefMotionSession.revealedCards
@@ -139,6 +140,7 @@ internal fun NowBriefScreen(
                 visible = visible,
                 dark = dark,
                 scrollOffsetPx = scrollDistance,
+                revealProgress = revealProgress,
             )
         },
         modifier = modifier,
@@ -358,7 +360,12 @@ private fun Modifier.menuCardSurface(dark: Boolean, prominent: Boolean = false):
     return this
         .shadow(if (prominent) 12.dp else 7.dp, shape, clip = false)
         .clip(shape)
-        .background(if (dark) Color(0xFF151515) else Color(0xFFF9F9FA), shape)
+        // Slightly translucent so the green/orange ambient halo remains visible.
+        .background(
+            if (dark) Color(0xFF17191C).copy(alpha = 0.86f)
+            else Color(0xFFF9F9FA).copy(alpha = 0.90f),
+            shape,
+        )
 }
 
 @Composable
