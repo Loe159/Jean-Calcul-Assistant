@@ -10,7 +10,6 @@ import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -22,7 +21,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.border
@@ -42,11 +40,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.CheckCircleOutline
+import androidx.compose.material.icons.rounded.UnfoldMore
 import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.TaskAlt
@@ -68,6 +66,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.BasicText
+import com.itos.coui.effect.couiButtonFeedback
+import com.itos.coui.menu.CouiMenuItem
+import com.itos.coui.menu.Menu
+import com.itos.coui.menu.couiMenuAnchor
+import com.itos.coui.menu.rememberCouiMenuAnchor
 import com.itos.coui.layout.CouiPageDefaults
 import com.itos.coui.shape.CouiShape
 import com.itos.coui.text.CouiTextKind
@@ -113,6 +116,13 @@ internal fun NowBriefScreen(
     val cardStyle = NowBriefCardStyle.parse(cardStyleName)
     val palette = nowBriefGlassPalette(cardStyle, dark)
     val heroPalette = nowBriefGlassPalette(cardStyle, dark, prominent = true)
+    val styleAnchor = rememberCouiMenuAnchor()
+    var styleMenuExpanded by remember { mutableStateOf(false) }
+    val styleMenuItems = remember(cardStyle) {
+        NowBriefCardStyle.entries.map { option ->
+            CouiMenuItem(value = option, text = option.label, selected = option == cardStyle)
+        }
+    }
     val summary by NotificationObservation.summary.collectAsState()
     val dateText = LocalDate.now().format(
         DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH),
@@ -123,6 +133,7 @@ internal fun NowBriefScreen(
     val motionAllowed = remember(context, visible) { briefMotionAllowed(context) }
     val visited = BriefMotionSession.revealedCards
     LaunchedEffect(visible) {
+        if (!visible) styleMenuExpanded = false
         if (visible) {
             BriefMotionSession.hasOpened = true
         } else if (BriefMotionSession.hasOpened) {
@@ -141,16 +152,6 @@ internal fun NowBriefScreen(
         label = "brief-title-reveal",
     )
     val heroPress = remember { MutableInteractionSource() }
-    val pressed by heroPress.collectIsPressedAsState()
-    val heroScale by animateFloatAsState(
-        targetValue = if (pressed && motionAllowed) heroPalette.pressX else 1f,
-        animationSpec = spring(dampingRatio = 0.72f, stiffness = 450f), label = "brief-card-press",
-    )
-    val heroStretchY by animateFloatAsState(
-        targetValue = if (pressed && motionAllowed) heroPalette.pressY else 1f,
-        animationSpec = spring(dampingRatio = 0.72f, stiffness = 450f),
-        label = "brief-hero-stretch",
-    )
     var heroExpanded by remember { mutableStateOf(false) }
     var categoryExpanded by remember { mutableStateOf(false) }
     CouiLazyScaffoldPage(
@@ -186,67 +187,65 @@ internal fun NowBriefScreen(
         }
 
         item(key = "card-style-switcher") {
-            Column(
+            val source = remember { MutableInteractionSource() }
+            Box(
                 modifier = Modifier.fillMaxWidth()
-                    .padding(horizontal = 28.dp)
-                    .padding(bottom = 15.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(horizontal = 28.dp, vertical = 4.dp)
+                    .padding(bottom = 14.dp),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CouiText(
-                        text = "Style des cartes",
-                        kind = CouiTextKind.ItemSummary,
-                        color = colors.title,
-                        modifier = Modifier.weight(1f),
-                    )
-                    CouiText(
-                        text = "APERÇU",
-                        kind = CouiTextKind.GroupFooter,
-                        color = colors.summary,
-                    )
-                }
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
+                        .couiMenuAnchor(styleAnchor)
+                        .clip(CouiPageDefaults.shape)
+                        .background(colors.card)
+                        .couiButtonFeedback(
+                            dark, source, enabled = true, list = true,
+                            hoverLocked = styleMenuExpanded,
+                        )
+                        .clickable(
+                            interactionSource = source,
+                            indication = null,
+                            role = Role.Button,
+                            onClickLabel = "Choisir le style des cartes",
+                        ) { styleAnchor.open { styleMenuExpanded = true } }
+                        .semantics { contentDescription = "Choisir le style des cartes" }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    NowBriefCardStyle.entries.forEach { option ->
-                        val active = cardStyle == option
-                        val shape = CouiShape(15.dp, 2f)
-                        val selectedFill = if (dark) Color(0xFF3D485B).copy(alpha = 0.93f)
-                            else Color.White.copy(alpha = 0.96f)
-                        val idleFill = if (dark) Color(0xFF202733).copy(alpha = 0.82f)
-                            else Color.White.copy(alpha = 0.62f)
-                        val borderColor = if (active) colors.accent.copy(alpha = 0.78f)
-                            else colors.title.copy(alpha = 0.10f)
-                        Box(
-                            modifier = Modifier.weight(1f)
-                                .heightIn(min = 48.dp)
-                                .clip(shape)
-                                .background(if (active) selectedFill else idleFill, shape)
-                                .border(if (active) 1.5.dp else 0.8.dp, borderColor, shape)
-                                .clickable(role = Role.RadioButton, onClickLabel = "Style ${option.label}") {
-                                    cardStyleName = option.name
-                                    NowBriefStyleSettings.save(context, option)
-                                }
-                                .semantics { selected = active; contentDescription = "Style ${option.label}" },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CouiText(
-                                text = option.label,
-                                kind = CouiTextKind.ItemSummary,
-                                color = if (active) colors.accent else colors.title,
-                                maxLines = 2,
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 10.dp),
-                            )
-                        }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        CouiText(
+                            text = "Style des cartes",
+                            kind = CouiTextKind.ItemTitle,
+                            color = colors.title,
+                        )
+                        CouiText(
+                            text = cardStyle.label,
+                            kind = CouiTextKind.ItemSummary,
+                            color = colors.summary,
+                        )
                     }
+                    IconDecor(Icons.Rounded.UnfoldMore, colors.summary, 20)
                 }
-                CouiText(
-                    text = cardStyle.detail,
-                    kind = CouiTextKind.GroupFooter,
-                    color = colors.summary,
+                // Reuse the exact anchored native COUI popup used by the chat + button.
+                Menu(
+                    expanded = styleMenuExpanded,
+                    onDismissRequest = { styleMenuExpanded = false },
+                    items = styleMenuItems,
+                    onItemClick = { item ->
+                        styleMenuExpanded = false
+                        cardStyleName = item.value.name
+                        NowBriefStyleSettings.save(context, item.value)
+                    },
+                    anchor = styleAnchor,
                 )
             }
+            CouiText(
+                text = cardStyle.detail,
+                kind = CouiTextKind.GroupFooter,
+                color = colors.summary,
+                modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 12.dp),
+            )
         }
 
         item(key = "notifications:hero") {
@@ -254,14 +253,14 @@ internal fun NowBriefScreen(
             Column(
                 modifier = Modifier.fillMaxWidth()
                     .padding(horizontal = 28.dp).padding(bottom = 14.dp)
-                    .graphicsLayer { scaleX = heroScale; scaleY = heroStretchY }
+                    .clip(CouiShape(heroPalette.cornerDp.dp, 2f))
+                    .briefGlass(CouiShape(heroPalette.cornerDp.dp, 2f), heroPalette)
+                    .couiButtonFeedback(dark, heroPress, enabled = true)
                     .clickable(
                         interactionSource = heroPress, indication = null,
                         role = Role.Button, onClickLabel = "Détails des notifications filtrées",
                         onClick = { heroExpanded = !heroExpanded },
                     )
-                    .clip(CouiShape(heroPalette.cornerDp.dp, 2f))
-                    .briefGlass(CouiShape(heroPalette.cornerDp.dp, 2f), heroPalette)
                     .padding(horizontal = 18.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(9.dp),
             ) {
@@ -461,34 +460,23 @@ private fun BriefCard(
 ) {
     val dark = CouiTheme.isDark
     val palette = nowBriefGlassPalette(style, dark)
-    val context = LocalContext.current
-    val animate = remember(context) { briefMotionAllowed(context) }
     val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scaleX by animateFloatAsState(
-        targetValue = if (pressed && animate) palette.pressX else 1f,
-        animationSpec = spring(dampingRatio = 0.72f, stiffness = 450f),
-        label = "brief-section-stretch-x",
-    )
-    val scaleY by animateFloatAsState(
-        targetValue = if (pressed && animate) palette.pressY else 1f,
-        animationSpec = spring(dampingRatio = 0.72f, stiffness = 450f),
-        label = "brief-section-stretch-y",
-    )
     val shape = CouiShape(palette.cornerDp.dp, 2f)
     Column(
         modifier = Modifier.fillMaxWidth()
             .padding(horizontal = 28.dp).padding(bottom = 15.dp)
-            .graphicsLayer { this.scaleX = scaleX; this.scaleY = scaleY }
             .clip(shape)
-            .then(
-                if (onClick != null) Modifier.clickable(
-                    interactionSource = interaction, indication = null,
-                    role = Role.Button, onClickLabel = "Afficher les détails",
-                    onClick = onClick,
-                ) else Modifier,
-            )
             .briefGlass(shape, palette)
+            .then(
+                if (onClick != null) Modifier
+                    .couiButtonFeedback(dark, interaction, enabled = true, list = true)
+                    .clickable(
+                        interactionSource = interaction, indication = null,
+                        role = Role.Button, onClickLabel = "Afficher les détails",
+                        onClick = onClick,
+                    )
+                else Modifier,
+            )
             .padding(
                 horizontal = if (style == NowBriefCardStyle.DASHBOARD) 15.dp else 17.dp,
                 vertical = if (style == NowBriefCardStyle.DASHBOARD) 13.dp else 16.dp,

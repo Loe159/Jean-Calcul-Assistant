@@ -5,9 +5,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NowBriefCardStyleTest {
-    @Test fun missingAndUnknownPreferencesUseBalancedGlass() {
-        assertEquals(NowBriefCardStyle.GLASS, NowBriefCardStyle.parse(null))
-        assertEquals(NowBriefCardStyle.GLASS, NowBriefCardStyle.parse("unknown"))
+    @Test fun missingAndUnknownPreferencesUseNativeCoui() {
+        assertEquals(NowBriefCardStyle.ETA, NowBriefCardStyle.parse(null))
+        assertEquals(NowBriefCardStyle.ETA, NowBriefCardStyle.parse("unknown"))
     }
 
     @Test fun allVariantsCanBePersistedByNameAndAreDistinct() {
@@ -17,7 +17,8 @@ class NowBriefCardStyleTest {
             val palette = nowBriefGlassPalette(style, true)
             assertTrue(palette.stops.size >= 2)
             assertTrue(palette.cornerDp in 15..32)
-            assertTrue(palette.pressX < 1f && palette.pressY > 1f)
+            assertTrue(palette.rimWidthDp <= 1.5f)
+            assertTrue(palette.stops.all { it.alpha > 0f })
         }
         assertEquals(3, NowBriefCardStyle.entries.size)
     }

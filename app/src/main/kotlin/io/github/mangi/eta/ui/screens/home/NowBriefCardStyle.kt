@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.Color
 
 /**
  * Pure presentation preference. Does not change the wallpaper, filtering policy or data.
- * Unknown/stale saved values fall back to the recommended balanced glass style.
+ * Unknown/stale saved values fall back to the closest native COUI dark style.
  */
 internal enum class NowBriefCardStyle(val label: String, val detail: String) {
     ETA("A · ETA fidèle", "Sombre, sobre et proche des panneaux ETA"),
@@ -15,7 +15,7 @@ internal enum class NowBriefCardStyle(val label: String, val detail: String) {
 
     companion object {
         fun parse(value: String?): NowBriefCardStyle =
-            entries.firstOrNull { it.name == value } ?: GLASS
+            entries.firstOrNull { it.name == value } ?: ETA
     }
 }
 
@@ -39,26 +39,22 @@ internal data class NowBriefGlassPalette(
     val rimWidthDp: Float,
     val cornerDp: Int,
     val metricColor: Color,
-    val pressX: Float,
-    val pressY: Float,
 )
 
 internal fun nowBriefGlassPalette(style: NowBriefCardStyle, dark: Boolean, prominent: Boolean = false): NowBriefGlassPalette {
     val boost = if (prominent) 0.025f else 0f
     return when (style) {
         NowBriefCardStyle.ETA -> NowBriefGlassPalette(
-            stops = if (dark) listOf(Color(0xFF252931).copy(alpha = 0.96f),
-                Color(0xFF20232A).copy(alpha = 0.95f))
+            stops = if (dark) listOf(Color(0xFF161719).copy(alpha = 0.985f),
+                Color(0xFF1C1D20).copy(alpha = 0.98f))
                 else listOf(Color(0xFFF5F6F8).copy(alpha = 0.96f), Color(0xFFE9ECF0).copy(alpha = 0.95f)),
-            rimStops = if (dark) listOf(Color.White.copy(alpha = 0.20f),
-                Color.White.copy(alpha = 0.055f), Color.White.copy(alpha = 0.12f))
+            rimStops = if (dark) listOf(Color.White.copy(alpha = 0.12f),
+                Color.White.copy(alpha = 0.025f), Color.White.copy(alpha = 0.07f))
                 else listOf(Color.White.copy(alpha = 0.86f), Color(0xFF7F8899).copy(alpha = 0.13f)),
-            rimWidthDp = 0.9f,
-            cornerDp = if (prominent) 25 else 23,
+            rimWidthDp = 0.5f,
+            cornerDp = if (prominent) 30 else 28,
             metricColor = if (dark) Color(0xFF404550).copy(alpha = 0.65f)
                 else Color.White.copy(alpha = 0.72f),
-            pressX = 0.979f,
-            pressY = 1.012f,
         )
         NowBriefCardStyle.GLASS -> NowBriefGlassPalette(
             stops = if (dark) listOf(Color(0xFF3D4658).copy(alpha = 0.89f + boost),
@@ -73,8 +69,6 @@ internal fun nowBriefGlassPalette(style: NowBriefCardStyle, dark: Boolean, promi
             cornerDp = if (prominent) 27 else 24,
             metricColor = if (dark) Color(0xFF586379).copy(alpha = 0.56f)
                 else Color.White.copy(alpha = 0.75f),
-            pressX = 0.976f,
-            pressY = 1.014f,
         )
         NowBriefCardStyle.DASHBOARD -> NowBriefGlassPalette(
             stops = if (dark) listOf(Color(0xFF181C25).copy(alpha = 0.97f),
@@ -88,8 +82,6 @@ internal fun nowBriefGlassPalette(style: NowBriefCardStyle, dark: Boolean, promi
             cornerDp = if (prominent) 21 else 19,
             metricColor = if (dark) Color(0xFF353C4B).copy(alpha = 0.68f)
                 else Color.White.copy(alpha = 0.75f),
-            pressX = 0.985f,
-            pressY = 1.008f,
         )
     }
 }
