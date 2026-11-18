@@ -42,6 +42,8 @@ internal object NotificationTopics {
         }
         val agendaKind = NotificationAgendaPolicy.classify(pkg, title, body, androidCategory)
         if (agendaKind != AgendaNotificationKind.UNKNOWN) return "calendar"
+        val systemKind = NotificationSystemPolicy.classify(pkg, title, body, androidCategory)
+        if (systemKind != SystemNotificationKind.UNKNOWN) return "system"
         // Content-driven topics take precedence over broad EMAIL/MESSAGE categories.
         val input = NotificationPriorityInput(pkg, title, body, channel, androidCategory)
         if (NotificationPriorityPolicy.githubBot(input) || pkg.contains("github", true)) return "development"

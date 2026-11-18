@@ -99,6 +99,30 @@ class NotificationPriorityProtectionTest {
             "Rendez-vous important", Notification.CATEGORY_EVENT), "calendar"))
     }
 
+    @Test fun recognizedRoutineSystemNotificationsCanBeClearedButCriticalCannot() {
+        assertTrue(canDismiss(makeNotification("com.android.settings", "Système",
+            "Mise à jour du système disponible", Notification.CATEGORY_SYSTEM), "system"))
+        assertTrue(canDismiss(makeNotification("com.android.settings", "Système",
+            "Mise à jour de sécurité disponible", Notification.CATEGORY_SYSTEM), "system"))
+        assertFalse(canDismiss(makeNotification("com.android.settings", "Système",
+            "Mise à jour de sécurité disponible : code de connexion 112233", Notification.CATEGORY_SYSTEM), "system"))
+        assertTrue(canDismiss(makeNotification("com.android.vending", "Play Store",
+            "Mise à jour de l'application terminée", Notification.CATEGORY_SYSTEM), "system"))
+        assertTrue(canDismiss(makeNotification("com.samsung.android.scloud", "Cloud",
+            "Sauvegarde terminée avec succès", Notification.CATEGORY_SYSTEM), "system"))
+        assertTrue(canDismiss(makeNotification("com.android.settings", "Conseils Android",
+            "Conseils Android : découvrez les fonctionnalités", Notification.CATEGORY_SYSTEM), "system"))
+        assertFalse(canDismiss(makeNotification("com.android.settings", "Système",
+            "Batterie critique : 2 %", Notification.CATEGORY_SYSTEM), "system"))
+        assertFalse(canDismiss(makeNotification("com.android.settings", "Cloud",
+            "Échec de sauvegarde", Notification.CATEGORY_SYSTEM), "system"))
+        assertFalse(canDismiss(makeNotification("com.android.settings", "Système",
+            "Mise à jour système disponible", Notification.CATEGORY_SYSTEM,
+            Notification.FLAG_FOREGROUND_SERVICE), "system"))
+        assertFalse(canDismiss(makeNotification("com.android.settings", "Système",
+            "Opération en cours", Notification.CATEGORY_SYSTEM), "system"))
+    }
+
     @Test fun neverClearSecurityMessagesCallsAndOngoingAlerts() {
         assertFalse(canDismiss(makeNotification("com.google.android.gm", "Google",
             "Alerte de sécurité : connexion inconnue", Notification.CATEGORY_EMAIL), "security"))

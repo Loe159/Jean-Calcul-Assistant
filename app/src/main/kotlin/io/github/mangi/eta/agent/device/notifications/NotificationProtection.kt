@@ -118,6 +118,8 @@ internal object NotificationProtection {
         val deferredAgenda = agendaKind in setOf(
             AgendaNotificationKind.FUTURE_CONFIRMED, AgendaNotificationKind.SUGGESTED_EVENT,
             AgendaNotificationKind.EXPIRED_REMINDER)
+        val systemKind = NotificationSystemPolicy.classify(pkg, title, text, n.category, input.topic)
+        val routineSystem = NotificationSystemPolicy.safeToClear(systemKind)
         if (!sbn.isClearable || pkg == context.packageName ||
             n.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE or
                 Notification.FLAG_GROUP_SUMMARY or Notification.FLAG_NO_CLEAR) != 0 ||
@@ -132,9 +134,18 @@ internal object NotificationProtection {
                 Notification.CATEGORY_NAVIGATION, Notification.CATEGORY_LOCATION_SHARING)) return false
         if (n.category in setOf(Notification.CATEGORY_EVENT, Notification.CATEGORY_REMINDER) &&
             !deferredAgenda) return false
+        // A named *security update* is not an authentication alert. Remove only
+        // this exact phrase for safety matching; OTP, payment, and other alert
+        // terms in the same notification still block dismissal.
+        val contentForSafety = "$title $text $bigText".let { content ->
+            if (systemKind == SystemNotificationKind.UPDATE_AVAILABLE)
+                content.replace(Regex("(?iu)mise [àa] jour de s[ée]curit[ée]|security update"),
+                    "mise à jour système")
+            else content
+        }
         if ((title + text).trim().length < 8 ||
-            (if (deferredAgenda) criticalSensitive.containsMatchIn("$title $text $bigText")
-                else stronglySensitive.containsMatchIn("$title $text $bigText"))) return false
+            (if (deferredAgenda) criticalSensitive.containsMatchIn(contentForSafety)
+                else stronglySensitive.containsMatchIn(contentForSafety))) return false
         // Some social platforms mark mentions, friend requests, and suggestions
         // CATEGORY_MESSAGE. Clear only explicitly recognized non-DM social events.
         // MessagingStyle, people and inline replies remain blocked above.
@@ -163,7 +174,9 @@ internal object NotificationProtection {
             val calendar = deferredAgenda && pkg in setOf(
                 "com.google.android.calendar", "com.samsung.android.calendar",
                 "com.android.calendar", "com.microsoft.office.outlook", "com.google.android.gm")
-            if (!email && !update && !calendar) return false
+            val system = routineSystem && n.category in setOf(
+                Notification.CATEGORY_SYSTEM, Notification.CATEGORY_SERVICE, null)
+            if (!email && !update && !calendar && !system) return false
         }
         // Clearable third-party service updates are eligible. Privileged Android
         // and Samsung system packages still require a known, routine update.

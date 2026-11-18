@@ -103,6 +103,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
     var showGameRules by remember { mutableStateOf(false) }
     var showWorkRules by rememberSaveable { mutableStateOf(false) }
     var showAgendaRules by rememberSaveable { mutableStateOf(false) }
+    var showSystemRules by rememberSaveable { mutableStateOf(false) }
     var gameDeletes by remember { mutableStateOf(NotificationGameSettings.enabledKinds(context)) }
     var expandedRule by remember { mutableStateOf<String?>(null) }
     var editedLabel by remember { mutableStateOf("") }
@@ -335,6 +336,36 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                         }
                     }
                 }
+            }
+        }
+        Group(title = "Système") {
+            CouiPreference(
+                title = if (showSystemRules) "Masquer les priorités" else "Voir les priorités",
+                summary = "Alertes critiques conservées · informations ce soir · bruit ignoré",
+                onClick = { showSystemRules = !showSystemRules },
+            )
+            if (showSystemRules) {
+                val rules = listOf(
+                    "Batterie critique, stockage saturé, panne" to "Immédiat · conservé sur Android",
+                    "Sauvegarde échouée" to "Immédiat · conservée sur Android",
+                    "Mise à jour système disponible" to "Ce soir · dans le briefing",
+                    "Sauvegarde ou synchronisation réussie" to "Ce soir · dans le briefing",
+                    "Mise à jour d'application terminée" to "Indésirable · repliée dans le briefing",
+                    "Conseils et suggestions Android" to "Indésirable · repliés dans le briefing",
+                    "Notifications techniques de routine" to "Indésirable · repliées dans le briefing",
+                )
+                Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    rules.forEach { (name, priority) ->
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            CouiText(text = name, kind = CouiTextKind.ItemTitle,
+                                color = colors.title)
+                            CouiText(text = priority, kind = CouiTextKind.ItemSummary,
+                                color = colors.summary)
+                        }
+                    }
+                }
+                Footer(text = "Services actifs, alertes de sécurité et notifications non effaçables restent protégés.")
             }
         }
         Group(title = "Jeux") {
