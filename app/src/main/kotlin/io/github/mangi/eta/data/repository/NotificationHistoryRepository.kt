@@ -9,6 +9,8 @@ import io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback
 import io.github.mangi.eta.agent.device.notifications.NotificationPersonalization
 import io.github.mangi.eta.agent.device.notifications.NotificationTopics
 import io.github.mangi.eta.agent.device.notifications.NotificationGameIdentity
+import io.github.mangi.eta.agent.device.notifications.NotificationSocialPolicy
+import io.github.mangi.eta.agent.device.notifications.SocialNotificationKind
 import android.app.Notification
 import org.json.JSONArray
 import org.json.JSONObject
@@ -171,11 +173,17 @@ internal class NotificationHistoryRepository(context: Context) {
                     val pkg = cursor.getString(1)
                     val isGame = gamePackages.getOrPut(pkg) { NotificationGameIdentity.isGame(appContext, pkg) }
                     val savedTopic = cursor.getString(12) ?: "other"
-                    val fallbackTopic = if (isGame) NotificationTopics.classify(
-                        pkg, cursor.getString(10), cursor.getString(11),
+                    val socialKind = NotificationSocialPolicy.classify(pkg,
                         cursor.getString(2).orEmpty(), cursor.getString(3).orEmpty(),
-                        null, isGame = true,
-                    ) else savedTopic
+                        cursor.getString(11))
+                    val fallbackTopic = when {
+                        isGame -> NotificationTopics.classify(pkg, cursor.getString(10),
+                            cursor.getString(11), cursor.getString(2).orEmpty(),
+                            cursor.getString(3).orEmpty(), null, isGame = true)
+                        socialKind == SocialNotificationKind.DIRECT -> "messages"
+                        socialKind != SocialNotificationKind.UNKNOWN -> "social"
+                        else -> savedTopic
+                    }
                     add(RecentEntry(
                         key = cursor.getString(0),
                         packageName = cursor.getString(1),
