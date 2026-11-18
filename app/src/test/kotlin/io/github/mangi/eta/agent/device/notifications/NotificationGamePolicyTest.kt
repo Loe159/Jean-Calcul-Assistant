@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import android.content.Context
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -91,6 +92,21 @@ class NotificationGamePolicyTest {
             Notification.CATEGORY_MESSAGE, "Pierre", "Salut", null, isGame = true))
         assertEquals("other", NotificationTopics.classify("com.example.mail", null,
             null, "Brawl Stars", "Récompenses quotidiennes", null, isGame = false))
+    }
+
+    @Test fun settingsDefaultToTheValidatedChoicesAndCanBeChanged() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val prefs = context.getSharedPreferences("notification_local", Context.MODE_PRIVATE)
+        GameNotificationKind.entries.forEach { kind -> prefs.edit().remove("game_filter_${kind.name}").commit() }
+        assertEquals(configured, NotificationGameSettings.enabledKinds(context))
+        try {
+            NotificationGameSettings.setDelete(context, GameNotificationKind.EVENT, false)
+            assertEquals(configured - GameNotificationKind.EVENT,
+                NotificationGameSettings.enabledKinds(context))
+            assertFalse(NotificationGameSettings.enabledKinds(context).contains(GameNotificationKind.INVITATION))
+        } finally {
+            GameNotificationKind.entries.forEach { kind -> prefs.edit().remove("game_filter_${kind.name}").commit() }
+        }
     }
 
     @Test fun packageIdentityIsNotBasedOnSpoofableNotificationText() {

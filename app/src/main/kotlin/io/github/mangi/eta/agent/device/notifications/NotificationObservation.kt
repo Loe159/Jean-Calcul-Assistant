@@ -441,6 +441,8 @@ internal object NotificationObservation : NotificationBriefSource {
             NotificationHistoryRepository.DecisionState.PROTECTED,
         )
         val selected = active.asSequence()
+            // Games have their own cheap, explicit policy; never load ONNX for them.
+            .filterNot { NotificationGameIdentity.isGame(context, it.packageName) }
             .filter {
                 System.currentTimeMillis() - it.postTime in 0L..MAX_PENDING_MS
             }

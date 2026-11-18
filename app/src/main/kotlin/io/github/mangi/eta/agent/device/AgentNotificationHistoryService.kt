@@ -45,7 +45,10 @@ class AgentNotificationHistoryService : NotificationListenerService() {
         connectedService = this
         NotificationObservation.attachService(this)
         val active = activeNotifications.orEmpty()
-        active.forEach(::record)
+        active.forEach { sbn ->
+            // Game alerts use the deterministic fast path even after a service restart.
+            if (record(sbn)) handleGameNotification(sbn)
+        }
         // The old implementation left rows as RECEIVED when throttled and
         // silently lost work on process restart. Recover recent still-active
         // alerts, but never reprocess already classified or dismissed entries.
