@@ -193,7 +193,7 @@ class VisualScenarioTest {
                             device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
                         assertTrue("Settings card must not appear in briefing",
                             !device.hasObject(By.text("Notifications intelligentes")))
-                        assertTrue("Filtering status must be visible without activity",
+                        assertFalse("Filtering settings are not part of the briefing",
                             device.hasObject(By.text("Filtrage des notifications")))
                         assertTrue("Single halo ambient, no cycle labels",
                             !device.hasObject(By.textContains("Ambiance ")))
@@ -206,7 +206,7 @@ class VisualScenarioTest {
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
                         assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
                         assertTrue("Brief stays accessible on second opening",
-                            device.hasObject(By.text("Filtrage des notifications")))
+                            device.hasObject(By.text("Mon briefing")))
                     }
                     "brief_notifications" -> {
                         val repo = NotificationHistoryRepository(context)
@@ -230,7 +230,9 @@ class VisualScenarioTest {
                         // The group initially sits below the visible fold of the
                         // Now Brief dashboard. UIAutomator can find its clipped
                         // text but cannot safely tap it until it is on screen.
-                        val groupSelector = By.textContains("3 notifications")
+                        assertTrue("The non-urgent tier is visible",
+                            device.wait(Until.hasObject(By.text("À voir aujourd'hui")), 6000))
+                        val groupSelector = By.text("Autres")
                         var app = device.wait(Until.findObject(groupSelector), 10000)
                             ?: throw AssertionError("App grouping did not aggregate the two records")
                         var attempts = 0
@@ -248,8 +250,10 @@ class VisualScenarioTest {
                         assertTrue("App group must be fully within the interactive viewport",
                             app.visibleBounds.centerY() in
                                 device.displayHeight / 4..device.displayHeight * 3 / 4)
-                        app.click()
-                        // The expanded rows can also be below the fold on small devices.
+                        // NOW and TODAY groups are expanded by default.
+                        // Their rows may be beyond the visible screen, but must
+                        // never be collapsed by this test before scrolling.
+                        // Expanded rows can be below the fold on smaller devices.
                         attempts = 0
                         while (!device.hasObject(By.text("Test de sécurité")) && attempts++ < 8) {
                             device.swipe(
