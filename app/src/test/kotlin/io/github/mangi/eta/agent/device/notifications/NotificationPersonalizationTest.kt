@@ -47,7 +47,7 @@ class NotificationPersonalizationTest {
     @Test fun leboncoinBuyerMessagesAndAdsAreDifferentTopics() {
         assertEquals("messages", NotificationTopics.classify("fr.leboncoin", "chat",
             Notification.CATEGORY_MESSAGE, "L'acheteur vous a écrit", "Bonjour", "a personal message"))
-        assertEquals("promotions", NotificationTopics.classify("fr.leboncoin", "marketing",
+        assertEquals("shopping", NotificationTopics.classify("fr.leboncoin", "marketing",
             Notification.CATEGORY_PROMO, "Offre spéciale", "-20%", NotificationFilterPolicy.AD))
     }
 }
