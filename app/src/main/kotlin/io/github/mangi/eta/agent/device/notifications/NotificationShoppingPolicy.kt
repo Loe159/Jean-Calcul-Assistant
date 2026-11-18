@@ -71,7 +71,7 @@ internal object NotificationShoppingPolicy {
             "(?:annonce|article) correspondant [àa] (?:vos|tes) crit[èe]res)"
     )
     private val tracking = Regex(
-        "(?iu)(?:\b(?:commande|colis|livraison|exp[ée]dition|suivi|order|parcel|package|shipment|delivery)\b.{0,75}" +
+        "(?iu)(?:\\b(?:commande|colis|livraison|exp[ée]dition|suivi|order|parcel|package|shipment|delivery)\\b.{0,75}" +
             "(?:en pr[ée]paration|en cours d['’]acheminement|en route|exp[ée]di[ée]|livr[ée]|" +
             "pris en charge|en transit|en cours de livraison|en livraison|arriv[ée] au (?:d[ée]p[ôo]t|point relais)|" +
             "shipped|dispatched|out for delivery|in transit|delivered|ready for pickup|" +
