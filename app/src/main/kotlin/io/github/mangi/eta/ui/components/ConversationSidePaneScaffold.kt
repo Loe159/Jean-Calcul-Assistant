@@ -2,9 +2,13 @@ package io.github.mangi.eta.ui.components
 
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
-import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
@@ -27,11 +31,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.AbsoluteAlignment
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
@@ -39,6 +46,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
@@ -69,9 +78,12 @@ private object ConversationPaneMetrics {
 fun ConversationSidePaneScaffold(
     state: ConversationPaneUiState,
     visible: Boolean,
+    briefVisible: Boolean = false,
     backHandlerEnabled: Boolean,
     onOpen: () -> Unit,
     onDismiss: () -> Unit,
+    onOpenBrief: () -> Unit = {},
+    onDismissBrief: () -> Unit = {},
     onSearchChange: (String) -> Unit,
     onNewConversation: () -> Unit = {},
     onConversationSelected: (String) -> Unit,
@@ -88,6 +100,7 @@ fun ConversationSidePaneScaffold(
     modifier: Modifier = Modifier,
     activeModelLabel: String? = null,
     hasPermissionAttention: Boolean = false,
+    briefContent: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val sceneLifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
@@ -97,15 +110,21 @@ fun ConversationSidePaneScaffold(
         val density = LocalDensity.current
         val paneWidth = minOf(maxWidth * ConversationPaneMetrics.PaneWidthFraction, ConversationPaneMetrics.PaneMaxWidth)
         val paneWidthPx = with(density) { paneWidth.toPx() }
-        val anchors = remember(paneWidthPx) {
+        val fullWidthPx = with(density) { maxWidth.toPx() }
+        val anchors = remember(paneWidthPx, fullWidthPx) {
             DraggableAnchors {
                 ConversationPaneAnchor.Closed at 0f
                 ConversationPaneAnchor.Open at paneWidthPx
+                ConversationPaneAnchor.Brief at -fullWidthPx
             }
         }
         val paneDragState = remember {
             AnchoredDraggableState(
-                initialValue = if (visible) ConversationPaneAnchor.Open else ConversationPaneAnchor.Closed,
+                initialValue = when {
+                    briefVisible -> ConversationPaneAnchor.Brief
+                    visible -> ConversationPaneAnchor.Open
+                    else -> ConversationPaneAnchor.Closed
+                },
                 anchors = anchors,
             )
         }
@@ -124,34 +143,34 @@ fun ConversationSidePaneScaffold(
             animationSpec = settleAnimation,
         )
         val currentVisible by rememberUpdatedState(visible)
+        val currentBriefVisible by rememberUpdatedState(briefVisible)
         val currentOnOpen by rememberUpdatedState(onOpen)
         val currentOnDismiss by rememberUpdatedState(onDismiss)
+        val currentOnOpenBrief by rememberUpdatedState(onOpenBrief)
+        val currentOnDismissBrief by rememberUpdatedState(onDismissBrief)
         val hapticFeedback = LocalHapticFeedback.current
         val currentHapticFeedback by rememberUpdatedState(hapticFeedback)
         val dragInteractions = remember { MutableInteractionSource() }
         val isDragging by dragInteractions.collectIsDraggedAsState()
-        LaunchedEffect(dragInteractions) {
-            dragInteractions.interactions.collect { interaction ->
-                if (interaction is DragInteraction.Stop) {
-                    currentHapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                }
-            }
+        val isHistoryRevealed by remember(paneDragState) {
+            derivedStateOf { paneDragState.offset > 0.5f }
+        }
+        val isBriefRevealed by remember(paneDragState) {
+            derivedStateOf { paneDragState.offset < -0.5f }
         }
         val isRevealed by remember(paneDragState) {
-            derivedStateOf {
-                val offset = paneDragState.offset
-                !offset.isNaN() && offset > 0.5f
-            }
+            derivedStateOf { kotlin.math.abs(paneDragState.offset) > 0.5f }
         }
         val panelListState = rememberLazyListState()
         val scope = rememberCoroutineScope()
         val focusManager = LocalFocusManager.current
         val keyboard = LocalSoftwareKeyboardController.current
         val closePane: () -> Unit = {
-            currentHapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
             focusManager.clearFocus()
             keyboard?.hide()
-            if (currentVisible) {
+            if (currentBriefVisible) {
+                currentOnDismissBrief()
+            } else if (currentVisible) {
                 currentOnDismiss()
             } else {
                 scope.launch { paneDragState.animateTo(ConversationPaneAnchor.Closed, settleAnimation) }
@@ -168,20 +187,34 @@ fun ConversationSidePaneScaffold(
             paneDragState.updateAnchors(anchors)
         }
 
-        LaunchedEffect(visible, paneWidthPx) {
+        LaunchedEffect(visible, briefVisible, paneWidthPx, fullWidthPx) {
             if (!visible && isRevealed) {
                 focusManager.clearFocus()
                 keyboard?.hide()
             }
-            val target = if (visible) ConversationPaneAnchor.Open else ConversationPaneAnchor.Closed
+            val target = when {
+                briefVisible -> ConversationPaneAnchor.Brief
+                visible -> ConversationPaneAnchor.Open
+                else -> ConversationPaneAnchor.Closed
+            }
             if (paneDragState.targetValue != target || paneDragState.settledValue != target) {
                 paneDragState.animateTo(target, settleAnimation)
             }
         }
 
         LaunchedEffect(paneDragState) {
+            var previousAnchor = paneDragState.settledValue
             conversationPaneSettledValues(paneDragState) { isDragging }.collectLatest { settledValue ->
+                if (settledValue != previousAnchor) {
+                    // D4: haptic only when the page has actually snapped into place.
+                    currentHapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                }
+                previousAnchor = settledValue
                 val settledOpen = settledValue == ConversationPaneAnchor.Open
+                val settledBrief = settledValue == ConversationPaneAnchor.Brief
+                if (settledBrief != currentBriefVisible) {
+                    if (settledBrief) currentOnOpenBrief() else currentOnDismissBrief()
+                }
                 if (settledOpen != currentVisible) {
                     if (settledOpen) {
                         currentOnOpen()
@@ -228,7 +261,7 @@ fun ConversationSidePaneScaffold(
                         state = state,
                         width = paneWidth,
                         listState = panelListState,
-                        isRevealed = isRevealed,
+                        isRevealed = isHistoryRevealed,
                         activeModelLabel = activeModelLabel,
                         hasPermissionAttention = hasPermissionAttention,
                         onSearchChange = onSearchChange,
@@ -245,15 +278,33 @@ fun ConversationSidePaneScaffold(
                         onOpenCharacters = onOpenCharacters,
                         onOpenPermissions = onOpenPermissions,
                         modifier = Modifier
-                            .focusProperties { onEnter = { if (!isRevealed) cancelFocusChange() } }
+                            .focusProperties { onEnter = { if (!isHistoryRevealed) cancelFocusChange() } }
                             .focusGroup()
-                            .then(if (!isRevealed) Modifier.clearAndSetSemantics {} else Modifier),
+                            .then(if (!isHistoryRevealed) Modifier.clearAndSetSemantics {} else Modifier),
                     )
+                    Box(
+                        modifier = Modifier.fillMaxSize()
+                            .clipToBounds() // D1 parallax stays inside the full-screen Brief surface.
+                            .focusProperties { onEnter = { if (!isBriefRevealed) cancelFocusChange() } }
+                            .focusGroup()
+                            .then(if (!isBriefRevealed) Modifier.clearAndSetSemantics {} else Modifier),
+                    ) {
+                        Box(Modifier.fillMaxSize().graphicsLayer {
+                            // D1: content lags behind the horizontal spring by at most 28dp.
+                            val progress = briefPaneMotion(paneDragState.offset, fullWidthPx).progress
+                            translationX = -(1f - progress) * 18.dp.toPx()
+                        }) {
+                            briefContent()
+                        }
+                    }
                     Box(
                         modifier = Modifier.fillMaxSize()
                             .drawWithContent {
                                 drawContent()
-                                val progress = conversationPaneMotion(paneDragState.offset, paneWidthPx).progress
+                                val offset = paneDragState.offset
+                                val progress = if (offset < 0f) {
+                                    briefPaneMotion(offset, fullWidthPx).progress
+                                } else conversationPaneMotion(offset, paneWidthPx).progress
                                 drawRect(Color.Black, alpha = ConversationPaneMetrics.ChatScrimAlpha * progress)
                             }
                             .background(MiuixTheme.colorScheme.background),
@@ -284,15 +335,43 @@ fun ConversationSidePaneScaffold(
                 val panel = measurables[0].measure(
                     Constraints.fixed(paneWidthPx.roundToInt(), constraints.maxHeight),
                 )
-                val page = measurables[1].measure(
+                val brief = measurables[1].measure(
+                    Constraints.fixed(constraints.maxWidth, constraints.maxHeight),
+                )
+                val page = measurables[2].measure(
                     Constraints.fixed(constraints.maxWidth, constraints.maxHeight),
                 )
                 layout(constraints.maxWidth, constraints.maxHeight) {
-                    // 物理左侧是会话区；不随 RTL 改变两个槽位的关系。
-                    val motion = conversationPaneMotion(paneDragState.offset, paneWidthPx)
-                    val offset = motion.foregroundOffset.roundToInt()
-                    panel.placeWithLayer(offset - panel.width, 0)
-                    page.placeWithLayer(offset, 0)
+                    // Three physically adjacent surfaces: history | conversation | fullscreen brief.
+                    val offset = paneDragState.offset.takeIf { it.isFinite() }
+                        ?.coerceIn(-fullWidthPx, paneWidthPx) ?: 0f
+                    val x = offset.roundToInt()
+                    panel.placeWithLayer(x - panel.width, 0)
+                    // No exposed right-hand edge: the neighboring page is fully offscreen.
+                    brief.placeWithLayer(x + page.width, 0)
+                    page.placeWithLayer(x, 0)
+                }
+            }
+            // Only the unobtrusive lower pager remains visible on the chat.
+            val progress = briefPaneMotion(paneDragState.offset, fullWidthPx).progress
+            if (!currentVisible && progress < 0.98f) {
+                Row(
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                        .padding(bottom = 140.dp)
+                        .graphicsLayer { alpha = (1f - progress).coerceIn(0f, 1f) }
+                        .semantics {
+                            contentDescription = if (progress < 0.5f) "Chat, page 1 sur 2"
+                                else "Briefing, page 2 sur 2"
+                        },
+                ) {
+                    Box(Modifier.padding(horizontal = 3.dp)
+                        .width((18f - 10f * progress).dp).height(4.dp)
+                        .clip(CircleShape).background(MiuixTheme.colorScheme.onBackground
+                            .copy(alpha = 0.62f - progress * 0.35f)))
+                    Box(Modifier.padding(horizontal = 3.dp)
+                        .width((8f + 10f * progress).dp).height(4.dp)
+                        .clip(CircleShape).background(MiuixTheme.colorScheme.onBackground
+                            .copy(alpha = 0.25f + progress * 0.42f)))
                 }
             }
         }

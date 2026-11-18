@@ -50,8 +50,10 @@ class VisualScenarioTest {
                         assertTrue("Hiding the keyboard must keep the conversation visible",
                             device.wait(Until.hasObject(By.textContains("Synthetic local reply")), 10000))
                         if (scenario == "reset") {
-                            device.findObject(By.desc(context.getString(R.string.action_more))).click()
-                            device.wait(Until.findObject(By.text(context.getString(R.string.action_new_conversation))), 10000).click()
+                            val newChat = device.wait(
+                                Until.findObject(By.desc(context.getString(R.string.action_new_conversation))), 10000,
+                            ) ?: throw AssertionError("New conversation button is not accessible")
+                            newChat.click()
                             assertNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 10000))
                             assertTrue(device.wait(Until.gone(By.textContains("Synthetic local reply")), 10000))
                         }
@@ -131,9 +133,39 @@ class VisualScenarioTest {
                                 device.wait(Until.hasObject(By.text(context.getString(R.string.appearance_theme_mode))), 10000))
                         }
                     }
+                    "brief" -> {
+                        // Discovery controls are present before swiping.
+                        assertTrue("Page indicator exposes the second page",
+                            device.wait(Until.hasObject(By.desc("Chat, page 1 sur 2")), 8000))
+                        assertTrue("No right-edge peek affordance",
+                            !device.hasObject(By.desc("Ouvrir mon briefing, page à droite")))
+                        // Native mirrored drag: home -> left reveals the full-screen COUI briefing.
+                        val midY = device.displayHeight / 2
+                        device.swipe(device.displayWidth * 4 / 5, midY,
+                            device.displayWidth / 6, midY, 30)
+                        assertTrue("Left swipe must reveal Now Brief",
+                            device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
+                        assertTrue("Settings card must not appear in briefing",
+                            !device.hasObject(By.text("Notifications intelligentes")))
+                        assertTrue(device.hasObject(By.text("Votre tranquillité")))
+                        assertTrue("Single halo ambient, no cycle labels",
+                            !device.hasObject(By.textContains("Ambiance ")))
+                        // Return to the conversation with the same spring gesture.
+                        device.swipe(device.displayWidth / 6, midY,
+                            device.displayWidth * 4 / 5, midY, 30)
+                        assertTrue("Right swipe must return to conversation",
+                            device.wait(Until.gone(By.text("Mon briefing")), 12000))
+                        // Re-open using the accessible button; screenshot shows the briefing.
+                        device.findObject(By.desc("Ouvrir mon briefing")).click()
+                        assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
+                        assertTrue("Brief stays accessible on second opening",
+                            device.hasObject(By.text("Votre tranquillité")))
+                    }
                     "menu" -> {
-                        device.findObject(By.desc(context.getString(R.string.action_more))).click()
-                        assertTrue(device.wait(Until.hasObject(By.text(context.getString(R.string.action_new_conversation))), 10000))
+                        assertTrue("New conversation is a direct toolbar action",
+                            device.hasObject(By.desc(context.getString(R.string.action_new_conversation))))
+                        assertTrue("Three-dot overflow is absent",
+                            !device.hasObject(By.desc(context.getString(R.string.action_more))))
                     }
                     "keyboard" -> {
                         device.findObject(By.clazz("android.widget.EditText")).apply { click(); text = "Synthetic multiline draft\nLine two" }
