@@ -147,13 +147,16 @@ class AgentNotificationHistoryService : NotificationListenerService() {
         if (current.packageName != original.packageName ||
             current.postTime != original.postTime ||
             NotificationProtection.fingerprint(current) != fingerprint ||
-            !NotificationProtection.safe(this, current, allowRoutineBotEmail = !gameRule,
-                allowSocialSuggestion = !gameRule)) return false
-        // Never remove an urgent/alerting notification even if its NLI label is "advertisement".
+            (gameRule && !NotificationProtection.safe(this, current))) return false
+        // Channel IMPORTANCE_HIGH is not the same as personal urgency: some
+        // promotions use that channel. The tier-aware guard below determines
+        // whether a user-relevant notification must stay; keep the old extra
+        // high-priority guard for the separate game-specific path.
         val ranking = Ranking()
         val rankAvailable = runCatching { currentRanking?.getRanking(current.key, ranking) == true }
             .getOrDefault(false)
-        if (!rankAvailable || ranking.importance >= NotificationManager.IMPORTANCE_HIGH) return false
+        if (!rankAvailable ||
+            (gameRule && ranking.importance >= NotificationManager.IMPORTANCE_HIGH)) return false
 
         val settings = NotificationFilterSettings.load(this)
         val gameKind: GameNotificationKind?
@@ -200,6 +203,23 @@ class AgentNotificationHistoryService : NotificationListenerService() {
                 settings, NotificationPersonalization.safeDecision(base, preference, label, settings),
                 LocalTime.now().hour,
             ).decision
+        }
+        if (newDecision != desired) return false
+        if (!gameRule) {
+            val n = current.notification
+            val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
+            val content = n.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
+            val label = scores.firstOrNull()?.first
+            val topic = repository.learnedTopic(current.packageName, n.channelId, label,
+                title, content) ?: NotificationTopics.classify(current.packageName, n.channelId,
+                n.category, title, content, label)
+            val interest = if (NotificationAdaptiveSettings.enabled(this))
+                repository.interest(current.packageName, n.channelId, label, title, content,
+                    NotificationAdaptiveSettings.minExamples(this))
+            else NotificationPersonalization.Interest.NEUTRAL
+            if (!NotificationProtection.safeForBrief(this, current,
+                NotificationPriorityInput(current.packageName, title, content,
+                    n.channelId, n.category, topic, label, personalInterest = interest))) return false
         }
         if (newDecision != desired) return false
 

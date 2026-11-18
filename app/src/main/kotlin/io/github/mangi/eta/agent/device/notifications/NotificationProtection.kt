@@ -79,6 +79,56 @@ internal object NotificationProtection {
         return true
     }
 
+    /** Priority-tier aware clearance, rather than an unconditional app/category block.
+     * Calls, conversations, authentication and non-clearable service notifications
+     * are always retained, independently of model output and topic overrides.
+     */
+    fun safeForBrief(context: Context, sbn: StatusBarNotification,
+                     input: NotificationPriorityInput): Boolean {
+        if (NotificationPriorityPolicy.classify(input) == NotificationPriority.NOW) return false
+        val n = sbn.notification
+        val pkg = sbn.packageName
+        if (!sbn.isClearable || pkg == context.packageName ||
+            n.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE or
+                Notification.FLAG_GROUP_SUMMARY or Notification.FLAG_NO_CLEAR) != 0 ||
+            n.shortcutId != null ||
+            n.extras.containsKey(Notification.EXTRA_MESSAGES) ||
+            n.extras.containsKey(Notification.EXTRA_PEOPLE_LIST) ||
+            n.actions?.any { it.remoteInputs?.isNotEmpty() == true } == true
+        ) return false
+        if (n.category in setOf(Notification.CATEGORY_CALL, Notification.CATEGORY_MISSED_CALL,
+                Notification.CATEGORY_ALARM, Notification.CATEGORY_EVENT,
+                Notification.CATEGORY_REMINDER, Notification.CATEGORY_TRANSPORT,
+                Notification.CATEGORY_ERROR, Notification.CATEGORY_PROGRESS,
+                Notification.CATEGORY_NAVIGATION, Notification.CATEGORY_LOCATION_SHARING)) return false
+        val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
+        val text = n.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
+        val bigText = n.extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString().orEmpty()
+        if ((title + text).trim().length < 8 ||
+            sensitive.containsMatchIn("$title $text $bigText")) return false
+        // Messages may be marked CATEGORY_MESSAGE by Snapchat for recommendations.
+        // That narrow case is clearable, but real conversations never are.
+        if (n.category == Notification.CATEGORY_MESSAGE &&
+            !(pkg in setOf("com.snapchat.android", "com.linkedin.android", "com.instagram.android") &&
+              NotificationPriorityPolicy.recognizedSocialSuggestion(title, text))) return false
+        val appInfo = runCatching { context.packageManager.getApplicationInfo(pkg, 0) }
+            .getOrNull() ?: return false
+        val privileged = protectedPackages.containsMatchIn(pkg) ||
+            appInfo.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+        if (privileged) {
+            val email = pkg in setOf("com.microsoft.office.outlook", "com.google.android.gm") &&
+                n.category == Notification.CATEGORY_EMAIL
+            // No blanket removal of all privileged Android or Samsung notifications.
+            // Only an unambiguous software update, or a non-urgent email, may pass.
+            val update = NotificationPriorityPolicy.isRoutineSystemUpdate(title, text) &&
+                n.category in setOf(Notification.CATEGORY_SYSTEM, Notification.CATEGORY_SERVICE, null)
+            if (!email && !update) return false
+        }
+        // Clearable third-party service updates are eligible. Privileged Android
+        // and Samsung system packages still require a known, routine update.
+        return true
+    }
+
     fun text(sbn: StatusBarNotification): String {
         val extras = sbn.notification.extras
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()

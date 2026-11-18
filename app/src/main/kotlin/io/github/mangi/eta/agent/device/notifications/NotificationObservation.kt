@@ -289,11 +289,6 @@ internal object NotificationObservation : NotificationBriefSource {
         }
         val fingerprint = NotificationProtection.fingerprint(next)
         val body = NotificationProtection.text(snapshot)
-        val canRemove = live != null && (
-            NotificationProtection.safe(app, live) ||
-                NotificationProtection.safe(app, live, allowRoutineBotEmail = true,
-                    allowSocialSuggestion = true)
-        )
         executor.execute {
             try {
                 val config = NotificationFilterSettings.load(app)
@@ -337,18 +332,20 @@ internal object NotificationObservation : NotificationBriefSource {
                     NotificationPersonalization.safeDecision(evaluation, preference, label, config),
                     LocalTime.now().hour)
                 val decision = adapted.decision
+                val canRemove = live != null && NotificationProtection.safeForBrief(app, live, priority)
                 val state = when {
-                    !canRemove -> NotificationHistoryRepository.DecisionState.ANALYZED_PROTECTED
                     decision == NotificationFilterDecision.KEEP ->
                         NotificationHistoryRepository.DecisionState.KEPT
                     decision == NotificationFilterDecision.OBSERVE ->
                         NotificationHistoryRepository.DecisionState.OBSERVED
+                    !canRemove -> NotificationHistoryRepository.DecisionState.ANALYZED_PROTECTED
                     else -> NotificationHistoryRepository.DecisionState.PROPOSED
                 }
                 if (NotificationHistoryRepository(app).updateDecision(
                     next.key, next.postTime, state,
                     result.firstOrNull()?.first, result.firstOrNull()?.second,
-                    reason = if (!canRemove) "Protection Android ou notification plus active" else adapted.reason,
+                    reason = if (!canRemove && decision != NotificationFilterDecision.KEEP)
+                        "Conservée : limite Android ou protection d'une alerte" else adapted.reason,
                     topic = topic, personalInterest = preference.name,
                 )) NotificationActivityFeed.notifyChanged()
                 synchronized(this) {

@@ -53,7 +53,7 @@ class NotificationPriorityPolicyTest {
                 game = true, topic = "games")))
     }
 
-    @Test fun systemUpdatesAreNonUrgentAndNewsArePreserved() {
+    @Test fun systemUpdatesAndDailyNewsAreAutomaticallyRemovedFromAndroid() {
         val update = NotificationPriorityInput("com.android.updater", "Redémarrage de votre téléphone",
             "Màj logicielle disponible", topic = "system")
         assertEquals(NotificationPriority.TODAY, NotificationPriorityPolicy.classify(update))
@@ -61,10 +61,42 @@ class NotificationPriorityPolicyTest {
             NotificationPriorityPolicy.automaticAction(update, config, base, 14).decision)
         val news = NotificationPriorityInput("com.example.news", "Actualités", "Nouveauté satellite", topic = "news")
         assertEquals(NotificationPriority.TODAY, NotificationPriorityPolicy.classify(news))
-        assertEquals(NotificationFilterDecision.KEEP,
+        assertEquals(NotificationFilterDecision.DISMISS,
             NotificationPriorityPolicy.automaticAction(news, config, base, 14).decision)
         assertEquals(NotificationFilterDecision.KEEP,
             NotificationPriorityPolicy.automaticAction(update, config.copy(mode = NotificationFilterMode.OFF), base, 14).decision)
+    }
+
+    @Test fun afternoonMessagesAndNonUrgentEmailsAreBriefOnlyEvenWhenNliKeepsThem() {
+        val items = listOf(
+            NotificationPriorityInput("com.microsoft.office.outlook", "FOUCAULT Adeline",
+                "Agile Laval s'installe demain", androidCategory = Notification.CATEGORY_EMAIL, topic = "work"),
+            NotificationPriorityInput("com.example.news", "Satellite", "Actualités de la semaine", topic = "news"),
+            NotificationPriorityInput("com.example.work", "Synchronisation terminée",
+                "Sauvegarde achevée", topic = "system"),
+            NotificationPriorityInput("com.example.unknown", "Information", "Simple message non urgent"),
+        )
+        items.forEach { input ->
+            assertEquals("Item must be in deferred tier: ${input.title}", NotificationPriority.TODAY,
+                NotificationPriorityPolicy.classify(input))
+            assertEquals("Item should be deleted from the shade: ${input.title}",
+                NotificationFilterDecision.DISMISS,
+                NotificationPriorityPolicy.automaticAction(input, config, base, 15).decision)
+        }
+    }
+
+    @Test fun explicitLearningAndGlobalFilterOverridesAreHonoured() {
+        val input = NotificationPriorityInput("com.example.work", "Rapport hebdo", "Synthèse disponible")
+        assertEquals(NotificationFilterDecision.KEEP,
+            NotificationPriorityPolicy.automaticAction(input,
+                config.copy(mode = NotificationFilterMode.OFF), base, 15).decision)
+        assertEquals(NotificationFilterDecision.KEEP,
+            NotificationPriorityPolicy.automaticAction(input,
+                config.copy(onlyQuietHours = true, quietFrom = 22, quietUntil = 7),
+                base, 15).decision)
+        assertEquals(NotificationFilterDecision.KEEP,
+            NotificationPriorityPolicy.automaticAction(input.copy(personalInterest =
+                NotificationPersonalization.Interest.WANTED), config, base, 15).decision)
     }
 
     @Test fun manualPreferenceNeverDeletesAnImportantItem() {

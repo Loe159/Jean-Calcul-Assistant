@@ -63,6 +63,9 @@ internal object NotificationPriorityPolicy {
             (input.packageName.contains("github", true) && title.endsWith("[bot]"))
     }
 
+    fun isRoutineSystemUpdate(title: String, body: String): Boolean =
+        systemUpdates.containsMatchIn("$title $body")
+
     fun recognizedSocialSuggestion(title: String, body: String): Boolean =
         Regex("(?iu)spotlight|suggestion d['’]ami|suggested friend|" +
             "anniversaire professionnel|new recommended post|d[ée]couvrez les contenus de spotlight")
@@ -91,7 +94,8 @@ internal object NotificationPriorityPolicy {
                 GameNotificationKind.UNKNOWN -> NotificationPriority.TODAY
             }
         }
-        if (security.containsMatchIn(text) || input.topic in setOf("security", "finance") ||
+        if (security.containsMatchIn(text) || input.predictedLabel == "a personal message" ||
+            input.topic in setOf("security", "finance") ||
             input.androidCategory in setOf(Notification.CATEGORY_CALL,
                 Notification.CATEGORY_MISSED_CALL, Notification.CATEGORY_ALARM,
                 Notification.CATEGORY_EVENT, Notification.CATEGORY_REMINDER) ||
@@ -117,8 +121,9 @@ internal object NotificationPriorityPolicy {
         return NotificationPriority.TODAY
     }
 
-    /** Deliberate deletion only for recognized routine bot noise and explicit promotional suggestions.
-     * The Android listener still checks package, importance, fingerprint and safety.
+    /** After classification, the user's policy is explicit: NOW stays on Android,
+     * TODAY and LOW are removed from the shade and retained in the private Brief.
+     * Platform restrictions and content safety are checked separately at action time.
      */
     fun automaticAction(
         input: NotificationPriorityInput,
@@ -126,9 +131,8 @@ internal object NotificationPriorityPolicy {
         base: NotificationFilterEvaluation,
         localHour: Int,
     ): NotificationFilterEvaluation {
-        val tier = classify(input)
         if (config.mode == NotificationFilterMode.OFF) return base
-        if (tier == NotificationPriority.NOW) {
+        if (classify(input) == NotificationPriority.NOW) {
             return NotificationFilterEvaluation(NotificationFilterDecision.KEEP, "À traiter maintenant")
         }
         if (input.personalInterest == NotificationPersonalization.Interest.WANTED) {
@@ -136,29 +140,13 @@ internal object NotificationPriorityPolicy {
         }
         if (config.mode != NotificationFilterMode.PERSONALIZED ||
             config.onlyQuietHours && !config.inQuietHours(localHour)) return base
-        // An email from a human and news explicitly marked useful are never dismissed here.
-        if (githubBot(input) && tier == NotificationPriority.LOW) {
-            return NotificationFilterEvaluation(NotificationFilterDecision.DISMISS,
-                "GitHub : aucune intervention nécessaire")
+        val reason = when (classify(input)) {
+            NotificationPriority.TODAY -> "Conservée dans le Brief pour aujourd'hui"
+            NotificationPriority.LOW -> "Sans importance · conservée dans le Brief"
+            NotificationPriority.NOW -> return NotificationFilterEvaluation(
+                NotificationFilterDecision.KEEP, "À traiter maintenant")
         }
-        if (tier == NotificationPriority.LOW && marketing.containsMatchIn("${input.title} ${input.body}") &&
-            (input.androidCategory !in setOf(Notification.CATEGORY_MESSAGE, Notification.CATEGORY_CALL,
-                Notification.CATEGORY_EMAIL, Notification.CATEGORY_EVENT) ||
-                (input.androidCategory == Notification.CATEGORY_MESSAGE &&
-                    recognizedSocialSuggestion(input.title, input.body) && input.topic == "social"))) {
-            return NotificationFilterEvaluation(NotificationFilterDecision.DISMISS,
-                "Suggestion ou promotion non souhaitée")
-        }
-        if (tier == NotificationPriority.TODAY && (
-                systemUpdates.containsMatchIn("${input.title} ${input.body}") ||
-                (input.predictedLabel == "a useful service update" &&
-                    input.topic in setOf("system", "development", "work") &&
-                    input.androidCategory !in setOf(Notification.CATEGORY_MESSAGE,
-                        Notification.CATEGORY_EMAIL, Notification.CATEGORY_EVENT)))) {
-            return NotificationFilterEvaluation(NotificationFilterDecision.DISMISS,
-                "Mise à jour reportée dans le briefing")
-        }
-        // News and ambiguous notifications remain on Android until explicitly classified.
-        return base
+        return NotificationFilterEvaluation(NotificationFilterDecision.DISMISS, reason)
     }
+
 }
