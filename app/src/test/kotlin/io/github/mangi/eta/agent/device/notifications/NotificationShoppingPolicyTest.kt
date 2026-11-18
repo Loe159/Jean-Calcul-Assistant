@@ -31,7 +31,7 @@ class NotificationShoppingPolicyTest {
                 null, ShoppingNotificationKind.ORDER_TRACKING, NotificationPriority.TODAY),
             Fixture("com.laposte.laposte", "La Poste", "Votre colis est en cours de livraison",
                 null, ShoppingNotificationKind.ORDER_TRACKING, NotificationPriority.TODAY),
-            Fixture("fr.leboncoin", "Publicité", "Profitez d'une offre spéciale !",
+            Fixture("fr.leboncoin", "Leboncoin", "Profitez d'une offre spéciale !",
                 Notification.CATEGORY_MESSAGE, ShoppingNotificationKind.ADVERTISING, NotificationPriority.LOW),
             Fixture("fr.leboncoin", "À découvrir", "Annonces recommandées pour vous",
                 null, ShoppingNotificationKind.OFF_TOPIC_RECOMMENDATION, NotificationPriority.LOW),
