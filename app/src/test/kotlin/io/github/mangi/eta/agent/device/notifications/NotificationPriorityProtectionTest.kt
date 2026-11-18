@@ -4,7 +4,7 @@ import android.app.Notification
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
-import android.os.UserHandle
+import android.os.Process
 import android.service.notification.StatusBarNotification
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -31,8 +31,8 @@ class NotificationPriorityProtectionTest {
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setCategory(category)
             .build().apply { this.flags = flags }
-        return StatusBarNotification(pkg, pkg, 17, "brief-test", 1000, 0,
-            notification, UserHandle.of(0), null, System.currentTimeMillis())
+        return StatusBarNotification(pkg, pkg, 17, "brief-test", 1000, 0, 0,
+            notification, Process.myUserHandle(), System.currentTimeMillis())
     }
 
     private fun canDismiss(sbn: StatusBarNotification, topic: String): Boolean {
