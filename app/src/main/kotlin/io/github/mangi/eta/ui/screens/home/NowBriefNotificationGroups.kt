@@ -21,6 +21,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Text as MaterialText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ExpandLess
@@ -59,6 +62,9 @@ import com.itos.coui.text.Text as CouiText
 import com.itos.coui.theme.CouiTheme
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterPolicy
+import io.github.mangi.eta.agent.device.notifications.NotificationTopics
+import io.github.mangi.eta.agent.device.notifications.NotificationAdaptiveSettings
+import io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback
 import io.github.mangi.eta.ui.components.coui.CouiIcon
 import io.github.mangi.eta.ui.components.coui.CouiButton
 import java.time.Instant
@@ -73,6 +79,7 @@ import kotlinx.coroutines.launch
 /** Group by package, retaining descending post time within each group. */
 internal data class BriefNotificationGroup(
     val packageName: String,
+    val category: String,
     val entries: List<NotificationHistoryRepository.RecentEntry>,
 )
 
@@ -80,14 +87,17 @@ internal fun groupBriefNotifications(
     entries: List<NotificationHistoryRepository.RecentEntry>,
 ): List<BriefNotificationGroup> = entries
     .sortedByDescending { it.postedAt }
-    .groupBy { it.packageName }
-    .map { (pkg, list) -> BriefNotificationGroup(pkg, list) }
+    .groupBy { it.userTopic ?: it.topic }
+    .map { (topic, list) -> BriefNotificationGroup(list.first().packageName, topic, list) }
     .sortedByDescending { it.entries.first().postedAt }
 
 @Composable
 internal fun BriefNotificationAppCard(
     group: BriefNotificationGroup,
     onDismiss: (List<String>) -> Unit,
+    onFeedback: (NotificationHistoryRepository.RecentEntry, NotificationUserFeedback) -> Unit = { _, _ -> },
+    onCategoryChange: (NotificationHistoryRepository.RecentEntry, String) -> Unit = { _, _ -> },
+    onOpen: (NotificationHistoryRepository.RecentEntry) -> Unit = {},
     onTouchChange: (Boolean) -> Unit = {},
 ) {
     val dark = CouiTheme.isDark
@@ -99,8 +109,9 @@ internal fun BriefNotificationAppCard(
             pm.getApplicationLabel(pm.getApplicationInfo(group.packageName, 0)).toString()
         }.getOrDefault(group.packageName.substringAfterLast('.'))
     }
-    var expanded by remember(group.packageName) { mutableStateOf(false) }
-    var visibleCount by remember(group.packageName) { mutableIntStateOf(20) }
+    val title = NotificationAdaptiveSettings.title(context, group.category)
+    var expanded by remember(group.category) { mutableStateOf(false) }
+    var visibleCount by remember(group.category) { mutableIntStateOf(20) }
     val source = remember { MutableInteractionSource() }
     val headerMotion = rememberCouiTouchMotion(expanded)
     val removed = group.entries.count { it.state == NotificationHistoryRepository.DecisionState.DISMISSED }
@@ -115,7 +126,7 @@ internal fun BriefNotificationAppCard(
         if (pending > 0) add("$pending à vérifier")
     }.joinToString(" · ")
     BriefDismissStretch(
-        identity = group.packageName,
+        identity = group.category,
         onDismiss = { onDismiss(group.entries.map { it.key }) },
         onTouchChange = onTouchChange,
         swipeEnabled = !expanded, // When expanded, only individual rows can be dismissed.
@@ -148,7 +159,7 @@ internal fun BriefNotificationAppCard(
                     .clickable(
                         interactionSource = source, indication = null,
                         role = Role.Button,
-                        onClickLabel = if (expanded) "Replier $appName" else "Déplier $appName",
+                        onClickLabel = if (expanded) "Replier $title" else "Déplier $title",
                     ) { expanded = !expanded }
                     .padding(horizontal = 15.dp, vertical = 15.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -156,10 +167,10 @@ internal fun BriefNotificationAppCard(
             ) {
                 BriefApplicationIcon(group.packageName)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    CouiText(text = appName, kind = CouiTextKind.ItemTitle, color = colors.title, maxLines = 1)
+                    CouiText(text = title, kind = CouiTextKind.ItemTitle, color = colors.title, maxLines = 1)
                     CouiText(
                         text = "${group.entries.size} notification${if (group.entries.size > 1) "s" else ""} · " +
-                            group.entries.first().title.ifBlank { "Activité récente" },
+                            appName + " · " + group.entries.first().title.ifBlank { "Activité récente" },
                         kind = CouiTextKind.ItemSummary, color = colors.summary,
                         maxLines = 2, overflow = TextOverflow.Ellipsis,
                     )
@@ -181,6 +192,7 @@ internal fun BriefNotificationAppCard(
                     group.entries.take(visibleCount).forEach { entry ->
                         val itemSource = remember(entry.key) { MutableInteractionSource() }
                         var showFullText by remember(entry.key) { mutableStateOf(false) }
+                        var showCategories by remember(entry.key) { mutableStateOf(false) }
                         BriefDismissStretch(
                             identity = entry.key,
                             onDismiss = { onDismiss(listOf(entry.key)) },
@@ -273,6 +285,40 @@ internal fun BriefNotificationAppCard(
                                                 .atZone(ZoneId.systemDefault()))
                                     }
                                     CouiText(text = whenText, kind = CouiTextKind.GroupFooter, color = colors.summary)
+                                    if (showFullText) {
+                                        CouiText(
+                                            text = "Catégorie : ${NotificationAdaptiveSettings.title(context, entry.userTopic ?: entry.topic)}" +
+                                                " · intérêt : ${entry.personalInterest ?: "non appris"}",
+                                            kind = CouiTextKind.GroupFooter, color = colors.summary,
+                                        )
+                                        Box {
+                                            CouiButton(text = "Changer la catégorie", onClick = { showCategories = true })
+                                            DropdownMenu(expanded = showCategories, onDismissRequest = { showCategories = false }) {
+                                                NotificationTopics.titles.keys.forEach { topic ->
+                                                    DropdownMenuItem(
+                                                        text = { MaterialText(NotificationAdaptiveSettings.title(context, topic)) },
+                                                        onClick = { showCategories = false; onCategoryChange(entry, topic) },
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            CouiButton(text = "Intéressante", modifier = Modifier.weight(1f), onClick = {
+                                                onFeedback(entry, NotificationUserFeedback.INTERESTING)
+                                            })
+                                            CouiButton(text = "Indésirable", modifier = Modifier.weight(1f), onClick = {
+                                                onFeedback(entry, NotificationUserFeedback.UNWANTED)
+                                            })
+                                        }
+                                        CouiButton(text = "Ouvrir l'application", onClick = { onOpen(entry) })
+                                        if (entry.state == NotificationHistoryRepository.DecisionState.DISMISSED ||
+                                            entry.state == NotificationHistoryRepository.DecisionState.SNOOZED_1H ||
+                                            entry.state == NotificationHistoryRepository.DecisionState.SNOOZED_24H) {
+                                            CouiButton(text = "Suppression incorrecte", onClick = {
+                                                onFeedback(entry, NotificationUserFeedback.WRONG_REMOVAL)
+                                            })
+                                        }
+                                    }
                                 }
                                 Spacer(Modifier.width(6.dp))
                                 Box(

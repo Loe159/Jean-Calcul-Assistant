@@ -14,6 +14,8 @@ import io.github.mangi.eta.agent.device.notifications.NotificationFilterDecision
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterPolicy
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterSettings
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterCandidate
+import io.github.mangi.eta.agent.device.notifications.NotificationAdaptiveSettings
+import io.github.mangi.eta.agent.device.notifications.NotificationPersonalization
 import android.os.Handler
 import android.os.Looper
 import java.time.LocalTime
@@ -30,8 +32,7 @@ class AgentNotificationHistoryService : NotificationListenerService() {
 
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        record(sbn)
-        NotificationObservation.observe(this, sbn)
+        if (record(sbn)) NotificationObservation.observe(this, sbn)
     }
 
     override fun onListenerConnected() {
@@ -105,9 +106,16 @@ class AgentNotificationHistoryService : NotificationListenerService() {
         if (!rankAvailable || ranking.importance >= NotificationManager.IMPORTANCE_HIGH) return false
 
         val settings = NotificationFilterSettings.load(this)
-        val newDecision = NotificationFilterPolicy.decide(settings, NotificationFilterCandidate(
+        val base = NotificationFilterPolicy.evaluate(settings, NotificationFilterCandidate(
             app = current.packageName, safe = true, scores = scores, localHour = LocalTime.now().hour,
         ))
+        val preference = if (NotificationAdaptiveSettings.enabled(this))
+            repository.interest(current.packageName, current.notification.channelId,
+                scores.first().first, current.notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty(),
+                current.notification.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty(),
+                NotificationAdaptiveSettings.minExamples(this))
+        else NotificationPersonalization.Interest.NEUTRAL
+        val newDecision = NotificationPersonalization.safeDecision(base, preference, scores.first().first, settings).decision
         if (newDecision != desired) return false
 
         val token = original.key + ":" + fingerprint
@@ -132,17 +140,21 @@ class AgentNotificationHistoryService : NotificationListenerService() {
         }
     }
 
-    private fun record(sbn: StatusBarNotification) {
+    private fun record(sbn: StatusBarNotification): Boolean {
         val extras = sbn.notification.extras
-        repository.record(
+        val changed = repository.record(
             key = sbn.key,
             packageName = sbn.packageName,
             title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString(),
             text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString(),
             subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString(),
             postedAt = sbn.postTime,
+            channelId = sbn.notification.channelId,
+            androidCategory = sbn.notification.category,
+            fingerprint = NotificationProtection.fingerprint(sbn),
         )
-        NotificationActivityFeed.notifyChanged()
+        if (changed) NotificationActivityFeed.notifyChanged()
+        return changed
     }
 
     companion object {

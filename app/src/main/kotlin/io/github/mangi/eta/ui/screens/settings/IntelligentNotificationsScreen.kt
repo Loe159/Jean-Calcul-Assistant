@@ -25,6 +25,10 @@ import com.itos.coui.layout.Group
 import io.github.mangi.eta.agent.device.AgentNotificationHistoryService
 import io.github.mangi.eta.agent.device.notifications.LocalNotificationModel
 import io.github.mangi.eta.agent.device.notifications.NotificationObservation
+import io.github.mangi.eta.agent.device.notifications.NotificationAdaptiveSettings
+import io.github.mangi.eta.agent.device.notifications.NotificationTopics
+import io.github.mangi.eta.data.repository.NotificationHistoryRepository
+import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterSettings
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterConfig
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterMode
@@ -81,6 +85,12 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
     var status by remember { mutableStateOf("") }
     var config by remember { mutableStateOf(NotificationFilterSettings.load(context)) }
     var showArchives by rememberSaveable { mutableStateOf(false) }
+    var learningEnabled by remember { mutableStateOf(NotificationAdaptiveSettings.enabled(context)) }
+    var minLearning by remember { mutableStateOf(NotificationAdaptiveSettings.minExamples(context).toFloat()) }
+    var learningStats by remember { mutableStateOf("Consulter les statistiques") }
+    var editCategory by remember { mutableStateOf<String?>(null) }
+    var categoryName by remember { mutableStateOf("") }
+    var confirmReset by remember { mutableStateOf(false) }
     var showAdvancedRules by remember { mutableStateOf(false) }
     var expandedRule by remember { mutableStateOf<String?>(null) }
     var editedLabel by remember { mutableStateOf("") }
@@ -185,6 +195,76 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
             )
         }
         Footer(text = "Les textes saisis et les notifications ne sont jamais envoyés à un serveur. Le réseau est utilisé uniquement pour installer les fichiers du modèle.")
+        Group(title = "Apprentissage personnalisé · hors ligne") {
+            CouiSwitchPreference(
+                title = "Apprentissage adaptatif",
+                summary = "Utilise uniquement vos actions réelles ; aucune notification n'est envoyée sur Internet",
+                checked = learningEnabled,
+                onCheckedChange = { learningEnabled = it; NotificationAdaptiveSettings.setEnabled(context, it) },
+            )
+            CouiSliderPreference(
+                title = "Exemples minimum par préférence",
+                value = minLearning,
+                valueText = "${minLearning.roundToInt()} retours",
+                valueRange = 3f..20f,
+                onValueChange = { minLearning = it },
+                onValueChangeFinished = {
+                    val minimum = minLearning.roundToInt().coerceIn(3, 20)
+                    NotificationAdaptiveSettings.setMinExamples(context, minimum)
+                    minLearning = minimum.toFloat()
+                },
+            )
+            CouiPreference(
+                title = "Statistiques d'apprentissage",
+                summary = learningStats,
+                onClick = { action {
+                    learningStats = withContext(Dispatchers.IO) { NotificationHistoryRepository(context).feedbackStats() }
+                } },
+            )
+            CouiPreference(
+                title = "Catégories du briefing",
+                summary = "Renommer les catégories locales, sans changer le modèle ONNX",
+                showChevron = false,
+            )
+            NotificationTopics.titles.forEach { (id, title) ->
+                CouiPreference(
+                    title = NotificationAdaptiveSettings.title(context, id),
+                    summary = "Catégorie : $id",
+                    onClick = { editCategory = if (editCategory == id) null else id
+                        categoryName = NotificationAdaptiveSettings.title(context, id) },
+                )
+                if (editCategory == id) {
+                    Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                        CouiTextField(value = categoryName, onValueChange = { categoryName = it.take(50) },
+                            label = "Nom affiché", singleLine = true)
+                        CouiButton(text = "Enregistrer", onClick = {
+                            val name = categoryName.trim()
+                            if (name.length in 3..50) {
+                                NotificationAdaptiveSettings.setTitle(context, id, name)
+                                editCategory = null
+                                status = "Catégorie renommée"
+                            } else status = "Nom invalide"
+                        })
+                    }
+                }
+            }
+            if (confirmReset) {
+                CouiPreference(title = "Confirmer la réinitialisation", summary = "Efface les exemples et préférences locales",
+                    onClick = { action {
+                        withContext(Dispatchers.IO) { NotificationHistoryRepository(context).resetLearning() }
+                        NotificationAdaptiveSettings.reset(context)
+                        minLearning = 3f
+                        learningStats = "Aucun apprentissage enregistré"
+                        confirmReset = false
+                        NotificationActivityFeed.notifyChanged()
+                        status = "Apprentissage réinitialisé"
+                    } })
+                CouiPreference(title = "Annuler", onClick = { confirmReset = false })
+            } else {
+                CouiPreference(title = "Réinitialiser l'apprentissage", summary = "Conserve les notifications, efface les préférences apprises",
+                    onClick = { confirmReset = true })
+            }
+        }
         Group(title = "Historique local") {
             CouiPreference(
                 title = "Archives du briefing",

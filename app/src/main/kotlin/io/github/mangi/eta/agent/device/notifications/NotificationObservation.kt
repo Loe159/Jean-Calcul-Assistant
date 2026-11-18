@@ -310,7 +310,20 @@ internal object NotificationObservation : NotificationBriefSource {
                         localHour = LocalTime.now().hour,
                     ),
                 )
-                val decision = evaluation.decision
+                val label = result.first().first
+                val store = NotificationHistoryRepository(app)
+                val preference = if (NotificationAdaptiveSettings.enabled(app))
+                    store.interest(next.packageName, snapshot.notification.channelId, label,
+                        snapshot.notification.extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString().orEmpty(),
+                        snapshot.notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString().orEmpty(),
+                        NotificationAdaptiveSettings.minExamples(app))
+                else NotificationPersonalization.Interest.NEUTRAL
+                val adapted = NotificationPersonalization.safeDecision(evaluation, preference, label, config)
+                val topic = store.learnedTopic(next.packageName, snapshot.notification.channelId, label,
+                    snapshot.notification.extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString().orEmpty(), body)
+                    ?: NotificationTopics.classify(next.packageName, snapshot.notification.channelId,
+                        snapshot.notification.category, body, "", label)
+                val decision = adapted.decision
                 val state = when {
                     !canRemove -> NotificationHistoryRepository.DecisionState.ANALYZED_PROTECTED
                     decision == NotificationFilterDecision.KEEP ->
@@ -322,7 +335,8 @@ internal object NotificationObservation : NotificationBriefSource {
                 if (NotificationHistoryRepository(app).updateDecision(
                     next.key, next.postTime, state,
                     result.firstOrNull()?.first, result.firstOrNull()?.second,
-                    reason = if (!canRemove) "Protection Android ou notification plus active" else evaluation.reason,
+                    reason = if (!canRemove) "Protection Android ou notification plus active" else adapted.reason,
+                    topic = topic, personalInterest = preference.name,
                 )) NotificationActivityFeed.notifyChanged()
                 synchronized(this) {
                     if (decision == NotificationFilterDecision.KEEP || !canRemove) kept++ else reviewed++
@@ -334,7 +348,7 @@ internal object NotificationObservation : NotificationBriefSource {
                     append(next.packageName, result.first().first, result.first().second,
                         when {
                             !canRemove -> "Conservée · protégée ou absente d'Android"
-                            decision == NotificationFilterDecision.KEEP -> "Conservée · ${evaluation.reason}"
+                            decision == NotificationFilterDecision.KEEP -> "Conservée · ${adapted.reason}"
                             decision == NotificationFilterDecision.OBSERVE -> "Observation"
                             else -> "À filtrer : $decision"
                         },

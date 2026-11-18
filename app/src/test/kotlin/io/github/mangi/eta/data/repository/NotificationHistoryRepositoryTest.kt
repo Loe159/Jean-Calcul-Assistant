@@ -29,6 +29,44 @@ class NotificationHistoryRepositoryTest {
     }
 
     @Test
+    fun `user corrections persist across repository instances without duplicate learning`() {
+        val time = System.currentTimeMillis()
+        repository.record("one", "fr.leboncoin", "Offres", "Une offre", null, time,
+            channelId = "marketing", fingerprint = "snapshot-1")
+        repository.updateDecision("one", time, NotificationHistoryRepository.DecisionState.KEPT,
+            "a promotional advertisement", 0.85, topic = "promotions")
+        assertEquals(true, repository.feedback("one", time,
+            io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback.CATEGORY_CORRECTED,
+            "shopping"))
+        assertEquals(false, repository.feedback("one", time,
+            io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback.CATEGORY_CORRECTED,
+            "shopping"))
+        assertEquals("shopping", NotificationHistoryRepository(context).recent().single().userTopic)
+        assertEquals(true, repository.feedback("one", time,
+            io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback.UNWANTED))
+        assertEquals(false, repository.feedback("one", time,
+            io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback.UNWANTED))
+        assertEquals("UNWANTED", NotificationHistoryRepository(context).recent().single().personalInterest)
+        repository.resetLearning()
+        assertEquals(null, NotificationHistoryRepository(context).recent().single().userTopic)
+        assertEquals("Aucun apprentissage enregistré", repository.feedbackStats())
+    }
+
+    @Test
+    fun `unchanged classified notification is not inferred a second time`() {
+        val time = System.currentTimeMillis()
+        assertEquals(true, repository.record("same", "fr.leboncoin", "Promo", "-20%", null, time,
+            fingerprint = "abc"))
+        repository.updateDecision("same", time, NotificationHistoryRepository.DecisionState.KEPT, "a promotional advertisement", .91)
+        assertEquals(false, repository.record("same", "fr.leboncoin", "Promo", "-20%", null, time,
+            fingerprint = "abc"))
+        assertEquals(NotificationHistoryRepository.DecisionState.KEPT, repository.recent().single().state)
+        assertEquals(true, repository.record("same", "fr.leboncoin", "Promo", "-30%", null, time,
+            fingerprint = "xyz"))
+        assertEquals(NotificationHistoryRepository.DecisionState.RECEIVED, repository.recent().single().state)
+    }
+
+    @Test
     fun `query and package filters only return matching notification`() {
         val now = System.currentTimeMillis()
         repository.record("one", "com.example.food", "订单配送中", "骑手即将送达", null, now)

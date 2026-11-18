@@ -22,6 +22,7 @@ import com.itos.coui.text.CouiTextKind
 import com.itos.coui.text.Text as CouiText
 import com.itos.coui.theme.CouiTheme
 import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
+import io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
 import io.github.mangi.eta.ui.components.coui.CouiButton
 import io.github.mangi.eta.ui.components.coui.CouiPageBottomSpacer
@@ -108,6 +109,7 @@ internal fun ArchivedBriefNotificationsScreen(onBack: () -> Unit) {
                                             try {
                                                 entries = withContext(Dispatchers.IO) {
                                                     repository.restoreToBrief(listOf(entry))
+                                                    repository.feedback(entry.key, entry.postedAt, NotificationUserFeedback.RESTORED)
                                                     repository.archived(limit = 1_000)
                                                 }
                                                 expandedKey = null

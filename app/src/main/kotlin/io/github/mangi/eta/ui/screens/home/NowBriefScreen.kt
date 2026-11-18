@@ -73,6 +73,7 @@ import com.itos.coui.theme.CouiTheme
 import io.github.mangi.eta.agent.device.notifications.NotificationBriefEvent
 import io.github.mangi.eta.agent.device.notifications.NotificationBriefOutcome
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterPolicy
+import io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback
 import io.github.mangi.eta.agent.device.notifications.NotificationObservation
 import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
 import io.github.mangi.eta.agent.device.AgentNotificationHistoryService
@@ -170,7 +171,10 @@ internal fun NowBriefScreen(
         if (removed.isNotEmpty()) {
             activityEntries = activityEntries.filterNot { it.key in keys }
             scope.launch {
-                runCatching { withContext(Dispatchers.IO) { repository.archiveFromBrief(keys) } }
+                runCatching { withContext(Dispatchers.IO) {
+                    repository.archiveFromBrief(keys)
+                    removed.forEach { repository.feedback(it.key, it.postedAt, NotificationUserFeedback.ARCHIVED) }
+                } }
                     .onSuccess { undoEntries = (undoEntries + removed).distinctBy { it.key } }
                     .onFailure {
                         activityEntries = (activityEntries + removed).distinctBy { it.key }
@@ -180,11 +184,46 @@ internal fun NowBriefScreen(
             }
         }
     }
+    val markFeedback: (NotificationHistoryRepository.RecentEntry, NotificationUserFeedback) -> Unit =
+        { entry, feedback ->
+            scope.launch {
+                runCatching { withContext(Dispatchers.IO) {
+                    repository.feedback(entry.key, entry.postedAt, feedback)
+                } }.onSuccess { NotificationActivityFeed.notifyChanged() }
+                    .onFailure { activityError = true }
+            }
+        }
+    val correctCategory: (NotificationHistoryRepository.RecentEntry, String) -> Unit =
+        { entry, category ->
+            scope.launch {
+                runCatching { withContext(Dispatchers.IO) {
+                    repository.feedback(entry.key, entry.postedAt, NotificationUserFeedback.CATEGORY_CORRECTED, category)
+                } }.onSuccess { NotificationActivityFeed.notifyChanged() }
+                    .onFailure { activityError = true }
+            }
+        }
+    val openNotification: (NotificationHistoryRepository.RecentEntry) -> Unit = { entry ->
+        val opened = runCatching {
+            val active = AgentNotificationHistoryService.currentNotifications()
+                ?.firstOrNull { it.key == entry.key && it.postTime == entry.postedAt }
+            val pendingIntent = active?.notification?.contentIntent
+            if (pendingIntent != null) pendingIntent.send()
+            else {
+                val intent = context.packageManager.getLaunchIntentForPackage(entry.packageName)
+                    ?: error("Application indisponible")
+                context.startActivity(intent)
+            }
+        }.isSuccess
+        if (opened) markFeedback(entry, NotificationUserFeedback.OPENED)
+    }
     val undoDismissal: () -> Unit = {
         val restoring = undoEntries
         undoEntries = emptyList()
         scope.launch {
-            runCatching { withContext(Dispatchers.IO) { repository.restoreToBrief(restoring) } }
+            runCatching { withContext(Dispatchers.IO) {
+                repository.restoreToBrief(restoring)
+                restoring.forEach { repository.feedback(it.key, it.postedAt, NotificationUserFeedback.RESTORED) }
+            } }
                 .onSuccess {
                     activityEntries = (activityEntries + restoring).distinctBy { it.key }
                         .sortedByDescending { it.postedAt }
@@ -401,8 +440,9 @@ internal fun NowBriefScreen(
                     modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp),
                 )
             }
-            items(reviewedGroups, key = { "review:" + it.packageName }) { group ->
-                BriefNotificationAppCard(group, dismissActivityEntries, onNotificationTouchChange)
+            items(reviewedGroups, key = { "review:" + it.category }) { group ->
+                BriefNotificationAppCard(group, dismissActivityEntries, markFeedback, correctCategory,
+                    openNotification, onNotificationTouchChange)
             }
         }
 
@@ -451,8 +491,9 @@ internal fun NowBriefScreen(
                     }
                 }
             } else {
-                items(notificationGroups, key = { "app:" + it.packageName }) { group ->
-                    BriefNotificationAppCard(group, dismissActivityEntries, onNotificationTouchChange)
+                items(notificationGroups, key = { "topic:" + it.category }) { group ->
+                    BriefNotificationAppCard(group, dismissActivityEntries, markFeedback, correctCategory,
+                        openNotification, onNotificationTouchChange)
                 }
             }
         }
