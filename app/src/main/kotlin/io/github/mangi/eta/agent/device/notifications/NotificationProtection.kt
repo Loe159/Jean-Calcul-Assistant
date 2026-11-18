@@ -29,6 +29,18 @@ internal object NotificationProtection {
             "meeting|r[eé]union|confirmation|ticket|billet|reservation|r[eé]servation)\\b|" +
             "\\b[0-9]{5,8}\\b)"
     )
+    // This is deliberately narrower than the generic legacy protection:
+    // a routine "Connexion au serveur" or "Information" must be dismissible,
+    // while OTP, finance, medical and account-security alerts remain guarded.
+    private val stronglySensitive = Regex(
+        "(?iu)(\\b(?:otp|2fa|mfa|code de (?:v[ée]rification|connexion|s[ée]curit[ée])|" +
+            "authentification|authentication|s[ée]curit[ée]|security|password|mot de passe|" +
+            "paiement|payment|virement|transaction|carte bancaire|" +
+            "livraison|colis|delivery|rendez.vous|appointment|" +
+            "urgence|urgent|m[ée]decin|sant[ée]|health|doctolib|" +
+            "r[ée]servation|reservation)\\b|\\b[0-9]{5,8}\\b)"
+    )
+
     private val protectedPackages = Regex(
         "(?i)(^android$|^com\\.android\\.|^com\\.google\\.android\\.gms$|" +
             "^com\\.samsung\\.android\\.|^com\\.sec\\.android\\.|" +
@@ -88,13 +100,14 @@ internal object NotificationProtection {
         if (NotificationPriorityPolicy.classify(input) == NotificationPriority.NOW) return false
         val n = sbn.notification
         val pkg = sbn.packageName
+        val nonUrgentEmail = n.category == Notification.CATEGORY_EMAIL
         if (!sbn.isClearable || pkg == context.packageName ||
             n.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE or
                 Notification.FLAG_GROUP_SUMMARY or Notification.FLAG_NO_CLEAR) != 0 ||
-            n.shortcutId != null ||
+            (n.shortcutId != null && !nonUrgentEmail) ||
             n.extras.containsKey(Notification.EXTRA_MESSAGES) ||
-            n.extras.containsKey(Notification.EXTRA_PEOPLE_LIST) ||
-            n.actions?.any { it.remoteInputs?.isNotEmpty() == true } == true
+            (n.extras.containsKey(Notification.EXTRA_PEOPLE_LIST) && !nonUrgentEmail) ||
+            (!nonUrgentEmail && n.actions?.any { it.remoteInputs?.isNotEmpty() == true } == true)
         ) return false
         if (n.category in setOf(Notification.CATEGORY_CALL, Notification.CATEGORY_MISSED_CALL,
                 Notification.CATEGORY_ALARM, Notification.CATEGORY_EVENT,
@@ -105,7 +118,7 @@ internal object NotificationProtection {
         val text = n.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
         val bigText = n.extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString().orEmpty()
         if ((title + text).trim().length < 8 ||
-            sensitive.containsMatchIn("$title $text $bigText")) return false
+            stronglySensitive.containsMatchIn("$title $text $bigText")) return false
         // Messages may be marked CATEGORY_MESSAGE by Snapchat for recommendations.
         // That narrow case is clearable, but real conversations never are.
         if (n.category == Notification.CATEGORY_MESSAGE &&

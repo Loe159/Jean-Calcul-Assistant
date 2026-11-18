@@ -54,6 +54,8 @@ class NotificationPriorityProtectionTest {
             "Agile Laval s'installe demain", Notification.CATEGORY_EMAIL), "work"))
         assertTrue(canDismiss(makeNotification("org.example.service", "Synchronisation terminée",
             "Sauvegarde hebdomadaire terminée", Notification.CATEGORY_SERVICE), "system"))
+        assertTrue(canDismiss(makeNotification("org.example.service", "Connexion au serveur",
+            "Synchronisation du profil effectuée", Notification.CATEGORY_SERVICE), "system"))
     }
 
     @Test fun neverClearSecurityMessagesCallsAndOngoingAlerts() {
