@@ -53,6 +53,7 @@ import io.github.mangi.eta.agent.runtime.AgentEvent
 import io.github.mangi.eta.agent.runtime.AgentExternalArchivePayload
 import io.github.mangi.eta.agent.runtime.AgentRuntimeClient
 import io.github.mangi.eta.agent.runtime.AgentRuntimeWire
+import io.github.mangi.eta.agent.runtime.AgentExecutionService
 import io.github.mangi.eta.core.AndroidAgentLogger
 import io.github.mangi.eta.data.model.AppearanceSettings
 import io.github.mangi.eta.data.repository.AppearanceSettingsRepository
@@ -67,6 +68,7 @@ import io.github.mangi.eta.ui.model.ThinkingMessageUi
 import io.github.mangi.eta.ui.model.ToolActivityMessageUi
 import io.github.mangi.eta.ui.model.UserMessageUi
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -132,6 +134,8 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
     private var runJob: Job? = null
     private var dismissalJob: Job? = null
     private var activeRunId: String? = null
+    @Volatile private var activeDevelopmentRunId: String? = null
+    private val detachedDevelopmentRunIds = ConcurrentHashMap.newKeySet<String>()
     private var entryGeneration = 0L
     private var presentedEntryGeneration = -1L
     private var entryInputPending = false
@@ -201,7 +205,7 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
         entryGeneration++
         EtaAssistantScreenContexts.release(entryScreenContext?.id)
         entryScreenContext = null
-        cancelCurrentRun()
+        cancelCurrentRun(detachDevelopment = true)
         removeWindow()
         scope.cancel()
         cancellationExecutor.shutdown()
@@ -221,7 +225,7 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
         }
         dismissalJob?.cancel()
         dismissalJob = null
-        cancelCurrentRun()
+        cancelCurrentRun(detachDevelopment = true)
         if (entryScreenContext?.id != screenContextId) {
             EtaAssistantScreenContexts.release(entryScreenContext?.id)
             entryScreenContext = EtaAssistantScreenContexts.find(screenContextId)
@@ -479,6 +483,16 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
         inputText = ""
         activeRunId = UUID.randomUUID().toString()
         val runId = activeRunId ?: return
+        val developmentEntry = capture?.isOwnApp == true &&
+            io.github.mangi.eta.agent.development.DevelopmentStore(this).enabled
+        val pinnedCapture = developmentEntry && EtaAssistantScreenContexts.pin(capture?.id)
+        if (pinnedCapture) activeDevelopmentRunId = runId
+        val stopped = AtomicBoolean(false)
+        val leaseId = "development-entry:$runId"
+        val leaseHeld = pinnedCapture && AgentExecutionService.acquire(this, leaseId) {
+            stopped.set(true)
+            backgroundRunScope.launch { runtimeClient.cancelRun(runId) }
+        }
         uiState = uiState.copy(
             phase = EtaVoicePhase.PROCESSING,
             messages = uiState.messages + UserMessageUi(
@@ -487,9 +501,12 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
             ),
         )
         updateSoftInput(visible = false)
-        runJob = scope.launch {
+        runJob = backgroundRunScope.launch {
+          try {
             val speechConfig = if (fromSpeech) SpeechSettingsRepository.settings() else null
             val screen = capture?.snapshot() ?: EtaAssistantScreenContext.Snapshot()
+            if (pinnedCapture) EtaAssistantScreenContexts.releasePin(capture?.id)
+            if (stopped.get()) return@launch
             val runImages = listOfNotNull(screen.image)
             val config = AgentModelClient.loadConfig()
             val payload = AgentExternalArchivePayload(
@@ -548,7 +565,9 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
                 }
                 hiddenForForegroundOperation
             }
-            runtimeClient.ackResult(runId)
+            // Keep the persisted result until the reopened app imports the detached conversation.
+            if (runId !in detachedDevelopmentRunIds) runtimeClient.ackResult(runId)
+            if (activeDevelopmentRunId == runId) activeDevelopmentRunId = null
             if (shouldStopAfterResult) {
                 withContext(Dispatchers.Main.immediate) {
                     if (activeRunId == null) {
@@ -557,6 +576,12 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
                     }
                 }
             }
+          } finally {
+            if (pinnedCapture) EtaAssistantScreenContexts.releasePin(capture?.id)
+            if (activeDevelopmentRunId == runId) activeDevelopmentRunId = null
+            detachedDevelopmentRunIds.remove(runId)
+            if (leaseHeld) AgentExecutionService.release(leaseId)
+          }
         }
     }
 
@@ -646,6 +671,7 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
         if (runId != null) {
             flushPendingDelta(runId)
             activeRunId = null
+            if (activeDevelopmentRunId == runId) activeDevelopmentRunId = null
             requestRuntimeCancellation(runId)
             runJob?.cancel()
             runJob = null
@@ -667,13 +693,20 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
         }
     }
 
-    private fun cancelCurrentRun() {
+    private fun cancelCurrentRun(detachDevelopment: Boolean = false) {
         playback.stop()
         speechInput.cancel()
         speechState = EtaSpeechState()
         val runId = activeRunId ?: return
         flushPendingDelta(runId)
         activeRunId = null
+        if (detachDevelopment && activeDevelopmentRunId == runId) {
+            detachedDevelopmentRunIds.add(runId)
+            activeDevelopmentRunId = null
+            runJob = null
+            return
+        }
+        activeDevelopmentRunId = null
         requestRuntimeCancellation(runId)
         runJob?.cancel()
         runJob = null
@@ -779,7 +812,7 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
         entryGeneration++
         EtaAssistantScreenContexts.release(entryScreenContext?.id)
         entryScreenContext = null
-        cancelCurrentRun()
+        cancelCurrentRun(detachDevelopment = true)
         handoffExitRequested = true
         dismissalJob = scope.launch(Dispatchers.Main.immediate) {
             delay(HANDOFF_EXIT_DURATION_MS)
@@ -858,6 +891,7 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
     }
 
     internal companion object {
+        private val backgroundRunScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         const val ACTION_SHOW = "io.github.mangi.eta.agent.voice.SHOW"
         const val ACTION_OPEN_CONVERSATION = "io.github.mangi.eta.agent.voice.OPEN_CONVERSATION"
         const val EXTRA_CONVERSATION_KEY = "io.github.mangi.eta.agent.voice.extra.CONVERSATION_KEY"

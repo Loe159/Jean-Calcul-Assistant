@@ -37,7 +37,8 @@ internal class EtaAssistantScreenContext(
     private var screenshotReceived = false
     private var image: AgentModelClient.ModelImage? = null
     private var closed = false
-    private var ownScreen = ""
+    @Volatile private var ownScreen = ""
+    val isOwnApp: Boolean get() = ownScreen.isNotBlank()
     private var ownText = ""
     private var privateScreen = false
     private var fallbackImage: AgentModelClient.ModelImage? = null
@@ -168,18 +169,35 @@ internal class EtaAssistantScreenContext(
 /** 最多保留当前一次唤醒，Intent 只传 ID，不传图片或界面树。 */
 internal object EtaAssistantScreenContexts {
     private var current: EtaAssistantScreenContext? = null
+    private val pinned = mutableMapOf<String, EtaAssistantScreenContext>()
 
     @Synchronized
     fun begin(flags: Int, foregroundApps: List<ComponentName>): EtaAssistantScreenContext {
-        current?.close()
+        current?.takeUnless { pinned.containsKey(it.id) }?.close()
         return EtaAssistantScreenContext(flags, foregroundApps).also { current = it }
     }
 
     @Synchronized
-    fun find(id: String?): EtaAssistantScreenContext? = current?.takeIf { it.id == id }
+    fun find(id: String?): EtaAssistantScreenContext? = current?.takeIf { it.id == id } ?: id?.let(pinned::get)
+
+    @Synchronized
+    fun pin(id: String?): Boolean {
+        val capture = find(id) ?: return false
+        pinned[capture.id] = capture
+        return true
+    }
+
+    @Synchronized
+    fun releasePin(id: String?) {
+        val capture = pinned.remove(id ?: return) ?: return
+        capture.close()
+        if (current === capture) current = null
+    }
 
     @Synchronized
     fun release(id: String?) {
+        if (id == null) return
+        if (pinned.containsKey(id)) return
         if (current?.id != id) return
         current?.close()
         current = null

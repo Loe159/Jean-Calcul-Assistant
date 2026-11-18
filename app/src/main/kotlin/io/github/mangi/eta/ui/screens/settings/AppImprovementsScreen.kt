@@ -1,7 +1,11 @@
 package io.github.mangi.eta.ui.screens.settings
 
 import android.content.Intent
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -16,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.itos.coui.layout.Footer
 import com.itos.coui.layout.Group
 import io.github.mangi.eta.agent.development.DevelopmentGitHubClient
@@ -39,6 +44,10 @@ internal fun AppImprovementsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val store = remember { DevelopmentStore(context) }
+    var notificationsAllowed by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) }
+    val notificationsPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        notificationsAllowed = granted
+    }
     var connected by remember { mutableStateOf(store.enabled) }
     var token by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -61,7 +70,7 @@ internal fun AppImprovementsScreen(onBack: () -> Unit) {
     CouiScaffoldPage(title = "App improvements", onBack = onBack, compactTitle = true) {
         Group(title = "Improve Jean-Calcul") {
             CouiPreference(title = "Describe a bug or feature", showChevron = false,
-                summary = "While viewing Jean-Calcul, hold Power and describe what should change. The assistant uses this screen and your configured model to read the source, implement the change and open a PR.")
+                summary = "While viewing Jean-Calcul, hold Power and describe what should change. The assistant uses this screen and your configured model to implement the change. You can close the assistant while it works; a notification brings you back when it needs an answer or finishes.")
         }
         Footer(text = "GitHub Actions builds and tests each PR, then publishes a signed update. Install it here, test it, and approve the PR below. Android still asks you to confirm installation.")
         Group(title = "GitHub connection") {
@@ -80,6 +89,7 @@ internal fun AppImprovementsScreen(onBack: () -> Unit) {
                                 store.connect(candidate)
                             }
                             token = ""; connected = true; message = "Connected. Open a Jean-Calcul screen and hold Power to request an improvement."
+                            if (!notificationsAllowed) notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                             DevelopmentMonitor.start(context)
                         } })
                 }
@@ -89,6 +99,12 @@ internal fun AppImprovementsScreen(onBack: () -> Unit) {
             } else CouiPreference(title = "Disconnect GitHub", summary = "Removes the encrypted token and disables new code changes", onClick = { action {
                 withContext(Dispatchers.IO) { store.disconnect() }; connected = false; message = "GitHub disconnected"
             } })
+        }
+        if (connected && !notificationsAllowed) {
+            Group(title = "Task notifications") {
+                CouiPreference(title = "Allow notifications", summary = "Get a message when Jean-Calcul needs an answer or finishes a task.",
+                    onClick = { notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS) })
+            }
         }
         Footer(text = "Your token stays encrypted in Android Keystore and is never sent to the model or placed in an APK. Your implementation request and code changes are published to the repository. Screenshots and raw app text are used by your selected model and are not attached to GitHub PRs. Credential screens are withheld.")
         if (proposal != null) {
