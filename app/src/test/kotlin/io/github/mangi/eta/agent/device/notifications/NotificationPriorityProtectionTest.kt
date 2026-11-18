@@ -84,6 +84,21 @@ class NotificationPriorityProtectionTest {
             "Salut, tu peux me répondre ?", Notification.CATEGORY_MESSAGE), "work"))
     }
 
+    @Test fun futureCalendarEventsCanBeDismissedButTodayAndChangesCannot() {
+        assertTrue(canDismiss(makeNotification("com.google.android.calendar", "Agenda",
+            "Rendez-vous confirmé demain", Notification.CATEGORY_EVENT), "calendar"))
+        assertTrue(canDismiss(makeNotification("com.google.android.calendar", "Agenda",
+            "Événements suggérés près de chez vous", Notification.CATEGORY_EVENT), "calendar"))
+        assertTrue(canDismiss(makeNotification("com.google.android.calendar", "Agenda",
+            "Rappel expiré : consulter les devoirs", Notification.CATEGORY_REMINDER), "calendar"))
+        assertFalse(canDismiss(makeNotification("com.google.android.calendar", "Agenda",
+            "Rendez-vous aujourd'hui à 16h", Notification.CATEGORY_EVENT), "calendar"))
+        assertFalse(canDismiss(makeNotification("com.google.android.calendar", "Agenda",
+            "Rendez-vous annulé demain", Notification.CATEGORY_EVENT), "calendar"))
+        assertFalse(canDismiss(makeNotification("com.google.android.calendar", "Agenda",
+            "Rendez-vous important", Notification.CATEGORY_EVENT), "calendar"))
+    }
+
     @Test fun neverClearSecurityMessagesCallsAndOngoingAlerts() {
         assertFalse(canDismiss(makeNotification("com.google.android.gm", "Google",
             "Alerte de sécurité : connexion inconnue", Notification.CATEGORY_EMAIL), "security"))

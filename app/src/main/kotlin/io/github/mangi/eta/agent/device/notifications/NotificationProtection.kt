@@ -41,6 +41,16 @@ internal object NotificationProtection {
             "r[ée]servation|reservation)\\b|\\b[0-9]{5,8}\\b)"
     )
 
+    // Appointment words are allowed only for clearly deferred agenda updates;
+    // security, payment, medical and authentication warnings never bypass protection.
+    private val criticalSensitive = Regex(
+        "(?iu)(\\b(?:otp|2fa|mfa|code de (?:v[ée]rification|connexion|s[ée]curit[ée])|" +
+            "authentification|authentication|s[ée]curit[ée]|security|password|mot de passe|" +
+            "paiement|payment|virement|transaction|carte bancaire|" +
+            "livraison|colis|delivery|urgence|urgent|m[ée]decin|sant[ée]|health|doctolib|" +
+            "r[ée]servation|reservation)\\b|\\b[0-9]{5,8}\\b)"
+    )
+
     private val protectedPackages = Regex(
         "(?i)(^android$|^com\\.android\\.|^com\\.google\\.android\\.gms$|" +
             "^com\\.samsung\\.android\\.|^com\\.sec\\.android\\.|" +
@@ -101,6 +111,13 @@ internal object NotificationProtection {
         val n = sbn.notification
         val pkg = sbn.packageName
         val nonUrgentEmail = n.category == Notification.CATEGORY_EMAIL
+        val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
+        val text = n.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
+        val bigText = n.extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString().orEmpty()
+        val agendaKind = NotificationAgendaPolicy.classify(pkg, title, text, n.category, input.topic)
+        val deferredAgenda = agendaKind in setOf(
+            AgendaNotificationKind.FUTURE_CONFIRMED, AgendaNotificationKind.SUGGESTED_EVENT,
+            AgendaNotificationKind.EXPIRED_REMINDER)
         if (!sbn.isClearable || pkg == context.packageName ||
             n.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE or
                 Notification.FLAG_GROUP_SUMMARY or Notification.FLAG_NO_CLEAR) != 0 ||
@@ -110,15 +127,14 @@ internal object NotificationProtection {
             (!nonUrgentEmail && n.actions?.any { it.remoteInputs?.isNotEmpty() == true } == true)
         ) return false
         if (n.category in setOf(Notification.CATEGORY_CALL, Notification.CATEGORY_MISSED_CALL,
-                Notification.CATEGORY_ALARM, Notification.CATEGORY_EVENT,
-                Notification.CATEGORY_REMINDER, Notification.CATEGORY_TRANSPORT,
+                Notification.CATEGORY_ALARM, Notification.CATEGORY_TRANSPORT,
                 Notification.CATEGORY_ERROR, Notification.CATEGORY_PROGRESS,
                 Notification.CATEGORY_NAVIGATION, Notification.CATEGORY_LOCATION_SHARING)) return false
-        val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
-        val text = n.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
-        val bigText = n.extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString().orEmpty()
+        if (n.category in setOf(Notification.CATEGORY_EVENT, Notification.CATEGORY_REMINDER) &&
+            !deferredAgenda) return false
         if ((title + text).trim().length < 8 ||
-            stronglySensitive.containsMatchIn("$title $text $bigText")) return false
+            (if (deferredAgenda) criticalSensitive.containsMatchIn("$title $text $bigText")
+                else stronglySensitive.containsMatchIn("$title $text $bigText"))) return false
         // Some social platforms mark mentions, friend requests, and suggestions
         // CATEGORY_MESSAGE. Clear only explicitly recognized non-DM social events.
         // MessagingStyle, people and inline replies remain blocked above.
@@ -144,7 +160,10 @@ internal object NotificationProtection {
             // Only an unambiguous software update, or a non-urgent email, may pass.
             val update = NotificationPriorityPolicy.isRoutineSystemUpdate(title, text) &&
                 n.category in setOf(Notification.CATEGORY_SYSTEM, Notification.CATEGORY_SERVICE, null)
-            if (!email && !update) return false
+            val calendar = deferredAgenda && pkg in setOf(
+                "com.google.android.calendar", "com.samsung.android.calendar",
+                "com.android.calendar", "com.microsoft.office.outlook", "com.google.android.gm")
+            if (!email && !update && !calendar) return false
         }
         // Clearable third-party service updates are eligible. Privileged Android
         // and Samsung system packages still require a known, routine update.

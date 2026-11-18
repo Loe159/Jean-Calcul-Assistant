@@ -107,6 +107,13 @@ internal object NotificationPriorityPolicy {
                 socialKind != SocialNotificationKind.DIRECT) NotificationPriority.TODAY
             else NotificationSocialPolicy.priority(socialKind)!!
         }
+        val agendaKind = NotificationAgendaPolicy.classify(input.packageName, input.title,
+            input.body, input.androidCategory, input.topic)
+        if (agendaKind != AgendaNotificationKind.UNKNOWN) {
+            val priority = NotificationAgendaPolicy.priority(agendaKind)!!
+            return if (input.personalInterest == NotificationPersonalization.Interest.WANTED &&
+                priority == NotificationPriority.LOW) NotificationPriority.TODAY else priority
+        }
         if (input.game || input.topic == "games") {
             return when (NotificationGamePolicy.classify(input.title, input.body, input.androidCategory)) {
                 GameNotificationKind.INVITATION -> NotificationPriority.NOW

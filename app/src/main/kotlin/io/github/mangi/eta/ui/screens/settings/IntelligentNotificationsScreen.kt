@@ -102,6 +102,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
     var showAdvancedRules by remember { mutableStateOf(false) }
     var showGameRules by remember { mutableStateOf(false) }
     var showWorkRules by rememberSaveable { mutableStateOf(false) }
+    var showAgendaRules by rememberSaveable { mutableStateOf(false) }
     var gameDeletes by remember { mutableStateOf(NotificationGameSettings.enabledKinds(context)) }
     var expandedRule by remember { mutableStateOf<String?>(null) }
     var editedLabel by remember { mutableStateOf("") }
@@ -302,6 +303,35 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             CouiText(text = name, kind = CouiTextKind.ItemTitle, color = colors.title)
                             CouiText(text = priority, kind = CouiTextKind.ItemSummary, color = colors.summary)
+                        }
+                    }
+                }
+            }
+        }
+        Group(title = "Agenda et rappels") {
+            CouiPreference(
+                title = if (showAgendaRules) "Masquer les priorités" else "Voir les priorités",
+                summary = "Aujourd'hui et changements urgents · futur ce soir · suggestions ignorées",
+                onClick = { showAgendaRules = !showAgendaRules },
+            )
+            if (showAgendaRules) {
+                val rules = listOf(
+                    "Rendez-vous aujourd'hui" to "Immédiat · conservé sur Android",
+                    "Changement ou annulation" to "Immédiat · conservé sur Android",
+                    "Invitation nécessitant une réponse" to "Immédiat · conservée sur Android",
+                    "Rendez-vous futurs confirmés" to "Ce soir · conservés dans le briefing",
+                    "Rappels sans échéance proche" to "Ce soir, si l'échéance future est explicite",
+                    "Événements suggérés" to "Indésirable · repliés dans le briefing",
+                    "Rappels explicitement expirés" to "Indésirable · repliés dans le briefing",
+                )
+                Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    rules.forEach { (name, priority) ->
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            CouiText(text = name, kind = CouiTextKind.ItemTitle,
+                                color = colors.title)
+                            CouiText(text = priority, kind = CouiTextKind.ItemSummary,
+                                color = colors.summary)
                         }
                     }
                 }
