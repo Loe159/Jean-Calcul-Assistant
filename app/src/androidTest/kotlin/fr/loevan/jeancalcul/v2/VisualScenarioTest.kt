@@ -84,6 +84,21 @@ class VisualScenarioTest {
                                 device.wait(Until.hasObject(By.text("Installer le modèle")), 10000))
                             assertTrue("Manual input should be visible",
                                 device.wait(Until.hasObject(By.text("Titre et contenu d'une notification")), 10000))
+                            val safeMode = By.text("2 · Prudent")
+                            val personalMode = By.text("3 · Personnalisé")
+                            var modeScrolls = 0
+                            var prudentSeen = false
+                            var personalSeen = false
+                            while (modeScrolls++ < 12) {
+                                prudentSeen = prudentSeen || device.hasObject(safeMode)
+                                personalSeen = personalSeen || device.hasObject(personalMode)
+                                if (prudentSeen && personalSeen) break
+                                device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
+                                    device.displayWidth / 2, device.displayHeight / 3, 26)
+                                device.waitForIdle()
+                            }
+                            assertTrue("Prudent mode must be reachable", prudentSeen)
+                            assertTrue("Personalized mode must be reachable", personalSeen)
                         }
                         if (scenario == "providers") {
                             device.findObject(By.text(context.getString(R.string.ui_model_provider_e8c7f5))).click()
