@@ -120,6 +120,8 @@ internal object NotificationProtection {
             AgendaNotificationKind.EXPIRED_REMINDER)
         val systemKind = NotificationSystemPolicy.classify(pkg, title, text, n.category, input.topic)
         val routineSystem = NotificationSystemPolicy.safeToClear(systemKind)
+        val shoppingKind = NotificationShoppingPolicy.classify(pkg, title, text, n.category)
+        val routineShipping = shoppingKind == ShoppingNotificationKind.ORDER_TRACKING
         if (!sbn.isClearable || pkg == context.packageName ||
             n.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE or
                 Notification.FLAG_GROUP_SUMMARY or Notification.FLAG_NO_CLEAR) != 0 ||
@@ -143,9 +145,15 @@ internal object NotificationProtection {
                     "mise à jour système")
             else content
         }
+        // For routine tracking from a recognized shopping app, shipping vocabulary
+        // alone does not make it urgent. Keep checks for payment, OTP, security, etc.
+        val filteredSafety = if (routineShipping) contentForSafety.replace(
+            Regex("(?iu)\\b(?:livraison|livr[ée]|colis|delivery|shipment|parcel|package|" +
+                "exp[ée]dition|exp[ée]di[ée]|suivi|shipping)\\b"), "suivi normal")
+            else contentForSafety
         if ((title + text).trim().length < 8 ||
-            (if (deferredAgenda) criticalSensitive.containsMatchIn(contentForSafety)
-                else stronglySensitive.containsMatchIn(contentForSafety))) return false
+            (if (deferredAgenda) criticalSensitive.containsMatchIn(filteredSafety)
+                else stronglySensitive.containsMatchIn(filteredSafety))) return false
         // Some social platforms mark mentions, friend requests, and suggestions
         // CATEGORY_MESSAGE. Clear only explicitly recognized non-DM social events.
         // MessagingStyle, people and inline replies remain blocked above.
@@ -156,7 +164,8 @@ internal object NotificationProtection {
                 WorkNotificationKind.BUILD_SUCCEEDED, WorkNotificationKind.BOT_COMMENT,
                 WorkNotificationKind.BOT_ACTIVITY) &&
                 (pkg == "com.openai.chatgpt" || pkg.contains("github", ignoreCase = true))
-            if (!routineWorkUpdate && socialKind !in setOf(SocialNotificationKind.MENTION,
+            val routineShopping = NotificationShoppingPolicy.allowMessageCategoryDismiss(shoppingKind)
+            if (!routineWorkUpdate && !routineShopping && socialKind !in setOf(SocialNotificationKind.MENTION,
                     SocialNotificationKind.INVITATION, SocialNotificationKind.ACTIVITY,
                     SocialNotificationKind.SUGGESTION, SocialNotificationKind.POST)) return false
         }

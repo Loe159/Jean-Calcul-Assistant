@@ -123,6 +123,27 @@ class NotificationPriorityProtectionTest {
             "Opération en cours", Notification.CATEGORY_SYSTEM), "system"))
     }
 
+    @Test fun shoppingAlertsCanBeClearedButMessagesAndIncidentsCannot() {
+        assertTrue(canDismiss(makeNotification("fr.leboncoin", "Recherche",
+            "3 nouvelles annonces correspondent à votre recherche", Notification.CATEGORY_MESSAGE), "shopping"))
+        assertTrue(canDismiss(makeNotification("fr.leboncoin", "Leboncoin",
+            "Annonce sponsorisée : découvrez ce vélo", Notification.CATEGORY_MESSAGE), "shopping"))
+        assertTrue(canDismiss(makeNotification("com.amazon.mShop.android.shopping", "Amazon",
+            "Votre commande a été expédiée", null), "shopping"))
+        assertTrue(canDismiss(makeNotification("com.laposte.laposte", "La Poste",
+            "Votre colis est en cours de livraison", null), "shopping"))
+        assertFalse(canDismiss(makeNotification("fr.leboncoin", "Pierre",
+            "Pierre vous a envoyé un message sur votre annonce", Notification.CATEGORY_MESSAGE), "shopping"))
+        assertFalse(canDismiss(makeNotification("fr.leboncoin", "Leboncoin",
+            "Paiement refusé : transaction à vérifier", null), "shopping"))
+        assertFalse(canDismiss(makeNotification("com.laposte.laposte", "Livraison",
+            "Votre colis : adresse incorrecte, action requise", null), "shopping"))
+        assertFalse(canDismiss(makeNotification("com.laposte.laposte", "La Poste",
+            "Votre colis est en cours de livraison, code 123456", null), "shopping"))
+        assertFalse(canDismiss(makeNotification("com.amazon.mShop.android.shopping", "Amazon",
+            "Votre commande a été expédiée", null, Notification.FLAG_FOREGROUND_SERVICE), "shopping"))
+    }
+
     @Test fun neverClearSecurityMessagesCallsAndOngoingAlerts() {
         assertFalse(canDismiss(makeNotification("com.google.android.gm", "Google",
             "Alerte de sécurité : connexion inconnue", Notification.CATEGORY_EMAIL), "security"))

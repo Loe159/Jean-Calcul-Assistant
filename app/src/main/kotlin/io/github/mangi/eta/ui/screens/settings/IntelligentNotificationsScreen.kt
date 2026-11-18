@@ -104,6 +104,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
     var showWorkRules by rememberSaveable { mutableStateOf(false) }
     var showAgendaRules by rememberSaveable { mutableStateOf(false) }
     var showSystemRules by rememberSaveable { mutableStateOf(false) }
+    var showShoppingRules by rememberSaveable { mutableStateOf(false) }
     var gameDeletes by remember { mutableStateOf(NotificationGameSettings.enabledKinds(context)) }
     var expandedRule by remember { mutableStateOf<String?>(null) }
     var editedLabel by remember { mutableStateOf("") }
@@ -366,6 +367,37 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                     }
                 }
                 Footer(text = "Services actifs, alertes de sécurité et notifications non effaçables restent protégés.")
+            }
+        }
+        Group(title = "Achats et Leboncoin") {
+            CouiPreference(
+                title = if (showShoppingRules) "Masquer les priorités" else "Voir les priorités",
+                summary = "Échanges et problèmes urgents · suivis ce soir · publicités ignorées",
+                onClick = { showShoppingRules = !showShoppingRules },
+            )
+            if (showShoppingRules) {
+                val rules = listOf(
+                    "Messages d'acheteurs et vendeurs" to "Immédiat · conservés sur Android",
+                    "Problèmes de paiement et litiges" to "Immédiat · conservés sur Android",
+                    "Livraisons nécessitant une action" to "Immédiat · conservées sur Android",
+                    "Annonces correspondant à une recherche" to "Ce soir · dans le briefing",
+                    "Commandes et expéditions" to "Ce soir · dans le briefing",
+                    "Publicités et offres sponsorisées" to "Indésirable · repliées dans le briefing",
+                    "Recommandations hors recherche" to "Indésirable · repliées dans le briefing",
+                    "Relances commerciales" to "Indésirable · repliées dans le briefing",
+                )
+                Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    rules.forEach { (name, priority) ->
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            CouiText(text = name, kind = CouiTextKind.ItemTitle,
+                                color = colors.title)
+                            CouiText(text = priority, kind = CouiTextKind.ItemSummary,
+                                color = colors.summary)
+                        }
+                    }
+                }
+                Footer(text = "Les annonces hors critères ne sont écartées que si la notification indique une recommandation, pas sur une estimation de tes critères.")
             }
         }
         Group(title = "Jeux") {
