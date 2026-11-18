@@ -75,7 +75,8 @@ internal object NotificationObservation : NotificationBriefSource {
         NotificationFilterSettings.load(context).mode != NotificationFilterMode.OFF
 
     fun setEnabled(context: Context, enabled: Boolean) =
-        NotificationFilterSettings.setMode(context, if (enabled) NotificationFilterMode.OBSERVE else NotificationFilterMode.OFF)
+        NotificationFilterSettings.setMode(context,
+            if (enabled) NotificationFilterMode.PERSONALIZED else NotificationFilterMode.OFF)
 
     @Synchronized
     fun snapshot(): List<String> = history.toList()
