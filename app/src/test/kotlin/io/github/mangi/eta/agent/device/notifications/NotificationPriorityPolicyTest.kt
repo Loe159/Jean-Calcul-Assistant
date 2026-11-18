@@ -24,7 +24,10 @@ class NotificationPriorityPolicyTest {
             NotificationPriorityPolicy.automaticAction(failed, config, base, 14).decision)
         val human = bot.copy(title = "FOUCAULT Adeline", body = "Bonjour, j'ai une question")
         assertFalse(NotificationPriorityPolicy.githubBot(human))
-        assertEquals(NotificationPriority.TODAY, NotificationPriorityPolicy.classify(human))
+        // Direct colleague requests are NOW, per validated work/AI preferences.
+        assertEquals(NotificationPriority.NOW, NotificationPriorityPolicy.classify(human))
+        assertEquals(NotificationFilterDecision.KEEP,
+            NotificationPriorityPolicy.automaticAction(human, config, base, 14).decision)
     }
 
     @Test fun directMessagesSecurityAndAppointmentsAlwaysComeFirst() {
