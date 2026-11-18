@@ -381,6 +381,7 @@ fun AgentAppRoot(
             onOpenCharacters = { pushRoute(AppRoute.Characters) },
             onOpenPermissions = { pushRoute(AppRoute.Permissions) },
             onOpenSettings = { pushRoute(AppRoute.Settings) },
+            onOpenNotifications = { pushRoute(AppRoute.IntelligentNotifications) },
             onOpenModelProviders = { pushRoute(AppRoute.ModelProviders) },
             homeTitle = if (isHome) agentState.currentConversationTitle else null,
             homeCharacter = if (isHome) agentState.homeState.roleplayChatUi() else null,
@@ -522,6 +523,9 @@ fun AgentAppRoot(
             }
             entry<AppRoute.ConversationTitleSettings>(swipeDismiss = swipeDismiss) {
                 ConversationTitleSettingsScreen(onBack = ::popRoute)
+            }
+            entry<AppRoute.IntelligentNotifications>(swipeDismiss = swipeDismiss) {
+                io.github.mangi.eta.ui.screens.settings.IntelligentNotificationsScreen(onBack = ::popRoute)
             }
             entry<AppRoute.AppImprovements>(swipeDismiss = swipeDismiss) {
                 io.github.mangi.eta.ui.screens.settings.AppImprovementsScreen(onBack = ::popRoute)

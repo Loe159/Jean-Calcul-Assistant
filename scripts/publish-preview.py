@@ -19,14 +19,23 @@ def main():
     channel = os.environ["UPDATE_CHANNEL"]
     code = int(os.environ["PREVIEW_VERSION_CODE"])
     repository = os.environ["GITHUB_REPOSITORY"]
-    commit = os.environ["GITHUB_SHA"]
+    commit = os.environ.get("APK_SOURCE_COMMIT") or os.environ["GITHUB_SHA"]
     apk, = Path("app/build/outputs/apk/debug").glob("*.apk")
     # A rerun of an older build must never replace a newer preview.
     existing = gh("release", "download", channel, "--repo", repository,
                   "--pattern", "update.json", "--output", "-", check=False)
-    if existing.returncode == 0 and json.loads(existing.stdout)["versionCode"] >= code:
-        print("A newer or identical preview is already published; skipping.")
-        return
+    if existing.returncode == 0:
+        previous = json.loads(existing.stdout)
+        if previous["versionCode"] > code:
+            print("A newer preview is already published; skipping.")
+            return
+        if previous["versionCode"] == code:
+            digest = hashlib.sha256(apk.read_bytes()).hexdigest()
+            if previous["sha256"] != digest:
+                raise RuntimeError("Refusing to replace a different APK with the same versionCode")
+            if previous.get("commit") == commit:
+                print("Identical APK and source commit already published; skipping.")
+                return
     release = gh("release", "view", channel, "--repo", repository, check=False)
     if release.returncode != 0:
         gh("release", "create", channel, "--repo", repository, "--prerelease", "--target", commit,
