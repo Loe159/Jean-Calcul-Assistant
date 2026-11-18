@@ -8,6 +8,9 @@ import java.util.Locale
 internal object NotificationTopics {
     val titles = linkedMapOf(
         "messages" to "Messages et conversations",
+        "security" to "Sécurité et comptes",
+        "development" to "Développement et IA",
+        "learning" to "Apprentissage",
         "work" to "Travail",
         "calendar" to "Rendez-vous et agenda",
         "tasks" to "Tâches et rappels",
@@ -29,10 +32,26 @@ internal object NotificationTopics {
             return if (androidCategory == Notification.CATEGORY_MESSAGE && kind != GameNotificationKind.INVITATION)
                 "messages" else "games"
         }
+        // Content-driven topics take precedence over broad EMAIL/MESSAGE categories.
+        val input = NotificationPriorityInput(pkg, title, body, channel, androidCategory)
+        if (NotificationPriorityPolicy.githubBot(input) || pkg.contains("github", true)) return "development"
+        if (nliLabel == "a security alert" ||
+            Regex("(?iu)alerte de s[ée]curit[ée]|security alert|connexion inconnue|authentication|code de v[ée]rification").containsMatchIn(s))
+            return "security"
+        if (Regex("(?iu)spotlight|suggestion d['’]ami|anniversaire professionnel|est en train d['’][ée]crire|" +
+                "vous a sugg[ée]r[ée]|recommended post|publication de ").containsMatchIn(s)) return "social"
+        if (androidCategory == Notification.CATEGORY_MESSAGE &&
+            !NotificationPriorityPolicy.recognizedSocialSuggestion(title, body)) return "messages"
+        if (Regex("(?iu)4 nouveaux styles d['’]image|d[ée]couvrez les contenus|" +
+                "offre sp[ée]ciale|code promo|promotion").containsMatchIn(s) ||
+            nliLabel == NotificationFilterPolicy.AD) return "promotions"
+        if (pkg.contains("dodje", true) ||
+            Regex("(?iu)duo du jour|pause glandeur|le[çc]on du jour").containsMatchIn(s)) return "learning"
         if (androidCategory == Notification.CATEGORY_MESSAGE ||
-            androidCategory == Notification.CATEGORY_EMAIL ||
             androidCategory == Notification.CATEGORY_MISSED_CALL ||
-            nliLabel == "a personal message") return "messages"
+            nliLabel == "a personal message" && androidCategory != Notification.CATEGORY_EMAIL)
+            return "messages"
+        if (androidCategory == Notification.CATEGORY_EMAIL) return "work"
         if (androidCategory == Notification.CATEGORY_CALL) return "messages"
         if (androidCategory == Notification.CATEGORY_EVENT ||
             androidCategory == Notification.CATEGORY_ALARM ||
@@ -40,7 +59,7 @@ internal object NotificationTopics {
             Regex("(?i)rendez.vous|appointment|meeting|réunion|agenda").containsMatchIn(s)) return "calendar"
         if (androidCategory == Notification.CATEGORY_REMINDER ||
             Regex("(?i)rappel|todo|to.do|task|tâche|deadline").containsMatchIn(s)) return "tasks"
-        if (nliLabel == "a security alert" || androidCategory == Notification.CATEGORY_SYSTEM ||
+        if (androidCategory == Notification.CATEGORY_SYSTEM ||
             androidCategory == Notification.CATEGORY_SERVICE) return "system"
         if (Regex("(?i)banque|bank|virement|facture|invoice|paiement|payment|transaction|solde|budget").containsMatchIn(s)) return "finance"
         if (nliLabel == "a delivery update" ||

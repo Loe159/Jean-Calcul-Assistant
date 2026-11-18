@@ -21,9 +21,10 @@ class NowBriefNotificationGroupsTest {
             entry("c1", "org.charlie", 200, "other"),
         )
         val groups = groupBriefNotifications(items)
-        assertEquals(listOf("messages", "promotions", "other"), groups.map { it.category })
+        assertEquals(listOf("messages", "other", "promotions"), groups.map { it.category })
         assertEquals(listOf("a2", "a1"), groups.first().entries.map { it.key })
         assertEquals(4, groups.sumOf { it.entries.size })
+        assertEquals(listOf("NOW", "TODAY", "LOW"), groups.map { it.priority.name })
     }
 
     @Test fun correctionOverridesModelTopic() {

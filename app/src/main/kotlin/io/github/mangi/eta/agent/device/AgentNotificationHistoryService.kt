@@ -20,6 +20,9 @@ import io.github.mangi.eta.agent.device.notifications.NotificationGameIdentity
 import io.github.mangi.eta.agent.device.notifications.NotificationGameSettings
 import io.github.mangi.eta.agent.device.notifications.NotificationGamePolicy
 import io.github.mangi.eta.agent.device.notifications.GameNotificationKind
+import io.github.mangi.eta.agent.device.notifications.NotificationTopics
+import io.github.mangi.eta.agent.device.notifications.NotificationPriorityInput
+import io.github.mangi.eta.agent.device.notifications.NotificationPriorityPolicy
 import android.os.Handler
 import android.os.Looper
 import java.time.LocalTime
@@ -144,7 +147,8 @@ class AgentNotificationHistoryService : NotificationListenerService() {
         if (current.packageName != original.packageName ||
             current.postTime != original.postTime ||
             NotificationProtection.fingerprint(current) != fingerprint ||
-            !NotificationProtection.safe(this, current)) return false
+            !NotificationProtection.safe(this, current, allowRoutineBotEmail = !gameRule,
+                allowSocialSuggestion = !gameRule)) return false
         // Never remove an urgent/alerting notification even if its NLI label is "advertisement".
         val ranking = Ranking()
         val rankAvailable = runCatching { currentRanking?.getRanking(current.key, ranking) == true }
@@ -180,7 +184,22 @@ class AgentNotificationHistoryService : NotificationListenerService() {
                     current.notification.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty(),
                     NotificationAdaptiveSettings.minExamples(this))
             else NotificationPersonalization.Interest.NEUTRAL
-            NotificationPersonalization.safeDecision(base, preference, scores.first().first, settings).decision
+            val title = current.notification.extras
+                .getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
+            val body = current.notification.extras
+                .getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
+            val label = scores.first().first
+            val topic = repository.learnedTopic(current.packageName, current.notification.channelId,
+                label, title, body) ?: NotificationTopics.classify(
+                current.packageName, current.notification.channelId,
+                current.notification.category, title, body, label)
+            NotificationPriorityPolicy.automaticAction(
+                NotificationPriorityInput(current.packageName, title, body,
+                    current.notification.channelId, current.notification.category, topic, label,
+                    personalInterest = preference),
+                settings, NotificationPersonalization.safeDecision(base, preference, label, settings),
+                LocalTime.now().hour,
+            ).decision
         }
         if (newDecision != desired) return false
 

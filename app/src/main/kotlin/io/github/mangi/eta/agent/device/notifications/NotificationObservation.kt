@@ -289,7 +289,11 @@ internal object NotificationObservation : NotificationBriefSource {
         }
         val fingerprint = NotificationProtection.fingerprint(next)
         val body = NotificationProtection.text(snapshot)
-        val canRemove = live != null && NotificationProtection.safe(app, live)
+        val canRemove = live != null && (
+            NotificationProtection.safe(app, live) ||
+                NotificationProtection.safe(app, live, allowRoutineBotEmail = true,
+                    allowSocialSuggestion = true)
+        )
         executor.execute {
             try {
                 val config = NotificationFilterSettings.load(app)
@@ -318,11 +322,20 @@ internal object NotificationObservation : NotificationBriefSource {
                         snapshot.notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString().orEmpty(),
                         NotificationAdaptiveSettings.minExamples(app))
                 else NotificationPersonalization.Interest.NEUTRAL
-                val adapted = NotificationPersonalization.safeDecision(evaluation, preference, label, config)
+                val title = snapshot.notification.extras
+                    .getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString().orEmpty()
+                val content = snapshot.notification.extras
+                    .getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString().orEmpty()
                 val topic = store.learnedTopic(next.packageName, snapshot.notification.channelId, label,
-                    snapshot.notification.extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString().orEmpty(), body)
+                    title, content)
                     ?: NotificationTopics.classify(next.packageName, snapshot.notification.channelId,
-                        snapshot.notification.category, body, "", label)
+                        snapshot.notification.category, title, content, label)
+                val priority = NotificationPriorityInput(next.packageName, title, content,
+                    snapshot.notification.channelId, snapshot.notification.category, topic, label,
+                    personalInterest = preference)
+                val adapted = NotificationPriorityPolicy.automaticAction(priority, config,
+                    NotificationPersonalization.safeDecision(evaluation, preference, label, config),
+                    LocalTime.now().hour)
                 val decision = adapted.decision
                 val state = when {
                     !canRemove -> NotificationHistoryRepository.DecisionState.ANALYZED_PROTECTED

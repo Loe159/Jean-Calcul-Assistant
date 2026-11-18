@@ -36,12 +36,30 @@ internal object NotificationProtection {
             "signal|whatsapp|telegram|discord|outlook|gmail|health|medical|doctolib)"
     )
 
-    fun safe(context: Context, sbn: StatusBarNotification): Boolean {
+    fun safe(context: Context, sbn: StatusBarNotification,
+             allowRoutineBotEmail: Boolean = false, allowSocialSuggestion: Boolean = false): Boolean {
         val n = sbn.notification
+        val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
+        val body = n.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
+        // A specifically identified GitHub bot notification can be cleared if it
+        // requests no action. Other mail (including human messages) stays protected.
+        val routineBot = allowRoutineBotEmail &&
+            sbn.packageName in setOf("com.microsoft.office.outlook", "com.google.android.gm") &&
+            n.category == Notification.CATEGORY_EMAIL &&
+            NotificationPriorityPolicy.githubBot(
+                NotificationPriorityInput(sbn.packageName, title, body, n.channelId, n.category)) &&
+            !NotificationPriorityPolicy.botRequiresAction(
+                NotificationPriorityInput(sbn.packageName, title, body, n.channelId, n.category))
+        val socialSuggestion = allowSocialSuggestion &&
+            sbn.packageName in setOf("com.snapchat.android", "com.linkedin.android", "com.instagram.android") &&
+            n.category == Notification.CATEGORY_MESSAGE &&
+            NotificationPriorityPolicy.recognizedSocialSuggestion(title, body)
         if (!sbn.isClearable ||
             sbn.packageName == context.packageName ||
-            protectedPackages.containsMatchIn(sbn.packageName) ||
-            n.category in protectedCategory ||
+            (!routineBot && protectedPackages.containsMatchIn(sbn.packageName)) ||
+            (n.category in protectedCategory &&
+                !(routineBot && n.category == Notification.CATEGORY_EMAIL) &&
+                !(socialSuggestion && n.category == Notification.CATEGORY_MESSAGE)) ||
             n.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE or
                 Notification.FLAG_GROUP_SUMMARY or Notification.FLAG_NO_CLEAR) != 0 ||
             n.shortcutId != null ||
@@ -52,10 +70,9 @@ internal object NotificationProtection {
         val appInfo = runCatching {
             context.packageManager.getApplicationInfo(sbn.packageName, 0)
         }.getOrNull() ?: return false // Unknown app: not safe to filter.
-        if (appInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0 ||
-            appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0) return false
-        val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
-        val text = n.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
+        if (!routineBot && (appInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0 ||
+            appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0)) return false
+        val text = body
         val bigText = n.extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString().orEmpty()
         if ((title + text).trim().length < 8) return false
         if (sensitive.containsMatchIn("$title $text $bigText")) return false

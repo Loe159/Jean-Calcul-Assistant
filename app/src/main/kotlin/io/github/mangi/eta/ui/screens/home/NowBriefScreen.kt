@@ -75,6 +75,7 @@ import io.github.mangi.eta.agent.device.notifications.NotificationBriefEvent
 import io.github.mangi.eta.agent.device.notifications.NotificationBriefOutcome
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterPolicy
 import io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback
+import io.github.mangi.eta.agent.device.notifications.NotificationPriority
 import io.github.mangi.eta.agent.device.notifications.NotificationObservation
 import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
 import io.github.mangi.eta.agent.device.AgentNotificationHistoryService
@@ -149,9 +150,10 @@ internal fun NowBriefScreen(
         if (!visible || !hasMore || loadingMore || activityEntries.isEmpty()) return@LaunchedEffect
         snapshotFlow {
             val info = listState.layoutInfo
-            info.totalItemsCount - (info.visibleItemsInfo.lastOrNull()?.index ?: 0)
-        }.collect { remaining ->
-            if (remaining <= 8 && hasMore && !loadingMore) {
+            (info.totalItemsCount - (info.visibleItemsInfo.lastOrNull()?.index ?: 0)) to
+                listState.isScrollInProgress
+        }.collect { (remaining, scrolling) ->
+            if (scrolling && remaining <= 8 && hasMore && !loadingMore) {
                 loadingMore = true
                 try {
                     val next = withContext(Dispatchers.IO) {
@@ -276,13 +278,6 @@ internal fun NowBriefScreen(
             }
         }
 
-        item(key = "notification-feed:heading") {
-            Row(modifier = Modifier.fillMaxWidth()
-                .padding(start = 28.dp, end = 28.dp, bottom = 7.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                BriefHeading("Activité récente", color = colors.title, size = 19)
-            }
-        }
         if (activityError) item(key = "notification-feed:error") {
             CouiText(text = "Historique indisponible · réessayez en rouvrant le briefing",
                 kind = CouiTextKind.ItemSummary, color = colors.summary,
@@ -296,24 +291,74 @@ internal fun NowBriefScreen(
                 }
             }
         } else {
-            notificationGroups.forEach { group ->
-                item(key = "topic:${group.category}") {
-                    BriefNotificationAppCard(group = group,
-                        expanded = expandedTopics[group.category] == true,
-                        onToggle = { expandedTopics[group.category] = expandedTopics[group.category] != true },
-                        onDismiss = dismissActivityEntries,
-                        onTouchChange = onNotificationTouchChange)
-                }
-                if (expandedTopics[group.category] == true) {
-                    items(group.entries, key = { "brief:${it.key}" }) { entry ->
-                        BriefNotificationRow(entry, dismissActivityEntries, markFeedback, correctCategory,
-                            openNotification, onNotificationTouchChange)
+            NotificationPriority.entries.forEach { tier ->
+                val groups = notificationGroups.filter { it.priority == tier }
+                if (groups.isNotEmpty()) {
+                    val label = when (tier) {
+                        NotificationPriority.NOW -> "À traiter maintenant"
+                        NotificationPriority.TODAY -> "À voir aujourd'hui"
+                        NotificationPriority.LOW -> "Sans importance"
+                    }
+                    val subtitle = when (tier) {
+                        NotificationPriority.NOW -> "À garder dans les notifications Android"
+                        NotificationPriority.TODAY -> "Pour plus tard · disponible dans le briefing"
+                        NotificationPriority.LOW -> "Publicités et rappels inutiles · repliés"
+                    }
+                    item(key = "priority:${tier.name}") {
+                        Column(Modifier.fillMaxWidth().padding(start = 28.dp, end = 28.dp,
+                            top = 13.dp, bottom = 9.dp),
+                            verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            BriefHeading(label, color = colors.title, size = 19)
+                            CouiText(text = "${groups.sumOf { it.entries.size }} notification${if (groups.sumOf { it.entries.size } > 1) "s" else ""} · $subtitle",
+                                kind = CouiTextKind.ItemSummary, color = colors.summary,
+                                maxLines = 3)
+                        }
+                    }
+                    groups.forEach { group ->
+                        val key = "${tier.name}:${group.category}"
+                        val expanded = expandedTopics[key] ?: (tier != NotificationPriority.LOW)
+                        item(key = "topic:$key") {
+                            BriefNotificationAppCard(group = group,
+                                expanded = expanded,
+                                onToggle = { expandedTopics[key] = !expanded },
+                                onDismiss = dismissActivityEntries,
+                                onTouchChange = onNotificationTouchChange)
+                        }
+                        if (expanded) {
+                            items(group.entries, key = { "brief:$key:${it.key}" }) { entry ->
+                                BriefNotificationRow(entry, dismissActivityEntries, markFeedback,
+                                    correctCategory, openNotification, onNotificationTouchChange)
+                            }
+                        }
                     }
                 }
             }
             if (loadingMore) item(key = "notification-feed:loading") {
                 CouiText(text = "Chargement…", kind = CouiTextKind.ItemSummary,
                     color = colors.summary, modifier = Modifier.padding(24.dp))
+            }
+            if (hasMore && !loadingMore) item(key = "notification-feed:load-more") {
+                Box(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center) {
+                    CouiButton(text = "Afficher les notifications précédentes", onClick = {
+                        if (!loadingMore) {
+                            loadingMore = true
+                            scope.launch {
+                                try {
+                                    val next = withContext(Dispatchers.IO) {
+                                        repository.recentPage(pageSize, activityEntries.lastOrNull())
+                                    }
+                                    activityEntries = (activityEntries + next).distinctBy { it.key }
+                                        .sortedWith(compareByDescending<NotificationHistoryRepository.RecentEntry> { it.postedAt }
+                                            .thenByDescending { it.key })
+                                    hasMore = next.size == pageSize
+                                } catch (_: Exception) {
+                                    activityError = true
+                                } finally { loadingMore = false }
+                            }
+                        }
+                    })
+                }
             }
         }
 
