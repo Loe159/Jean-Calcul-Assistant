@@ -76,6 +76,9 @@ internal object NotificationPriorityPolicy {
 
     fun classify(input: NotificationPriorityInput): NotificationPriority {
         val text = "${input.title} ${input.body}"
+        // Security alerts override every social/media heuristic, including mentions.
+        if (security.containsMatchIn(text) || input.topic == "security")
+            return NotificationPriority.NOW
         if (githubBot(input)) return when {
             botRequiresAction(input) -> NotificationPriority.NOW
             input.personalInterest == NotificationPersonalization.Interest.WANTED -> NotificationPriority.TODAY
