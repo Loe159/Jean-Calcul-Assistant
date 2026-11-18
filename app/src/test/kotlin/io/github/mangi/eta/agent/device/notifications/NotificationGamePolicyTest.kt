@@ -1,8 +1,6 @@
 package io.github.mangi.eta.agent.device.notifications
 
 import android.app.Notification
-import androidx.test.core.app.ApplicationProvider
-import android.content.Context
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.After
@@ -10,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 
 @RunWith(RobolectricTestRunner::class)
 class NotificationGamePolicyTest {
@@ -95,7 +94,7 @@ class NotificationGamePolicyTest {
     }
 
     @Test fun settingsDefaultToTheValidatedChoicesAndCanBeChanged() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
+        val context = RuntimeEnvironment.getApplication()
         val prefs = context.getSharedPreferences("notification_local", Context.MODE_PRIVATE)
         GameNotificationKind.entries.forEach { kind -> prefs.edit().remove("game_filter_${kind.name}").commit() }
         assertEquals(configured, NotificationGameSettings.enabledKinds(context))
@@ -110,7 +109,7 @@ class NotificationGamePolicyTest {
     }
 
     @Test fun packageIdentityIsNotBasedOnSpoofableNotificationText() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
+        val context = RuntimeEnvironment.getApplication()
         assertTrue(NotificationGameIdentity.isGame(context, "com.supercell.brawlstars"))
         assertTrue(NotificationGameIdentity.isGame(context, "com.chess"))
         assertFalse(NotificationGameIdentity.isGame(context, "com.example.not_a_game"))

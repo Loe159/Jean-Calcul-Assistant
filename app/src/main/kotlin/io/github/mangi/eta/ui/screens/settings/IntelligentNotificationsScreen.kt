@@ -244,19 +244,19 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
         Group(title = "Jeux") {
             CouiPreference(
                 title = if (showGameRules) "Masquer les règles des jeux" else "Filtrage des jeux",
-                summary = "Récompenses, séries, nouveautés et puzzles supprimés · invitations conservées",
+                summary = "4 types supprimés · invitations conservées",
                 onClick = { showGameRules = !showGameRules },
             )
             if (showGameRules) {
                 listOf(
-                    GameNotificationKind.REWARD to "Récompenses et quêtes quotidiennes",
-                    GameNotificationKind.STREAK to "Séries et rappels de connexion",
+                    GameNotificationKind.REWARD to "Récompenses et quêtes",
+                    GameNotificationKind.STREAK to "Séries et rappels",
                     GameNotificationKind.EVENT to "Événements et nouveautés",
                     GameNotificationKind.PUZZLE to "Défis et puzzles",
                 ).forEach { (kind, title) ->
                     CouiSwitchPreference(
-                        title = "Supprimer : $title",
-                        summary = "Filtrage local si le type est identifié avec certitude",
+                        title = title,
+                        summary = if (kind in gameDeletes) "Supprimer automatiquement" else "Conserver",
                         checked = kind in gameDeletes,
                         onCheckedChange = { delete ->
                             NotificationGameSettings.setDelete(context, kind, delete)
