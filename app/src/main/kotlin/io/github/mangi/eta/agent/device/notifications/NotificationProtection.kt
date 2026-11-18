@@ -119,11 +119,15 @@ internal object NotificationProtection {
         val bigText = n.extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString().orEmpty()
         if ((title + text).trim().length < 8 ||
             stronglySensitive.containsMatchIn("$title $text $bigText")) return false
-        // Messages may be marked CATEGORY_MESSAGE by Snapchat for recommendations.
-        // That narrow case is clearable, but real conversations never are.
-        if (n.category == Notification.CATEGORY_MESSAGE &&
-            !(pkg in setOf("com.snapchat.android", "com.linkedin.android", "com.instagram.android") &&
-              NotificationPriorityPolicy.recognizedSocialSuggestion(title, text))) return false
+        // Some social platforms mark mentions, friend requests, and suggestions
+        // CATEGORY_MESSAGE. Clear only explicitly recognized non-DM social events.
+        // MessagingStyle, people and inline replies remain blocked above.
+        if (n.category == Notification.CATEGORY_MESSAGE) {
+            val socialKind = NotificationSocialPolicy.classify(pkg, title, text, n.category)
+            if (socialKind !in setOf(SocialNotificationKind.MENTION, SocialNotificationKind.INVITATION,
+                    SocialNotificationKind.ACTIVITY, SocialNotificationKind.SUGGESTION,
+                    SocialNotificationKind.POST)) return false
+        }
         val appInfo = runCatching { context.packageManager.getApplicationInfo(pkg, 0) }
             .getOrNull() ?: return false
         val privileged = protectedPackages.containsMatchIn(pkg) ||

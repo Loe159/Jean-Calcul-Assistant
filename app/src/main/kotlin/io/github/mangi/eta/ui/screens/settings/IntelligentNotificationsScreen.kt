@@ -241,6 +241,38 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                     onClick = { confirmReset = true })
             }
         }
+        Group(title = "Messages et réseaux sociaux") {
+            CouiPreference(
+                title = "Messages personnels",
+                summary = "Immédiat · conservés sur Android",
+                showChevron = false,
+            )
+            CouiPreference(
+                title = "Mentions et identifications",
+                summary = "Ce soir · visibles dans le briefing",
+                showChevron = false,
+            )
+            CouiPreference(
+                title = "Invitations et demandes d'amis",
+                summary = "Ce soir · visibles dans le briefing",
+                showChevron = false,
+            )
+            CouiPreference(
+                title = "Activité sociale secondaire",
+                summary = "Indésirable · repliée dans le briefing",
+                showChevron = false,
+            )
+            CouiPreference(
+                title = "Suggestions et recommandations",
+                summary = "Indésirable · repliées dans le briefing",
+                showChevron = false,
+            )
+            CouiPreference(
+                title = "Publications des abonnements",
+                summary = "Indésirable · repliées dans le briefing",
+                showChevron = false,
+            )
+        }
         Group(title = "Jeux") {
             CouiPreference(
                 title = if (showGameRules) "Masquer les règles des jeux" else "Filtrage des jeux",

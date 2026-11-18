@@ -58,6 +58,19 @@ class NotificationPriorityProtectionTest {
             "Synchronisation du profil effectuée", Notification.CATEGORY_SERVICE), "system"))
     }
 
+    @Test fun socialNotificationsCanBeClearedButConversationsCannot() {
+        assertTrue(canDismiss(makeNotification("com.snapchat.android", "Théo",
+            "vous a envoyé une demande d'ami", Notification.CATEGORY_MESSAGE), "social"))
+        assertTrue(canDismiss(makeNotification("com.snapchat.android", "Eva",
+            "est en train d'écrire", Notification.CATEGORY_MESSAGE), "social"))
+        assertTrue(canDismiss(makeNotification("com.snapchat.android", "Snapchat",
+            "Découvrez les contenus de Spotlight", Notification.CATEGORY_MESSAGE), "social"))
+        assertFalse(canDismiss(makeNotification("com.snapchat.android", "Eva",
+            "vous a envoyé un Chat", Notification.CATEGORY_MESSAGE), "messages"))
+        assertFalse(canDismiss(makeNotification("com.snapchat.android", "Eva",
+            "Salut, tu viens ?", Notification.CATEGORY_MESSAGE), "messages"))
+    }
+
     @Test fun neverClearSecurityMessagesCallsAndOngoingAlerts() {
         assertFalse(canDismiss(makeNotification("com.google.android.gm", "Google",
             "Alerte de sécurité : connexion inconnue", Notification.CATEGORY_EMAIL), "security"))

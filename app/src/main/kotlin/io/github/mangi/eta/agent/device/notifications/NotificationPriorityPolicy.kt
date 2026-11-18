@@ -85,6 +85,14 @@ internal object NotificationPriorityPolicy {
             return if (actionRequired.containsMatchIn(text)) NotificationPriority.NOW
                 else NotificationPriority.TODAY
         }
+        val socialKind = NotificationSocialPolicy.classify(input.packageName, input.title,
+            input.body, input.androidCategory)
+        if (socialKind != SocialNotificationKind.UNKNOWN) {
+            // Explicit positive feedback may elevate a low-priority item, never a direct DM down.
+            return if (input.personalInterest == NotificationPersonalization.Interest.WANTED &&
+                socialKind != SocialNotificationKind.DIRECT) NotificationPriority.TODAY
+            else NotificationSocialPolicy.priority(socialKind)!!
+        }
         if (input.game || input.topic == "games") {
             return when (NotificationGamePolicy.classify(input.title, input.body, input.androidCategory)) {
                 GameNotificationKind.INVITATION -> NotificationPriority.NOW
@@ -131,6 +139,13 @@ internal object NotificationPriorityPolicy {
         base: NotificationFilterEvaluation,
         localHour: Int,
     ): NotificationFilterEvaluation {
+        val socialKind = NotificationSocialPolicy.classify(input.packageName,
+            input.title, input.body, input.androidCategory)
+        if (socialKind != SocialNotificationKind.UNKNOWN) {
+            if (config.mode == NotificationFilterMode.OFF) return base
+            return NotificationSocialPolicy.decision(socialKind, config,
+                input.personalInterest, localHour) ?: base
+        }
         if (config.mode == NotificationFilterMode.OFF) return base
         if (classify(input) == NotificationPriority.NOW) {
             return NotificationFilterEvaluation(NotificationFilterDecision.KEEP, "À traiter maintenant")

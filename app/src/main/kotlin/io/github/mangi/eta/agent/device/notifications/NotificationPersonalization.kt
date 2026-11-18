@@ -32,6 +32,10 @@ internal object NotificationTopics {
             return if (androidCategory == Notification.CATEGORY_MESSAGE && kind != GameNotificationKind.INVITATION)
                 "messages" else "games"
         }
+        val socialKind = NotificationSocialPolicy.classify(pkg, title, body, androidCategory)
+        if (socialKind != SocialNotificationKind.UNKNOWN) {
+            return if (socialKind == SocialNotificationKind.DIRECT) "messages" else "social"
+        }
         // Content-driven topics take precedence over broad EMAIL/MESSAGE categories.
         val input = NotificationPriorityInput(pkg, title, body, channel, androidCategory)
         if (NotificationPriorityPolicy.githubBot(input) || pkg.contains("github", true)) return "development"
