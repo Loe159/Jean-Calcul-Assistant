@@ -249,7 +249,7 @@ internal class NotificationHistoryRepository(context: Context) {
                     execSQL("INSERT INTO $LEARNING_TABLE(feature,wanted,unwanted,examples) VALUES(?,?,?,1) " +
                         "ON CONFLICT(feature) DO UPDATE SET wanted=wanted+excluded.wanted, " +
                         "unwanted=unwanted+excluded.unwanted,examples=examples+1",
-                        arrayOf(feature, if (kind.wanted == true) kind.weight else 0.0,
+                        arrayOf<Any>(feature, if (kind.wanted == true) kind.weight else 0.0,
                             if (kind.wanted == false) kind.weight else 0.0))
                 }
                 if (correctedTopic != null) {

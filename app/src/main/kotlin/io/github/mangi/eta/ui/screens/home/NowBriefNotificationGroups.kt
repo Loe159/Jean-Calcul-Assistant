@@ -21,9 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Text as MaterialText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ExpandLess
@@ -291,15 +288,15 @@ internal fun BriefNotificationAppCard(
                                                 " · intérêt : ${entry.personalInterest ?: "non appris"}",
                                             kind = CouiTextKind.GroupFooter, color = colors.summary,
                                         )
-                                        Box {
-                                            CouiButton(text = "Changer la catégorie", onClick = { showCategories = true })
-                                            DropdownMenu(expanded = showCategories, onDismissRequest = { showCategories = false }) {
-                                                NotificationTopics.titles.keys.forEach { topic ->
-                                                    DropdownMenuItem(
-                                                        text = { MaterialText(NotificationAdaptiveSettings.title(context, topic)) },
-                                                        onClick = { showCategories = false; onCategoryChange(entry, topic) },
-                                                    )
-                                                }
+                                        CouiButton(text = if (showCategories) "Fermer les catégories" else "Changer la catégorie",
+                                            onClick = { showCategories = !showCategories })
+                                        if (showCategories) {
+                                            NotificationTopics.titles.keys.forEach { topic ->
+                                                CouiButton(text = NotificationAdaptiveSettings.title(context, topic),
+                                                    modifier = Modifier.fillMaxWidth(), onClick = {
+                                                        showCategories = false
+                                                        onCategoryChange(entry, topic)
+                                                    })
                                             }
                                         }
                                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
