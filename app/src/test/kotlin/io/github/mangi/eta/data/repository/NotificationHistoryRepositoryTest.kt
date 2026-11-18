@@ -41,7 +41,7 @@ class NotificationHistoryRepositoryTest {
     }
 
     @Test
-    fun `brief history includes all received apps and dismisses only selected rows`() {
+    fun `brief history archives only selected rows and keeps them retrievable`() {
         val now = System.currentTimeMillis()
         repository.record("n1", "com.example.chat", "Alerte", "Message privé", null, now)
         repository.record("n2", "com.example.chat", "Nouveau", "Autre message", null, now - 10)
@@ -50,33 +50,59 @@ class NotificationHistoryRepositoryTest {
         val entries = repository.recent(100)
         assertEquals(4, entries.size)
         assertEquals(listOf("n1", "n2", "n3", "silent"), entries.map { it.key })
-        repository.removeFromBrief(listOf("n2"))
+        repository.archiveFromBrief(listOf("n2"))
         // Listener reconnect may re-post currently active notifications.
         // A dismissed key must not silently reappear in Now Brief.
         repository.record("n2", "com.example.chat", "Nouveau", "Autre message", null, now)
         assertEquals(listOf("n1", "n3", "silent"), repository.recent(100).map { it.key })
-        // Deleting a briefing entry doesn't change classifier counters.
+        assertEquals(listOf("n2"), repository.archived(100).map { it.key })
+        assertEquals("Autre message", repository.archived(100).single().text)
+        // Archiving a briefing entry doesn't change classifier counters.
         assertEquals(3, repository.recent(100).size)
     }
 
     @Test
-    fun `undo restores only dismissed local copies with their decision details`() {
+    fun `undo restores only archived local copies with their decision details`() {
         val now = System.currentTimeMillis()
         repository.record("ad", "com.example.shop", "Promotion", "Réduction", null, now)
         repository.updateDecision("ad", now,
             NotificationHistoryRepository.DecisionState.DISMISSED,
             "a promotional advertisement", 0.8, "Retrait confirmé")
         val original = repository.recent().single()
-        repository.removeFromBrief(listOf("ad"))
+        repository.archiveFromBrief(listOf("ad"))
         assertEquals(emptyList<NotificationHistoryRepository.RecentEntry>(), repository.recent())
+        assertEquals(listOf(original), repository.archived())
 
         repository.restoreToBrief(listOf(original))
         val restored = repository.recent().single()
         assertEquals(original, restored)
+        assertEquals(emptyList<NotificationHistoryRepository.RecentEntry>(), repository.archived())
         // Repeated Undo cannot overwrite a later notification with the same key.
         repository.record("ad", "com.example.shop", "Nouvelle offre", null, null, now + 1)
         repository.restoreToBrief(listOf(original))
         assertEquals("Nouvelle offre", repository.recent().single().title)
+    }
+
+    @Test
+    fun `version four history remains visible after archive column migration`() {
+        val now = System.currentTimeMillis()
+        context.openOrCreateDatabase("eta_notification_history.db", Context.MODE_PRIVATE, null).use { db ->
+            db.execSQL("CREATE TABLE notification_history (" +
+                "notification_key TEXT PRIMARY KEY NOT NULL,package_name TEXT NOT NULL," +
+                "title TEXT,text TEXT,sub_text TEXT,posted_at INTEGER NOT NULL," +
+                "filter_state TEXT NOT NULL DEFAULT 'RECEIVED'," +
+                "filter_label TEXT,filter_score REAL,filter_reason TEXT)")
+            db.execSQL("CREATE TABLE dismissed_from_brief (" +
+                "notification_key TEXT PRIMARY KEY NOT NULL,dismissed_at INTEGER NOT NULL)")
+            db.execSQL("INSERT INTO notification_history " +
+                "(notification_key,package_name,title,text,posted_at) VALUES (?,?,?,?,?)",
+                arrayOf<Any>("old", "com.example.app", "Ancienne alerte", "Encore visible", now))
+            db.version = 4
+        }
+
+        assertEquals("Ancienne alerte", repository.recent().single().title)
+        repository.archiveFromBrief(listOf("old"))
+        assertEquals("Ancienne alerte", repository.archived().single().title)
     }
 
     @Test

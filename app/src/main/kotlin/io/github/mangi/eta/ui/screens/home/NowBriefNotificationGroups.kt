@@ -278,12 +278,12 @@ internal fun BriefNotificationAppCard(
                                 Box(
                                     modifier = Modifier.size(48.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .clickable(role = Role.Button, onClickLabel = "Retirer du briefing") {
+                                        .clickable(role = Role.Button, onClickLabel = "Archiver la copie") {
                                             onDismiss(listOf(entry.key))
                                         },
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    CouiIcon(Icons.Rounded.Close, "Retirer du briefing",
+                                    CouiIcon(Icons.Rounded.Close, "Archiver la copie",
                                         tint = colors.summary, modifier = Modifier.size(18.dp))
                                 }
                             }
@@ -297,7 +297,7 @@ internal fun BriefNotificationAppCard(
                         )
                     }
                     CouiButton(
-                        text = "Retirer toutes les copies de $appName",
+                        text = "Archiver toutes les copies de $appName",
                         onClick = { onDismiss(group.entries.map { it.key }) },
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     )

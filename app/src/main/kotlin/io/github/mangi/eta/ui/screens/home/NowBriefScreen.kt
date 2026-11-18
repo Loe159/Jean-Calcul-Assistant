@@ -170,7 +170,7 @@ internal fun NowBriefScreen(
         if (removed.isNotEmpty()) {
             activityEntries = activityEntries.filterNot { it.key in keys }
             scope.launch {
-                runCatching { withContext(Dispatchers.IO) { repository.removeFromBrief(keys) } }
+                runCatching { withContext(Dispatchers.IO) { repository.archiveFromBrief(keys) } }
                     .onSuccess { undoEntries = (undoEntries + removed).distinctBy { it.key } }
                     .onFailure {
                         activityEntries = (activityEntries + removed).distinctBy { it.key }
@@ -372,8 +372,8 @@ internal fun NowBriefScreen(
         if (reviewedGroups.isNotEmpty() || notificationGroups.isNotEmpty()) {
             item(key = "notification-feed:gesture-help") {
                 CouiText(
-                    text = "Glisser retire uniquement la copie de ce briefing. " +
-                        "Les notifications Android restent intactes.",
+                    text = "Glisser archive la copie de ce briefing. " +
+                        "Elle reste accessible dans les paramètres ; la notification Android reste intacte.",
                     kind = CouiTextKind.GroupFooter, color = colors.summary,
                     modifier = Modifier.padding(horizontal = 30.dp, vertical = 6.dp),
                 )
@@ -483,8 +483,9 @@ internal fun NowBriefScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             CouiText(
-                text = briefCount(undoEntries.size, "copie retirée", "copies retirées") +
-                    " du briefing uniquement. Les notifications Android restent intactes.",
+                text = briefCount(undoEntries.size, "copie archivée", "copies archivées") +
+                    ". ${if (undoEntries.size == 1) "Retrouvez-la" else "Retrouvez-les"} " +
+                    "dans Paramètres › Notifications intelligentes › Archives du briefing.",
                 kind = CouiTextKind.ItemSummary, color = colors.title,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -2,6 +2,7 @@ package io.github.mangi.eta.ui.screens.settings
 
 import android.content.Intent
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -11,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -33,7 +35,6 @@ import io.github.mangi.eta.agent.device.notifications.NotificationFilterCandidat
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterPolicy
 import io.github.mangi.eta.ui.components.coui.CouiSwitchPreference
 import io.github.mangi.eta.ui.components.coui.CouiSelectPreference
-import io.github.mangi.eta.ui.components.coui.CouiConfirmDialog
 import io.github.mangi.eta.ui.components.coui.CouiButton
 import io.github.mangi.eta.ui.components.coui.CouiButtonRole
 import io.github.mangi.eta.ui.components.coui.CouiPageBottomSpacer
@@ -79,8 +80,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
     }
     var status by remember { mutableStateOf("") }
     var config by remember { mutableStateOf(NotificationFilterSettings.load(context)) }
-    var confirmPermanent by remember { mutableStateOf(false) }
-    var deletionNeedsReconfirmation by remember { mutableStateOf(false) }
+    var showArchives by rememberSaveable { mutableStateOf(false) }
     var showAdvancedRules by remember { mutableStateOf(false) }
     var expandedRule by remember { mutableStateOf<String?>(null) }
     var editedLabel by remember { mutableStateOf("") }
@@ -89,17 +89,8 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
     var marginDrafts by remember { mutableStateOf<Map<String, Float>>(emptyMap()) }
 
     fun saveConfig(next: NotificationFilterConfig) {
-        val rulesChangedDuringDeletion = config.action == NotificationFilterAction.DISMISS &&
-            next.action == NotificationFilterAction.DISMISS && next.labelRules != config.labelRules
-        val saved = if (rulesChangedDuringDeletion) {
-            status = "Règles modifiées : suppression désactivée. Confirmez-la à nouveau si nécessaire."
-            next.copy(action = NotificationFilterAction.SNOOZE_1H)
-        } else next
-        if (rulesChangedDuringDeletion) deletionNeedsReconfirmation = true
-        else if (next.action != config.action || next.action == NotificationFilterAction.DISMISS)
-            deletionNeedsReconfirmation = false
-        NotificationFilterSettings.save(context, saved)
-        config = saved
+        NotificationFilterSettings.save(context, next)
+        config = next
     }
 
     fun changeRule(old: String, new: NotificationLabelRule) {
@@ -117,7 +108,6 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
         } else if (mode != NotificationFilterMode.OFF && !listenerGranted) {
             status = "Autorisez d'abord l'accès aux notifications Android."
         } else {
-            confirmPermanent = false
             saveConfig(config.copy(mode = mode, action =
                 if (mode != NotificationFilterMode.PERSONALIZED &&
                     config.action == NotificationFilterAction.DISMISS)
@@ -150,6 +140,12 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                 installed = LocalNotificationModel.installed(context)
             }
         }
+    }
+
+    BackHandler(showArchives) { showArchives = false }
+    if (showArchives) {
+        ArchivedBriefNotificationsScreen(onBack = { showArchives = false })
+        return
     }
 
     CouiScaffoldPage(title = if (largeText) "Notifications" else "Notifications intelligentes",
@@ -189,6 +185,13 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
             )
         }
         Footer(text = "Les textes saisis et les notifications ne sont jamais envoyés à un serveur. Le réseau est utilisé uniquement pour installer les fichiers du modèle.")
+        Group(title = "Historique local") {
+            CouiPreference(
+                title = "Archives du briefing",
+                summary = "Copies retirées du briefing · consultables et restaurables pendant 7 jours",
+                onClick = { showArchives = true },
+            )
+        }
         Group(title = "Modes de filtrage") {
             val options = listOf(
                 NotificationFilterMode.OFF to ("Désactivé" to "Aucune classification en arrière-plan"),
@@ -345,9 +348,6 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                         )
                     }
                 }
-                if (deletionNeedsReconfirmation) {
-                    Footer(text = "Les catégories ou seuils ont changé. La suppression est désactivée ; confirmez-la à nouveau pour toutes les applications éligibles.")
-                }
                 CouiSelectPreference(
                     title = "Reporter 1 heure",
                     summary = "Les notifications peuvent réapparaître ensuite",
@@ -362,10 +362,11 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                 )
                 CouiSelectPreference(
                     title = "Supprimer définitivement",
-                    summary = "Toutes les applications tierces éligibles · confirmation obligatoire",
+                    summary = "Suppression Android irréversible · toutes les applications tierces éligibles",
                     selected = config.action == NotificationFilterAction.DISMISS,
                     onSelect = {
-                        if (config.action != NotificationFilterAction.DISMISS) confirmPermanent = true
+                        saveConfig(config.copy(action = NotificationFilterAction.DISMISS))
+                        status = "Suppression Android activée pour les applications tierces éligibles."
                     },
                 )
             }
@@ -451,22 +452,5 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
         Footer(text = "Historique en mémoire vive (50 entrées maximum), sans texte ni identifiant de notification. Maximum 5 inférences/minute et 500/jour ; suspendu en économie d'énergie ou sous 20 % de batterie. Les changements de modes sont immédiats. Les notifications déjà reportées restent soumises au délai Android.")
         if (status.isNotBlank()) Footer(text = status)
         CouiPageBottomSpacer()
-    }
-    if (confirmPermanent && config.mode == NotificationFilterMode.PERSONALIZED) {
-        CouiConfirmDialog(
-            visible = true,
-            title = "Activer la suppression définitive ?",
-            message = "Cette action concerne toutes les applications tierces éligibles. " +
-                "Une erreur de classification peut supprimer une notification ; Android ne peut pas la restaurer. " +
-                "Une copie locale reste dans Now Brief pendant 7 jours. Les messages, codes, banques et alertes critiques restent protégés.",
-            confirmText = "Activer la suppression",
-            destructive = true,
-            onConfirm = {
-                saveConfig(config.copy(action = NotificationFilterAction.DISMISS))
-                confirmPermanent = false
-                status = "Suppression automatique activée pour les applications tierces éligibles."
-            },
-            onDismissRequest = { confirmPermanent = false },
-        )
     }
 }

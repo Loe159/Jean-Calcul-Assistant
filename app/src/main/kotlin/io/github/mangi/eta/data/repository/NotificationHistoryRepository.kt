@@ -31,7 +31,9 @@ internal class NotificationHistoryRepository(context: Context) {
             put("posted_at", postedAt)
         }
         database.writableDatabase.transaction {
-            // A swiped-away row remains hidden even when Android replays
+            delete(HIDDEN_TABLE, "dismissed_at<?",
+                arrayOf((System.currentTimeMillis() - RETENTION_MS).toString()))
+            // An archived row remains hidden even when Android replays
             // active notifications after the listener reconnects.
             val alreadyDismissed = query(
                 HIDDEN_TABLE, arrayOf("notification_key"), "notification_key=?",
@@ -93,7 +95,7 @@ internal class NotificationHistoryRepository(context: Context) {
     }
 
     /** Last seven days, including notifications never sent to the AI classifier.
-     * Keep the key private to this on-device UI, for safe per-item dismissal.
+     * Keep the key private to this on-device UI, for safe per-item archiving.
      */
     data class RecentEntry(
         val key: String,
@@ -107,13 +109,19 @@ internal class NotificationHistoryRepository(context: Context) {
         val reason: String? = null,
     )
 
-    fun recent(limit: Int = 200): List<RecentEntry> {
+    fun recent(limit: Int = 200): List<RecentEntry> = entries(archived = false, limit = limit)
+
+    /** Copies hidden from Now Brief but still available locally for seven days. */
+    fun archived(limit: Int = 200): List<RecentEntry> = entries(archived = true, limit = limit)
+
+    private fun entries(archived: Boolean, limit: Int): List<RecentEntry> {
         val cutoff = System.currentTimeMillis() - RETENTION_MS
         return database.readableDatabase.query(
             TABLE,
             arrayOf("notification_key", "package_name", "title", "text", "sub_text",
                 "posted_at", "filter_state", "filter_label", "filter_score", "filter_reason"),
-            "posted_at>=?", arrayOf(cutoff.toString()),
+            "posted_at>=? AND archived_at IS ${if (archived) "NOT " else ""}NULL",
+            arrayOf(cutoff.toString()),
             null, null, "posted_at DESC", limit.coerceIn(1, MAX_RECORDS).toString(),
         ).use { cursor ->
             buildList {
@@ -136,47 +144,39 @@ internal class NotificationHistoryRepository(context: Context) {
         }
     }
 
-    /** Dismiss a row from the personal briefing only; never cancel Android alerts. */
-    fun removeFromBrief(keys: Collection<String>) {
+    /** Archive local copies without changing their Android notification. */
+    fun archiveFromBrief(keys: Collection<String>) {
         if (keys.isEmpty()) return
         database.writableDatabase.transaction {
             keys.forEach { key ->
-                insertWithOnConflict(HIDDEN_TABLE, null, ContentValues().apply {
-                    put("notification_key", key.take(MAX_KEY_CHARS))
-                    put("dismissed_at", System.currentTimeMillis())
-                }, SQLiteDatabase.CONFLICT_REPLACE)
-                delete(TABLE, "notification_key=?", arrayOf(key))
+                val boundedKey = key.take(MAX_KEY_CHARS)
+                val archivedAt = System.currentTimeMillis()
+                val changed = update(TABLE, ContentValues().apply { put("archived_at", archivedAt) },
+                    "notification_key=? AND archived_at IS NULL", arrayOf(boundedKey))
+                if (changed == 1) {
+                    insertWithOnConflict(HIDDEN_TABLE, null, ContentValues().apply {
+                        put("notification_key", boundedKey)
+                        put("dismissed_at", archivedAt)
+                    }, SQLiteDatabase.CONFLICT_REPLACE)
+                }
             }
             delete(HIDDEN_TABLE, "dismissed_at<?",
                 arrayOf((System.currentTimeMillis() - RETENTION_MS).toString()))
         }
     }
 
-    /** Restore the exact local copies after an explicit Undo, without touching Android alerts. */
+    /** Restore archived copies to Now Brief without touching Android alerts. */
     fun restoreToBrief(entries: Collection<RecentEntry>) {
         if (entries.isEmpty()) return
         database.writableDatabase.transaction {
             entries.forEach { entry ->
                 val key = entry.key.take(MAX_KEY_CHARS)
-                val hidden = query(HIDDEN_TABLE, arrayOf("notification_key"),
-                    "notification_key=?", arrayOf(key), null, null, null, "1")
-                    .use { it.moveToFirst() }
-                if (!hidden || entry.postedAt < System.currentTimeMillis() - RETENTION_MS) return@forEach
-                insertWithOnConflict(TABLE, null, ContentValues().apply {
-                    put("notification_key", key)
-                    put("package_name", entry.packageName.take(MAX_PACKAGE_CHARS))
-                    put("title", entry.title.take(MAX_FIELD_CHARS))
-                    put("text", entry.text.take(MAX_FIELD_CHARS))
-                    put("posted_at", entry.postedAt)
-                    put("filter_state", entry.state.name)
-                    put("filter_label", entry.category)
-                    entry.score?.let { put("filter_score", it) }
-                    put("filter_reason", entry.reason)
-                }, SQLiteDatabase.CONFLICT_REPLACE)
-                delete(HIDDEN_TABLE, "notification_key=?", arrayOf(key))
+                if (entry.postedAt < System.currentTimeMillis() - RETENTION_MS) return@forEach
+                val changed = update(TABLE, ContentValues().apply { putNull("archived_at") },
+                    "notification_key=? AND posted_at=? AND archived_at IS NOT NULL",
+                    arrayOf(key, entry.postedAt.toString()))
+                if (changed == 1) delete(HIDDEN_TABLE, "notification_key=?", arrayOf(key))
             }
-            execSQL("DELETE FROM $TABLE WHERE notification_key NOT IN " +
-                "(SELECT notification_key FROM $TABLE ORDER BY posted_at DESC LIMIT $MAX_RECORDS)")
         }
     }
 
@@ -239,7 +239,7 @@ internal class NotificationHistoryRepository(context: Context) {
     private fun String.escapeLike(): String =
         replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
-    private class Database(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, 4) {
+    private class Database(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, 5) {
         override fun onCreate(db: SQLiteDatabase) {
             createHiddenTable(db)
             db.execSQL(
@@ -248,7 +248,7 @@ internal class NotificationHistoryRepository(context: Context) {
                     "package_name TEXT NOT NULL," +
                     "title TEXT,text TEXT,sub_text TEXT,posted_at INTEGER NOT NULL," +
                     "filter_state TEXT NOT NULL DEFAULT 'RECEIVED'," +
-                    "filter_label TEXT,filter_score REAL,filter_reason TEXT)",
+                    "filter_label TEXT,filter_score REAL,filter_reason TEXT,archived_at INTEGER)",
             )
             db.execSQL("CREATE INDEX notification_history_posted_at ON $TABLE(posted_at DESC)")
         }
@@ -262,6 +262,9 @@ internal class NotificationHistoryRepository(context: Context) {
             }
             if (oldVersion < 4) {
                 db.execSQL("ALTER TABLE $TABLE ADD COLUMN filter_reason TEXT")
+            }
+            if (oldVersion < 5) {
+                db.execSQL("ALTER TABLE $TABLE ADD COLUMN archived_at INTEGER")
             }
         }
 

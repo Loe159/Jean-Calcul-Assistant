@@ -91,4 +91,5 @@ Session statistics appear only after classification activity. On an empty
 session, filtering setup and recent notifications follow the Brief heading.
 The placeholder "À venir" card is removed. Large font settings stack the
 three session metrics vertically. Local notification removal uses a neutral
-cue and offers an on-screen Undo.
+cue and offers an on-screen Undo. Archived copies stay available in notification
+settings for seven days, without changing the Android notification.

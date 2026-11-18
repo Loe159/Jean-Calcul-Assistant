@@ -14,10 +14,13 @@ The filtering summary and recent activity are intentionally separate.
 - Application icons come directly from Android PackageManager and are never
   transmitted to a service.
 - Expand an app to see individual entries. Swipe left or right on the app
-  group (all stored entries) or a single entry to dismiss from this dashboard.
+  group (all stored entries) or a single entry to archive it from this dashboard.
   The 48dp row close button and the expanded group's bulk action provide accessible
-  alternatives. An on-screen Undo restores removed local copies and decisions.
-- Dismissal changes the **local briefing history only** and never calls
+  alternatives. The action has no confirmation dialog. An on-screen Undo restores
+  archived local copies and decisions. The same copies remain readable and
+  restorable in Settings → Notifications intelligentes → Archives du briefing
+  for up to seven days.
+- Archiving changes the **local briefing view only** and never calls
   NotificationListenerService.cancelNotification. It therefore cannot silently
   delete a security message, reminder or other Android system notification.
 - The dashboard runs no polling loop and reads SQLite via Dispatchers.IO when
@@ -65,7 +68,7 @@ and a damped spring on release; rightward swipe never opens the chat.
 The mode 3 app/package allowlist and its input field were removed.
 Every eligible third-party application now goes through the same local
 policy; the model's classification determines whether to keep, snooze
-or (after explicit global confirmation) permanently dismiss the Android
+or permanently dismiss the Android
 notification. Protected system apps, conversations, payments, OTP, alarms,
 high-priority or non-clearable notifications remain exempt, even if the
 classifier assigns an advertisement/spam label. All received notifications
@@ -75,7 +78,8 @@ they were classified.
 Previously saved v1 configuration is migrated to the v2 format without
 package rules. If the old settings allowed irreversible deletion for only
 specific apps, the action falls back to snoozing for 1 hour until the user
-explicitly reconfirms the expanded **all-app** deletion scope.
+selects the expanded **all-app** deletion action. Selecting it applies
+immediately, with its irreversible Android effect stated beside the option.
 
 
 ## Why a notification may have no model decision (analysis queue)
