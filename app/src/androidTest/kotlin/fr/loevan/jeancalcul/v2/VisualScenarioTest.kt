@@ -138,12 +138,12 @@ class VisualScenarioTest {
                             var modeScrolls = 0
                             var prudentSeen = false
                             var personalSeen = false
-                            while (modeScrolls++ < 12) {
+                            while (modeScrolls++ < 36) {
                                 prudentSeen = prudentSeen || device.hasObject(safeMode)
                                 personalSeen = personalSeen || device.hasObject(personalMode)
                                 if (prudentSeen && personalSeen) break
-                                device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
-                                    device.displayWidth / 2, device.displayHeight / 3, 26)
+                                device.swipe(device.displayWidth / 2, device.displayHeight * 2 / 3,
+                                    device.displayWidth / 2, device.displayHeight / 2, 30)
                                 device.waitForIdle(750)
                             }
                             assertTrue("Prudent mode must be reachable", prudentSeen)
@@ -151,9 +151,10 @@ class VisualScenarioTest {
                             if (scenario == "notifications") {
                                 val input = By.text("Titre et contenu d'une notification")
                                 var inputScrolls = 0
-                                while (!device.hasObject(input) && inputScrolls++ < 12) {
-                                    device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
-                                        device.displayWidth / 2, device.displayHeight / 3, 26)
+                                while (!device.hasObject(input) && inputScrolls++ < 36) {
+                                    device.swipe(device.displayWidth / 2, device.displayHeight * 2 / 3,
+                                        device.displayWidth / 2, device.displayHeight / 2, 30)
+                                    device.waitForIdle(750)
                                 }
                                 assertTrue("Manual input must be reachable",
                                     device.wait(Until.hasObject(input), 5000))
