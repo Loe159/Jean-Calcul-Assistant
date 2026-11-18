@@ -124,9 +124,14 @@ internal object NotificationProtection {
         // MessagingStyle, people and inline replies remain blocked above.
         if (n.category == Notification.CATEGORY_MESSAGE) {
             val socialKind = NotificationSocialPolicy.classify(pkg, title, text, n.category)
-            if (socialKind !in setOf(SocialNotificationKind.MENTION, SocialNotificationKind.INVITATION,
-                    SocialNotificationKind.ACTIVITY, SocialNotificationKind.SUGGESTION,
-                    SocialNotificationKind.POST)) return false
+            val workKind = NotificationWorkPolicy.classify(pkg, title, text, n.category)
+            val routineWorkUpdate = workKind in setOf(WorkNotificationKind.AGENT_COMPLETED,
+                WorkNotificationKind.BUILD_SUCCEEDED, WorkNotificationKind.BOT_COMMENT,
+                WorkNotificationKind.BOT_ACTIVITY) &&
+                (pkg == "com.openai.chatgpt" || pkg.contains("github", ignoreCase = true))
+            if (!routineWorkUpdate && socialKind !in setOf(SocialNotificationKind.MENTION,
+                    SocialNotificationKind.INVITATION, SocialNotificationKind.ACTIVITY,
+                    SocialNotificationKind.SUGGESTION, SocialNotificationKind.POST)) return false
         }
         val appInfo = runCatching { context.packageManager.getApplicationInfo(pkg, 0) }
             .getOrNull() ?: return false

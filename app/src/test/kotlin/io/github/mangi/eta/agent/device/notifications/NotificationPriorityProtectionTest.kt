@@ -71,6 +71,19 @@ class NotificationPriorityProtectionTest {
             "Salut, tu viens ?", Notification.CATEGORY_MESSAGE), "messages"))
     }
 
+    @Test fun workAndAiRulesRespectAndroidActionTimeProtection() {
+        assertTrue(canDismiss(makeNotification("com.openai.chatgpt", "ChatGPT",
+            "Votre tâche terminée : résultat disponible", Notification.CATEGORY_MESSAGE), "development"))
+        assertTrue(canDismiss(makeNotification("com.github.android", "GitHub Actions",
+            "Build successful on PR #72", Notification.CATEGORY_MESSAGE), "development"))
+        assertFalse(canDismiss(makeNotification("com.github.android", "GitHub Actions",
+            "CI failed on PR #72: tests failed", Notification.CATEGORY_MESSAGE), "development"))
+        assertFalse(canDismiss(makeNotification("com.microsoft.office.outlook", "Adeline",
+            "Bonjour, pourrais-tu vérifier le rapport ?", Notification.CATEGORY_EMAIL), "work"))
+        assertFalse(canDismiss(makeNotification("com.microsoft.teams", "Collègue",
+            "Salut, tu peux me répondre ?", Notification.CATEGORY_MESSAGE), "work"))
+    }
+
     @Test fun neverClearSecurityMessagesCallsAndOngoingAlerts() {
         assertFalse(canDismiss(makeNotification("com.google.android.gm", "Google",
             "Alerte de sécurité : connexion inconnue", Notification.CATEGORY_EMAIL), "security"))

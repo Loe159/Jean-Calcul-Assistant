@@ -79,6 +79,13 @@ internal object NotificationPriorityPolicy {
         // Security alerts override every social/media heuristic, including mentions.
         if (security.containsMatchIn(text) || input.topic == "security")
             return NotificationPriority.NOW
+        val workKind = NotificationWorkPolicy.classify(input.packageName,
+            input.title, input.body, input.androidCategory)
+        if (workKind != WorkNotificationKind.UNKNOWN) {
+            val priority = NotificationWorkPolicy.priority(workKind)!!
+            return if (input.personalInterest == NotificationPersonalization.Interest.WANTED &&
+                priority == NotificationPriority.LOW) NotificationPriority.TODAY else priority
+        }
         if (githubBot(input)) return when {
             botRequiresAction(input) -> NotificationPriority.NOW
             input.personalInterest == NotificationPersonalization.Interest.WANTED -> NotificationPriority.TODAY

@@ -4,6 +4,7 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -22,6 +23,10 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.itos.coui.layout.Footer
 import com.itos.coui.layout.Group
+import com.itos.coui.layout.CouiPageDefaults
+import com.itos.coui.theme.CouiTheme
+import com.itos.coui.text.CouiTextKind
+import com.itos.coui.text.Text as CouiText
 import io.github.mangi.eta.agent.device.AgentNotificationHistoryService
 import io.github.mangi.eta.agent.device.notifications.LocalNotificationModel
 import io.github.mangi.eta.agent.device.notifications.NotificationObservation
@@ -69,6 +74,7 @@ private fun labelTitle(label: String): String = when (label) {
 @Composable
 internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    val colors = CouiPageDefaults.themeColors(CouiTheme.isDark)
     val largeText = LocalDensity.current.fontScale >= 1.5f
     val scope = rememberCoroutineScope()
     var installed by remember { mutableStateOf(LocalNotificationModel.installed(context)) }
@@ -95,6 +101,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
     var confirmReset by remember { mutableStateOf(false) }
     var showAdvancedRules by remember { mutableStateOf(false) }
     var showGameRules by remember { mutableStateOf(false) }
+    var showWorkRules by rememberSaveable { mutableStateOf(false) }
     var gameDeletes by remember { mutableStateOf(NotificationGameSettings.enabledKinds(context)) }
     var expandedRule by remember { mutableStateOf<String?>(null) }
     var editedLabel by remember { mutableStateOf("") }
@@ -272,6 +279,33 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                 summary = "Indésirable · repliées dans le briefing",
                 showChevron = false,
             )
+        }
+        Group(title = "Travail, GitHub et IA") {
+            CouiPreference(
+                title = if (showWorkRules) "Masquer les priorités" else "Voir les priorités",
+                summary = "Interventions urgentes · bilans ce soir · bots ignorés",
+                onClick = { showWorkRules = !showWorkRules },
+            )
+            if (showWorkRules) {
+                val rules = listOf(
+                    "PR à revoir ou valider" to "Immédiat · conservée sur Android",
+                    "Échec CI à corriger" to "Immédiat · conservé sur Android",
+                    "Message direct d'un collègue" to "Immédiat · conservé sur Android",
+                    "Tâche ChatGPT ou Codex terminée" to "Ce soir · dans le briefing",
+                    "Build ou déploiement réussi" to "Ce soir · dans le briefing",
+                    "Commentaire automatique d'un bot" to "Indésirable · replié dans le briefing",
+                    "Activité répétitive des bots" to "Indésirable · repliée dans le briefing",
+                )
+                Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    rules.forEach { (name, priority) ->
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            CouiText(text = name, kind = CouiTextKind.ItemTitle, color = colors.title)
+                            CouiText(text = priority, kind = CouiTextKind.ItemSummary, color = colors.summary)
+                        }
+                    }
+                }
+            }
         }
         Group(title = "Jeux") {
             CouiPreference(

@@ -11,6 +11,8 @@ import io.github.mangi.eta.agent.device.notifications.NotificationTopics
 import io.github.mangi.eta.agent.device.notifications.NotificationGameIdentity
 import io.github.mangi.eta.agent.device.notifications.NotificationSocialPolicy
 import io.github.mangi.eta.agent.device.notifications.SocialNotificationKind
+import io.github.mangi.eta.agent.device.notifications.NotificationWorkPolicy
+import io.github.mangi.eta.agent.device.notifications.WorkNotificationKind
 import android.app.Notification
 import org.json.JSONArray
 import org.json.JSONObject
@@ -182,7 +184,13 @@ internal class NotificationHistoryRepository(context: Context) {
                             cursor.getString(3).orEmpty(), null, isGame = true)
                         socialKind == SocialNotificationKind.DIRECT -> "messages"
                         socialKind != SocialNotificationKind.UNKNOWN -> "social"
-                        else -> savedTopic
+                        else -> when (NotificationWorkPolicy.classify(pkg,
+                            cursor.getString(2).orEmpty(), cursor.getString(3).orEmpty(),
+                            cursor.getString(11))) {
+                            WorkNotificationKind.COLLEAGUE_MESSAGE -> "work"
+                            WorkNotificationKind.UNKNOWN -> savedTopic
+                            else -> "development"
+                        }
                     }
                     add(RecentEntry(
                         key = cursor.getString(0),
