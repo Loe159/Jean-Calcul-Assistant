@@ -42,7 +42,11 @@ internal object NotificationPriorityPolicy {
         "(?iu)(alerte de s[ée]curit[ée]|security alert|code de (?:connexion|v[ée]rification)|" +
             "2fa|mfa|authentification|suspicious (?:sign.in|activity)|" +
             "mot de passe|virement|paiement suspect|transaction refus[ée]e|" +
-            "connexion inconnue|r[ée]servation confirm[ée]e)"
+            "connexion inconnue|r[ée]servation confirm[ée]e|" +
+            "(?:access |api )?(?:token|key|credential)s? (?:expired|revoked|compromised)|" +
+            "(?:expired|revoked|compromised) (?:token|key|credential)s?|" +
+            "(?:secret|api key|credential) (?:leak|exposed)|" +
+            "connexion suspecte|compte compromis|password reset|session expired)"
     )
     private val directMessages = Regex(
         "(?iu)(vous a envoy[ée] (?:un |une )?(?:message|chat)|sent you a (?:message|chat)|" +

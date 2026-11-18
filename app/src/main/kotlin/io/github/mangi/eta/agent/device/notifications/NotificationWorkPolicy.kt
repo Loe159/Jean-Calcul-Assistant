@@ -28,7 +28,7 @@ internal object NotificationWorkPolicy {
     )
     private val failed = Regex(
         "(?iu)(build (?:has )?failed|build failure|checks? failed|failed checks?|" +
-            "pipeline (?:has )?failed|workflow (?:has )?failed|deployment failed|" +
+            "pipeline (?:has )?failed|workflow (?:run )?(?:has )?failed|deployment failed|" +
             "failed to deploy|tests? failed|test failure|CI failed|" +
             "[ée]chec (?:du|de la|des) (?:build|compilation|tests?|d[ée]ploiement|pipeline)|" +
             "compilation [ée]chou[ée]e|d[ée]ploiement [ée]chou[ée]|tests? en [ée]chec)"

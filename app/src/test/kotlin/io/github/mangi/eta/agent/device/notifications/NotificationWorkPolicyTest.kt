@@ -56,6 +56,14 @@ class NotificationWorkPolicyTest {
             NotificationPriorityPolicy.automaticAction(input, config, base, 15).decision)
     }
 
+    @Test fun tokenAndCredentialAlertsAreNeverClassifiedAsDisposableBotActivity() {
+        val input = NotificationPriorityInput("com.github.android", "dependabot[bot]",
+            "Access token revoked: you need to reconnect", topic = "development")
+        assertEquals(NotificationPriority.NOW, NotificationPriorityPolicy.classify(input))
+        assertEquals(NotificationFilterDecision.KEEP,
+            NotificationPriorityPolicy.automaticAction(input, config, base, 15).decision)
+    }
+
     @Test fun nonDirectedEmailsAndNewslettersAreNotMistakenForColleagueMessages() {
         assertEquals(WorkNotificationKind.UNKNOWN, NotificationWorkPolicy.classify(
             "com.microsoft.office.outlook", "Adeline", "Agile Laval s'installe demain",
