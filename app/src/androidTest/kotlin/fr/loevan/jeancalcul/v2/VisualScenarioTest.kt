@@ -78,9 +78,11 @@ class VisualScenarioTest {
                     "improvements_notifications", "improvements_notifications_dark",
                     "improvements_notifications_small_screen", "improvements_notifications_large_text" -> {
                         activity.onActivity { it.startActivity(Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_APP_IMPROVEMENTS)) }
-                        assertTrue(device.wait(Until.hasObject(By.text("GitHub connected")), 15000))
+                        // At 200% font scale the connection row starts below the fold.
+                        // Check the destination, then scroll to the permission control.
+                        assertTrue(device.wait(Until.hasObject(By.text("Improve Jean-Calcul")), 15000))
                         val target = By.text("Allow notifications")
-                        for (attempt in 0 until 4) {
+                        for (attempt in 0 until 9) {
                             if (device.hasObject(target)) break
                             device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
                                 device.displayWidth / 2, device.displayHeight / 3, 25)
