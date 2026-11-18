@@ -6,12 +6,14 @@ import android.content.Context
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
+import io.github.mangi.eta.agent.device.notifications.NotificationObservation
 
 class AgentNotificationHistoryService : NotificationListenerService() {
     private val repository by lazy { NotificationHistoryRepository(this) }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         record(sbn)
+        NotificationObservation.observe(this, sbn)
     }
 
     override fun onListenerConnected() {

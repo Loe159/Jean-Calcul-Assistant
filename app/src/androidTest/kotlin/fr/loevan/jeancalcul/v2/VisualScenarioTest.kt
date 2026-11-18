@@ -65,10 +65,26 @@ class VisualScenarioTest {
                         device.wait(Until.findObject(By.text(context.getString(R.string.route_tools))), 10000).click()
                         assertTrue(device.wait(Until.hasObject(By.text(context.getString(R.string.capability_current_device))), 10000))
                     }
-                    "settings", "providers", "appearance" -> {
+                    "settings", "providers", "appearance", "notifications" -> {
                         device.findObject(By.desc(context.getString(R.string.action_conversation_history))).click()
                         device.wait(Until.findObject(By.desc(context.getString(R.string.route_settings))), 10000).click()
                         assertTrue(device.wait(Until.hasObject(By.text(context.getString(R.string.ui_model_provider_e8c7f5))), 10000))
+                        if (scenario == "notifications") {
+                            val target = By.text("Notifications intelligentes")
+                            var attempts = 0
+                            while (!device.hasObject(target) && attempts++ < 15) {
+                                device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
+                                    device.displayWidth / 2, device.displayHeight / 3, 26)
+                                device.waitForIdle()
+                            }
+                            val item = device.wait(Until.findObject(target), 10000)
+                                ?: throw AssertionError("Notification preferences are not reachable")
+                            item.click()
+                            assertTrue("Offline model install entry should appear",
+                                device.wait(Until.hasObject(By.text("Installer le modèle")), 10000))
+                            assertTrue("Manual input should be visible",
+                                device.wait(Until.hasObject(By.text("Titre et contenu d'une notification")), 10000))
+                        }
                         if (scenario == "providers") {
                             device.findObject(By.text(context.getString(R.string.ui_model_provider_e8c7f5))).click()
                             assertTrue(device.wait(Until.hasObject(By.text("ChatGPT / Codex")), 10000))

@@ -214,6 +214,8 @@ dependencies {
 
     // Coroutines：显式引入，避免依赖传递版本不确定
     implementation(libs.kotlinx.coroutines.android)
+    // POC only: inference fully local; no model weight bundled in APK.
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.23.2")
 
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
