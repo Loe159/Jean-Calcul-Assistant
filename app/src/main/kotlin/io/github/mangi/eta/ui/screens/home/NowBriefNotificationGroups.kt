@@ -1,7 +1,6 @@
 package io.github.mangi.eta.ui.screens.home
 
 import android.widget.ImageView
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -17,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,11 +25,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,13 +57,16 @@ import com.itos.coui.shape.CouiShape
 import com.itos.coui.text.CouiTextKind
 import com.itos.coui.text.Text as CouiText
 import com.itos.coui.theme.CouiTheme
+import com.itos.coui.menu.CouiMenuItem
+import com.itos.coui.menu.Menu
+import com.itos.coui.menu.couiMenuAnchor
+import com.itos.coui.menu.rememberCouiMenuAnchor
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterPolicy
 import io.github.mangi.eta.agent.device.notifications.NotificationTopics
 import io.github.mangi.eta.agent.device.notifications.NotificationAdaptiveSettings
 import io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback
 import io.github.mangi.eta.ui.components.coui.CouiIcon
-import io.github.mangi.eta.ui.components.coui.CouiButton
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -73,278 +76,175 @@ import kotlin.math.pow
 import kotlin.math.sign
 import kotlinx.coroutines.launch
 
-/** Group by package, retaining descending post time within each group. */
+/** Categories remain independently collapsible. Rows themselves are virtualized by parent LazyColumn. */
 internal data class BriefNotificationGroup(
     val packageName: String,
     val category: String,
     val entries: List<NotificationHistoryRepository.RecentEntry>,
 )
 
-internal fun groupBriefNotifications(
-    entries: List<NotificationHistoryRepository.RecentEntry>,
-): List<BriefNotificationGroup> = entries
-    .sortedByDescending { it.postedAt }
-    .groupBy { it.userTopic ?: it.topic }
-    .map { (topic, list) -> BriefNotificationGroup(list.first().packageName, topic, list) }
-    .sortedByDescending { it.entries.first().postedAt }
+internal fun groupBriefNotifications(entries: List<NotificationHistoryRepository.RecentEntry>): List<BriefNotificationGroup> =
+    entries.sortedWith(compareByDescending<NotificationHistoryRepository.RecentEntry> { it.postedAt }.thenByDescending { it.key })
+        .groupBy { it.userTopic ?: it.topic }
+        .map { (topic, list) -> BriefNotificationGroup(list.first().packageName, topic, list) }
+        .sortedByDescending { it.entries.first().postedAt }
 
 @Composable
 internal fun BriefNotificationAppCard(
     group: BriefNotificationGroup,
+    expanded: Boolean,
+    onToggle: () -> Unit,
     onDismiss: (List<String>) -> Unit,
-    onFeedback: (NotificationHistoryRepository.RecentEntry, NotificationUserFeedback) -> Unit = { _, _ -> },
-    onCategoryChange: (NotificationHistoryRepository.RecentEntry, String) -> Unit = { _, _ -> },
-    onOpen: (NotificationHistoryRepository.RecentEntry) -> Unit = {},
     onTouchChange: (Boolean) -> Unit = {},
 ) {
     val dark = CouiTheme.isDark
     val colors = CouiPageDefaults.themeColors(dark)
     val context = LocalContext.current
-    val appName = remember(group.packageName) {
+    val title = NotificationAdaptiveSettings.title(context, group.category)
+    val source = remember { MutableInteractionSource() }
+    val motion = rememberCouiTouchMotion(expanded)
+    val unread = group.entries.count { it.state == NotificationHistoryRepository.DecisionState.PROPOSED }
+    BriefDismissStretch(
+        identity = "group:${group.category}",
+        onDismiss = { onDismiss(group.entries.map { it.key }) },
+        swipeEnabled = !expanded,
+        onTouchChange = onTouchChange,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 2.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().clip(CouiShape(20.dp, 2f))
+                .background(if (dark) Color(0xFF1D2024) else Color(0xFFF6F6F8))
+                .couiTouchMotion(motion, expanded = expanded)
+                .couiButtonFeedback(dark, source, enabled = true, list = true)
+                .clickable(interactionSource = source, indication = null, role = Role.Button,
+                    onClickLabel = if (expanded) "Replier $title" else "Déplier $title", onClick = onToggle)
+                .heightIn(min = 56.dp).padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            BriefApplicationIcon(group.packageName)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                CouiText(text = title, kind = CouiTextKind.ItemTitle, color = colors.title,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                CouiText(text = "${group.entries.size} notification${if (group.entries.size > 1) "s" else ""}" +
+                    if (unread > 0) " · $unread à vérifier" else "",
+                    kind = CouiTextKind.ItemSummary, color = colors.summary, maxLines = 2)
+            }
+            CouiIcon(imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                contentDescription = null, tint = colors.summary, modifier = Modifier.size(22.dp))
+        }
+    }
+}
+
+/** One notification = one LazyColumn item. No nested Column of 20–100 remembered rows. */
+@Composable
+internal fun BriefNotificationRow(
+    entry: NotificationHistoryRepository.RecentEntry,
+    onDismiss: (List<String>) -> Unit,
+    onFeedback: (NotificationHistoryRepository.RecentEntry, NotificationUserFeedback) -> Unit,
+    onCategoryChange: (NotificationHistoryRepository.RecentEntry, String) -> Unit,
+    onOpen: (NotificationHistoryRepository.RecentEntry) -> Unit,
+    onTouchChange: (Boolean) -> Unit = {},
+) {
+    val dark = CouiTheme.isDark
+    val colors = CouiPageDefaults.themeColors(dark)
+    val context = LocalContext.current
+    val appName = remember(entry.packageName) {
         runCatching {
             val pm = context.packageManager
-            pm.getApplicationLabel(pm.getApplicationInfo(group.packageName, 0)).toString()
-        }.getOrDefault(group.packageName.substringAfterLast('.'))
+            pm.getApplicationLabel(pm.getApplicationInfo(entry.packageName, 0)).toString()
+        }.getOrDefault(entry.packageName.substringAfterLast('.'))
     }
-    val title = NotificationAdaptiveSettings.title(context, group.category)
-    var expanded by remember(group.category) { mutableStateOf(false) }
-    var visibleCount by remember(group.category) { mutableIntStateOf(20) }
-    val source = remember { MutableInteractionSource() }
-    val headerMotion = rememberCouiTouchMotion(expanded)
-    val removed = group.entries.count { it.state == NotificationHistoryRepository.DecisionState.DISMISSED }
-    val pending = group.entries.count { it.state == NotificationHistoryRepository.DecisionState.PROPOSED }
-    val postponed = group.entries.count {
-        it.state == NotificationHistoryRepository.DecisionState.SNOOZED_1H ||
-            it.state == NotificationHistoryRepository.DecisionState.SNOOZED_24H
+    var details by remember(entry.key) { mutableStateOf(false) }
+    var showMenu by remember(entry.key) { mutableStateOf(false) }
+    var chooseCategory by remember(entry.key) { mutableStateOf(false) }
+    val anchor = rememberCouiMenuAnchor()
+    val menuItems = if (chooseCategory) {
+        listOf(CouiMenuItem(-1, "Retour")) + NotificationTopics.titles.keys.mapIndexed { index, topic ->
+            CouiMenuItem(index + 10, NotificationAdaptiveSettings.title(context, topic))
+        }
+    } else buildList {
+        add(CouiMenuItem(1, "Ouvrir l'application"))
+        add(CouiMenuItem(2, "Intéressante"))
+        add(CouiMenuItem(3, "Indésirable"))
+        add(CouiMenuItem(4, "Changer la catégorie"))
+        if (entry.state in setOf(NotificationHistoryRepository.DecisionState.DISMISSED,
+                NotificationHistoryRepository.DecisionState.SNOOZED_1H,
+                NotificationHistoryRepository.DecisionState.SNOOZED_24H)) {
+            add(CouiMenuItem(5, "Suppression incorrecte"))
+        }
+        add(CouiMenuItem(6, "Archiver la copie"))
     }
-    val statusSummary = buildList {
-        if (removed > 0) add("$removed ${if (removed == 1) "supprimée" else "supprimées"} sur Android")
-        if (postponed > 0) add("$postponed ${if (postponed == 1) "reportée" else "reportées"}")
-        if (pending > 0) add("$pending à vérifier")
-    }.joinToString(" · ")
-    BriefDismissStretch(
-        identity = group.category,
-        onDismiss = { onDismiss(group.entries.map { it.key }) },
+    val status = when (entry.state) {
+        NotificationHistoryRepository.DecisionState.DISMISSED -> "Supprimée sur Android"
+        NotificationHistoryRepository.DecisionState.SNOOZED_1H -> "Reportée 1 h"
+        NotificationHistoryRepository.DecisionState.SNOOZED_24H -> "Reportée 24 h"
+        NotificationHistoryRepository.DecisionState.PROPOSED -> "À vérifier"
+        NotificationHistoryRepository.DecisionState.QUEUED -> "Analyse en attente"
+        NotificationHistoryRepository.DecisionState.ANALYSIS_ERROR -> "Analyse échouée"
+        NotificationHistoryRepository.DecisionState.BATTERY_PAUSED -> "Économie d'énergie"
+        else -> ""
+    }
+    val date = remember(entry.postedAt) {
+        DateTimeFormatter.ofPattern("dd/MM · HH:mm", Locale.FRENCH)
+            .format(Instant.ofEpochMilli(entry.postedAt).atZone(ZoneId.systemDefault()))
+    }
+    BriefDismissStretch(identity = entry.key, onDismiss = { onDismiss(listOf(entry.key)) },
         onTouchChange = onTouchChange,
-        swipeEnabled = !expanded, // When expanded, only individual rows can be dismissed.
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 5.dp),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
-                .clip(CouiShape(27.dp, 2f))
-                .background(
-                    if (dark) Color(0xFF17191C).copy(alpha = 0.86f)
-                    else Color(0xFFF9F9FA).copy(alpha = 0.90f),
-                ),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth()
-                    // Collapsed group deformation is on the whole card.
-                    // Once expanded, its header gets the native menu motion
-                    // and child notifications deform independently.
-                    .couiTouchMotion(headerMotion, expanded = expanded)
-                    .graphicsLayer {
-                        if (expanded) {
-                            translationX = headerMotion.translationX.value
-                            translationY = headerMotion.translationY.value
-                            scaleX = headerMotion.scaleX.value
-                            scaleY = headerMotion.scaleY.value
-                            transformOrigin = TransformOrigin.Center
-                        }
-                    }
-                    .couiButtonFeedback(dark, source, enabled = true, list = true)
-                    .clickable(
-                        interactionSource = source, indication = null,
-                        role = Role.Button,
-                        onClickLabel = if (expanded) "Replier $title" else "Déplier $title",
-                    ) { expanded = !expanded }
-                    .padding(horizontal = 15.dp, vertical = 15.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                BriefApplicationIcon(group.packageName)
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    CouiText(text = title, kind = CouiTextKind.ItemTitle, color = colors.title, maxLines = 1)
-                    CouiText(
-                        text = "${group.entries.size} notification${if (group.entries.size > 1) "s" else ""} · " +
-                            appName + " · " + group.entries.first().title.ifBlank { "Activité récente" },
-                        kind = CouiTextKind.ItemSummary, color = colors.summary,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis,
-                    )
-                    if (statusSummary.isNotEmpty()) {
-                        CouiText(
-                            text = statusSummary, kind = CouiTextKind.GroupFooter,
-                            color = colors.accent, maxLines = 2,
-                        )
-                    }
+        modifier = Modifier.fillMaxWidth().padding(start = 32.dp, end = 24.dp, top = 1.dp, bottom = 1.dp)) {
+        Row(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+            .background(if (dark) Color.White.copy(alpha = 0.055f) else Color.Black.copy(alpha = 0.035f))
+            .heightIn(min = 50.dp).padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            Column(Modifier.weight(1f)
+                .clickable(role = Role.Button, onClickLabel = "Afficher les détails de ${entry.title}") { details = !details },
+                verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                CouiText(text = entry.title.ifBlank { appName }, kind = CouiTextKind.ItemTitle,
+                    color = colors.title, maxLines = if (details) Int.MAX_VALUE else 2,
+                    overflow = TextOverflow.Ellipsis)
+                if (entry.text.isNotBlank()) CouiText(text = entry.text,
+                    kind = CouiTextKind.ItemSummary, color = colors.summary,
+                    maxLines = if (details) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
+                CouiText(text = buildString {
+                    append(appName)
+                    append(" · ")
+                    append(date)
+                    if (status.isNotBlank()) { append(" · "); append(status) }
+                }, kind = CouiTextKind.GroupFooter, color = colors.summary, maxLines = 3)
+                if (details && entry.category != null && entry.score != null) {
+                    CouiText(text = "${if (entry.category == NotificationFilterPolicy.AD) "Publicité" else if (entry.category == NotificationFilterPolicy.SPAM) "Spam" else entry.category} · " +
+                        String.format(Locale.FRANCE, "%.1f %%", entry.score * 100),
+                        kind = CouiTextKind.GroupFooter, color = colors.summary)
                 }
-                CouiIcon(
-                    imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                    contentDescription = null, tint = colors.summary,
-                    modifier = Modifier.size(22.dp),
-                )
             }
-            AnimatedVisibility(expanded) {
-                Column(modifier = Modifier.padding(start = 13.dp, end = 13.dp, bottom = 12.dp)) {
-                    group.entries.take(visibleCount).forEach { entry ->
-                        val itemSource = remember(entry.key) { MutableInteractionSource() }
-                        var showFullText by remember(entry.key) { mutableStateOf(false) }
-                        var showCategories by remember(entry.key) { mutableStateOf(false) }
-                        BriefDismissStretch(
-                            identity = entry.key,
-                            onDismiss = { onDismiss(listOf(entry.key)) },
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth()
-                                    .clip(RoundedCornerShape(17.dp))
-                                    .background(
-                                        if (dark) Color.White.copy(alpha = 0.075f)
-                                        else Color.Black.copy(alpha = 0.045f),
-                                    )
-                                    .couiButtonFeedback(dark, itemSource, enabled = true, list = true)
-                                    .clickable(
-                                        interactionSource = itemSource, indication = null,
-                                        role = Role.Button, onClickLabel = "Afficher le contenu",
-                                    ) { showFullText = !showFullText }
-                                    .padding(start = 12.dp, end = 6.dp, top = 11.dp, bottom = 11.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    CouiText(
-                                        text = entry.title.ifBlank { appName },
-                                        kind = CouiTextKind.ItemTitle, color = colors.title,
-                                        maxLines = 2, overflow = TextOverflow.Ellipsis,
-                                    )
-                                    if (entry.text.isNotBlank()) {
-                                        CouiText(
-                                            text = entry.text, kind = CouiTextKind.ItemSummary,
-                                            color = colors.summary, maxLines = if (showFullText) 20 else 3,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                    val decisionText = when (entry.state) {
-                                        NotificationHistoryRepository.DecisionState.DISMISSED ->
-                                            "Supprimée sur Android · conservée ici"
-                                        NotificationHistoryRepository.DecisionState.SNOOZED_1H ->
-                                            "Reportée sur Android pendant 1 heure"
-                                        NotificationHistoryRepository.DecisionState.SNOOZED_24H ->
-                                            "Reportée sur Android pendant 24 heures"
-                                        NotificationHistoryRepository.DecisionState.PROPOSED ->
-                                            "Filtrage proposé · ${entry.reason ?: "en attente de confirmation Android"}"
-                                        NotificationHistoryRepository.DecisionState.KEPT ->
-                                            "Conservée · ${entry.reason ?: "après analyse locale"}"
-                                        NotificationHistoryRepository.DecisionState.OBSERVED ->
-                                            "Analysée · mode observation"
-                                        NotificationHistoryRepository.DecisionState.QUEUED ->
-                                            if (System.currentTimeMillis() - entry.postedAt > 10 * 60_000L)
-                                                "Analyse interrompue · relancer dans les paramètres"
-                                            else "Analyse locale en attente · jusqu'à 5 par minute"
-                                        NotificationHistoryRepository.DecisionState.PROTECTED ->
-                                            "Notification protégée · aucune suppression automatique"
-                                        NotificationHistoryRepository.DecisionState.ANALYZED_PROTECTED ->
-                                            "Analysée · ${entry.reason ?: "protection ou déjà retirée"}"
-                                        NotificationHistoryRepository.DecisionState.NO_CONTENT ->
-                                            "Aucun texte exploitable pour l'analyse IA"
-                                        NotificationHistoryRepository.DecisionState.MODEL_MISSING ->
-                                            "Analyse impossible · modèle local non installé"
-                                        NotificationHistoryRepository.DecisionState.BATTERY_PAUSED ->
-                                            "Analyse suspendue · économie d'énergie ou batterie faible"
-                                        NotificationHistoryRepository.DecisionState.LIMIT_REACHED ->
-                                            "Analyse reportée · quota quotidien ou file pleine"
-                                        NotificationHistoryRepository.DecisionState.EXPIRED ->
-                                            "Analyse interrompue · notification absente ou service relancé"
-                                        NotificationHistoryRepository.DecisionState.ANALYSIS_ERROR ->
-                                            "Analyse locale échouée · vérifier le modèle"
-                                        else -> "Reçue · aucune analyse encore enregistrée"
-                                    }
-                                    CouiText(
-                                        text = decisionText, kind = CouiTextKind.GroupFooter,
-                                        color = if (entry.state == NotificationHistoryRepository.DecisionState.DISMISSED)
-                                            colors.accent else colors.summary,
-                                        maxLines = 2,
-                                    )
-                                    if (entry.category != null && entry.score != null) {
-                                        val categoryLabel = when (entry.category) {
-                                            NotificationFilterPolicy.AD -> "Publicité"
-                                            NotificationFilterPolicy.SPAM -> "Spam ou arnaque"
-                                            else -> entry.category
-                                        }
-                                        CouiText(
-                                            text = "$categoryLabel · correspondance " +
-                                                String.format(Locale.FRANCE, "%.1f %%", entry.score * 100),
-                                            kind = CouiTextKind.GroupFooter, color = colors.summary,
-                                        )
-                                    }
-                                    val whenText = remember(entry.postedAt) {
-                                        DateTimeFormatter.ofPattern("dd/MM · HH:mm", Locale.FRENCH)
-                                            .format(Instant.ofEpochMilli(entry.postedAt)
-                                                .atZone(ZoneId.systemDefault()))
-                                    }
-                                    CouiText(text = whenText, kind = CouiTextKind.GroupFooter, color = colors.summary)
-                                    if (showFullText) {
-                                        CouiText(
-                                            text = "Catégorie : ${NotificationAdaptiveSettings.title(context, entry.userTopic ?: entry.topic)}" +
-                                                " · intérêt : ${entry.personalInterest ?: "non appris"}",
-                                            kind = CouiTextKind.GroupFooter, color = colors.summary,
-                                        )
-                                        CouiButton(text = if (showCategories) "Fermer les catégories" else "Changer la catégorie",
-                                            onClick = { showCategories = !showCategories })
-                                        if (showCategories) {
-                                            NotificationTopics.titles.keys.forEach { topic ->
-                                                CouiButton(text = NotificationAdaptiveSettings.title(context, topic),
-                                                    modifier = Modifier.fillMaxWidth(), onClick = {
-                                                        showCategories = false
-                                                        onCategoryChange(entry, topic)
-                                                    })
-                                            }
-                                        }
-                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            CouiButton(text = "Intéressante", modifier = Modifier.weight(1f), onClick = {
-                                                onFeedback(entry, NotificationUserFeedback.INTERESTING)
-                                            })
-                                            CouiButton(text = "Indésirable", modifier = Modifier.weight(1f), onClick = {
-                                                onFeedback(entry, NotificationUserFeedback.UNWANTED)
-                                            })
-                                        }
-                                        CouiButton(text = "Ouvrir l'application", onClick = { onOpen(entry) })
-                                        if (entry.state == NotificationHistoryRepository.DecisionState.DISMISSED ||
-                                            entry.state == NotificationHistoryRepository.DecisionState.SNOOZED_1H ||
-                                            entry.state == NotificationHistoryRepository.DecisionState.SNOOZED_24H) {
-                                            CouiButton(text = "Suppression incorrecte", onClick = {
-                                                onFeedback(entry, NotificationUserFeedback.WRONG_REMOVAL)
-                                            })
-                                        }
-                                    }
-                                }
-                                Spacer(Modifier.width(6.dp))
-                                Box(
-                                    modifier = Modifier.size(48.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .clickable(role = Role.Button, onClickLabel = "Archiver la copie") {
-                                            onDismiss(listOf(entry.key))
-                                        },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    CouiIcon(Icons.Rounded.Close, "Archiver la copie",
-                                        tint = colors.summary, modifier = Modifier.size(18.dp))
-                                }
+            Box {
+                Box(modifier = Modifier.size(48.dp).couiMenuAnchor(anchor)
+                    .clickable(role = Role.Button, onClickLabel = "Actions pour cette notification") {
+                        chooseCategory = false
+                        anchor.open { showMenu = true }
+                    }, contentAlignment = Alignment.Center) {
+                    CouiIcon(Icons.Rounded.MoreHoriz, "Actions", tint = colors.title,
+                        modifier = Modifier.size(22.dp))
+                }
+                Menu(expanded = showMenu, onDismissRequest = { showMenu = false; chooseCategory = false },
+                    items = menuItems, onItemClick = { item ->
+                        showMenu = false
+                        when (item.value) {
+                            -1 -> { chooseCategory = false; anchor.open { showMenu = true } }
+                            1 -> onOpen(entry)
+                            2 -> onFeedback(entry, NotificationUserFeedback.INTERESTING)
+                            3 -> onFeedback(entry, NotificationUserFeedback.UNWANTED)
+                            4 -> { chooseCategory = true; anchor.open { showMenu = true } }
+                            5 -> onFeedback(entry, NotificationUserFeedback.WRONG_REMOVAL)
+                            6 -> onDismiss(listOf(entry.key))
+                            else -> {
+                                val topic = NotificationTopics.titles.keys.elementAtOrNull(item.value - 10)
+                                if (topic != null) onCategoryChange(entry, topic)
+                                chooseCategory = false
                             }
                         }
-                    }
-                    if (visibleCount < group.entries.size) {
-                        CouiButton(
-                            text = "Afficher les notifications suivantes",
-                            onClick = { visibleCount += 20 },
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                        )
-                    }
-                    CouiButton(
-                        text = "Archiver toutes les copies de $appName",
-                        onClick = { onDismiss(group.entries.map { it.key }) },
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    )
-                }
+                    }, anchor = anchor)
             }
         }
     }

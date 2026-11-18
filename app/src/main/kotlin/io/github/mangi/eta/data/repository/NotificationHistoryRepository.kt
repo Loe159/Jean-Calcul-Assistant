@@ -140,19 +140,26 @@ internal class NotificationHistoryRepository(context: Context) {
 
     fun recent(limit: Int = 200): List<RecentEntry> = entries(archived = false, limit = limit)
 
+    /** Stable keyset pagination; no OFFSET drift when new notifications arrive. */
+    fun recentPage(limit: Int = 40, before: RecentEntry? = null): List<RecentEntry> =
+        entries(archived = false, limit = limit.coerceIn(1, 80), before = before)
+
     /** Copies hidden from Now Brief but still available locally for seven days. */
     fun archived(limit: Int = 200): List<RecentEntry> = entries(archived = true, limit = limit)
 
-    private fun entries(archived: Boolean, limit: Int): List<RecentEntry> {
+    private fun entries(archived: Boolean, limit: Int, before: RecentEntry? = null): List<RecentEntry> {
         val cutoff = System.currentTimeMillis() - RETENTION_MS
+        val selection = "posted_at>=? AND archived_at IS ${if (archived) "NOT " else ""}NULL" +
+            if (before == null) "" else " AND (posted_at<? OR (posted_at=? AND notification_key<?))"
+        val arguments = arrayOf(cutoff.toString()) + if (before == null) emptyArray<String>()
+            else arrayOf(before.postedAt.toString(), before.postedAt.toString(), before.key)
         return database.readableDatabase.query(
             TABLE,
             arrayOf("notification_key", "package_name", "title", "text", "sub_text",
                 "posted_at", "filter_state", "filter_label", "filter_score", "filter_reason",
                 "channel_id", "android_category", "topic", "user_topic", "personal_interest"),
-            "posted_at>=? AND archived_at IS ${if (archived) "NOT " else ""}NULL",
-            arrayOf(cutoff.toString()),
-            null, null, "posted_at DESC", limit.coerceIn(1, MAX_RECORDS).toString(),
+            selection, arguments,
+            null, null, "posted_at DESC, notification_key DESC", limit.coerceIn(1, MAX_RECORDS).toString(),
         ).use { cursor ->
             buildList {
                 while (cursor.moveToNext()) {

@@ -67,6 +67,26 @@ class NotificationHistoryRepositoryTest {
     }
 
     @Test
+    fun `brief pagination returns each notification once even with identical timestamps`() {
+        val now = System.currentTimeMillis()
+        repeat(105) { index ->
+            repository.record("page-$index", "org.example.app", "Title $index", null, null, now - index / 3)
+        }
+        val pages = mutableListOf<NotificationHistoryRepository.RecentEntry>()
+        var cursor: NotificationHistoryRepository.RecentEntry? = null
+        repeat(4) {
+            val page = repository.recentPage(40, cursor)
+            pages += page
+            cursor = page.lastOrNull()
+        }
+        assertEquals(105, pages.size)
+        assertEquals(105, pages.map { it.key }.distinct().size)
+        assertEquals(pages, pages.sortedWith(
+            compareByDescending<NotificationHistoryRepository.RecentEntry> { it.postedAt }
+                .thenByDescending { it.key }))
+    }
+
+    @Test
     fun `query and package filters only return matching notification`() {
         val now = System.currentTimeMillis()
         repository.record("one", "com.example.food", "订单配送中", "骑手即将送达", null, now)
