@@ -28,7 +28,11 @@ import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class VisualScenarioTest {
-    @Before fun prepareSyntheticPermissions() = grantSyntheticNotificationPermission()
+    @Before fun prepareSyntheticPermissions() {
+        if (!InstrumentationRegistry.getArguments().getString("scenario").orEmpty().startsWith("improvements_notifications")) {
+            grantSyntheticNotificationPermission()
+        }
+    }
 
     @Test fun capture() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -38,6 +42,10 @@ class VisualScenarioTest {
         val context = instrumentation.targetContext
         val device = UiDevice.getInstance(instrumentation)
         val fixture = if (scenario in setOf("message", "reset")) LocalVllmFixture(context) else null
+        val improvements = if (scenario.startsWith("improvements_notifications") || scenario.endsWith("_notice"))
+            io.github.mangi.eta.agent.development.DevelopmentStore(context).also {
+                it.connect("synthetic-token-for-isolated-visual-test-123")
+            } else null
         try {
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { activity ->
                 assertNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")), 30000))
@@ -67,6 +75,45 @@ class VisualScenarioTest {
                         activity.onActivity { it.startActivity(Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_APP_IMPROVEMENTS)) }
                         assertTrue(device.wait(Until.hasObject(By.text("Fine-grained GitHub token")), 15000))
                     }
+                    "improvements_notifications", "improvements_notifications_dark",
+                    "improvements_notifications_small_screen", "improvements_notifications_large_text" -> {
+                        activity.onActivity { it.startActivity(Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_APP_IMPROVEMENTS)) }
+                        assertTrue(device.wait(Until.hasObject(By.text("GitHub connected")), 15000))
+                        val target = By.text("Allow notifications")
+                        for (attempt in 0 until 4) {
+                            if (device.hasObject(target)) break
+                            device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
+                                device.displayWidth / 2, device.displayHeight / 3, 25)
+                        }
+                        assertTrue("Notification preference must remain reachable", device.wait(Until.hasObject(target), 10000))
+                    }
+                    "improvement_question_notice", "improvement_finished_notice" -> {
+                        val store = requireNotNull(improvements)
+                        store.authorizeConversation("assistant-visual", "visual-key")
+                        store.markRunUsed("visual-run")
+                        if (scenario == "improvement_question_notice") {
+                            store.setQuestionPending(true)
+                            store.markQuestionRun("visual-run")
+                        }
+                        val handoff = io.github.mangi.eta.agent.runtime.AgentRuntimeWire.EntryHandoff(
+                            id = "visual-key:visual-run",
+                            source = io.github.mangi.eta.agent.runtime.AgentRuntimeWire.ETA_VOICE_HANDOFF_SOURCE,
+                            payload = io.github.mangi.eta.agent.runtime.AgentExternalArchivePayload(
+                                "Synthetic improvement", "visual-key", "Synthetic improvement").toJson(),
+                        )
+                        io.github.mangi.eta.agent.development.DevelopmentRunNotice.completed(context,
+                            io.github.mangi.eta.agent.runtime.AgentRuntimeWire.RunRequest(
+                                runId = "visual-run", prompt = "Synthetic improvement",
+                                config = io.github.mangi.eta.agent.model.AgentModelClient.loadConfig(),
+                                images = emptyList(), handoff = handoff,
+                            ),
+                            io.github.mangi.eta.agent.runtime.AgentRuntimeWire.RunResult("visual-run", true, "Synthetic result"),
+                        )
+                        assertTrue(device.openNotification())
+                        val title = if (scenario == "improvement_question_notice")
+                            "Jean-Calcul needs your answer" else "Jean-Calcul finished the improvement task"
+                        assertTrue(device.wait(Until.hasObject(By.text(title)), 10000))
+                    }
                     "tools" -> {
                         device.findObject(By.desc(context.getString(R.string.action_conversation_history))).click()
                         device.wait(Until.findObject(By.text(context.getString(R.string.route_tools))), 10000).click()
@@ -91,12 +138,12 @@ class VisualScenarioTest {
                             var modeScrolls = 0
                             var prudentSeen = false
                             var personalSeen = false
-                            while (modeScrolls++ < 12) {
+                            while (modeScrolls++ < 36) {
                                 prudentSeen = prudentSeen || device.hasObject(safeMode)
                                 personalSeen = personalSeen || device.hasObject(personalMode)
                                 if (prudentSeen && personalSeen) break
-                                device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
-                                    device.displayWidth / 2, device.displayHeight / 3, 26)
+                                device.swipe(device.displayWidth / 2, device.displayHeight * 2 / 3,
+                                    device.displayWidth / 2, device.displayHeight / 2, 30)
                                 device.waitForIdle(750)
                             }
                             assertTrue("Prudent mode must be reachable", prudentSeen)
@@ -104,9 +151,10 @@ class VisualScenarioTest {
                             if (scenario == "notifications") {
                                 val input = By.text("Titre et contenu d'une notification")
                                 var inputScrolls = 0
-                                while (!device.hasObject(input) && inputScrolls++ < 12) {
-                                    device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
-                                        device.displayWidth / 2, device.displayHeight / 3, 26)
+                                while (!device.hasObject(input) && inputScrolls++ < 36) {
+                                    device.swipe(device.displayWidth / 2, device.displayHeight * 2 / 3,
+                                        device.displayWidth / 2, device.displayHeight / 2, 30)
+                                    device.waitForIdle(750)
                                 }
                                 assertTrue("Manual input must be reachable",
                                     device.wait(Until.hasObject(input), 5000))
@@ -447,6 +495,13 @@ class VisualScenarioTest {
                     throw failure
                 }
             }
-        } finally { fixture?.close() }
+        } finally {
+            if (scenario.endsWith("_notice")) {
+                device.pressBack()
+                context.getSystemService(android.app.NotificationManager::class.java).cancel(6202)
+            }
+            fixture?.close()
+            improvements?.disconnect()
+        }
     }
 }

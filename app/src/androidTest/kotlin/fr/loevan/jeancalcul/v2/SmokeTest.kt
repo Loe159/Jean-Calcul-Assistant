@@ -18,6 +18,70 @@ import org.junit.runner.RunWith
 class SmokeTest {
     @Before fun prepareSyntheticPermissions() = grantSyntheticNotificationPermission()
 
+    @Test fun improvementAuthorizationSurvivesStoreRecreationOnlyForItsConversation() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val store = io.github.mangi.eta.agent.development.DevelopmentStore(context)
+        val manager = context.getSystemService(android.app.NotificationManager::class.java)
+        try {
+            store.connect("synthetic-token-for-isolated-test-123")
+            store.authorizeConversation("assistant-synthetic", "synthetic-key", "Settings", "Translate app labels", "a".repeat(40))
+            val beforeQuestion = io.github.mangi.eta.agent.development.DevelopmentStore(context)
+            assertTrue("Pre-PR work must survive an interrupted run", beforeQuestion.mayContinue("assistant-synthetic"))
+            assertEquals("Settings", beforeQuestion.context()!!.getString("screen"))
+            assertEquals("Translate app labels", beforeQuestion.context()!!.getString("task"))
+            store.setQuestionPending(true)
+            val reopened = io.github.mangi.eta.agent.development.DevelopmentStore(context)
+            assertTrue(reopened.mayContinue("assistant-synthetic"))
+            assertFalse(reopened.mayContinue("assistant-other"))
+            store.markRunUsed("synthetic-run")
+            store.markQuestionRun("synthetic-run")
+            val handoff = io.github.mangi.eta.agent.runtime.AgentRuntimeWire.EntryHandoff(
+                id = "synthetic-key:synthetic-run",
+                source = io.github.mangi.eta.agent.runtime.AgentRuntimeWire.ETA_VOICE_HANDOFF_SOURCE,
+                payload = io.github.mangi.eta.agent.runtime.AgentExternalArchivePayload(
+                    "Synthetic improvement", "synthetic-key", "Synthetic improvement").toJson(),
+            )
+            io.github.mangi.eta.agent.development.DevelopmentRunNotice.completed(context,
+                io.github.mangi.eta.agent.runtime.AgentRuntimeWire.RunRequest(
+                    runId = "synthetic-run", prompt = "Synthetic improvement",
+                    config = io.github.mangi.eta.agent.model.AgentModelClient.loadConfig(),
+                    images = emptyList(), handoff = handoff,
+                ),
+                io.github.mangi.eta.agent.runtime.AgentRuntimeWire.RunResult("synthetic-run", true, "Private question"),
+            )
+            var notice = manager.activeNotifications.firstOrNull { it.id == 6202 }?.notification
+            repeat(20) {
+                if (notice == null) {
+                    android.os.SystemClock.sleep(100)
+                    notice = manager.activeNotifications.firstOrNull { it.id == 6202 }?.notification
+                }
+            }
+            val posted = requireNotNull(notice) { "A question must be notified" }
+            assertEquals("Jean-Calcul needs your answer", posted.extras.getString(android.app.Notification.EXTRA_TITLE))
+            assertFalse(posted.extras.getString(android.app.Notification.EXTRA_TEXT).orEmpty().contains("Private question"))
+            assertNotNull(posted.contentIntent)
+            reopened.revokeConversation("assistant-synthetic")
+            assertFalse("Explicit revocation must remove its conversation grant", store.mayContinue("assistant-synthetic"))
+            reopened.disconnect()
+            assertFalse(store.mayContinue("assistant-synthetic"))
+        } finally {
+            manager.cancel(6202)
+            store.disconnect()
+            context.getSharedPreferences("jeancalcul_development", android.content.Context.MODE_PRIVATE)
+                .edit().clear().commit()
+        }
+    }
+
+    @Test fun improvementCaptureRemainsAvailableWhileOverlayClosesBeforeSnapshot() {
+        val contexts = io.github.mangi.eta.agent.voice.EtaAssistantScreenContexts
+        val capture = contexts.begin(0, emptyList())
+        assertTrue(contexts.pin(capture.id))
+        contexts.release(capture.id)
+        assertSame(capture, contexts.find(capture.id))
+        contexts.releasePin(capture.id)
+        assertNull(contexts.find(capture.id))
+    }
+
     @Test fun localVllmWithoutKeyStreamsAndPersistsARealConversation() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
@@ -96,6 +160,7 @@ class SmokeTest {
                     io.github.mangi.eta.agent.runtime.AgentRuntimeWire.toLegacyBundle(request),
                 )
                 assertEquals("Home", restored.appDevelopmentScreen)
+                assertFalse("Binder input cannot grant development access", restored.appDevelopmentTrusted)
             } finally { entry.close() }
             activity.onActivity { it.startActivity(Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_APP_IMPROVEMENTS)) }
             assertTrue(device.wait(Until.hasObject(By.text("Fine-grained GitHub token")), 15000))

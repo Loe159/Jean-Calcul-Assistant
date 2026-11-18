@@ -14,7 +14,7 @@
       in repository // { images = { "35" = repository.images."35"; }; };
       includeCmake = false;
       platformVersions = [ "37.0" "35" ];
-      buildToolsVersions = [ "37.0.0" ];
+      buildToolsVersions = [ "37.0.0" "36.0.0" ];
       includeEmulator = true;
       includeSystemImages = true;
       systemImageTypes = [ "google_apis" ];
