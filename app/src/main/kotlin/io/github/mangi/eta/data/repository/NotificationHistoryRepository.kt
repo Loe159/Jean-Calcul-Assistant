@@ -8,11 +8,14 @@ import io.github.mangi.eta.agent.device.notifications.NotificationFilterDecision
 import io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback
 import io.github.mangi.eta.agent.device.notifications.NotificationPersonalization
 import io.github.mangi.eta.agent.device.notifications.NotificationTopics
+import io.github.mangi.eta.agent.device.notifications.NotificationGameIdentity
+import android.app.Notification
 import org.json.JSONArray
 import org.json.JSONObject
 
 /** 仅在用户授予通知访问后保存有限期通知，内容不进入 Agent 会话持久记录。 */
 internal class NotificationHistoryRepository(context: Context) {
+    private val appContext = context.applicationContext
     private val database = Database(context.applicationContext)
 
     fun record(
@@ -40,7 +43,8 @@ internal class NotificationHistoryRepository(context: Context) {
             put("android_category", androidCategory?.take(100))
             put("content_fingerprint", fingerprint)
             put("topic", NotificationTopics.classify(packageName, channelId, androidCategory,
-                title.orEmpty(), text.orEmpty(), null))
+                title.orEmpty(), text.orEmpty(), null,
+                isGame = NotificationGameIdentity.isGame(appContext, packageName)))
         }
         database.writableDatabase.transaction {
             delete(HIDDEN_TABLE, "dismissed_at<?",
@@ -161,8 +165,17 @@ internal class NotificationHistoryRepository(context: Context) {
             selection, arguments,
             null, null, "posted_at DESC, notification_key DESC", limit.coerceIn(1, MAX_RECORDS).toString(),
         ).use { cursor ->
+            val gamePackages = mutableMapOf<String, Boolean>()
             buildList {
                 while (cursor.moveToNext()) {
+                    val pkg = cursor.getString(1)
+                    val isGame = gamePackages.getOrPut(pkg) { NotificationGameIdentity.isGame(appContext, pkg) }
+                    val savedTopic = cursor.getString(12) ?: "other"
+                    val fallbackTopic = if (isGame) NotificationTopics.classify(
+                        pkg, cursor.getString(10), cursor.getString(11),
+                        cursor.getString(2).orEmpty(), cursor.getString(3).orEmpty(),
+                        null, isGame = true,
+                    ) else savedTopic
                     add(RecentEntry(
                         key = cursor.getString(0),
                         packageName = cursor.getString(1),
@@ -177,7 +190,7 @@ internal class NotificationHistoryRepository(context: Context) {
                         reason = cursor.getString(9),
                         channelId = cursor.getString(10),
                         androidCategory = cursor.getString(11),
-                        topic = cursor.getString(13) ?: cursor.getString(12) ?: "other",
+                        topic = fallbackTopic,
                         userTopic = cursor.getString(13),
                         personalInterest = cursor.getString(14),
                     ))

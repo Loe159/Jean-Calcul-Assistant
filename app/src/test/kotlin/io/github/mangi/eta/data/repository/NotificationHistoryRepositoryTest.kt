@@ -87,6 +87,19 @@ class NotificationHistoryRepositoryTest {
     }
 
     @Test
+    fun `game notifications are categorized even before onnx inference and historical rows stay visible`() {
+        val now = System.currentTimeMillis()
+        repository.record("brawl-quest", "com.supercell.brawlstars", "Brawl Stars",
+            "De nouvelles quêtes sont disponibles !", null, now)
+        val row = repository.recent().first { it.key == "brawl-quest" }
+        assertEquals("games", row.topic)
+        assertEquals(NotificationHistoryRepository.DecisionState.RECEIVED, row.state)
+        assertEquals(true, repository.feedback("brawl-quest", now,
+            io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback.CATEGORY_CORRECTED, "other"))
+        assertEquals("other", repository.recent().first { it.key == "brawl-quest" }.userTopic)
+    }
+
+    @Test
     fun `query and package filters only return matching notification`() {
         val now = System.currentTimeMillis()
         repository.record("one", "com.example.food", "订单配送中", "骑手即将送达", null, now)

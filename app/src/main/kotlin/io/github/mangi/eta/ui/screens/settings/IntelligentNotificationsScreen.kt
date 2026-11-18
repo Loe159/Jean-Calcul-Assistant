@@ -27,6 +27,8 @@ import io.github.mangi.eta.agent.device.notifications.LocalNotificationModel
 import io.github.mangi.eta.agent.device.notifications.NotificationObservation
 import io.github.mangi.eta.agent.device.notifications.NotificationAdaptiveSettings
 import io.github.mangi.eta.agent.device.notifications.NotificationTopics
+import io.github.mangi.eta.agent.device.notifications.NotificationGameSettings
+import io.github.mangi.eta.agent.device.notifications.GameNotificationKind
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
 import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterSettings
@@ -92,6 +94,8 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
     var editingName by remember { mutableStateOf<String?>(null) }
     var confirmReset by remember { mutableStateOf(false) }
     var showAdvancedRules by remember { mutableStateOf(false) }
+    var showGameRules by remember { mutableStateOf(false) }
+    var gameDeletes by remember { mutableStateOf(NotificationGameSettings.enabledKinds(context)) }
     var expandedRule by remember { mutableStateOf<String?>(null) }
     var editedLabel by remember { mutableStateOf("") }
     var newLabel by remember { mutableStateOf("") }
@@ -235,6 +239,32 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
             } else {
                 CouiPreference(title = "Réinitialiser l'apprentissage", summary = "Conserve les notifications, efface les préférences apprises",
                     onClick = { confirmReset = true })
+            }
+        }
+        Group(title = "Jeux") {
+            CouiPreference(
+                title = if (showGameRules) "Masquer les règles des jeux" else "Filtrage des jeux",
+                summary = "Récompenses, séries, nouveautés et puzzles supprimés · invitations conservées",
+                onClick = { showGameRules = !showGameRules },
+            )
+            if (showGameRules) {
+                listOf(
+                    GameNotificationKind.REWARD to "Récompenses et quêtes quotidiennes",
+                    GameNotificationKind.STREAK to "Séries et rappels de connexion",
+                    GameNotificationKind.EVENT to "Événements et nouveautés",
+                    GameNotificationKind.PUZZLE to "Défis et puzzles",
+                ).forEach { (kind, title) ->
+                    CouiSwitchPreference(
+                        title = "Supprimer : $title",
+                        summary = "Filtrage local si le type est identifié avec certitude",
+                        checked = kind in gameDeletes,
+                        onCheckedChange = { delete ->
+                            NotificationGameSettings.setDelete(context, kind, delete)
+                            gameDeletes = NotificationGameSettings.enabledKinds(context)
+                        },
+                    )
+                }
+                Footer(text = "Invitations d'amis : toujours conservées. Les notifications ambiguës restent visibles.")
             }
         }
         Group(title = "Historique local") {

@@ -16,13 +16,19 @@ internal object NotificationTopics {
         "news" to "Actualités et informations",
         "promotions" to "Promotions et publicités",
         "social" to "Réseaux sociaux",
+        "games" to "Jeux",
         "system" to "Système",
         "other" to "Autres",
     )
 
     fun classify(pkg: String, channel: String?, androidCategory: String?, title: String,
-                 body: String, nliLabel: String?): String {
+                 body: String, nliLabel: String?, isGame: Boolean = false): String {
         val s = "$title $body".lowercase(Locale.ROOT)
+        if (isGame) {
+            val kind = NotificationGamePolicy.classify(title, body, androidCategory)
+            return if (androidCategory == Notification.CATEGORY_MESSAGE && kind != GameNotificationKind.INVITATION)
+                "messages" else "games"
+        }
         if (androidCategory == Notification.CATEGORY_MESSAGE ||
             androidCategory == Notification.CATEGORY_EMAIL ||
             androidCategory == Notification.CATEGORY_MISSED_CALL ||
