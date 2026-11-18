@@ -126,6 +126,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                 NotificationFilterMode.OFF -> "Filtrage désactivé"
                 NotificationFilterMode.PERSONALIZED ->
                     "Filtrage automatique : configurez les catégories et l'action"
+                else -> "Filtrage automatique"
             }
         }
     }
