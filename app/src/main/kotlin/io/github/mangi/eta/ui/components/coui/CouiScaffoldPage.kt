@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -345,8 +346,13 @@ internal fun CouiLazyScaffoldPage(
     modifier: Modifier = Modifier,
     dark: Boolean = CouiTheme.isDark,
     colors: CouiPageColors = CouiPageDefaults.themeColors(dark),
+    // The Brief shares the chat surface while its halo is transparent.
+    // Other COUI pages continue using the normal page background.
+    containerColor: Color = colors.background,
     listState: LazyListState = rememberLazyListState(),
     compactTitle: Boolean = false,
+    titleMotionProgress: Float = 1f,
+    backgroundEffect: @Composable BoxScope.() -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     floatingAction: (@Composable BoxScope.() -> Unit)? = null,
     overlay: @Composable () -> Unit = {},
@@ -377,7 +383,7 @@ internal fun CouiLazyScaffoldPage(
             .fillMaxSize()
             .then(imePadding)
             .then(if (behavior != null) Modifier.nestedScroll(behavior.nestedScrollConnection) else Modifier),
-        containerColor = colors.background,
+        containerColor = containerColor,
         floatingActionButton = floatingAction,
         topBar = {
             if (useCompact) {
@@ -385,6 +391,10 @@ internal fun CouiLazyScaffoldPage(
                     title = {
                         BasicText(
                             text = title,
+                            modifier = Modifier.graphicsLayer {
+                                alpha = titleMotionProgress.coerceIn(0f, 1f)
+                                translationY = (1f - titleMotionProgress.coerceIn(0f, 1f)) * 12.dp.toPx()
+                            },
                             style = LocalCouiTextStyle.current,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -400,6 +410,10 @@ internal fun CouiLazyScaffoldPage(
                     title = {
                         BasicText(
                             text = title,
+                            modifier = Modifier.graphicsLayer {
+                                alpha = titleMotionProgress.coerceIn(0f, 1f)
+                                translationY = (1f - titleMotionProgress.coerceIn(0f, 1f)) * 12.dp.toPx()
+                            },
                             style = LocalCouiTextStyle.current,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -418,7 +432,9 @@ internal fun CouiLazyScaffoldPage(
             behavior?.state?.contentPadding(innerPadding, localDensity) ?: innerPadding
         }
         WidePageContent { sidePadding ->
-            LazyColumn(
+            Box(Modifier.fillMaxSize()) {
+                backgroundEffect()
+                LazyColumn(
                 state = listState,
                 modifier = Modifier
                     .fillMaxSize()
@@ -430,8 +446,9 @@ internal fun CouiLazyScaffoldPage(
                     bottom = topBarAdjustedPadding.calculateBottomPadding() + CouiPageDefaults.groupSpacing,
                 ),
                 overscrollEffect = overscroll,
-            ) {
-                content()
+                ) {
+                    content()
+                }
             }
         }
         overlay()

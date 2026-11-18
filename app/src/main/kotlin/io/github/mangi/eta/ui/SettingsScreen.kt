@@ -490,7 +490,7 @@ private fun SettingsPageContent(
                 Group(title = "Notifications") {
                     CouiPreference(
                         title = "Notifications intelligentes",
-                        summary = "Classification locale · mode observation sans suppression",
+                        summary = "Classification locale · modes et règles",
                         icon = { CouiSettingsIcon(Icons.Rounded.FilterAlt, SettingsIconColors.Blue) },
                         onClick = { onNavigate(AppRoute.IntelligentNotifications) },
                     )
