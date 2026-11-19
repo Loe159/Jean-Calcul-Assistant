@@ -32,12 +32,27 @@ class VisualScenarioTest {
         device.findObject(By.desc(context.getString(R.string.action_conversation_history))).click()
         device.wait(Until.findObject(By.desc(context.getString(R.string.route_settings))), 10000).click()
         val target = By.text("Notifications intelligentes")
-        var attempts = 0
-        while (!device.hasObject(target) && attempts++ < 18) {
-            device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
-                device.displayWidth / 2, device.displayHeight / 3, 26)
+        // A row can be in the accessibility tree while hidden under COUI's collapsing header,
+        // and long swipes overshoot it. Scan with short steps, downwards then back up, and only
+        // tap a row whose centre is inside the unobstructed middle of the screen.
+        val safeTop = device.displayHeight / 4
+        val safeBottom = device.displayHeight * 3 / 4
+        fun visibleTarget() = device.findObject(target)?.takeIf { row ->
+            row.visibleBounds.height() > 0 && row.visibleBounds.centerY() in safeTop..safeBottom
         }
-        device.wait(Until.findObject(target), 10000).click()
+        var item = device.wait(Until.findObject(target), 3000)?.let { visibleTarget() }
+        for (reverse in listOf(false, true)) {
+            if (item != null) break
+            for (step in 0 until 24) {
+                val startY = if (reverse) device.displayHeight / 4 else device.displayHeight * 3 / 4
+                device.swipe(device.displayWidth / 2, startY,
+                    device.displayWidth / 2, device.displayHeight / 2, 30)
+                device.waitForIdle(750)
+                item = visibleTarget()
+                if (item != null) break
+            }
+        }
+        (item ?: throw AssertionError("Notification preferences are not reachable")).click()
     }
 
     @Before fun prepareSyntheticPermissions() {

@@ -5,51 +5,43 @@ import android.os.PowerManager
 import android.provider.Settings
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import io.github.mangi.eta.ui.screens.home.effect.BgEffectConfig
+import io.github.mangi.eta.ui.screens.home.effect.BgEffectPainter
+import io.github.mangi.eta.ui.screens.home.effect.DeviceType
+import io.github.mangi.eta.ui.screens.home.effect.bgEffectDraw
+import io.github.suqi8.coui.kmp.blur.isRuntimeShaderSupported
+import kotlinx.coroutines.delay
 
-/**
- * The display settings and battery saver always win over the experimental effects.
- * No infinite animation is even composed while the brief is closed.
- */
-internal fun briefMotionAllowed(context: Context): Boolean {
-    val scale = runCatching {
+/** Respects the system animation setting and battery saver. */
+internal fun briefMotionAllowed(context: Context): Boolean =
+    runCatching {
         Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
-    }.getOrDefault(1f)
-    return scale > 0f
-}
+    }.getOrDefault(1f) > 0f
 
 internal fun briefAmbientAllowed(context: Context): Boolean {
     val power = context.getSystemService(PowerManager::class.java)
     return briefMotionAllowed(context) && power?.isPowerSaveMode != true
 }
 
-/**
- * Process-only memory. It intentionally resets when Android kills the app process,
- * not when the user switches between chat and briefing.
- */
+/** Process memory for the briefing entrance. */
 internal object BriefMotionSession {
     var hasOpened by mutableStateOf(false)
     var hasClosedAfterOpening by mutableStateOf(false)
@@ -58,7 +50,6 @@ internal object BriefMotionSession {
 
 internal fun shouldAnimateBriefEntrance(hasOpened: Boolean): Boolean = !hasOpened
 
-/** Fast, coordinated entrance: the whole first viewport is readable in ~300 ms. */
 internal object BriefMotionTiming {
     const val TITLE_MS = 230
     const val CARD_MS = 190
@@ -67,108 +58,64 @@ internal object BriefMotionTiming {
     const val COUNTER_MS = 300
     const val BAR_MS = 280
     const val NOTIFICATION_MS = 210
+
+    /** The ambient halo drifts while the briefing opens, then holds still: no idle redraws. */
+    const val AMBIENT_PLAY_MS = 8_000L
 }
 
-/** Direct finger-to-halo mapping, including cancellation and spring settling. */
 internal fun briefHaloAlpha(revealProgress: Float): Float =
     revealProgress.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: 0f
 
-/**
- * Single, slowly moving ambient halo (B2), plus capped scroll parallax (B4).
- * No bitmap allocation or GPU blur.
- */
+/** The COUI Labs OS2 shader, using its phone/tablet and light/dark presets. */
 @Composable
 internal fun BriefAmbientBackground(
     visible: Boolean,
     dark: Boolean,
-    scrollOffsetPx: Float,
+    scrollOffsetPx: () -> Float,
     revealProgress: () -> Float = { if (visible) 1f else 0f },
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    // Only animate the ambient colors when fully open; while dragging, use
-    // the static halo and let the compositing layer track the finger directly.
-    val enabled = remember(context, visible) { visible && briefAmbientAllowed(context) }
-    // Reduced-motion and battery-saver still get the same static glass backdrop,
-    // but no infinite transition is composed.
-    val animatedPhase = if (enabled) {
-        val transition = rememberInfiniteTransition(label = "brief-ambient")
-        val movingPhase by transition.animateFloat(
-            initialValue = 0.5f, targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                tween(16000, easing = LinearEasing), RepeatMode.Reverse,
-            ),
-            label = "slow-ambient-phase",
-        )
-        movingPhase
-    } else 0.5f
-    // No phase jump when switching between a static finger-driven halo and
-    // the slow breathing animation (especially on programmatic Back).
-    val phase by animateFloatAsState(
-        targetValue = animatedPhase,
-        animationSpec = tween(360, easing = LinearEasing),
-        label = "brief-ambient-phase-continuity",
-    )
-    Canvas(
-        modifier = modifier.fillMaxSize().graphicsLayer {
-            // Match the same anchored-draggable X fraction on every drag frame.
-            // Alpha is read in the layer, not separately animated on a timer.
-            this.alpha = briefHaloAlpha(revealProgress())
-            translationY = -(scrollOffsetPx * 0.026f).coerceIn(0f, 12f)
-        },
-    ) {
-        val w = size.width
-        val h = size.height
-        // Ambient navy backdrop. The original COUI theme still controls the
-        // top bar and the typography, including its translucent scroll effect.
-        if (dark) {
-            drawRect(
-                Brush.verticalGradient(
-                    listOf(Color(0xFF1D2636), Color(0xFF20223B), Color(0xFF201F33)),
-                ),
-            )
-        } else {
-            drawRect(
-                Brush.verticalGradient(
-                    listOf(Color(0xFFF2F6FB), Color(0xFFF5F3FA), Color(0xFFF8F6F3)),
-                ),
-            )
+    val configuration = LocalConfiguration.current
+    val deviceType = if (configuration.screenWidthDp >= 600) DeviceType.PAD else DeviceType.PHONE
+    val preset = remember(deviceType, dark) { BgEffectConfig.get(deviceType, dark) }
+    val shaderSupported = remember { isRuntimeShaderSupported() }
+    val painter = if (shaderSupported) remember { BgEffectPainter() } else null
+    // Each halo frame redraws the whole briefing above it. Let it drift while the page opens,
+    // then hold the last frame: an idle briefing renders nothing instead of ~60 frames/s.
+    var drifting by remember { mutableStateOf(false) }
+    LaunchedEffect(visible) {
+        drifting = visible
+        if (visible) {
+            delay(BriefMotionTiming.AMBIENT_PLAY_MS)
+            drifting = false
         }
-
-        val green = Color(0xFF4BCDA2)
-        val orange = Color(0xFFFFAE78)
-        val violet = Color(0xFF8A84DC)
-        fun glow(center: Offset, radius: Float, tint: Color, opacity: Float) {
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(tint.copy(alpha = opacity), Color.Transparent),
-                    center = center,
-                    radius = radius,
-                ),
-                radius = radius,
-                center = center,
-            )
-        }
-        val breathe = (phase - 0.5f)
-        glow(
-            center = Offset(w * (0.05f + breathe * 0.09f), h * 0.06f),
-            radius = w * 1.06f,
-            tint = green,
-            opacity = if (dark) 0.23f else 0.095f,
-        )
-        glow(
-            center = Offset(w * (0.97f - breathe * 0.10f), h * 0.74f),
-            radius = w * 1.22f,
-            tint = orange,
-            opacity = if (dark) 0.18f else 0.085f,
-        )
-        glow(
-            center = Offset(w * 0.44f, h * (0.46f + breathe * 0.12f)),
-            radius = w * 0.94f,
-            tint = violet,
-            opacity = if (dark) 0.14f else 0.07f,
-        )
     }
+    val playing = drifting && remember(context, visible) { briefAmbientAllowed(context) }
+    val baseColor = if (dark) Color.Black else Color(0xFFF0F1F2)
+    if (painter == null) {
+        Spacer(modifier.fillMaxSize().background(baseColor))
+        return
+    }
+    Spacer(
+        modifier = modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                alpha = briefHaloAlpha(revealProgress())
+                translationY = -(scrollOffsetPx() * 0.026f).coerceIn(0f, 12f)
+            }
+            .bgEffectDraw(
+                painter = painter,
+                preset = preset,
+                deviceType = deviceType,
+                isDarkTheme = dark,
+                surface = baseColor,
+                effectBackground = true,
+                isFullSize = true,
+                playing = playing,
+                alpha = { 1f },
+            ),
+    )
 }
 
 /** A4 + D6: stagger on opening and on first visibility while scrolling a lazy list. */

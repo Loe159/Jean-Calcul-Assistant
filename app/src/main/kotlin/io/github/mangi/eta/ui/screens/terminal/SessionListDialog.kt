@@ -22,18 +22,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.R
 import io.github.mangi.eta.agent.terminal.TerminalEnvironment
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
 import io.github.mangi.eta.ui.app.displayName
 import io.github.mangi.eta.ui.components.EtaMonospace
 import io.github.mangi.eta.ui.components.StatusSuccess
 import io.github.mangi.eta.ui.components.coui.CouiConfirmDialog
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.squircle.squircleBackground
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.window.WindowDialog
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.squircle.squircleBackground
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 @Immutable
 internal data class SessionDialogRow(
@@ -58,8 +53,8 @@ internal fun SessionListDialog(
         if (rows.isEmpty()) {
             Text(
                 text = stringResource(R.string.terminal_session_empty),
-                style = MiuixTheme.textStyles.footnote1,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                style = COUITheme.textStyles.bodyS,
+                color = COUITheme.colorScheme.labelSecondary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -79,37 +74,16 @@ internal fun SessionListDialog(
         }
     }
 
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            CouiConfirmDialog(
-                visible = true,
-                title = stringResource(R.string.terminal_sessions),
-                message = null,
-                confirmText = stringResource(R.string.terminal_new_session),
-                cancelText = stringResource(R.string.action_close),
-                onConfirm = { onNew(); onDismiss() },
-                onDismissRequest = onDismiss,
-            ) {
-                listBody()
-            }
-        }
-        AppearanceUiStyle.MIUIX -> {
-            WindowDialog(
-                show = true,
-                title = stringResource(R.string.terminal_sessions),
-                onDismissRequest = onDismiss,
-            ) {
-                listBody()
-                TextButton(
-                    text = stringResource(R.string.terminal_new_session),
-                    onClick = { onNew(); onDismiss() },
-                    colors = ButtonDefaults.textButtonColorsPrimary(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                )
-            }
-        }
+    CouiConfirmDialog(
+        visible = true,
+        title = stringResource(R.string.terminal_sessions),
+        message = null,
+        confirmText = stringResource(R.string.terminal_new_session),
+        cancelText = stringResource(R.string.action_close),
+        onConfirm = { onNew(); onDismiss() },
+        onDismissRequest = onDismiss,
+    ) {
+        listBody()
     }
 }
 
@@ -120,13 +94,13 @@ private fun SessionRow(
     onRestart: () -> Unit,
     onClose: () -> Unit,
 ) {
-    val colors = MiuixTheme.colorScheme
+    val colors = COUITheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp)
             .squircleBackground(
-                if (row.active) colors.tertiaryContainer else colors.surfaceContainer,
+                if (row.active) colors.containerThemeHalftone else colors.surfaceWithCard,
                 14.dp,
             )
             .clickable(onClick = onSelect)
@@ -137,7 +111,7 @@ private fun SessionRow(
             color = when {
                 !row.alive -> colors.error
                 row.running -> StatusSuccess
-                else -> colors.onSurfaceVariantSummary.copy(alpha = 0.5f)
+                else -> colors.labelSecondary.copy(alpha = 0.5f)
             },
         )
         Column(
@@ -148,9 +122,9 @@ private fun SessionRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = row.environment.displayName,
-                    style = MiuixTheme.textStyles.body2,
+                    style = COUITheme.textStyles.bodyM,
                     fontWeight = FontWeight.Medium,
-                    color = if (row.active) colors.onTertiaryContainer else colors.onSurface,
+                    color = if (row.active) colors.primaryText else colors.labelPrimary,
                 )
                 Text(
                     text = if (row.active) {
@@ -158,16 +132,16 @@ private fun SessionRow(
                     } else {
                         sessionStateLabel(row)
                     },
-                    style = MiuixTheme.textStyles.footnote2,
-                    color = colors.onSurfaceVariantSummary,
+                    style = COUITheme.textStyles.bodyXS,
+                    color = colors.labelSecondary,
                     modifier = Modifier.padding(start = 8.dp),
                 )
             }
             if (row.subtitle.isNotEmpty()) {
                 Text(
                     text = row.subtitle,
-                    style = MiuixTheme.textStyles.footnote2.copy(fontFamily = EtaMonospace),
-                    color = colors.onSurfaceVariantSummary,
+                    style = COUITheme.textStyles.bodyXS.copy(fontFamily = EtaMonospace),
+                    color = colors.labelSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.StartEllipsis,
                     modifier = Modifier.padding(top = 2.dp),

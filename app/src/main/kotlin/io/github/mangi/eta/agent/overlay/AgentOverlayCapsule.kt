@@ -70,22 +70,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.itos.coui.effect.couiButtonFeedback
-import com.itos.coui.motion.couiPressMotion
-import com.itos.coui.motion.rememberCouiPressMotion
-import com.itos.coui.shape.CouiCapsuleShape
-import com.itos.coui.shape.CouiShape
-import com.itos.coui.theme.CouiTheme
+import androidx.compose.foundation.shape.CircleShape
+import io.github.suqi8.coui.kmp.squircle.SquircleShape
 import io.github.mangi.eta.R
 import io.github.mangi.eta.agent.virtualdisplay.VirtualDisplaySnapshot
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import androidx.compose.foundation.LocalIndication
+import io.github.suqi8.coui.kmp.utils.SinkFeedback
 
 /**
  * 顶部状态胶囊：收起时只显示一句当前步骤（后台虚拟屏激活时右侧镶嵌 18×32.dp 实时微缩镜），
@@ -183,24 +178,10 @@ internal fun AgentOverlayCapsule(
             fadeIn(tween(160)),
         exit = slideOutVertically(tween(160)) { -it } + fadeOut(tween(140)),
     ) {
-        val isCoui = LocalUiStyle.current == AppearanceUiStyle.COUI
-        val couiDark = CouiTheme.isDark
-        val capsuleShape = if (isCoui) {
-            CouiShape(targetCapsuleCorner, cornerWeight = 2.5f)
-        } else {
-            RoundedCornerShape(targetCapsuleCorner)
-        }
-        val capsuleBg = if (isCoui) {
-            if (couiDark) Color(0xF520232B) else Color(0xFCFFFFFF)
-        } else {
-            MiuixTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f)
-        }
-        val capsuleBorder = if (isCoui) {
-            if (couiDark) Color(0x22FFFFFF) else Color(0x12000000)
-        } else {
-            Color.Transparent
-        }
-        val headerPress = rememberCouiPressMotion()
+        val couiDark = COUITheme.isDark
+        val capsuleShape = SquircleShape(targetCapsuleCorner)
+        val capsuleBg = COUITheme.colorScheme.surface
+        val capsuleBorder = COUITheme.colorScheme.divider
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
             Column(
                 modifier = Modifier
@@ -208,8 +189,7 @@ internal fun AgentOverlayCapsule(
                     .width(targetCapsuleWidth)
                     .graphicsLayer {
                         // 点击时轻微回弹，展开后保持原尺寸；只改绘制层，不触发重新布局。
-                        val press = (1f - 0.03f * (1f - expansion) * expansion * 4f) *
-                            if (isCoui && !expanded) headerPress.scale.value else 1f
+                        val press = (1f - 0.03f * (1f - expansion) * expansion * 4f)
                         val shrink = 1f - 0.08f * clearance
                         scaleX = press * shrink
                         scaleY = press * shrink
@@ -218,28 +198,23 @@ internal fun AgentOverlayCapsule(
                         transformOrigin = TransformOrigin(0.5f, 0f)
                     }
                     .shadow(
-                        elevation = if (isCoui) 12.dp else 10.dp,
+                        elevation = 12.dp,
                         shape = capsuleShape,
-                        ambientColor = if (isCoui) Color.Black.copy(alpha = if (couiDark) 0.45f else 0.18f) else accent,
-                        spotColor = if (isCoui) Color.Black.copy(alpha = if (couiDark) 0.55f else 0.22f) else accent,
+                        ambientColor = Color.Black.copy(alpha = if (couiDark) 0.45f else 0.18f),
+                        spotColor = Color.Black.copy(alpha = if (couiDark) 0.55f else 0.22f),
                     )
                     .clip(capsuleShape)
                     .background(capsuleBg, capsuleShape)
                     .then(
-                        if (isCoui) {
-                            Modifier.border(0.6.dp, capsuleBorder, capsuleShape)
-                        } else {
-                            Modifier
-                        },
+                        Modifier.border(0.6.dp, capsuleBorder, capsuleShape),
                     ),
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .then(if (isCoui && !expanded) Modifier.couiPressMotion(headerPress) else Modifier)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
+                            indication = SinkFeedback(),
                             onClick = onToggleExpanded,
                         )
                         .semantics { contentDescription = expandDescription }
@@ -265,7 +240,7 @@ internal fun AgentOverlayCapsule(
                         ) { text ->
                             Text(
                                 text = text,
-                                color = MiuixTheme.colorScheme.onSurface,
+                                color = COUITheme.colorScheme.labelPrimary,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1,
@@ -332,28 +307,28 @@ internal fun AgentOverlayCapsule(
                                 CapsuleAction(
                                     icon = Icons.Rounded.Edit,
                                     label = stringResource(R.string.overlay_supplement),
-                                    tint = MiuixTheme.colorScheme.onSurface,
+                                    tint = COUITheme.colorScheme.labelPrimary,
                                     onClick = { setSupplementMode(true) },
                                 )
                                 if (state.phase == AgentOverlayPhase.RUNNING) {
                                     CapsuleAction(
                                         icon = Icons.Rounded.Pause,
                                         label = stringResource(R.string.overlay_pause),
-                                        tint = MiuixTheme.colorScheme.onSurface,
+                                        tint = COUITheme.colorScheme.labelPrimary,
                                         onClick = onPause,
                                     )
                                 } else if (state.phase == AgentOverlayPhase.PAUSED) {
                                     CapsuleAction(
                                         icon = Icons.Rounded.PlayArrow,
                                         label = stringResource(R.string.overlay_resume),
-                                        tint = MiuixTheme.colorScheme.primary,
+                                        tint = COUITheme.colorScheme.primary,
                                         onClick = onResume,
                                     )
                                 }
                                 CapsuleAction(
                                     icon = Icons.Rounded.Stop,
                                     label = stringResource(R.string.action_stop),
-                                    tint = MiuixTheme.colorScheme.error,
+                                    tint = COUITheme.colorScheme.error,
                                     onClick = onStop,
                                 )
                             }
@@ -429,7 +404,7 @@ private fun ThoughtLine(thought: String) {
     if (shown) lastThought = thought
     Text(
         text = lastThought,
-        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        color = COUITheme.colorScheme.labelSecondary,
         fontSize = 11.sp,
         lineHeight = 14.sp,
         maxLines = 1,
@@ -443,36 +418,17 @@ private fun ThoughtLine(thought: String) {
 
 @Composable
 private fun CapsuleAction(icon: ImageVector, label: String, tint: Color, onClick: () -> Unit) {
-    if (LocalUiStyle.current == AppearanceUiStyle.COUI) {
-        val dark = CouiTheme.isDark
-        val source = remember { MutableInteractionSource() }
-        val press = rememberCouiPressMotion()
-        Box(
-            modifier = Modifier
-                .size(width = 42.dp, height = 34.dp)
-                .graphicsLayer {
-                    scaleX = press.scale.value
-                    scaleY = press.scale.value
-                }
-                .couiPressMotion(press)
-                .clip(CouiCapsuleShape)
-                .background(if (dark) Color(0x1FFFFFFF) else Color(0x0F11141A), CouiCapsuleShape)
-                .couiButtonFeedback(dark, source, enabled = true)
-                .clickable(source, indication = null, role = Role.Button, onClick = onClick),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(imageVector = icon, contentDescription = label, modifier = Modifier.size(17.dp), tint = tint)
-        }
-    } else {
-        IconButton(
-            onClick = onClick,
-            backgroundColor = MiuixTheme.colorScheme.surfaceContainerHigh,
-            minWidth = 40.dp,
-            minHeight = 34.dp,
-            cornerRadius = 17.dp,
-        ) {
-            Icon(imageVector = icon, contentDescription = label, modifier = Modifier.size(17.dp), tint = tint)
-        }
+    val dark = COUITheme.isDark
+    val source = remember { MutableInteractionSource() }
+    Box(
+        modifier = Modifier
+            .size(width = 42.dp, height = 34.dp)
+            .clip(CircleShape)
+            .background(if (dark) Color(0x1FFFFFFF) else Color(0x0F11141A), CircleShape)
+            .clickable(source, indication = SinkFeedback(), role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(imageVector = icon, contentDescription = label, modifier = Modifier.size(17.dp), tint = tint)
     }
 }
 

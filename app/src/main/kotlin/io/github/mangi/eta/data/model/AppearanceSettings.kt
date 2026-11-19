@@ -8,7 +8,6 @@ const val DEFAULT_INTERFACE_SCALE = 1f
 
 @Serializable
 data class AppearanceSettings(
-    val uiStyle: AppearanceUiStyle = AppearanceUiStyle.COUI,
     val themeMode: AppearanceThemeMode = AppearanceThemeMode.SYSTEM,
     val monetEnabled: Boolean = false,
     val paletteStyle: AppearancePaletteStyle = AppearancePaletteStyle.TONAL_SPOT,
@@ -21,23 +20,8 @@ data class AppearanceSettings(
     val interfaceScale: Float = DEFAULT_INTERFACE_SCALE,
 ) {
     fun normalized(): AppearanceSettings = copy(
-        uiStyle = AppearanceUiStyle.COUI,
         interfaceScale = normalizeInterfaceScale(interfaceScale),
     )
-}
-
-@Serializable
-enum class AppearanceUiStyle(val persistedValue: String) {
-    COUI("coui"),
-    MIUIX("miuix");
-
-    val isCoui: Boolean
-        get() = this == COUI
-
-    companion object {
-        fun fromPersistedValue(value: String?): AppearanceUiStyle =
-            entries.firstOrNull { it.persistedValue == value } ?: COUI
-    }
 }
 
 @Serializable

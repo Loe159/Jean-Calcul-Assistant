@@ -37,11 +37,11 @@ import io.github.mangi.eta.R
 import io.github.mangi.eta.agent.terminal.TerminalEnvironment
 import io.github.mangi.eta.ui.app.displayName
 import io.github.mangi.eta.ui.components.StatusSuccess
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.squircle.squircleBackground
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.IconButton
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.squircle.squircleBackground
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 /** 终端两种视图互相切换的目标；工具栏只显示目标模式的图标，避免文字按钮挤占空间。 */
 internal enum class TerminalModeTarget { CONSOLE, BLOCKS }
@@ -111,17 +111,17 @@ private fun EnvironmentSegments(
     selected: TerminalEnvironment,
     onSelect: (TerminalEnvironment) -> Unit,
 ) {
-    val colors = MiuixTheme.colorScheme
+    val colors = COUITheme.colorScheme
     Row(
         modifier = Modifier
-            .squircleBackground(colors.surfaceContainer, 12.dp)
+            .squircleBackground(colors.surfaceWithCard, 12.dp)
             .padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         options.forEach { option ->
             val isSelected = option == selected
             val background by animateColorAsState(
-                targetValue = if (isSelected) colors.surface else Color.Transparent,
+                targetValue = if (isSelected) colors.background else Color.Transparent,
                 label = "segmentBackground",
             )
             Box(
@@ -141,9 +141,9 @@ private fun EnvironmentSegments(
             ) {
                 Text(
                     text = option.displayName,
-                    style = MiuixTheme.textStyles.footnote1,
+                    style = COUITheme.textStyles.bodyS,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                    color = if (isSelected) colors.onSurface else colors.onSurfaceVariantSummary,
+                    color = if (isSelected) colors.labelPrimary else colors.labelSecondary,
                 )
             }
         }
@@ -164,22 +164,22 @@ private fun ToolbarIcon(
                 imageVector = icon,
                 contentDescription = contentDescription,
                 modifier = Modifier.size(20.dp),
-                tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                tint = COUITheme.colorScheme.labelSecondary,
             )
             when {
                 badge != null -> Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .offset(x = 6.dp, y = (-4).dp)
-                        .squircleBackground(MiuixTheme.colorScheme.primary, 6.dp)
+                        .squircleBackground(COUITheme.colorScheme.primary, 6.dp)
                         .padding(horizontal = 4.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = badge,
-                        style = MiuixTheme.textStyles.footnote2,
+                        style = COUITheme.textStyles.bodyXS,
                         fontWeight = FontWeight.SemiBold,
-                        color = MiuixTheme.colorScheme.onPrimary,
+                        color = COUITheme.colorScheme.onPrimary,
                     )
                 }
                 dot -> Box(
@@ -210,7 +210,7 @@ internal fun RowIconAction(
     icon: ImageVector,
     contentDescription: String,
     onClick: () -> Unit,
-    tint: Color = MiuixTheme.colorScheme.onSurfaceVariantActions,
+    tint: Color = COUITheme.colorScheme.labelSecondary,
 ) {
     IconButton(onClick = onClick, minWidth = 36.dp, minHeight = 36.dp) {
         Icon(
@@ -221,4 +221,3 @@ internal fun RowIconAction(
         )
     }
 }
-

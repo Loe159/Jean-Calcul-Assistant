@@ -44,8 +44,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.Path
-import top.yukonga.miuix.kmp.squircle.addSquircleRect
-import top.yukonga.miuix.kmp.basic.IconButton
+import io.github.suqi8.coui.kmp.squircle.addSquircleRect
 import androidx.compose.material.icons.rounded.ContentCopy
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontWeight
@@ -87,36 +86,28 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.itos.coui.effect.couiButtonFeedback
-import com.itos.coui.motion.couiPressMotion
-import com.itos.coui.motion.rememberCouiPressMotion
-import com.itos.coui.shape.CouiShape
-import com.itos.coui.theme.CouiTheme
 import io.github.mangi.eta.ui.markdown.MarkdownTone
 import io.github.mangi.eta.ui.markdown.StaticMarkdown
 import io.github.mangi.eta.R
 import io.github.mangi.eta.agent.virtualdisplay.VirtualDisplaySnapshot
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
 import io.github.mangi.eta.ui.components.coui.CouiButton
 import io.github.mangi.eta.ui.components.coui.CouiButtonRole
 import kotlinx.coroutines.delay
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import androidx.compose.foundation.LocalIndication
+import io.github.suqi8.coui.kmp.squircle.SquircleShape
+import io.github.suqi8.coui.kmp.utils.SinkFeedback
 
-// Miuix 未提供语义 success 色，沿用项目既有值；失败色走主题 error
-private val SuccessColor = Color(0xFF34C759)
 
 
 @Composable
 internal fun overlayPhaseAccent(phase: AgentOverlayPhase): Color = when (phase) {
-    AgentOverlayPhase.RUNNING -> MiuixTheme.colorScheme.primary
-    AgentOverlayPhase.PAUSED -> Color(0xFFFF9F0A)
-    AgentOverlayPhase.FINISHED -> SuccessColor
-    AgentOverlayPhase.FAILED -> MiuixTheme.colorScheme.error
+    AgentOverlayPhase.RUNNING -> COUITheme.colorScheme.primary
+    AgentOverlayPhase.PAUSED -> COUITheme.colorScheme.orange
+    AgentOverlayPhase.FINISHED -> COUITheme.colorScheme.success
+    AgentOverlayPhase.FAILED -> COUITheme.colorScheme.error
 }
 
 // 边缘流光取主题强调色与相邻冷暖色，避免高饱和彩虹在浅色页面上喧宾夺主。
@@ -233,8 +224,8 @@ internal fun OverlaySupplementInput(
 ) {
     val focusRequester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
-    val textColor = MiuixTheme.colorScheme.onSurface
-    val fieldBg = MiuixTheme.colorScheme.surfaceContainer
+    val textColor = COUITheme.colorScheme.labelPrimary
+    val fieldBg = COUITheme.colorScheme.surfaceWithCard
 
     LaunchedEffect(Unit) {
         delay(180)
@@ -275,7 +266,7 @@ internal fun OverlaySupplementInput(
                     lineHeight = 18.sp,
                 ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
-                cursorBrush = SolidColor(MiuixTheme.colorScheme.primary),
+                cursorBrush = SolidColor(COUITheme.colorScheme.primary),
                 maxLines = 4,
             )
         }
@@ -285,41 +276,21 @@ internal fun OverlaySupplementInput(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (LocalUiStyle.current == AppearanceUiStyle.COUI) {
-                CouiButton(
-                    text = stringResource(R.string.action_cancel),
-                    onClick = onCancel,
-                    minHeight = 32.dp,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                CouiButton(
-                    text = stringResource(R.string.overlay_send),
-                    onClick = onSend,
-                    enabled = value.isNotBlank(),
-                    role = CouiButtonRole.Primary,
-                    minHeight = 32.dp,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                )
-            } else {
-                TextButton(
-                    text = stringResource(R.string.action_cancel),
-                    onClick = onCancel,
-                    minWidth = 44.dp,
-                    minHeight = 32.dp,
-                    insideMargin = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                TextButton(
-                    text = stringResource(R.string.overlay_send),
-                    onClick = onSend,
-                    enabled = value.isNotBlank(),
-                    minWidth = 44.dp,
-                    minHeight = 32.dp,
-                    insideMargin = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    colors = ButtonDefaults.textButtonColorsPrimary(),
-                )
-            }
+            CouiButton(
+                text = stringResource(R.string.action_cancel),
+                onClick = onCancel,
+                minHeight = 32.dp,
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            CouiButton(
+                text = stringResource(R.string.overlay_send),
+                onClick = onSend,
+                enabled = value.isNotBlank(),
+                role = CouiButtonRole.Primary,
+                minHeight = 32.dp,
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+            )
         }
     }
 }
@@ -387,14 +358,9 @@ internal fun AgentResultCard(
             exit = slideOutVertically(tween(ResultCardExitMs)) { it } + fadeOut(tween(ResultCardExitMs)),
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
-            val isCoui = LocalUiStyle.current == AppearanceUiStyle.COUI
-            val couiDark = CouiTheme.isDark
-            val cardShape = if (isCoui) CouiShape(32.dp, 2.6f) else RoundedCornerShape(ResultCardCorner)
-            val cardBg = if (isCoui) {
-                if (couiDark) Color(0xFF1D1F25) else Color(0xFFFCFCFE)
-            } else {
-                MiuixTheme.colorScheme.surface
-            }
+            val couiDark = COUITheme.isDark
+            val cardShape = SquircleShape(32.dp)
+            val cardBg = if (couiDark) Color(0xFF1D1F25) else Color(0xFFFCFCFE)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -403,20 +369,16 @@ internal fun AgentResultCard(
                     .shadow(
                         elevation = 16.dp,
                         shape = cardShape,
-                        ambientColor = Color.Black.copy(alpha = if (isCoui && couiDark) 0.42f else 0.18f),
+                        ambientColor = Color.Black.copy(alpha = if (couiDark) 0.42f else 0.18f),
                     )
                     .clip(cardShape)
                     .background(cardBg, cardShape)
                     .then(
-                        if (isCoui) {
-                            Modifier.border(
-                                width = 0.6.dp,
-                                color = if (couiDark) Color(0x22FFFFFF) else Color(0x12000000),
-                                shape = cardShape,
-                            )
-                        } else {
-                            Modifier
-                        },
+                        Modifier.border(
+                            width = 0.6.dp,
+                            color = if (couiDark) Color(0x22FFFFFF) else Color(0x12000000),
+                            shape = cardShape,
+                        ),
                     )
                     .pointerInput(Unit) {
                         awaitEachGesture {
@@ -446,7 +408,7 @@ internal fun AgentResultCard(
                         .align(Alignment.CenterHorizontally)
                         .size(width = 36.dp, height = 4.dp)
                         .clip(CircleShape)
-                        .background(MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.3f)),
+                        .background(COUITheme.colorScheme.labelSecondary.copy(alpha = 0.3f)),
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 12.dp),
@@ -469,7 +431,7 @@ internal fun AgentResultCard(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = statusLabel,
-                        color = MiuixTheme.colorScheme.onSurface,
+                        color = COUITheme.colorScheme.labelPrimary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -532,54 +494,26 @@ private fun ResultCardActions(
         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        val isCoui = LocalUiStyle.current == AppearanceUiStyle.COUI
         // 复制是图标按钮，主次两个文字按钮分别是"完成"（留在当前应用）与"回到 Eta"或"打开画面"。
-        if (isCoui) {
-            val dark = CouiTheme.isDark
-            val source = remember { MutableInteractionSource() }
-            val press = rememberCouiPressMotion()
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .graphicsLayer {
-                        scaleX = press.scale.value
-                        scaleY = press.scale.value
-                    }
-                    .couiPressMotion(press)
-                    .clip(CircleShape)
-                    .background(if (dark) Color(0xFF353535) else Color(0xFFEBEBEB), CircleShape)
-                    .couiButtonFeedback(dark, source, enabled = true)
-                    .clickable(source, indication = null, role = Role.Button) {
-                        clipboard.setText(AnnotatedString(content))
-                        copied = true
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = if (copied) Icons.Rounded.Check else Icons.Rounded.ContentCopy,
-                    contentDescription = stringResource(if (copied) R.string.copy_copied else R.string.ui_copy_4edd1d),
-                    modifier = Modifier.size(18.dp),
-                    tint = if (copied) CouiTheme.colorSchemeFor(dark).accent else CouiTheme.colorSchemeFor(dark).onSurface,
-                )
-            }
-        } else {
-            IconButton(
-                onClick = {
+        val dark = COUITheme.isDark
+        val source = remember { MutableInteractionSource() }
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(if (dark) Color(0xFF353535) else Color(0xFFEBEBEB), CircleShape)
+                .clickable(source, indication = SinkFeedback(), role = Role.Button) {
                     clipboard.setText(AnnotatedString(content))
                     copied = true
                 },
-                backgroundColor = MiuixTheme.colorScheme.secondaryContainer,
-                minWidth = 44.dp,
-                minHeight = 44.dp,
-                cornerRadius = 22.dp,
-            ) {
-                Icon(
-                    imageVector = if (copied) Icons.Rounded.Check else Icons.Rounded.ContentCopy,
-                    contentDescription = stringResource(if (copied) R.string.copy_copied else R.string.ui_copy_4edd1d),
-                    modifier = Modifier.size(18.dp),
-                    tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                )
-            }
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = if (copied) Icons.Rounded.Check else Icons.Rounded.ContentCopy,
+                contentDescription = stringResource(if (copied) R.string.copy_copied else R.string.ui_copy_4edd1d),
+                modifier = Modifier.size(18.dp),
+                tint = if (copied) COUITheme.colorScheme.primary else COUITheme.colorScheme.labelPrimary,
+            )
         }
         val doneText = stringResource(R.string.overlay_result_done)
         val primaryText = if (hasVirtualDisplayApp && onOpenVirtualApp != null) {
@@ -588,35 +522,19 @@ private fun ResultCardActions(
             stringResource(R.string.overlay_result_open_eta)
         }
         val onPrimary = if (hasVirtualDisplayApp && onOpenVirtualApp != null) onOpenVirtualApp else onOpenEta
-        if (isCoui) {
-            CouiButton(
-                text = doneText,
-                onClick = onDone,
-                modifier = Modifier.weight(1f),
-                minHeight = 44.dp,
-            )
-            CouiButton(
-                text = primaryText,
-                onClick = onPrimary,
-                role = CouiButtonRole.Primary,
-                modifier = Modifier.weight(1f),
-                minHeight = 44.dp,
-            )
-        } else {
-            TextButton(
-                text = doneText,
-                onClick = onDone,
-                modifier = Modifier.weight(1f),
-                minHeight = 44.dp,
-            )
-            TextButton(
-                text = primaryText,
-                onClick = onPrimary,
-                modifier = Modifier.weight(1f),
-                minHeight = 44.dp,
-                colors = ButtonDefaults.textButtonColorsPrimary(),
-            )
-        }
+        CouiButton(
+            text = doneText,
+            onClick = onDone,
+            modifier = Modifier.weight(1f),
+            minHeight = 44.dp,
+        )
+        CouiButton(
+            text = primaryText,
+            onClick = onPrimary,
+            role = CouiButtonRole.Primary,
+            modifier = Modifier.weight(1f),
+            minHeight = 44.dp,
+        )
     }
 }
 

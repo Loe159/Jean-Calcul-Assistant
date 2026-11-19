@@ -33,11 +33,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.agent.roleplay.CharacterProfile
 import io.github.mangi.eta.ui.components.CharacterAvatar
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.squircle.squircleBorder
-import top.yukonga.miuix.kmp.squircle.squircleClip
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.squircle.squircleBorder
+import io.github.suqi8.coui.kmp.squircle.squircleClip
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 /** 角色卡竖版比例与原版角色卡图一致（2:3），裁剪时保留人物上半身。 */
 internal const val CharacterPortraitAspect = 2f / 3f
@@ -59,7 +59,7 @@ internal fun CharacterPortraitCard(
         modifier = modifier
             .aspectRatio(CharacterPortraitAspect)
             .squircleClip(CharacterPortraitCorner)
-            .background(MiuixTheme.colorScheme.surfaceContainerHigh)
+            .background(COUITheme.colorScheme.cardPressed)
             .clickable(onClick = onClick),
     ) {
         CharacterAvatar(
@@ -111,7 +111,7 @@ internal fun CharacterPortraitCard(
         ) {
             Text(
                 text = card.name,
-                style = MiuixTheme.textStyles.body1,
+                style = COUITheme.textStyles.bodyXL,
                 fontWeight = FontWeight.SemiBold,
                 color = Color.White,
                 maxLines = 1,
@@ -130,7 +130,7 @@ internal fun CharacterPortraitCard(
 private fun PortraitTag(text: String) {
     Text(
         text = text,
-        style = MiuixTheme.textStyles.footnote2,
+        style = COUITheme.textStyles.bodyXS,
         color = Color.White.copy(alpha = 0.92f),
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
@@ -155,12 +155,12 @@ internal fun CharacterAddTile(
     onImport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MiuixTheme.colorScheme
+    val colors = COUITheme.colorScheme
     Column(
         modifier = modifier
             .aspectRatio(CharacterPortraitAspect)
             .squircleClip(CharacterPortraitCorner)
-            .background(colors.surfaceContainer)
+            .background(colors.surfaceWithCard)
             .squircleBorder(0.5.dp, colors.outline.copy(alpha = 0.5f), CharacterPortraitCorner),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -181,7 +181,7 @@ internal fun CharacterAddTile(
                 Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(24.dp), tint = colors.primary)
             }
             Spacer(Modifier.height(12.dp))
-            Text("New character", style = MiuixTheme.textStyles.body2, fontWeight = FontWeight.Medium, color = colors.onSurface)
+            Text("New character", style = COUITheme.textStyles.bodyM, fontWeight = FontWeight.Medium, color = colors.labelPrimary)
         }
         Box(
             modifier = Modifier
@@ -197,9 +197,9 @@ internal fun CharacterAddTile(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Rounded.FileUpload, contentDescription = null, modifier = Modifier.size(16.dp), tint = colors.onSurfaceVariantSummary)
+            Icon(Icons.Rounded.FileUpload, contentDescription = null, modifier = Modifier.size(16.dp), tint = colors.labelSecondary)
             Spacer(Modifier.width(6.dp))
-            Text("Import character card", style = MiuixTheme.textStyles.footnote1, color = colors.onSurfaceVariantSummary)
+            Text("Import character card", style = COUITheme.textStyles.bodyS, color = colors.labelSecondary)
         }
     }
 }

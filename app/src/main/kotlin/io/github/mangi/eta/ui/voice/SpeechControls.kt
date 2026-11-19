@@ -81,12 +81,12 @@ import io.github.mangi.eta.ui.components.ChatInputActionSize
 import io.github.mangi.eta.ui.components.StatusError
 import kotlin.math.sqrt
 import kotlin.random.Random
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.squircle.squircleBorder
-import top.yukonga.miuix.kmp.squircle.squircleSurface
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.IconButton
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.squircle.squircleBorder
+import io.github.suqi8.coui.kmp.squircle.squircleSurface
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 internal const val ACTION_SPEECH_SETTINGS = "io.github.mangi.eta.OPEN_SPEECH_SETTINGS"
 
@@ -159,9 +159,9 @@ internal fun SpeechDictationButton(
             ),
             modifier = Modifier.size(20.dp),
             tint = if (state.active) {
-                MiuixTheme.colorScheme.primary
+                COUITheme.colorScheme.primary
             } else {
-                MiuixTheme.colorScheme.onSurface.copy(alpha = 0.68f)
+                COUITheme.colorScheme.labelPrimary.copy(alpha = 0.68f)
             },
         )
     }
@@ -183,12 +183,12 @@ internal fun SpeechInputFeedback(controller: SpeechInputController) {
                 .padding(bottom = 8.dp)
                 .heightIn(min = 38.dp)
                 .squircleSurface(
-                    color = MiuixTheme.colorScheme.surfaceContainer,
+                    color = COUITheme.colorScheme.surfaceWithCard,
                     cornerRadius = 19.dp,
                 )
                 .squircleBorder(
                     width = 0.5.dp,
-                    color = MiuixTheme.colorScheme.outline.copy(alpha = 0.55f),
+                    color = COUITheme.colorScheme.outline.copy(alpha = 0.55f),
                     cornerRadius = 19.dp,
                 )
                 .padding(start = 14.dp, end = 6.dp, top = 5.dp, bottom = 5.dp),
@@ -210,9 +210,9 @@ internal fun SpeechInputFeedback(controller: SpeechInputController) {
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
                 color = if (state.error != null) {
-                    MiuixTheme.colorScheme.onSurface
+                    COUITheme.colorScheme.labelPrimary
                 } else {
-                    MiuixTheme.colorScheme.onSurfaceVariantSummary
+                    COUITheme.colorScheme.labelSecondary
                 },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -238,7 +238,7 @@ internal fun SpeechInputFeedback(controller: SpeechInputController) {
                         imageVector = Icons.Rounded.Close,
                         contentDescription = stringResource(R.string.action_cancel),
                         modifier = Modifier.size(15.dp),
-                        tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        tint = COUITheme.colorScheme.labelSecondary,
                     )
                 }
             }
@@ -252,7 +252,7 @@ internal fun SpeechInputFeedback(controller: SpeechInputController) {
  */
 @Composable
 private fun SpeechLevelBars(level: () -> Float) {
-    val color = MiuixTheme.colorScheme.primary
+    val color = COUITheme.colorScheme.primary
     val envelope = remember { FloatArray(LEVEL_BAR_WEIGHTS.size) }
     var frame by remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) {
@@ -288,11 +288,11 @@ private const val LEVEL_BAR_JITTER = 0.04f
 
 @Composable
 private fun SpeechFeedbackAction(text: String, primary: Boolean = false, onClick: () -> Unit) {
-    val tint = if (primary) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceVariantSummary
+    val tint = if (primary) COUITheme.colorScheme.primary else COUITheme.colorScheme.labelSecondary
     val background = if (primary) {
-        MiuixTheme.colorScheme.primary.copy(alpha = 0.12f)
+        COUITheme.colorScheme.primary.copy(alpha = 0.12f)
     } else {
-        MiuixTheme.colorScheme.surfaceContainerHigh
+        COUITheme.colorScheme.cardPressed
     }
     Box(
         modifier = Modifier
@@ -406,6 +406,6 @@ internal fun SpeechReadAloudButton(messageId: String, text: String) {
             if (active) R.string.speech_read_stop else R.string.speech_read_aloud,
         ),
         onClick = { if (active) controller.stop() else controller.speak(messageId, text) },
-        tint = if (active) MiuixTheme.colorScheme.primary else null,
+        tint = if (active) COUITheme.colorScheme.primary else null,
     )
 }

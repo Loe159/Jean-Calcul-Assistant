@@ -68,8 +68,8 @@ import androidx.navigationevent.compose.rememberNavigationEventState
 import io.github.mangi.eta.R
 import kotlin.math.abs
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 @Stable
 internal class ChatImagePreviewer {
@@ -293,7 +293,7 @@ private fun ChatImageViewerOverlay(
             ) {
                 Text(
                     text = "${previewer.activePage + 1} / ${request.images.size}",
-                    style = MiuixTheme.textStyles.footnote1.copy(
+                    style = COUITheme.textStyles.bodyS.copy(
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                     ),

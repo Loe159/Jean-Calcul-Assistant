@@ -67,44 +67,30 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.itos.coui.backdrop.couiBackdrop
-import com.itos.coui.backdrop.rememberCouiBackdrop
-import com.itos.coui.dialog.CouiDialogDefaults
-import com.itos.coui.effect.couiButtonFeedback
-import com.itos.coui.icons.CouiIcons
-import com.itos.coui.layout.CouiPageDefaults
-import com.itos.coui.layout.Divider as CouiDivider
-import com.itos.coui.menu.CouiMenuItem
-import com.itos.coui.menu.Menu
-import com.itos.coui.menu.couiMenuAnchor
-import com.itos.coui.menu.rememberCouiMenuAnchor
-import com.itos.coui.shape.CouiShape
-import com.itos.coui.text.CouiTextKind
-import com.itos.coui.text.Text as CouiText
-import com.itos.coui.theme.CouiTheme
 import io.github.mangi.eta.R
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
-import io.github.mangi.eta.ui.components.coui.CouiIcon
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.rememberUpdatedState
+import io.github.mangi.eta.ui.components.coui.PreferenceValueText
+import io.github.mangi.eta.ui.components.coui.rememberPageBackdrop
+import io.github.mangi.eta.ui.components.coui.rememberPopupMaterialBlur
+import io.github.suqi8.coui.kmp.basic.CardListGroup
+import io.github.suqi8.coui.kmp.basic.DropdownEntry
+import io.github.suqi8.coui.kmp.basic.DropdownItem
+import io.github.suqi8.coui.kmp.basic.Card
+import io.github.suqi8.coui.kmp.blur.layerBackdrop
+import io.github.suqi8.coui.kmp.effect.LocalPopupMaterialBlur
+import io.github.suqi8.coui.kmp.menu.OverlayContextMenu
+import io.github.suqi8.coui.kmp.menu.OverlayIconDropdownMenu
+import io.github.suqi8.coui.kmp.preference.ArrowPreference
 import io.github.mangi.eta.ui.model.ConversationPaneUiState
 import io.github.mangi.eta.ui.model.ConversationSummaryUi
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardDefaults
-import top.yukonga.miuix.kmp.basic.DropdownDefaults
-import top.yukonga.miuix.kmp.basic.DropdownImpl
-import top.yukonga.miuix.kmp.basic.DropdownItem
-import top.yukonga.miuix.kmp.basic.HorizontalDivider
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.ListPopupColumn
-import top.yukonga.miuix.kmp.basic.ListPopupDefaults
-import top.yukonga.miuix.kmp.basic.PopupPositionProvider
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.squircle.squircleSurface
-import top.yukonga.miuix.kmp.theme.LocalContentColor
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.utils.overScrollVertical
-import top.yukonga.miuix.kmp.utils.scrollEndHaptic
-import top.yukonga.miuix.kmp.window.WindowListPopup
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import io.github.suqi8.coui.kmp.utils.overScrollVertical
+import io.github.suqi8.coui.kmp.utils.scrollEndHaptic
+import androidx.compose.foundation.LocalIndication
+import io.github.suqi8.coui.kmp.squircle.SquircleShape
 
 @Stable
 private class PaneBarInsets {
@@ -140,15 +126,10 @@ internal fun ConversationPanePanel(
     val isSearching = query.isNotBlank()
     val groups = remember(state.conversations) { state.conversations.groupForDrawer() }
     val containerColor = conversationPaneContainerColor()
-    val isCoui = LocalUiStyle.current == AppearanceUiStyle.COUI
-    val couiBackdrop = if (isCoui) rememberCouiBackdrop() else null
-    val miuixBackdrop = if (!isCoui) rememberTopBarBackdrop() else null
+    val backdrop = rememberPageBackdrop(containerColor)
+    val popupBlur = rememberPopupMaterialBlur(backdrop)
     val barInsets = remember { PaneBarInsets() }
-    val bodyCaptureModifier = when {
-        isCoui && couiBackdrop != null -> Modifier.couiBackdrop(couiBackdrop)
-        !isCoui && miuixBackdrop != null -> Modifier.captureForTopBar(miuixBackdrop)
-        else -> Modifier
-    }
+    val bodyCaptureModifier = if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier
 
     Box(
         modifier = modifier
@@ -168,6 +149,7 @@ internal fun ConversationPanePanel(
                             .background(containerColor)
                             .then(bodyCaptureModifier),
                     ) {
+                        CompositionLocalProvider(LocalPopupMaterialBlur provides popupBlur) {
                         LazyColumn(
                             state = listState,
                             modifier = Modifier
@@ -227,11 +209,11 @@ internal fun ConversationPanePanel(
                                 }
                             }
                         }
+                        }
                     }
                     ConversationPaneTopBar(
                         containerColor = containerColor,
-                        couiBackdrop = couiBackdrop,
-                        miuixBackdrop = miuixBackdrop,
+                        backdrop = backdrop,
                         onNewConversation = onNewConversation,
                     )
                     ConversationPaneBottomDock(
@@ -239,8 +221,7 @@ internal fun ConversationPanePanel(
                         isRevealed = isRevealed,
                         hasPermissionAttention = hasPermissionAttention,
                         containerColor = containerColor,
-                        couiBackdrop = couiBackdrop,
-                        miuixBackdrop = miuixBackdrop,
+                        backdrop = backdrop,
                         onSearchChange = onSearchChange,
                         onOpenPermissions = onOpenPermissions,
                         onOpenSettings = onOpenSettings,
@@ -310,195 +291,26 @@ private fun PaneWorkbenchSection(
         ),
     )
 
-    val cardColor = conversationPaneCardColor()
-    val dividerIndent = ConversationPanelMetrics.WorkbenchRowHorizontalPadding +
-        ConversationPanelMetrics.WorkbenchIconSize +
-        ConversationPanelMetrics.WorkbenchIconGap
-
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            val shape = remember { CouiShape(ConversationPanelMetrics.WorkbenchCornerRadius, 2.5f) }
-            val dark = CouiTheme.isDark
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = ConversationPanelMetrics.PaneHorizontalPadding)
-                    .then(
-                        if (!dark) {
-                            Modifier.dropShadow(
-                                shape = shape,
-                                shadow = Shadow(
-                                    radius = 10.dp,
-                                    color = Color.Black,
-                                    alpha = 0.025f,
-                                ),
+    Card(modifier = Modifier.padding(horizontal = ConversationPanelMetrics.PaneHorizontalPadding)) {
+        CardListGroup {
+            entries.forEach { entry ->
+                item {
+                    ArrowPreference(
+                        title = entry.title,
+                        startAction = {
+                            Icon(
+                                imageVector = entry.icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
+                                tint = COUITheme.colorScheme.primary,
                             )
-                        } else {
-                            Modifier
                         },
+                        endActions = { PreferenceValueText(value = entry.trailingValue) },
+                        onClick = entry.onClick,
                     )
-                    .clip(shape)
-                    .background(cardColor, shape)
-                    .then(
-                        if (!dark) {
-                            Modifier.border(0.5.dp, Color(0x0A000000), shape)
-                        } else {
-                            Modifier.border(0.5.dp, Color(0x12FFFFFF), shape)
-                        },
-                    ),
-            ) {
-                entries.forEachIndexed { index, entry ->
-                    CouiWorkbenchRow(entry = entry, dark = dark)
-                    if (index < entries.lastIndex) {
-                        CouiDivider(
-                            startIndent = dividerIndent,
-                            endIndent = ConversationPanelMetrics.WorkbenchRowHorizontalPadding,
-                        )
-                    }
                 }
             }
         }
-        AppearanceUiStyle.MIUIX -> {
-            val colors = MiuixTheme.colorScheme
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = ConversationPanelMetrics.PaneHorizontalPadding),
-                colors = CardDefaults.defaultColors(color = cardColor),
-            ) {
-                entries.forEachIndexed { index, entry ->
-                    MiuixWorkbenchRow(entry = entry)
-                    if (index < entries.lastIndex) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(
-                                start = dividerIndent,
-                                end = ConversationPanelMetrics.WorkbenchRowHorizontalPadding,
-                            ),
-                            thickness = 0.5.dp,
-                            color = colors.dividerLine.copy(alpha = 0.45f),
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CouiWorkbenchRow(
-    entry: WorkbenchEntry,
-    dark: Boolean,
-) {
-    val colors = CouiPageDefaults.themeColors(dark)
-    val source = remember { MutableInteractionSource() }
-    val chevronTint = Color(if (dark) 0x4DFFFFFF else 0x42000000)
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .defaultMinSize(minHeight = ConversationPanelMetrics.WorkbenchRowMinHeight)
-            .couiButtonFeedback(dark, source, enabled = true, list = true)
-            .clickable(
-                interactionSource = source,
-                indication = null,
-                role = Role.Button,
-                onClick = entry.onClick,
-            )
-            .padding(
-                horizontal = ConversationPanelMetrics.WorkbenchRowHorizontalPadding,
-                vertical = 11.dp,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CouiIcon(
-            imageVector = entry.icon,
-            contentDescription = null,
-            modifier = Modifier.size(ConversationPanelMetrics.WorkbenchIconSize),
-            tint = colors.title.copy(alpha = 0.86f),
-        )
-        Spacer(Modifier.width(ConversationPanelMetrics.WorkbenchIconGap))
-        CouiText(
-            text = entry.title,
-            kind = CouiTextKind.ItemTitle,
-            color = colors.title,
-            modifier = Modifier.weight(1f),
-            textAlign = TextAlign.Start,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (!entry.trailingValue.isNullOrEmpty()) {
-            CouiText(
-                text = entry.trailingValue,
-                kind = CouiTextKind.ItemValue,
-                color = colors.summary,
-                modifier = Modifier
-                    .widthIn(max = 136.dp)
-                    .padding(start = 8.dp),
-                textAlign = TextAlign.End,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        CouiIcon(
-            imageVector = CouiIcons.Outlined.Next,
-            contentDescription = null,
-            modifier = Modifier
-                .padding(start = 6.dp)
-                .size(width = 11.dp, height = 20.dp),
-            tint = chevronTint,
-        )
-    }
-}
-
-@Composable
-private fun MiuixWorkbenchRow(entry: WorkbenchEntry) {
-    val colors = MiuixTheme.colorScheme
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .defaultMinSize(minHeight = ConversationPanelMetrics.WorkbenchRowMinHeight)
-            .clickable(role = Role.Button, onClick = entry.onClick)
-            .padding(
-                horizontal = ConversationPanelMetrics.WorkbenchRowHorizontalPadding,
-                vertical = 11.dp,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = entry.icon,
-            contentDescription = null,
-            modifier = Modifier.size(ConversationPanelMetrics.WorkbenchIconSize),
-            tint = colors.onSurface.copy(alpha = 0.85f),
-        )
-        Spacer(Modifier.width(ConversationPanelMetrics.WorkbenchIconGap))
-        Text(
-            text = entry.title,
-            style = MiuixTheme.textStyles.body1.copy(fontSize = 15.sp),
-            color = colors.onSurface,
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (!entry.trailingValue.isNullOrEmpty()) {
-            Text(
-                text = entry.trailingValue,
-                style = MiuixTheme.textStyles.footnote1,
-                color = colors.onSurfaceVariantSummary,
-                modifier = Modifier
-                    .widthIn(max = 136.dp)
-                    .padding(start = 8.dp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Icon(
-            imageVector = ConversationPaneIcons.ChevronRight,
-            contentDescription = null,
-            modifier = Modifier
-                .padding(start = 4.dp)
-                .size(14.dp),
-            tint = colors.onSurfaceVariantActions,
-        )
     }
 }
 
@@ -517,43 +329,21 @@ private fun ConversationSectionHeader(
     val horizontalInset = ConversationPanelMetrics.PaneHorizontalPadding +
         ConversationPanelMetrics.RowHorizontalPadding
 
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            val colors = CouiPageDefaults.themeColors()
-            CouiText(
-                text = label,
-                kind = CouiTextKind.GroupTitle,
-                color = colors.summary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        start = horizontalInset,
-                        top = topPadding,
-                        end = horizontalInset,
-                        bottom = ConversationPanelMetrics.SectionBottomPadding,
-                    )
-                    .semantics { heading() },
-                textAlign = TextAlign.Start,
+    Text(
+        text = label,
+        style = COUITheme.textStyles.bodyXS,
+        color = COUITheme.colorScheme.labelSecondary,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = horizontalInset,
+                top = topPadding,
+                end = horizontalInset,
+                bottom = ConversationPanelMetrics.SectionBottomPadding,
             )
-        }
-        AppearanceUiStyle.MIUIX -> {
-            Text(
-                text = label,
-                style = MiuixTheme.textStyles.footnote1,
-                fontWeight = FontWeight.Medium,
-                color = MiuixTheme.colorScheme.onBackgroundVariant,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        start = horizontalInset,
-                        top = topPadding,
-                        end = horizontalInset,
-                        bottom = ConversationPanelMetrics.SectionBottomPadding,
-                    )
-                    .semantics { heading() },
-            )
-        }
-    }
+            .semantics { heading() },
+        textAlign = TextAlign.Start,
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -567,353 +357,176 @@ private fun ConversationHistoryRow(
     onExport: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    var showActionMenu by remember { mutableStateOf(false) }
-    val hapticFeedback = LocalHapticFeedback.current
-    val anchor = rememberCouiMenuAnchor()
-    val isCoui = LocalUiStyle.current == AppearanceUiStyle.COUI
-    val couiDark = CouiTheme.isDark
-    val couiRowShape = remember { CouiShape(ConversationPanelMetrics.RowCornerRadius, 2.1f) }
-    val miuixColors = MiuixTheme.colorScheme
-    val miuixDark = miuixColors.surface.luminance() < 0.5f
+    val rowShape = remember { SquircleShape(ConversationPanelMetrics.RowCornerRadius) }
 
-    val rowBackground = when {
-        !selected -> Color.Transparent
-        isCoui -> if (couiDark) Color(0xFF262932) else Color.White
-        else -> miuixColors.tertiaryContainer.copy(alpha = if (miuixDark) 0.72f else 0.88f)
-    }
-    val rowModifier = if (isCoui) {
-        val source = remember { MutableInteractionSource() }
+    val rowModifier = if (selected) {
         Modifier
-            .then(
-                if (selected && !couiDark) {
-                    Modifier.dropShadow(
-                        shape = couiRowShape,
-                        shadow = Shadow(
-                            radius = 8.dp,
-                            color = Color.Black,
-                            alpha = 0.028f,
-                        ),
-                    )
-                } else {
-                    Modifier
-                },
-            )
-            .clip(couiRowShape)
-            .background(rowBackground, couiRowShape)
-            .then(
-                if (selected) {
-                    Modifier.border(
-                        width = 0.5.dp,
-                        color = if (couiDark) Color(0x1AFFFFFF) else Color(0x0D000000),
-                        shape = couiRowShape,
-                    )
-                } else {
-                    Modifier
-                },
-            )
-            .couiButtonFeedback(couiDark, source, enabled = true, list = true)
+            .clip(rowShape)
+            .background(conversationPaneCardColor(), rowShape)
     } else {
-        Modifier.squircleSurface(
-            color = rowBackground,
-            cornerRadius = ConversationPanelMetrics.RowCornerRadius,
+        Modifier.clip(rowShape)
+    }
+
+    val titleColor = COUITheme.colorScheme.labelPrimary
+    val summaryColor = COUITheme.colorScheme.labelSecondary
+    val accentColor = COUITheme.colorScheme.primary
+    val pinText = stringResource(
+        if (conversation.isPinned) {
+            R.string.action_unpin_conversation
+        } else {
+            R.string.action_pin_conversation
+        },
+    )
+    val renameText = stringResource(R.string.action_rename)
+    val deleteText = stringResource(R.string.action_delete)
+    val currentTogglePin by rememberUpdatedState(onTogglePin)
+    val currentRename by rememberUpdatedState(onRename)
+    val currentDelete by rememberUpdatedState(onDelete)
+    val menuEntries = remember(pinText, renameText, deleteText) {
+        listOf(
+            DropdownEntry(
+                items = listOf(
+                    DropdownItem(
+                        text = pinText,
+                        icon = { iconModifier -> Icon(Icons.Outlined.PushPin, null, iconModifier) },
+                        onClick = { currentTogglePin() },
+                    ),
+                    DropdownItem(
+                        text = renameText,
+                        icon = { iconModifier -> Icon(Icons.Outlined.Edit, null, iconModifier) },
+                        onClick = { currentRename() },
+                    ),
+                ),
+            ),
+            DropdownEntry(
+                items = listOf(
+                    DropdownItem(
+                        text = deleteText,
+                        icon = { iconModifier -> Icon(Icons.Outlined.Delete, null, iconModifier) },
+                        onClick = { currentDelete() },
+                        alert = true,
+                    ),
+                ),
+            ),
         )
     }
 
-    val titleColor = if (isCoui) {
-        CouiPageDefaults.themeColors(couiDark).title
-    } else {
-        miuixColors.onSurface
-    }
-    val summaryColor = if (isCoui) {
-        CouiPageDefaults.themeColors(couiDark).summary
-    } else {
-        miuixColors.onSurfaceVariantSummary
-    }
-    val accentColor = if (isCoui) {
-        CouiTheme.colorSchemeFor(couiDark).accent
-    } else {
-        miuixColors.primary
-    }
-
-    Box(
+    OverlayContextMenu(
+        entries = menuEntries,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = ConversationPanelMetrics.PaneHorizontalPadding),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = ConversationPanelMetrics.RowMinHeight)
-                .couiMenuAnchor(anchor)
-                .then(rowModifier)
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClick = {
-                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                        anchor.open { showActionMenu = true }
-                    },
-                )
-                .padding(
-                    start = ConversationPanelMetrics.RowHorizontalPadding,
-                    end = if (selected) 8.dp else ConversationPanelMetrics.RowHorizontalPadding,
-                    top = ConversationPanelMetrics.RowVerticalPadding,
-                    bottom = ConversationPanelMetrics.RowVerticalPadding,
-                ),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (conversation.characterName != null) {
-                CharacterAvatar(
-                    name = conversation.characterName,
-                    avatarPath = conversation.characterAvatarPath,
-                    size = 30.dp,
-                    shape = CircleShape,
-                    modifier = if (selected) {
-                        Modifier.border(1.5.dp, accentColor.copy(alpha = 0.75f), CircleShape)
-                    } else {
-                        Modifier
-                    },
-                )
-                Spacer(Modifier.width(11.dp))
-            }
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = ConversationPanelMetrics.RowMinHeight)
+                    .then(rowModifier)
+                    .clickable(onClick = onClick)
+                    .padding(
+                        start = ConversationPanelMetrics.RowHorizontalPadding,
+                        end = if (selected) 8.dp else ConversationPanelMetrics.RowHorizontalPadding,
+                        top = ConversationPanelMetrics.RowVerticalPadding,
+                        bottom = ConversationPanelMetrics.RowVerticalPadding,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (conversation.characterName != null) {
+                    CharacterAvatar(
+                        name = conversation.characterName,
+                        avatarPath = conversation.characterAvatarPath,
+                        size = 30.dp,
+                        shape = CircleShape,
+                        modifier = if (selected) {
+                            Modifier.border(1.5.dp, accentColor.copy(alpha = 0.75f), CircleShape)
+                        } else {
+                            Modifier
+                        },
+                    )
+                    Spacer(Modifier.width(11.dp))
+                }
 
-            Column(modifier = Modifier.weight(1f)) {
-                val title = conversation.title.ifBlank { conversation.preview }
-                Text(
-                    text = title,
-                    color = titleColor,
-                    style = MiuixTheme.textStyles.body1.copy(fontSize = 15.sp),
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                // 标题与角色名相同（如未改名的角色会话）时不再重复第二行。
-                conversation.characterName?.takeIf { it != title }?.let { name ->
+                Column(modifier = Modifier.weight(1f)) {
+                    val title = conversation.title.ifBlank { conversation.preview }
                     Text(
-                        text = name,
-                        style = MiuixTheme.textStyles.footnote1.copy(fontSize = 12.sp),
-                        color = summaryColor,
+                        text = title,
+                        color = titleColor,
+                        style = COUITheme.textStyles.bodyXL.copy(fontSize = 15.sp),
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                    // 标题与角色名相同（如未改名的角色会话）时不再重复第二行。
+                    conversation.characterName?.takeIf { it != title }?.let { name ->
+                        Text(
+                            text = name,
+                            style = COUITheme.textStyles.bodyS.copy(fontSize = 12.sp),
+                            color = summaryColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
+                    conversation.runStatus?.let { status ->
+                        Text(
+                            text = status,
+                            style = COUITheme.textStyles.bodyS.copy(fontSize = 12.sp),
+                            color = accentColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
+                }
+
+                if (conversation.isActiveRun) {
+                    Box(
+                        modifier = Modifier
+                            .padding(start = ConversationPanelMetrics.ActiveDotGap)
+                            .size(ConversationPanelMetrics.ActiveDotSize)
+                            .clip(CircleShape)
+                            .background(accentColor),
+                    )
+                } else if (conversation.isPinned) {
+                    Icon(
+                        imageVector = ConversationPaneIcons.Pin,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(start = 6.dp)
+                            .size(13.dp),
+                        tint = summaryColor.copy(alpha = 0.72f),
                     )
                 }
-                conversation.runStatus?.let { status ->
-                    Text(
-                        text = status,
-                        style = MiuixTheme.textStyles.footnote1.copy(fontSize = 12.sp),
-                        color = accentColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 2.dp),
-                    )
+
+                if (selected) {
+                    OverlayIconDropdownMenu(
+                        entries = menuEntries,
+                        modifier = Modifier.padding(start = 4.dp),
+                        minWidth = 28.dp,
+                        minHeight = 28.dp,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.MoreHoriz,
+                            contentDescription = stringResource(R.string.action_more),
+                            modifier = Modifier.size(17.dp),
+                            tint = summaryColor,
+                        )
+                    }
                 }
             }
 
-            if (conversation.isActiveRun) {
+            // 将选中指示条放在左内边距留白区，保证选中行与普通行标题严格处于同一条左对齐基线。
+            if (selected && conversation.characterName == null) {
                 Box(
                     modifier = Modifier
-                        .padding(start = ConversationPanelMetrics.ActiveDotGap)
-                        .size(ConversationPanelMetrics.ActiveDotSize)
+                        .align(Alignment.CenterStart)
+                        .padding(start = 5.5.dp)
+                        .width(2.5.dp)
+                        .height(16.dp)
                         .clip(CircleShape)
                         .background(accentColor),
                 )
-            } else if (conversation.isPinned) {
-                Icon(
-                    imageVector = ConversationPaneIcons.Pin,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .padding(start = 6.dp)
-                        .size(13.dp),
-                    tint = summaryColor.copy(alpha = 0.72f),
-                )
-            }
-
-            if (selected) {
-                val moreLabel = stringResource(R.string.action_more)
-                Box(
-                    modifier = Modifier
-                        .padding(start = 4.dp)
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .clickable(
-                            role = Role.Button,
-                            onClickLabel = moreLabel,
-                        ) {
-                            anchor.open { showActionMenu = true }
-                        },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.MoreHoriz,
-                        contentDescription = moreLabel,
-                        modifier = Modifier.size(17.dp),
-                        tint = summaryColor,
-                    )
-                }
-            }
-        }
-
-        // 将选中指示条放在左内边距留白区，保证选中行与普通行标题严格处于同一条左对齐基线。
-        if (selected && conversation.characterName == null) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 5.5.dp)
-                    .width(2.5.dp)
-                    .height(16.dp)
-                    .clip(CircleShape)
-                    .background(accentColor),
-            )
-        }
-
-        val pinText = stringResource(
-            if (conversation.isPinned) {
-                R.string.action_unpin_conversation
-            } else {
-                R.string.action_pin_conversation
-            },
-        )
-        val renameText = stringResource(R.string.action_rename)
-        val exportText = stringResource(R.string.action_export)
-        val deleteText = stringResource(R.string.action_delete)
-        when (LocalUiStyle.current) {
-            AppearanceUiStyle.COUI -> {
-                val destructiveColor = CouiDialogDefaults.themeColors().destructive
-                val menuItems = remember(pinText, renameText, exportText, deleteText, destructiveColor) {
-                    listOf(
-                        CouiMenuItem(value = 0, text = pinText, icon = Icons.Outlined.PushPin),
-                        CouiMenuItem(value = 1, text = renameText, icon = Icons.Outlined.Edit),
-
-                        CouiMenuItem(
-                            value = 3,
-                            text = deleteText,
-                            icon = Icons.Outlined.Delete,
-                            iconTint = destructiveColor,
-                            dividerBefore = true,
-                        ),
-                    )
-                }
-                Menu(
-                    expanded = showActionMenu,
-                    onDismissRequest = { showActionMenu = false },
-                    items = menuItems,
-                    onItemClick = { item ->
-                        showActionMenu = false
-                        when (item.value) {
-                            0 -> onTogglePin()
-                            1 -> onRename()
-                            2 -> onExport()
-                            3 -> onDelete()
-                        }
-                    },
-                    anchor = anchor,
-                )
-            }
-            AppearanceUiStyle.MIUIX -> {
-                WindowListPopup(
-                    show = showActionMenu,
-                    popupPositionProvider = ListPopupDefaults.ContextMenuPositionProvider,
-                    alignment = PopupPositionProvider.Align.BottomEnd,
-                    onDismissRequest = { showActionMenu = false },
-                ) {
-                    val pinItem = remember(pinText) {
-                        DropdownItem(
-                            text = pinText,
-                            icon = { modifier ->
-                                Icon(
-                                    imageVector = Icons.Outlined.PushPin,
-                                    contentDescription = null,
-                                    modifier = modifier.size(ConversationPanelMetrics.ActionIconSize),
-                                )
-                            },
-                        )
-                    }
-                    val renameItem = remember(renameText) {
-                        DropdownItem(
-                            text = renameText,
-                            icon = { modifier ->
-                                Icon(
-                                    imageVector = Icons.Outlined.Edit,
-                                    contentDescription = null,
-                                    modifier = modifier.size(ConversationPanelMetrics.ActionIconSize),
-                                )
-                            },
-                        )
-                    }
-                    val exportItem = remember(exportText) {
-                        DropdownItem(
-                            text = exportText,
-                            icon = { modifier ->
-                                Icon(
-                                    imageVector = Icons.Outlined.Download,
-                                    contentDescription = null,
-                                    modifier = modifier.size(ConversationPanelMetrics.ActionIconSize),
-                                )
-                            },
-                        )
-                    }
-                    val deleteItem = remember(deleteText) {
-                        DropdownItem(
-                            text = deleteText,
-                            icon = { modifier ->
-                                Icon(
-                                    imageVector = Icons.Outlined.Delete,
-                                    contentDescription = null,
-                                    modifier = modifier.size(ConversationPanelMetrics.ActionIconSize),
-                                    tint = MiuixTheme.colorScheme.error,
-                                )
-                            },
-                        )
-                    }
-                    val deleteColors = DropdownDefaults.dropdownColors(
-                        contentColor = MiuixTheme.colorScheme.error,
-                        selectedContentColor = MiuixTheme.colorScheme.error,
-                        selectedIndicatorColor = MiuixTheme.colorScheme.error,
-                    )
-                    ListPopupColumn {
-                        DropdownImpl(
-                            item = pinItem,
-                            optionSize = 4,
-                            isSelected = false,
-                            index = 0,
-                            onSelectedIndexChange = {
-                                showActionMenu = false
-                                onTogglePin()
-                            },
-                        )
-                        DropdownImpl(
-                            item = renameItem,
-                            optionSize = 4,
-                            isSelected = false,
-                            index = 1,
-                            onSelectedIndexChange = {
-                                showActionMenu = false
-                                onRename()
-                            },
-                        )
-                        DropdownImpl(
-                            item = exportItem,
-                            optionSize = 4,
-                            isSelected = false,
-                            index = 2,
-                            onSelectedIndexChange = {
-                                showActionMenu = false
-                                onExport()
-                            },
-                        )
-                        DropdownImpl(
-                            item = deleteItem,
-                            optionSize = 4,
-                            isSelected = false,
-                            index = 3,
-                            dropdownColors = deleteColors,
-                            onSelectedIndexChange = {
-                                showActionMenu = false
-                                onDelete()
-                            },
-                        )
-                    }
-                }
             }
         }
     }
@@ -921,59 +534,13 @@ private fun ConversationHistoryRow(
 
 @Composable
 private fun EmptyConversations(isSearching: Boolean) {
-    val isCoui = LocalUiStyle.current == AppearanceUiStyle.COUI
-    val dark = if (isCoui) CouiTheme.isDark else MiuixTheme.colorScheme.surface.luminance() < 0.5f
-    val primaryTextColor = if (isCoui) {
-        CouiPageDefaults.themeColors(dark).summary
-    } else {
-        MiuixTheme.colorScheme.onSurfaceVariantSummary
-    }
-    val badgeBg = conversationPaneCardColor()
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                horizontal = ConversationPanelMetrics.PaneHorizontalPadding + 12.dp,
-                vertical = ConversationPanelMetrics.EmptyVerticalPadding,
-            ),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(badgeBg),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = if (isSearching) ConversationPaneIcons.Search else ConversationPaneIcons.BrandJeanCalcul,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = primaryTextColor.copy(alpha = 0.72f),
-            )
-        }
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = stringResource(
-                if (isSearching) R.string.conversation_no_results else R.string.conversation_empty,
-            ),
-            color = primaryTextColor,
-            style = MiuixTheme.textStyles.body2,
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Center,
-        )
-        if (!isSearching) {
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.conversation_empty_hint),
-                color = primaryTextColor.copy(alpha = 0.75f),
-                style = MiuixTheme.textStyles.footnote1.copy(fontSize = 12.sp),
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
+    ListEmptyState(
+        title = stringResource(if (isSearching) R.string.conversation_no_results else R.string.conversation_empty),
+        summary = if (isSearching) null else stringResource(R.string.conversation_empty_hint),
+        icon = if (isSearching) ConversationPaneIcons.Search else ConversationPaneIcons.BrandJeanCalcul,
+    )
 }
+
 
 private data class ConversationDrawerGroup(
     val section: ConversationDrawerSection,

@@ -11,9 +11,9 @@ class LanguageSettingsRepository(context: Context) {
         context.applicationContext.getSystemService(LocaleManager::class.java),
     )
 
-    val supportedLocales: List<Locale> = requireNotNull(
-        LocaleConfig(context.applicationContext).supportedLocales,
-    ).let { locales -> List(locales.size()) { locales[it] } }
+    val supportedLocales: List<Locale> =
+        (LocaleConfig(context.applicationContext).supportedLocales ?: LocaleList.getEmptyLocaleList())
+            .let { locales -> List(locales.size()) { locales[it] } }
 
     fun selectedLocale(): Locale? = localeManager.applicationLocales
         .takeIf { !it.isEmpty }

@@ -21,22 +21,14 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.itos.coui.layout.CouiPageDefaults
-import com.itos.coui.layout.Group
-import com.itos.coui.text.CouiTextKind
-import com.itos.coui.text.Text as CouiText
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.data.model.CustomProviderSetting
 import io.github.mangi.eta.data.model.ProviderSetting
-import io.github.mangi.eta.ui.app.LocalUiStyle
-import io.github.mangi.eta.ui.components.coui.CouiIcon
 import io.github.mangi.eta.ui.components.providerBrandLogoRes as sharedProviderBrandLogoRes
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.squircle.squircleSurface
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.squircle.squircleSurface
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import io.github.mangi.eta.ui.components.coui.PreferenceSection
 
 @Composable
 internal fun ProviderSection(
@@ -44,30 +36,7 @@ internal fun ProviderSection(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            Group(
-                modifier = modifier,
-                title = title,
-                content = content,
-            )
-        }
-        AppearanceUiStyle.MIUIX -> {
-            Column(modifier = modifier) {
-                if (title != null) {
-                    SmallTitle(title)
-                }
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
-                        .padding(bottom = 12.dp),
-                ) {
-                    content()
-                }
-            }
-        }
-    }
+    PreferenceSection(title = title, modifier = modifier, content = content)
 }
 
 /** 厂商品牌原色图标；资源已经包含适合圆形裁剪的背景与安全区。 */
@@ -85,33 +54,18 @@ private fun ProviderBrandImage(
     @DrawableRes logo: Int,
     modifier: Modifier = Modifier,
 ) {
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            Box(
-                modifier = modifier.size(CouiPageDefaults.iconSize),
-                contentAlignment = Alignment.Center,
-            ) {
-                Image(
-                    painter = painterResource(logo),
-                    contentDescription = null,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape),
-                )
-            }
-        }
-        AppearanceUiStyle.MIUIX -> {
-            Image(
-                painter = painterResource(logo),
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier = modifier
-                    .padding(end = 8.dp)
-                    .size(24.dp)
-                    .clip(CircleShape),
-            )
-        }
+    Box(
+        modifier = modifier.size(24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            painter = painterResource(logo),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .size(28.dp)
+                .clip(CircleShape),
+        )
     }
 }
 
@@ -139,36 +93,16 @@ internal fun ProviderIcon(
         is CustomProviderSetting -> Icons.Rounded.Dns
         else -> Icons.Rounded.Language
     }
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            val colors = CouiPageDefaults.themeColors()
-            Box(
-                modifier = modifier.size(CouiPageDefaults.iconSize),
-                contentAlignment = Alignment.Center,
-            ) {
-                CouiIcon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = colors.summary,
-                )
-            }
-        }
-        AppearanceUiStyle.MIUIX -> {
-            Box(
-                modifier = modifier
-                    .padding(end = 8.dp)
-                    .size(24.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(22.dp),
-                    tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                )
-            }
-        }
+    Box(
+        modifier = modifier.size(24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            tint = COUITheme.colorScheme.labelSecondary,
+        )
     }
 }
 
@@ -180,42 +114,25 @@ internal fun TagChip(
     text: String,
     tone: TagChipTone = TagChipTone.Normal,
 ) {
-    val uiStyle = LocalUiStyle.current
     val background: Color
     val foreground: Color
     val weight: FontWeight
-    if (uiStyle == AppearanceUiStyle.COUI) {
-        val colors = CouiPageDefaults.themeColors()
-        val dark = com.itos.coui.theme.CouiTheme.isDark
-        when (tone) {
-            TagChipTone.Normal -> {
-                background = if (dark) Color(0x1AFFFFFF) else Color(0x0D000000)
-                foreground = colors.summary
-                weight = FontWeight.Normal
-            }
-            TagChipTone.Emphasized -> {
-                background = colors.accent.copy(alpha = if (dark) 0.24f else 0.14f)
-                foreground = colors.accent
-                weight = FontWeight.Medium
-            }
+    val dark = COUITheme.isDark
+    when (tone) {
+        TagChipTone.Normal -> {
+            background = if (dark) Color(0x1AFFFFFF) else Color(0x0D000000)
+            foreground = COUITheme.colorScheme.labelSecondary
+            weight = FontWeight.Normal
         }
-    } else {
-        when (tone) {
-            TagChipTone.Normal -> {
-                background = MiuixTheme.colorScheme.secondaryContainer
-                foreground = MiuixTheme.colorScheme.onSurfaceVariantSummary
-                weight = FontWeight.Normal
-            }
-            TagChipTone.Emphasized -> {
-                background = MiuixTheme.colorScheme.tertiaryContainer
-                foreground = MiuixTheme.colorScheme.onTertiaryContainer
-                weight = FontWeight.Medium
-            }
+        TagChipTone.Emphasized -> {
+            background = COUITheme.colorScheme.primary.copy(alpha = if (dark) 0.24f else 0.14f)
+            foreground = COUITheme.colorScheme.primary
+            weight = FontWeight.Medium
         }
     }
     Text(
         text = text,
-        style = MiuixTheme.textStyles.footnote2,
+        style = COUITheme.textStyles.bodyXS,
         fontWeight = weight,
         color = foreground,
         modifier = Modifier

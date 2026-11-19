@@ -31,30 +31,24 @@ import androidx.compose.ui.unit.dp
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
-import com.itos.coui.layout.CouiPageDefaults
-import com.itos.coui.layout.Group
 import io.github.mangi.eta.R
 import io.github.mangi.eta.agent.terminal.LinuxDistribution
 import io.github.mangi.eta.agent.terminal.LinuxEnvironmentPaths
 import io.github.mangi.eta.agent.terminal.LinuxFileExplorer
 import io.github.mangi.eta.agent.terminal.ShellProcessSupervisor
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
 import io.github.mangi.eta.ui.components.EtaMonospace
 import io.github.mangi.eta.ui.components.EtaPreferenceGroupItem
 import io.github.mangi.eta.ui.components.ListEmptyState
-import io.github.mangi.eta.ui.components.MiuixScaffoldPage
 import io.github.mangi.eta.ui.components.coui.CouiLazyScaffoldPage
-import io.github.mangi.eta.ui.components.coui.CouiPreference
-import io.github.mangi.eta.ui.components.coui.CouiSettingsIcon
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import top.yukonga.miuix.kmp.basic.BasicComponent
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Card
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.InfiniteProgressIndicator
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import io.github.suqi8.coui.kmp.basic.CardListGroup
+import io.github.suqi8.coui.kmp.preference.ArrowPreference
 
 @Composable
 internal fun LinuxFilesScreen(
@@ -121,7 +115,6 @@ internal fun LinuxFilesScreen(
         isBackEnabled = openFilePath != null,
         onBackCompleted = { closeFile() },
     )
-    val uiStyle = LocalUiStyle.current
 
     val listContent: LazyListScope.() -> Unit = {
         when {
@@ -147,30 +140,17 @@ internal fun LinuxFilesScreen(
                             }
                         }
                         item(key = "viewer-content") {
-                            if (uiStyle == AppearanceUiStyle.COUI) {
-                                Group {
-                                    Box(modifier = Modifier.padding(16.dp)) {
-                                        SelectionContainer {
-                                            Text(
-                                                text = result.content,
-                                                style = MiuixTheme.textStyles.footnote1.copy(fontFamily = EtaMonospace),
-                                            )
+                            Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+                                CardListGroup {
+                                    item {
+                                        Box(modifier = Modifier.padding(16.dp)) {
+                                            SelectionContainer {
+                                                Text(
+                                                    text = result.content,
+                                                    style = COUITheme.textStyles.bodyS.copy(fontFamily = EtaMonospace),
+                                                )
+                                            }
                                         }
-                                    }
-                                }
-                            } else {
-                                Card(
-                                    modifier = Modifier
-                                        .padding(horizontal = 12.dp)
-                                        .padding(bottom = 12.dp),
-                                    insideMargin = PaddingValues(16.dp),
-                                ) {
-                                    SelectionContainer {
-                                        Text(
-                                            text = result.content,
-                                            style = MiuixTheme.textStyles.footnote1
-                                                .copy(fontFamily = EtaMonospace),
-                                        )
                                     }
                                 }
                             }
@@ -260,30 +240,19 @@ internal fun LinuxFilesScreen(
         }
     }
 
-    when (uiStyle) {
-        AppearanceUiStyle.COUI -> {
-            CouiLazyScaffoldPage(
-                title = stringResource(R.string.linux_files_title),
-                onBack = { if (openFilePath != null) closeFile() else onBack() },
-                content = listContent,
-            )
-        }
-        AppearanceUiStyle.MIUIX -> {
-            MiuixScaffoldPage(
-                title = stringResource(R.string.linux_files_title),
-                onBack = { if (openFilePath != null) closeFile() else onBack() },
-                content = listContent,
-            )
-        }
-    }
+    CouiLazyScaffoldPage(
+        title = stringResource(R.string.linux_files_title),
+        onBack = { if (openFilePath != null) closeFile() else onBack() },
+        content = listContent,
+    )
 }
 
 @Composable
 private fun PathBar(path: String) {
     Text(
         text = path,
-        style = MiuixTheme.textStyles.body2.copy(fontFamily = EtaMonospace),
-        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        style = COUITheme.textStyles.bodyM.copy(fontFamily = EtaMonospace),
+        color = COUITheme.colorScheme.labelSecondary,
         modifier = Modifier
             .padding(horizontal = 28.dp)
             .padding(top = 4.dp, bottom = 8.dp),
@@ -309,8 +278,8 @@ private fun LoadingRow() {
 private fun HintText(message: String) {
     Text(
         text = message,
-        style = MiuixTheme.textStyles.footnote1,
-        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        style = COUITheme.textStyles.bodyS,
+        color = COUITheme.colorScheme.labelSecondary,
         modifier = Modifier
             .padding(horizontal = 28.dp)
             .padding(bottom = 8.dp),
@@ -328,36 +297,13 @@ private fun FileRow(
 ) {
     val icon = if (isDir) Icons.Rounded.Folder else Icons.AutoMirrored.Rounded.InsertDriveFile
     EtaPreferenceGroupItem(isFirst = isFirst, isLast = isLast, hasLeadingIcon = true) {
-        when (LocalUiStyle.current) {
-            AppearanceUiStyle.COUI -> {
-                val colors = CouiPageDefaults.themeColors()
-                CouiPreference(
-                    title = name,
-                    summary = summary,
-                    icon = {
-                        CouiSettingsIcon(
-                            icon = icon,
-                            tint = if (isDir) colors.accent else colors.summary,
-                        )
-                    },
-                    onClick = onClick,
-                )
-            }
-            AppearanceUiStyle.MIUIX -> {
-                BasicComponent(
-                    title = name,
-                    summary = summary,
-                    startAction = {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            modifier = Modifier.padding(end = 8.dp).size(24.dp),
-                            tint = if (isDir) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceVariantActions,
-                        )
-                    },
-                    onClick = onClick,
-                )
-            }
-        }
+        ArrowPreference(
+            title = name,
+            summary = summary,
+            startAction = {
+                Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = if (isDir) COUITheme.colorScheme.primary else COUITheme.colorScheme.labelSecondary)
+            },
+            onClick = onClick,
+        )
     }
 }

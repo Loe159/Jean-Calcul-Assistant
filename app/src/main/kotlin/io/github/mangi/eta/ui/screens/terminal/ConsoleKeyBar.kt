@@ -55,10 +55,10 @@ import io.github.mangi.eta.agent.terminal.TerminalModifiers
 import io.github.mangi.eta.ui.components.EtaMonospace
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.squircle.squircleBackground
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.squircle.squircleBackground
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 internal enum class StickyModifier { OFF, ONCE, LOCKED }
 
@@ -155,7 +155,7 @@ internal fun ConsoleKeyBar(
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
-    val fadeColor = MiuixTheme.colorScheme.surface
+    val fadeColor = COUITheme.colorScheme.background
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -213,7 +213,7 @@ internal fun ConsoleKeyBar(
                 .padding(horizontal = 2.dp)
                 .width(0.5.dp)
                 .height(20.dp)
-                .background(MiuixTheme.colorScheme.dividerLine),
+                .background(COUITheme.colorScheme.divider),
         )
         KeyCap(
             icon = if (keyboardVisible) Icons.Rounded.KeyboardHide else Icons.Rounded.Keyboard,
@@ -241,14 +241,14 @@ private fun KeyCap(
     repeatable: Boolean = false,
     onLongPress: (() -> Unit)? = null,
 ) {
-    val colors = MiuixTheme.colorScheme
+    val colors = COUITheme.colorScheme
     val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val currentOnPress by rememberUpdatedState(onPress)
     val currentOnLongPress by rememberUpdatedState(onLongPress)
     var pressed by remember { mutableStateOf(false) }
 
-    val idle = if (subtle) Color.Transparent else colors.surfaceContainer
+    val idle = if (subtle) Color.Transparent else colors.surfaceWithCard
     val background by animateColorAsState(
         targetValue = when {
             sticky == StickyModifier.LOCKED -> colors.primary
@@ -261,7 +261,7 @@ private fun KeyCap(
     val content = when (sticky) {
         StickyModifier.LOCKED -> colors.onPrimary
         StickyModifier.ONCE -> colors.primary
-        StickyModifier.OFF -> if (subtle) colors.onSurfaceVariantSummary else colors.onSurface
+        StickyModifier.OFF -> if (subtle) colors.labelSecondary else colors.labelPrimary
     }
 
     Box(
@@ -318,7 +318,7 @@ private fun KeyCap(
             )
             label != null -> Text(
                 text = label,
-                style = MiuixTheme.textStyles.footnote1.let {
+                style = COUITheme.textStyles.bodyS.let {
                     if (monospace) it.copy(fontFamily = EtaMonospace) else it
                 },
                 fontWeight = FontWeight.Medium,

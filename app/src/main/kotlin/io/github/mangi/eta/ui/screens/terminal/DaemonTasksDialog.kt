@@ -26,19 +26,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.R
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.ui.app.DaemonTaskUi
-import io.github.mangi.eta.ui.app.LocalUiStyle
 import io.github.mangi.eta.ui.app.displayName
 import io.github.mangi.eta.ui.components.EtaMonospace
 import io.github.mangi.eta.ui.components.StatusSuccess
 import io.github.mangi.eta.ui.components.coui.CouiNoticeDialog
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.squircle.squircleBackground
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.window.WindowDialog
+import io.github.suqi8.coui.kmp.basic.InfiniteProgressIndicator
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.squircle.squircleBackground
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 @Composable
 internal fun DaemonTasksDialog(
@@ -51,8 +48,8 @@ internal fun DaemonTasksDialog(
         if (tasks.isEmpty()) {
             Text(
                 text = stringResource(R.string.terminal_daemon_empty),
-                style = MiuixTheme.textStyles.footnote1,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                style = COUITheme.textStyles.bodyS,
+                color = COUITheme.colorScheme.labelSecondary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -67,26 +64,13 @@ internal fun DaemonTasksDialog(
         }
     }
 
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            CouiNoticeDialog(
-                visible = true,
-                title = stringResource(R.string.terminal_daemon_tasks),
-                message = null,
-                onDismissRequest = onDismiss,
-            ) {
-                body()
-            }
-        }
-        AppearanceUiStyle.MIUIX -> {
-            WindowDialog(
-                show = true,
-                title = stringResource(R.string.terminal_daemon_tasks),
-                onDismissRequest = onDismiss,
-            ) {
-                body()
-            }
-        }
+    CouiNoticeDialog(
+        visible = true,
+        title = stringResource(R.string.terminal_daemon_tasks),
+        message = null,
+        onDismissRequest = onDismiss,
+    ) {
+        body()
     }
 }
 
@@ -99,12 +83,12 @@ private fun DaemonTaskRow(
     var logsExpanded by remember(task.id) { mutableStateOf(false) }
     var logs by remember(task.id) { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    val colors = MiuixTheme.colorScheme
+    val colors = COUITheme.colorScheme
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp)
-            .squircleBackground(colors.surfaceContainer, 14.dp)
+            .squircleBackground(colors.surfaceWithCard, 14.dp)
             .padding(start = 14.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -116,15 +100,15 @@ private fun DaemonTaskRow(
             ) {
                 Text(
                     text = task.description.ifBlank { task.command },
-                    style = MiuixTheme.textStyles.body2.copy(fontFamily = EtaMonospace),
-                    color = colors.onSurface,
+                    style = COUITheme.textStyles.bodyM.copy(fontFamily = EtaMonospace),
+                    color = colors.labelPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = daemonMeta(task),
-                    style = MiuixTheme.textStyles.footnote2,
-                    color = colors.onSurfaceVariantSummary,
+                    style = COUITheme.textStyles.bodyXS,
+                    color = colors.labelSecondary,
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
@@ -133,7 +117,7 @@ private fun DaemonTaskRow(
                 contentDescription = stringResource(
                     if (logsExpanded) R.string.terminal_daemon_hide_logs else R.string.terminal_daemon_view_logs,
                 ),
-                tint = if (logsExpanded) colors.primary else colors.onSurfaceVariantActions,
+                tint = if (logsExpanded) colors.primary else colors.labelSecondary,
                 onClick = {
                     logsExpanded = !logsExpanded
                     if (logsExpanded && logs == null) {
@@ -156,7 +140,7 @@ private fun DaemonTaskRow(
                     .fillMaxWidth()
                     .padding(top = 10.dp, end = 10.dp)
                     .heightIn(max = 180.dp)
-                    .squircleBackground(colors.surface, 10.dp)
+                    .squircleBackground(colors.background, 10.dp)
                     .verticalScroll(rememberScrollState())
                     .padding(10.dp),
             ) {
@@ -165,8 +149,8 @@ private fun DaemonTaskRow(
                 } else {
                     Text(
                         text = logs.orEmpty(),
-                        style = MiuixTheme.textStyles.footnote2.copy(fontFamily = EtaMonospace),
-                        color = colors.onSurface.copy(alpha = 0.86f),
+                        style = COUITheme.textStyles.bodyXS.copy(fontFamily = EtaMonospace),
+                        color = colors.labelPrimary.copy(alpha = 0.86f),
                     )
                 }
             }
@@ -177,8 +161,8 @@ private fun DaemonTaskRow(
 @Composable
 private fun daemonStatusColor(task: DaemonTaskUi) = when {
     task.running -> StatusSuccess
-    task.status == "failed" || task.status == "timed_out" -> MiuixTheme.colorScheme.error
-    else -> MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f)
+    task.status == "failed" || task.status == "timed_out" -> COUITheme.colorScheme.error
+    else -> COUITheme.colorScheme.labelSecondary.copy(alpha = 0.5f)
 }
 
 @Composable

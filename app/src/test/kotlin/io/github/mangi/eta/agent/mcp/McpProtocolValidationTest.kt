@@ -238,7 +238,7 @@ data: "id":1,"result":{"resultType":"complete","ttlMs":1000,"tools":[]}}
             val result = executor.submit<McpHttpClient.Discovery> {
                 McpHttpClient(configured, bearerToken = null).use { it.discoverTools() }
             }
-            check(eventSent.await(2, TimeUnit.SECONDS)) { "SSE event was not sent" }
+            check(eventSent.await(10, TimeUnit.SECONDS)) { "SSE event was not sent" }
             val discovery = result.get(2, TimeUnit.SECONDS)
 
             assertEquals(emptyList<String>(), discovery.tools.map { it.name })

@@ -15,19 +15,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.itos.coui.layout.Footer
-import com.itos.coui.layout.Group
-import com.itos.coui.layout.CouiPageDefaults
-import com.itos.coui.text.CouiTextKind
-import com.itos.coui.text.Text as CouiText
-import com.itos.coui.theme.CouiTheme
 import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
 import io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
 import io.github.mangi.eta.ui.components.coui.CouiButton
-import io.github.mangi.eta.ui.components.coui.CouiPageBottomSpacer
-import io.github.mangi.eta.ui.components.coui.CouiPreference
 import io.github.mangi.eta.ui.components.coui.CouiScaffoldPage
+import io.github.mangi.eta.ui.components.coui.PreferenceFooter
+import io.github.mangi.eta.ui.components.coui.PreferenceSection
+import io.github.suqi8.coui.kmp.basic.BasicComponent
+import io.github.suqi8.coui.kmp.basic.CardListGroup
+import io.github.suqi8.coui.kmp.basic.ExpandableGroupHeader
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.preference.ArrowPreference
+import io.github.suqi8.coui.kmp.theme.COUITheme
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -40,7 +40,6 @@ import kotlinx.coroutines.withContext
 internal fun ArchivedBriefNotificationsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val repository = remember(context) { NotificationHistoryRepository(context) }
-    val colors = CouiPageDefaults.themeColors(CouiTheme.isDark)
     val scope = rememberCoroutineScope()
     val dateFormat = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy · HH:mm", Locale.FRENCH) }
     var entries by remember { mutableStateOf<List<NotificationHistoryRepository.RecentEntry>>(emptyList()) }
@@ -49,6 +48,14 @@ internal fun ArchivedBriefNotificationsScreen(onBack: () -> Unit) {
     var restoring by remember { mutableStateOf(false) }
     var expandedKey by rememberSaveable { mutableStateOf<String?>(null) }
     var visibleCount by rememberSaveable { mutableIntStateOf(20) }
+    val appNames = remember { mutableMapOf<String, String>() }
+
+    fun appName(packageName: String): String = appNames.getOrPut(packageName) {
+        runCatching {
+            val pm = context.packageManager
+            pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
+        }.getOrDefault(packageName.substringAfterLast('.'))
+    }
 
     fun refresh() {
         scope.launch {
@@ -63,79 +70,76 @@ internal fun ArchivedBriefNotificationsScreen(onBack: () -> Unit) {
             }
         }
     }
+
+    fun restore(entry: NotificationHistoryRepository.RecentEntry) {
+        if (restoring) return
+        restoring = true
+        scope.launch {
+            try {
+                entries = withContext(Dispatchers.IO) {
+                    repository.restoreToBrief(listOf(entry))
+                    repository.feedback(entry.key, entry.postedAt, NotificationUserFeedback.RESTORED)
+                    repository.archived(limit = 1_000)
+                }
+                expandedKey = null
+                NotificationActivityFeed.notifyChanged()
+                error = false
+            } catch (_: Exception) {
+                error = true
+            } finally {
+                restoring = false
+            }
+        }
+    }
     LaunchedEffect(Unit) { refresh() }
 
     CouiScaffoldPage(title = "Archives", onBack = onBack, compactTitle = true) {
-        Footer(text = "Copies retirées de Mon briefing, conservées jusqu’à 7 jours sur cet appareil. " +
+        PreferenceFooter(text = "Copies retirées de Mon briefing, conservées jusqu’à 7 jours sur cet appareil. " +
             "Les actions ici ne modifient pas les notifications Android.")
-        if (error) Footer(text = "Archives indisponibles. Réessayez ou revenez plus tard.")
-        Group(title = "Archives du briefing") {
-            when {
-                loading -> CouiPreference(title = "Chargement des archives…", showChevron = false)
-                entries.isEmpty() -> CouiPreference(
-                    title = if (error) "Réessayer" else "Aucune copie archivée",
-                    onClick = if (error) ::refresh else null,
-                )
-                else -> entries.take(visibleCount).forEach { entry ->
-                    val appName = remember(entry.packageName) {
-                        runCatching {
-                            val pm = context.packageManager
-                            pm.getApplicationLabel(pm.getApplicationInfo(entry.packageName, 0)).toString()
-                        }.getOrDefault(entry.packageName.substringAfterLast('.'))
+        if (error) PreferenceFooter(text = "Archives indisponibles. Réessayez ou revenez plus tard.")
+        PreferenceSection(title = "Archives du briefing") {
+            CardListGroup {
+                when {
+                    loading -> item { BasicComponent(title = "Chargement des archives…") }
+                    entries.isEmpty() -> item {
+                        if (error) ArrowPreference(title = "Réessayer", onClick = ::refresh)
+                        else BasicComponent(title = "Aucune copie archivée")
                     }
-                    val date = remember(entry.postedAt) {
-                        dateFormat.format(Instant.ofEpochMilli(entry.postedAt)
-                            .atZone(ZoneId.systemDefault()))
-                    }
-                    CouiPreference(
-                        title = entry.title.ifBlank { appName },
-                        summary = "$appName · $date",
-                        onClick = { expandedKey = if (expandedKey == entry.key) null else entry.key },
-                    )
-                    if (expandedKey == entry.key) {
-                        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                            if (entry.text.isNotBlank()) {
-                                CouiText(text = entry.text, kind = CouiTextKind.ItemSummary,
-                                    color = colors.summary)
-                            }
-                            CouiButton(
-                                text = "Restaurer dans Mon briefing",
-                                enabled = !restoring,
-                                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                                onClick = {
-                                    if (!restoring) {
-                                        restoring = true
-                                        scope.launch {
-                                            try {
-                                                entries = withContext(Dispatchers.IO) {
-                                                    repository.restoreToBrief(listOf(entry))
-                                                    repository.feedback(entry.key, entry.postedAt, NotificationUserFeedback.RESTORED)
-                                                    repository.archived(limit = 1_000)
-                                                }
-                                                expandedKey = null
-                                                NotificationActivityFeed.notifyChanged()
-                                                error = false
-                                            } catch (_: Exception) {
-                                                error = true
-                                            } finally {
-                                                restoring = false
-                                            }
-                                        }
-                                    }
-                                },
+                    else -> entries.take(visibleCount).forEach { entry ->
+                        val name = appName(entry.packageName)
+                        val date = dateFormat.format(Instant.ofEpochMilli(entry.postedAt).atZone(ZoneId.systemDefault()))
+                        val expanded = expandedKey == entry.key
+                        item(key = entry.key) {
+                            ExpandableGroupHeader(
+                                title = entry.title.ifBlank { name },
+                                expanded = expanded,
+                                onExpandedChange = { open -> expandedKey = if (open) entry.key else null },
+                                summary = "$name · $date",
                             )
+                        }
+                        if (expanded) item(key = "${entry.key}_details", showDivider = false) {
+                            Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp)) {
+                                if (entry.text.isNotBlank()) {
+                                    Text(
+                                        text = entry.text,
+                                        style = COUITheme.textStyles.bodyS,
+                                        color = COUITheme.colorScheme.labelSecondary,
+                                    )
+                                }
+                                CouiButton(
+                                    text = "Restaurer dans Mon briefing",
+                                    enabled = !restoring,
+                                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                                    onClick = { restore(entry) },
+                                )
+                            }
                         }
                     }
                 }
-            }
-            if (entries.size > visibleCount) {
-                CouiButton(
-                    text = "Afficher les archives suivantes",
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    onClick = { visibleCount += 20 },
-                )
+                if (!loading && entries.size > visibleCount) item {
+                    ArrowPreference(title = "Afficher les archives suivantes", onClick = { visibleCount += 20 })
+                }
             }
         }
-        CouiPageBottomSpacer()
     }
 }

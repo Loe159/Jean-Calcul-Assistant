@@ -62,22 +62,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.itos.coui.dialog.CouiDialogAction
-import com.itos.coui.dialog.CouiDialogPlacement
-import com.itos.coui.dialog.Dialog
-import com.itos.coui.effect.couiButtonFeedback
-import com.itos.coui.menu.CouiMenuItem
-import com.itos.coui.menu.Menu
-import com.itos.coui.menu.couiMenuAnchor
-import com.itos.coui.menu.rememberCouiMenuAnchor
-import com.itos.coui.menu.rememberCouiWindowBackdrop
-import com.itos.coui.theme.CouiTheme
 import io.github.mangi.eta.R
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
+import io.github.suqi8.coui.kmp.basic.DropdownDefaults
+import io.github.suqi8.coui.kmp.basic.DropdownEntry
+import io.github.suqi8.coui.kmp.basic.DropdownItem
+import io.github.suqi8.coui.kmp.popup.OverlayDropdownPopup
 import io.github.mangi.eta.ui.components.coui.CouiChipTabs
 import io.github.mangi.eta.ui.components.coui.CouiSearchBarBox
-import io.github.mangi.eta.ui.components.coui.rememberCouiDialogMaterial
 import io.github.mangi.eta.ui.model.AgentModelOptionUi
 import io.github.mangi.eta.ui.model.AgentModelPickerUiState
 import io.github.mangi.eta.ui.model.filterGroups
@@ -85,14 +76,18 @@ import io.github.mangi.eta.ui.model.modelCount
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.InputField
-import top.yukonga.miuix.kmp.basic.PopupPositionProvider
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.squircle.squircleSurface
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.window.WindowBottomSheet
-import top.yukonga.miuix.kmp.window.WindowListPopup
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.squircle.squircleSurface
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import androidx.compose.foundation.LocalIndication
+import io.github.mangi.eta.ui.components.coui.panelBlur
+import io.github.suqi8.coui.kmp.layout.BottomSheetDefaults
+import io.github.suqi8.coui.kmp.basic.IconButton
+import io.github.suqi8.coui.kmp.blur.MaterialBlurDefaults
+import io.github.suqi8.coui.kmp.icon.COUIIcons
+import io.github.suqi8.coui.kmp.icon.basic.Close
+import io.github.suqi8.coui.kmp.overlay.OverlayBottomSheet
 
 /**
  * 聊天首页顶栏的复合标题与模型切换入口：
@@ -124,18 +119,15 @@ internal fun AgentTopBarChatHeader(
 
     val currentModel = selected?.displayName ?: stringResource(R.string.model_not_selected)
     val switchModelDescription = stringResource(R.string.model_switch_current, currentModel)
-    val anchor = rememberCouiMenuAnchor()
-    val uiStyle = LocalUiStyle.current
-    val isCoui = uiStyle == AppearanceUiStyle.COUI
-    val isDark = MiuixTheme.colorScheme.surface.luminance() < 0.5f
-    val ink = MiuixTheme.colorScheme.onSurface.copy(alpha = 1f)
+    val isDark = COUITheme.isDark
+    val ink = COUITheme.colorScheme.labelPrimary.copy(alpha = 1f)
     val subtitleColor = ink.copy(alpha = if (isDark) 0.56f else 0.52f)
     val chevronColor = ink.copy(alpha = if (isDark) 0.46f else 0.42f)
     val interactionSource = remember { MutableInteractionSource() }
 
     val triggerModelPicker: () -> Unit = {
         if (state.modelCount <= ModelPopupLimit) {
-            anchor.open { showPopup = true }
+            showPopup = true
         } else {
             sheetSession += 1
             showSheet = true
@@ -162,18 +154,10 @@ internal fun AgentTopBarChatHeader(
                     Spacer(modifier = Modifier.width(6.dp))
                     Column(
                         modifier = Modifier
-                            .couiMenuAnchor(anchor)
                             .clip(RoundedCornerShape(10.dp))
-                            .then(
-                                if (isCoui) {
-                                    Modifier.couiButtonFeedback(isDark, interactionSource, enabled = enabled)
-                                } else {
-                                    Modifier
-                                },
-                            )
                             .clickable(
                                 interactionSource = interactionSource,
-                                indication = null,
+                                indication = LocalIndication.current,
                                 enabled = enabled,
                                 role = Role.Button,
                                 onClick = triggerModelPicker,
@@ -183,12 +167,12 @@ internal fun AgentTopBarChatHeader(
                     ) {
                         Text(
                             text = character.characterName,
-                            style = MiuixTheme.textStyles.body2.copy(
+                            style = COUITheme.textStyles.bodyM.copy(
                                 fontSize = 15.sp,
                                 lineHeight = 18.sp,
                                 fontWeight = FontWeight.SemiBold,
                             ),
-                            color = MiuixTheme.colorScheme.onSurface,
+                            color = COUITheme.colorScheme.labelPrimary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -207,18 +191,10 @@ internal fun AgentTopBarChatHeader(
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
-                        .couiMenuAnchor(anchor)
                         .clip(RoundedCornerShape(12.dp))
-                        .then(
-                            if (isCoui) {
-                                Modifier.couiButtonFeedback(isDark, interactionSource, enabled = enabled)
-                            } else {
-                                Modifier
-                            },
-                        )
                         .clickable(
                             interactionSource = interactionSource,
-                            indication = null,
+                            indication = LocalIndication.current,
                             enabled = enabled,
                             role = Role.Button,
                             onClick = triggerModelPicker,
@@ -228,12 +204,12 @@ internal fun AgentTopBarChatHeader(
                 ) {
                     Text(
                         text = conversationTitle,
-                        style = MiuixTheme.textStyles.body1.copy(
+                        style = COUITheme.textStyles.bodyXL.copy(
                             fontSize = 15.5.sp,
                             lineHeight = 19.sp,
                             fontWeight = FontWeight.SemiBold,
                         ),
-                        color = MiuixTheme.colorScheme.onSurface,
+                        color = COUITheme.colorScheme.labelPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -253,21 +229,13 @@ internal fun AgentTopBarChatHeader(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .couiMenuAnchor(anchor)
                         .heightIn(min = 34.dp)
                         .clip(CircleShape)
                         .background(pillFill, CircleShape)
                         .border(0.5.dp, pillBorder, CircleShape)
-                        .then(
-                            if (isCoui) {
-                                Modifier.couiButtonFeedback(isDark, interactionSource, enabled = enabled)
-                            } else {
-                                Modifier
-                            },
-                        )
                         .clickable(
                             interactionSource = interactionSource,
-                            indication = null,
+                            indication = LocalIndication.current,
                             enabled = enabled,
                             role = Role.Button,
                             onClick = triggerModelPicker,
@@ -283,12 +251,12 @@ internal fun AgentTopBarChatHeader(
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = currentModel,
-                        style = MiuixTheme.textStyles.body2.copy(
+                        style = COUITheme.textStyles.bodyM.copy(
                             fontSize = 14.sp,
                             lineHeight = 18.sp,
                             fontWeight = FontWeight.Medium,
                         ),
-                        color = MiuixTheme.colorScheme.onSurface,
+                        color = COUITheme.colorScheme.labelPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.widthIn(max = 180.dp),
@@ -306,91 +274,60 @@ internal fun AgentTopBarChatHeader(
             }
         }
 
-        when (uiStyle) {
-            AppearanceUiStyle.COUI -> {
-                val menuItems = remember(state.providerGroups, state.selectedModel?.id) {
-                    val multipleGroups = state.providerGroups.size > 1
-                    state.providerGroups.flatMapIndexed { groupIndex, group ->
-                        group.models.mapIndexed { modelIndex, model ->
-                            CouiMenuItem(
-                                value = model.id,
-                                text = if (multipleGroups) "${group.providerName} · ${model.displayName}" else model.displayName,
-                                selected = model.id == state.selectedModel?.id,
-                                dividerBefore = multipleGroups && groupIndex > 0 && modelIndex == 0,
-                            )
-                        }
-                    }
-                }
-                Menu(
-                    expanded = showPopup,
-                    onDismissRequest = { showPopup = false },
-                    items = menuItems,
-                    onItemClick = { item ->
-                        showPopup = false
-                        onModelSelected(item.value)
-                    },
-                    anchor = anchor,
-                )
-
-                val dark = CouiTheme.isDark
-                Dialog(
-                    visible = showSheet,
-                    onDismissRequest = { showSheet = false },
-                    dark = dark,
-                    title = stringResource(R.string.model_picker_title),
-                    confirmAction = CouiDialogAction(
-                        text = stringResource(R.string.action_close),
-                        onClick = { showSheet = false },
-                    ),
-                    placement = CouiDialogPlacement.Bottom,
-                    material = rememberCouiDialogMaterial(dark),
-                    backdrop = rememberCouiWindowBackdrop(),
-                ) {
-                    key(sheetSession) {
-                        ModelSheetContent(
-                            state = state,
-                            onModelSelected = { modelId ->
-                                showSheet = false
-                                onModelSelected(modelId)
-                            },
+        val currentOnModelSelected by rememberUpdatedState(onModelSelected)
+        val menuEntries = remember(state.providerGroups, state.selectedModel?.id) {
+            val multipleGroups = state.providerGroups.size > 1
+            state.providerGroups.map { group ->
+                DropdownEntry(
+                    title = group.providerName.takeIf { multipleGroups },
+                    items = group.models.map { model ->
+                        DropdownItem(
+                            text = model.displayName,
+                            selected = model.id == state.selectedModel?.id,
+                            onClick = { currentOnModelSelected(model.id) },
                         )
-                    }
-                }
+                    },
+                )
             }
+        }
+        OverlayDropdownPopup(
+            entries = menuEntries,
+            show = showPopup,
+            onDismiss = { showPopup = false },
+            onDismissFinished = {},
+            maxHeight = null,
+            dropdownColors = DropdownDefaults.dropdownColors(),
+            renderInRootScaffold = true,
+            collapseOnSelection = true,
+        )
 
-            AppearanceUiStyle.MIUIX -> {
-                WindowListPopup(
-                    show = showPopup,
-                    alignment = PopupPositionProvider.Align.Start,
-                    onDismissRequest = { showPopup = false },
-                    maxHeight = 360.dp,
-                    minWidth = ModelPopupWidth,
-                ) {
-                    ModelQuickList(
-                        state = state,
-                        onModelSelected = { modelId ->
-                            showPopup = false
-                            onModelSelected(modelId)
-                        },
+        val sheetBlur = panelBlur(MaterialBlurDefaults::bottomSheet)
+        OverlayBottomSheet(
+            show = showSheet,
+            title = stringResource(R.string.model_picker_title),
+            startAction = {
+                IconButton(onClick = { showSheet = false }) {
+                    Icon(
+                        imageVector = COUIIcons.Basic.Close,
+                        contentDescription = stringResource(R.string.action_close),
+                        tint = COUITheme.colorScheme.labelPrimary,
                     )
                 }
-
-                WindowBottomSheet(
-                    show = showSheet,
-                    title = stringResource(R.string.model_picker_title),
-                    onDismissRequest = { showSheet = false },
-                    insideMargin = DpSize(0.dp, 0.dp),
-                ) {
-                    key(sheetSession) {
-                        ModelSheetContent(
-                            state = state,
-                            onModelSelected = { modelId ->
-                                showSheet = false
-                                onModelSelected(modelId)
-                            },
-                        )
-                    }
-                }
+            },
+            backgroundModifier = sheetBlur?.backgroundModifier ?: Modifier,
+            backgroundColor = sheetBlur?.backgroundColor ?: BottomSheetDefaults.backgroundColor(),
+            onDismissRequest = { showSheet = false },
+            insideMargin = DpSize(16.dp, 0.dp),
+            materialStroke = sheetBlur != null,
+        ) {
+            key(sheetSession) {
+                ModelSheetContent(
+                    state = state,
+                    onModelSelected = { modelId ->
+                        showSheet = false
+                        onModelSelected(modelId)
+                    },
+                )
             }
         }
     }
@@ -416,7 +353,7 @@ private fun ModelSubtitleRow(
         Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = modelName,
-            style = MiuixTheme.textStyles.footnote2.copy(
+            style = COUITheme.textStyles.bodyXS.copy(
                 fontSize = 11.5.sp,
                 lineHeight = 14.sp,
             ),
@@ -506,71 +443,30 @@ private fun ModelSheetContent(
     val selectedId = select.pendingId ?: state.selectedModel?.id
     val density = LocalDensity.current
     val sheetHeight = with(density) { LocalWindowInfo.current.containerSize.height.toDp() } * 0.68f
-    val isCoui = LocalUiStyle.current == AppearanceUiStyle.COUI
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .height(sheetHeight)
-            .then(if (isCoui) Modifier else Modifier.navigationBarsPadding()),
+            .then(Modifier),
     ) {
-        when (LocalUiStyle.current) {
-            AppearanceUiStyle.COUI -> {
-                CouiSearchBarBox(
-                    query = query,
-                    onQueryChange = { query = it },
-                    placeholder = stringResource(R.string.ui_search_model_df5586),
-                    backgroundColor = Color.Transparent,
-                )
-                if (state.providerGroups.size > 1) {
-                    val allLabel = stringResource(R.string.model_picker_filter_all)
-                    val tabItems = remember(state.providerGroups, allLabel) {
-                        listOf("" to allLabel) + state.providerGroups.map { it.providerId to it.providerName }
-                    }
-                    CouiChipTabs(
-                        items = tabItems,
-                        selectedKey = providerFilter.orEmpty(),
-                        onSelectedKeyChange = { key -> providerFilter = key.takeIf { it.isNotEmpty() } },
-                        backgroundColor = Color.Transparent,
-                    )
-                }
+        CouiSearchBarBox(
+            query = query,
+            onQueryChange = { query = it },
+            placeholder = stringResource(R.string.ui_search_model_df5586),
+            backgroundColor = Color.Transparent,
+        )
+        if (state.providerGroups.size > 1) {
+            val allLabel = stringResource(R.string.model_picker_filter_all)
+            val tabItems = remember(state.providerGroups, allLabel) {
+                listOf("" to allLabel) + state.providerGroups.map { it.providerId to it.providerName }
             }
-            AppearanceUiStyle.MIUIX -> {
-                InputField(
-                    query = query,
-                    onQueryChange = { query = it },
-                    onSearch = {},
-                    expanded = false,
-                    onExpandedChange = {},
-                    label = stringResource(R.string.ui_search_model_df5586),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 4.dp, bottom = 8.dp),
-                )
-                if (state.providerGroups.size > 1) {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(bottom = 6.dp),
-                    ) {
-                        item(key = "all") {
-                            EtaChoiceChip(
-                                text = stringResource(R.string.model_picker_filter_all),
-                                selected = providerFilter == null,
-                                onClick = { providerFilter = null },
-                            )
-                        }
-                        items(state.providerGroups, key = { it.providerId }) { group ->
-                            EtaChoiceChip(
-                                text = group.providerName,
-                                selected = providerFilter == group.providerId,
-                                onClick = { providerFilter = group.providerId },
-                            )
-                        }
-                    }
-                }
-            }
+            CouiChipTabs(
+                items = tabItems,
+                selectedKey = providerFilter.orEmpty(),
+                onSelectedKeyChange = { key -> providerFilter = key.takeIf { it.isNotEmpty() } },
+                backgroundColor = Color.Transparent,
+            )
         }
         LazyColumn(
             state = listState,
@@ -583,8 +479,8 @@ private fun ModelSheetContent(
                 item(key = "empty") {
                     Text(
                         text = stringResource(R.string.page_no_matching_model_found_ae7e96),
-                        style = MiuixTheme.textStyles.body2,
-                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        style = COUITheme.textStyles.bodyM,
+                        color = COUITheme.colorScheme.labelSecondary,
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -639,8 +535,8 @@ private fun rememberConfirmedSelection(onConfirm: (String) -> Unit): ConfirmedSe
 private fun ModelProviderLabel(name: String, horizontalPadding: Dp = 20.dp) {
     Text(
         text = name,
-        style = MiuixTheme.textStyles.footnote1,
-        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        style = COUITheme.textStyles.bodyS,
+        color = COUITheme.colorScheme.labelSecondary,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier
@@ -657,8 +553,8 @@ private fun ModelPickerRow(
     onClick: () -> Unit,
     horizontalPadding: Dp = 8.dp,
 ) {
-    val containerColor = if (selected) MiuixTheme.colorScheme.tertiaryContainer else Color.Transparent
-    val contentColor = if (selected) MiuixTheme.colorScheme.onTertiaryContainer else MiuixTheme.colorScheme.onSurface
+    val containerColor = if (selected) COUITheme.colorScheme.containerThemeHalftone else Color.Transparent
+    val contentColor = if (selected) COUITheme.colorScheme.primaryText else COUITheme.colorScheme.labelPrimary
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -670,7 +566,7 @@ private fun ModelPickerRow(
     ) {
         Text(
             text = model.displayName,
-            style = MiuixTheme.textStyles.body2,
+            style = COUITheme.textStyles.bodyM,
             color = contentColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -708,14 +604,14 @@ internal fun ModelBrandMark(
         Box(
             modifier = Modifier
                 .size(size)
-                .background(MiuixTheme.colorScheme.primaryContainer, CircleShape),
+                .background(COUITheme.colorScheme.containerThemeHalftone, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = Icons.Rounded.Dns,
                 contentDescription = null,
                 modifier = Modifier.size(size * 0.56f),
-                tint = MiuixTheme.colorScheme.primary,
+                tint = COUITheme.colorScheme.primary,
             )
         }
     }

@@ -18,26 +18,20 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
-import com.itos.coui.effect.LocalCouiContourGlowEnabled
-import com.itos.coui.menu.ProvideCouiMenuBackdrop
-import com.itos.coui.theme.CouiPresets
-import com.itos.coui.theme.CouiTheme
-import com.itos.coui.theme.LocalCouiDarkTheme
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import io.github.suqi8.coui.kmp.effect.LocalCOUIMaterialEffectEnabled
 import io.github.mangi.eta.data.model.AppearanceAccentColor
 import io.github.mangi.eta.data.model.AppearancePaletteStyle
 import io.github.mangi.eta.data.model.AppearanceSettings
 import io.github.mangi.eta.data.model.AppearanceThemeMode
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.data.model.DEFAULT_INTERFACE_SCALE
 import io.github.mangi.eta.data.model.normalizeInterfaceScale
-import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
-import top.yukonga.miuix.kmp.theme.ColorSchemeMode
-import top.yukonga.miuix.kmp.theme.LocalContentColor
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.theme.ThemeColorSpec
-import top.yukonga.miuix.kmp.theme.ThemeController
-import top.yukonga.miuix.kmp.theme.ThemePaletteStyle
-import top.yukonga.miuix.kmp.theme.platformDynamicColors
+import io.github.suqi8.coui.kmp.blur.isRuntimeShaderSupported
+import io.github.suqi8.coui.kmp.theme.ColorSchemeMode
+import io.github.suqi8.coui.kmp.theme.ThemeColorSpec
+import io.github.suqi8.coui.kmp.theme.ThemeController
+import io.github.suqi8.coui.kmp.theme.ThemePaletteStyle
+import io.github.suqi8.coui.kmp.theme.platformDynamicColors
 
 @Composable
 fun AgentAppTheme(
@@ -76,12 +70,12 @@ fun AgentAppTheme(
         appearance.accentColor == AppearanceAccentColor.SYSTEM -> systemSeedColor
         else -> appearance.accentColor.seedColor()
     }
-    val controller = remember(appearance, colorSchemeMode, keyColor, isDark) {
+    val controller = remember(colorSchemeMode, keyColor, appearance.paletteStyle, isDark) {
         ThemeController(
             colorSchemeMode = colorSchemeMode,
             keyColor = keyColor,
             colorSpec = ThemeColorSpec.Spec2025,
-            paletteStyle = appearance.paletteStyle.toMiuixPaletteStyle(),
+            paletteStyle = appearance.paletteStyle.toCouiPaletteStyle(),
             isDark = isDark,
         )
     }
@@ -130,94 +124,32 @@ fun AgentAppTheme(
         }
     }
 
-    val currentContent by rememberUpdatedState(content)
-    // 切换 UI 样式时移动同一内容树，保留导航栈、页面草稿与正在运行的任务状态。
-    val scopedContent = remember { movableContentOf { currentContent() } }
-
-    MiuixTheme(controller = controller) {
-        val baseMiuixColors = MiuixTheme.colorScheme
+    COUITheme(controller = controller) {
+        val baseColors = COUITheme.colorScheme
         val pureBlack = appearance.monetEnabled && appearance.pureBlackEnabled && isDark
-        val couiNative = if (isDark) CouiPresets.Dark else CouiPresets.Light
-        val themedMiuixColors = remember(
-            baseMiuixColors,
-            AppearanceUiStyle.COUI,
-            pureBlack,
-            isDark,
-        ) {
-            when {
-                AppearanceUiStyle.COUI == AppearanceUiStyle.COUI -> {
-                    val accentContainer = couiNative.accent.copy(alpha = if (isDark) 0.22f else 0.12f)
-                    baseMiuixColors.copy(
-                        primary = couiNative.accent,
-                        onPrimary = couiNative.onAccent,
-                        primaryContainer = accentContainer,
-                        onPrimaryContainer = couiNative.accent,
-                        secondaryContainer = if (isDark) Color(0xFF282A2E) else Color(0xFFECEEF1),
-                        onSecondaryContainer = couiNative.onSurface,
-                        tertiaryContainer = accentContainer,
-                        onTertiaryContainer = couiNative.accent,
-                        background = couiNative.background,
-                        surface = if (isDark) Color(0xFF121214) else Color.White,
-                        surfaceContainer = if (isDark) Color(0xFF1E2024) else Color(0xFFF4F5F7),
-                        surfaceContainerHigh = if (isDark) Color(0xFF282A2E) else Color(0xFFEBECEE),
-                        surfaceContainerHighest = if (isDark) Color(0xFF32353A) else Color(0xFFE2E4E8),
-                        onBackground = couiNative.onSurface,
-                        onSurface = couiNative.onSurface,
-                        onSurfaceContainer = couiNative.onSurface,
-                        onSurfaceVariantSummary = couiNative.onSurfaceVariant,
-                        onSurfaceVariantActions = couiNative.onSurfaceVariant,
-                        outline = if (isDark) Color(0xFF3A3C42) else Color(0xFFDCDFE4),
-                        dividerLine = couiNative.outlineVariant,
-                    )
-                }
-                pureBlack -> baseMiuixColors.copy(
-                    background = Color.Black,
-                    surface = Color.Black,
-                )
-                else -> baseMiuixColors
+        val colors = remember(baseColors, pureBlack) {
+            if (pureBlack) {
+                baseColors.copy(background = Color.Black, backgroundWithCard = Color.Black)
+            } else {
+                baseColors
             }
         }
-
-        val blurSupported = isRuntimeShaderSupported()
-        val effectiveBlur = if (AppearanceUiStyle.COUI == AppearanceUiStyle.COUI) {
-            blurSupported
-        } else {
-            appearance.blurEnabled && blurSupported
-        }
-
-        MiuixTheme(colors = themedMiuixColors) {
+        val blurEnabled = isRuntimeShaderSupported()
+        COUITheme(colors = colors) {
             CompositionLocalProvider(
-                LocalContentColor provides themedMiuixColors.onBackground,
-                LocalCouiDarkTheme provides isDark,
-                LocalCouiContourGlowEnabled provides effectiveBlur,
+                LocalCOUIMaterialEffectEnabled provides blurEnabled,
                 LocalAppearanceSettings provides appearance,
-                LocalUiStyle provides AppearanceUiStyle.COUI,
-                LocalBlurEnabled provides effectiveBlur,
-                LocalTopBarBlurStyle provides appearance.topBarBlurStyle,
+                LocalBlurEnabled provides blurEnabled,
                 LocalPlatformDensity provides platformDensity,
                 LocalDensity provides appDensity,
             ) {
-                if (AppearanceUiStyle.COUI == AppearanceUiStyle.COUI) {
-                    CouiTheme(darkTheme = isDark, colorScheme = couiNative) {
-                        if (effectiveBlur) {
-                            ProvideCouiMenuBackdrop(isolateContent = false) { windowSource ->
-                                Box(Modifier.fillMaxSize().then(windowSource)) {
-                                    scopedContent()
-                                }
-                            }
-                        } else {
-                            scopedContent()
-                        }
-                    }
-                } else {
-                    scopedContent()
-                }
+                content()
             }
         }
     }
 }
 
-private fun AppearancePaletteStyle.toMiuixPaletteStyle(): ThemePaletteStyle = when (this) {
+private fun AppearancePaletteStyle.toCouiPaletteStyle(): ThemePaletteStyle = when (this) {
     AppearancePaletteStyle.TONAL_SPOT -> ThemePaletteStyle.TonalSpot
     AppearancePaletteStyle.NEUTRAL -> ThemePaletteStyle.Neutral
     AppearancePaletteStyle.VIBRANT -> ThemePaletteStyle.Vibrant

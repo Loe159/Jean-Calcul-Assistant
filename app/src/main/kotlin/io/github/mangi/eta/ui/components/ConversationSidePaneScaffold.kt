@@ -64,7 +64,8 @@ import io.github.mangi.eta.ui.model.ConversationSummaryUi
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.PageIndicator
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 private object ConversationPaneMetrics {
     val PaneMaxWidth = 340.dp
@@ -319,7 +320,7 @@ fun ConversationSidePaneScaffold(
                                 } else conversationPaneMotion(offset, paneWidthPx).progress
                                 drawRect(Color.Black, alpha = ConversationPaneMetrics.ChatScrimAlpha * progress)
                             }
-                            .background(MiuixTheme.colorScheme.background),
+                            .background(COUITheme.colorScheme.backgroundWithCard),
                     ) {
                         Box(
                             modifier = Modifier
@@ -367,24 +368,20 @@ fun ConversationSidePaneScaffold(
             // Only the unobtrusive lower pager remains visible on the chat.
             val progress = briefPaneMotion(paneDragState.offset, fullWidthPx).progress
             if (!currentVisible && progress < 0.98f) {
-                Row(
+                // Native COUI page indicator: the trace follows the drag between both pages.
+                PageIndicator(
+                    pageCount = 2,
+                    currentPage = 0,
+                    currentPageOffsetFraction = progress.coerceIn(0f, 1f),
+                    animated = false,
                     modifier = Modifier.align(Alignment.BottomCenter)
                         .padding(bottom = 140.dp)
                         .graphicsLayer { alpha = (1f - progress).coerceIn(0f, 1f) }
-                        .semantics {
+                        .clearAndSetSemantics {
                             contentDescription = if (progress < 0.5f) "Chat, page 1 sur 2"
                                 else "Briefing, page 2 sur 2"
                         },
-                ) {
-                    Box(Modifier.padding(horizontal = 3.dp)
-                        .width((18f - 10f * progress).dp).height(4.dp)
-                        .clip(CircleShape).background(MiuixTheme.colorScheme.onBackground
-                            .copy(alpha = 0.62f - progress * 0.35f)))
-                    Box(Modifier.padding(horizontal = 3.dp)
-                        .width((8f + 10f * progress).dp).height(4.dp)
-                        .clip(CircleShape).background(MiuixTheme.colorScheme.onBackground
-                            .copy(alpha = 0.25f + progress * 0.42f)))
-                }
+                )
             }
         }
     }

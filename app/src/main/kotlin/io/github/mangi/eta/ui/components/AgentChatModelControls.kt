@@ -16,10 +16,10 @@ import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.R
 import io.github.mangi.eta.ui.model.AgentContextUsageUi
 import io.github.mangi.eta.ui.model.formatContextUsage
-import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.ProgressIndicatorDefaults
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.CircularProgressIndicator
+import io.github.suqi8.coui.kmp.basic.IconButton
+import io.github.suqi8.coui.kmp.basic.ProgressIndicatorDefaults
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 @Composable
 internal fun AgentContextUsageButton(
@@ -29,8 +29,8 @@ internal fun AgentContextUsageButton(
     modifier: Modifier = Modifier,
 ) {
     val progress = usage.progress
-    val isDark = MiuixTheme.colorScheme.surface.luminance() < 0.5f
-    val ink = MiuixTheme.colorScheme.onSurface.copy(alpha = 1f)
+    val isDark = COUITheme.isDark
+    val ink = COUITheme.colorScheme.labelPrimary.copy(alpha = 1f)
     // 常态低占用采用中性细环，避免小比例蓝色缺口在输入栏里看起来像卡住的加载圈；高水位再亮起预警色。
     val progressColor = when {
         progress == null -> ink.copy(alpha = if (isDark) 0.36f else 0.32f)

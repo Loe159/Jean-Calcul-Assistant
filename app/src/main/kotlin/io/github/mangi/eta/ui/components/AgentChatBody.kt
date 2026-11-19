@@ -77,20 +77,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.itos.coui.effect.couiButtonFeedback
-import com.itos.coui.layout.CouiPageDefaults
-import com.itos.coui.shape.CouiShape
-import com.itos.coui.text.CouiTextKind
-import com.itos.coui.text.Text as CouiText
-import com.itos.coui.theme.CouiTheme
 import io.github.mangi.eta.R
 import io.github.mangi.eta.agent.browser.BrowserSessionSnapshot
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.data.model.ReasoningEffort
 import io.github.mangi.eta.data.repository.ConversationBranchBoundary
 import io.github.mangi.eta.ui.model.branchMessageOutline
 import io.github.mangi.eta.ui.app.AgentConversationRevisionReducer
-import io.github.mangi.eta.ui.app.LocalUiStyle
 import io.github.mangi.eta.ui.markdown.StreamingMarkdownStateCache
 import io.github.mangi.eta.ui.model.ConversationHistoryLoadState
 import io.github.mangi.eta.ui.model.AgentChatMessageUi
@@ -117,16 +109,16 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.IconButtonDefaults
-import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.squircle.squircleBorder
-import top.yukonga.miuix.kmp.squircle.squircleSurface
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.utils.overScrollVertical
-import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import io.github.suqi8.coui.kmp.basic.Card
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.IconButton
+import io.github.suqi8.coui.kmp.basic.Scaffold
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import io.github.suqi8.coui.kmp.utils.overScrollVertical
+import io.github.suqi8.coui.kmp.utils.scrollEndHaptic
+import androidx.compose.foundation.LocalIndication
+import io.github.suqi8.coui.kmp.squircle.SquircleShape
 
 /**
  * 聊天主体：消息流 + 底部输入框。
@@ -835,10 +827,9 @@ internal fun AgentConversationMessages(
             enter = fadeIn(tween(160)) + scaleIn(tween(180), initialScale = 0.82f),
             exit = fadeOut(tween(100)) + scaleOut(tween(120), targetScale = 0.86f),
         ) {
-            val isCoui = LocalUiStyle.current == AppearanceUiStyle.COUI
-            val couiDark = CouiTheme.isDark
+            val couiDark = COUITheme.isDark
             IconButton(
-                modifier = if (isCoui) {
+                modifier = run {
                     Modifier
                         .dropShadow(
                             shape = CircleShape,
@@ -853,17 +844,6 @@ internal fun AgentConversationMessages(
                             color = if (couiDark) Color(0x22FFFFFF) else Color(0x10000000),
                             shape = CircleShape,
                         )
-                } else {
-                    Modifier
-                        .dropShadow(
-                            shape = CircleShape,
-                            shadow = Shadow(radius = 8.dp, color = Color.Black, alpha = 0.08f),
-                        )
-                        .squircleBorder(
-                            width = 0.5.dp,
-                            color = MiuixTheme.colorScheme.outline.copy(alpha = 0.55f),
-                            cornerRadius = IconButtonDefaults.CornerRadius,
-                        )
                 },
                 onClick = {
                     onBottomAnchorChanged(true)
@@ -871,11 +851,7 @@ internal fun AgentConversationMessages(
                         scrollState.animateScrollToItem(bottomItemIndex)
                     }
                 },
-                backgroundColor = if (isCoui) {
-                    if (couiDark) Color(0xFF24262B) else Color.White
-                } else {
-                    MiuixTheme.colorScheme.surfaceContainerHigh
-                },
+                backgroundColor = if (couiDark) Color(0xFF24262B) else Color.White,
                 minWidth = 36.dp,
                 minHeight = 36.dp,
             ) {
@@ -883,7 +859,7 @@ internal fun AgentConversationMessages(
                     imageVector = Icons.Rounded.ArrowDownward,
                     contentDescription = stringResource(R.string.ui_back_to_bottom_32282e),
                     modifier = Modifier.size(16.dp),
-                    tint = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.78f),
+                    tint = COUITheme.colorScheme.labelPrimary.copy(alpha = 0.78f),
                 )
             }
         }
@@ -1056,7 +1032,7 @@ private fun AgentChatBottomBar(
     onRemoveFileReference: (String) -> Unit,
     onCancelMessageEdit: () -> Unit,
 ) {
-    val surface = MiuixTheme.colorScheme.surface
+    val surface = COUITheme.colorScheme.background
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -1196,24 +1172,24 @@ private fun EmptyChatState(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = character.characterName,
-                    style = MiuixTheme.textStyles.title2,
-                    color = MiuixTheme.colorScheme.onSurface,
+                    style = COUITheme.textStyles.displayXS,
+                    color = COUITheme.colorScheme.labelPrimary,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = stringResource(R.string.chat_character_story_start),
-                    style = MiuixTheme.textStyles.body2,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    style = COUITheme.textStyles.bodyM,
+                    color = COUITheme.colorScheme.labelSecondary,
                 )
             } else {
                 Text(
                     text = stringResource(R.string.ui_how_can_i_help_you_e75391),
-                    style = MiuixTheme.textStyles.title2.copy(
+                    style = COUITheme.textStyles.displayXS.copy(
                         fontSize = 22.sp,
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = (-0.2).sp,
                     ),
-                    color = MiuixTheme.colorScheme.onSurface,
+                    color = COUITheme.colorScheme.labelPrimary,
                 )
             }
 
@@ -1265,58 +1241,37 @@ private fun SuggestionCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isCoui = LocalUiStyle.current == AppearanceUiStyle.COUI
-    val isDark = MiuixTheme.colorScheme.surface.luminance() < 0.5f
-    val ink = MiuixTheme.colorScheme.onSurface.copy(alpha = 1f)
-    val fill = ink.copy(alpha = if (isDark) 0.055f else 0.028f)
-    val border = ink.copy(alpha = if (isDark) 0.10f else 0.065f)
-    val interactionSource = remember { MutableInteractionSource() }
-    val shapeModifier = if (isCoui) {
-        val shape = CouiShape(15.dp, 2.2f)
-        Modifier
-            .couiButtonFeedback(isDark, interactionSource, enabled = true)
-            .clip(shape)
-            .background(fill, shape)
-            .border(0.5.dp, border, shape)
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-    } else {
-        Modifier
-            .squircleSurface(color = fill, cornerRadius = 15.dp)
-            .squircleBorder(width = 0.5.dp, color = border, cornerRadius = 15.dp)
-            .clickable(onClick = onClick)
-    }
-    Row(
-        modifier = modifier
-            .then(shapeModifier)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    // A native COUI card: card surface, Normal.XL smooth corners and the COUI press tint.
+    Card(
+        modifier = modifier,
+        insideMargin = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+        onClick = onClick,
     ) {
-        Box(
-            modifier = Modifier
-                .size(28.dp)
-                .clip(CircleShape)
-                .background(MiuixTheme.colorScheme.primary.copy(alpha = if (isDark) 0.16f else 0.10f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = item.icon,
-                contentDescription = null,
-                modifier = Modifier.size(15.dp),
-                tint = MiuixTheme.colorScheme.primary,
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(COUITheme.colorScheme.primary.copy(alpha = if (COUITheme.isDark) 0.16f else 0.10f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = item.icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(15.dp),
+                    tint = COUITheme.colorScheme.primary,
+                )
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = item.title,
+                modifier = Modifier.weight(1f),
+                style = COUITheme.textStyles.bodyS,
+                color = COUITheme.colorScheme.labelPrimary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
-        Spacer(modifier = Modifier.width(10.dp))
-        Text(
-            text = item.title,
-            modifier = Modifier.weight(1f),
-            style = MiuixTheme.textStyles.body2.copy(
-                fontSize = 13.5.sp,
-                fontWeight = FontWeight.Medium,
-            ),
-            color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.88f),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
 

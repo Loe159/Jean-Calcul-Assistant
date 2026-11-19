@@ -19,6 +19,9 @@ Lire et accepter les licences Android avec `sdkmanager --licenses`.
 Sous NixOS, utiliser `nix develop` (voir `flake.nix`) : le SDK, le JDK,
 Python et les binaires Android adaptés à NixOS sont fournis ensemble.
 Le SDK Nix inclut les licences acceptées par sa configuration explicite.
+Si ce SDK est en lecture seule, le lanceur utilise `~/Android/Sdk` pour Gradle
+et conserve les outils Nix pour créer et démarrer son AVD. Le SDK local doit
+être inscriptible et contenir les Build Tools 36 et la plateforme Android 37.
 
 ## Une commande par tentative
 

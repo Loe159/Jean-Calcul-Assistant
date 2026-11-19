@@ -55,15 +55,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.itos.coui.menu.CouiMenuAnchor
-import com.itos.coui.menu.CouiMenuItem
-import com.itos.coui.menu.Menu
-import com.itos.coui.menu.couiMenuAnchor
-import com.itos.coui.menu.rememberCouiMenuAnchor
 import io.github.mangi.eta.R
+import androidx.compose.runtime.rememberUpdatedState
+import io.github.suqi8.coui.kmp.basic.DropdownEntry
+import io.github.suqi8.coui.kmp.basic.DropdownItem
+import io.github.suqi8.coui.kmp.menu.OverlayContextMenu
 import io.github.mangi.eta.agent.terminal.isLinux
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
 import io.github.mangi.eta.ui.app.TerminalBlockUi
 import io.github.mangi.eta.ui.app.UserTerminalStore
 import io.github.mangi.eta.ui.components.EtaMonospace
@@ -72,19 +69,13 @@ import io.github.mangi.eta.ui.components.ansiToAnnotatedString
 import io.github.mangi.eta.ui.components.coui.CouiButton
 import io.github.mangi.eta.ui.components.coui.CouiButtonRole
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.DropdownImpl
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
-import top.yukonga.miuix.kmp.basic.ListPopupColumn
-import top.yukonga.miuix.kmp.basic.PopupPositionProvider
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.TextField
-import top.yukonga.miuix.kmp.squircle.squircleBackground
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.window.WindowListPopup
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.IconButton
+import io.github.suqi8.coui.kmp.basic.InfiniteProgressIndicator
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.basic.TextField
+import io.github.suqi8.coui.kmp.squircle.squircleBackground
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 /**
  * 用户手动终端：块式输出（命令、输出、退出码），给人用；与 AI 工具调用的任务模型分开。
@@ -131,7 +122,7 @@ internal fun UserTerminalScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MiuixTheme.colorScheme.surface)
+            .background(COUITheme.colorScheme.background)
             .imePadding()
             .navigationBarsPadding(),
     ) {
@@ -246,69 +237,54 @@ private fun CommandBlock(
     block: TerminalBlockUi,
     onReinput: (String) -> Unit,
 ) {
-    var showMenu by remember { mutableStateOf(false) }
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
-    val colors = MiuixTheme.colorScheme
+    val colors = COUITheme.colorScheme
     val exitCode = block.exitCode
     val failed = exitCode != null && exitCode != 0
-    val anchor = rememberCouiMenuAnchor()
-    Box {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .couiMenuAnchor(anchor)
-                .combinedClickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {},
-                    onLongClick = { anchor.open { showMenu = true } },
-                ),
-        ) {
+    val menuEntries = rememberBlockMenuEntries(
+        hasOutput = block.output.isNotEmpty(),
+        onCopyCommand = { scope.launch { clipboard.setPlainText(block.command) } },
+        onCopyOutput = { scope.launch { clipboard.setPlainText(ansiPlainText(block.output)) } },
+        onReinput = { onReinput(block.command) },
+    )
+    OverlayContextMenu(entries = menuEntries) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             if (block.cwdAtStart.isNotEmpty()) {
                 Text(
                     text = block.cwdAtStart,
-                    style = MiuixTheme.textStyles.footnote2.copy(fontFamily = EtaMonospace),
-                    color = colors.onSurfaceVariantSummary,
+                    style = COUITheme.textStyles.bodyXS.copy(fontFamily = EtaMonospace),
+                    color = colors.labelSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
             Text(
                 text = blockHeader(block.command, promptColor = if (failed) colors.error else colors.primary),
-                style = MiuixTheme.textStyles.body2.copy(fontFamily = EtaMonospace),
-                color = colors.onSurface,
+                style = COUITheme.textStyles.bodyM.copy(fontFamily = EtaMonospace),
+                color = colors.labelPrimary,
                 modifier = Modifier.padding(top = 2.dp),
             )
             if (block.output.isNotEmpty()) {
                 val parsedOutput = remember(block.output) { ansiToAnnotatedString(block.output) }
                 Text(
                     text = parsedOutput,
-                    style = MiuixTheme.textStyles.footnote1.copy(fontFamily = EtaMonospace),
-                    color = colors.onSurface.copy(alpha = 0.86f),
+                    style = COUITheme.textStyles.bodyS.copy(fontFamily = EtaMonospace),
+                    color = colors.labelPrimary.copy(alpha = 0.86f),
                     modifier = Modifier.padding(top = 6.dp),
                 )
             }
             BlockFooter(block = block, failed = failed)
         }
-        BlockMenu(
-            show = showMenu,
-            hasOutput = block.output.isNotEmpty(),
-            anchor = anchor,
-            onDismiss = { showMenu = false },
-            onCopyCommand = { scope.launch { clipboard.setPlainText(block.command) } },
-            onCopyOutput = { scope.launch { clipboard.setPlainText(ansiPlainText(block.output)) } },
-            onReinput = { onReinput(block.command) },
-        )
     }
 }
 
 @Composable
 private fun BlockFooter(block: TerminalBlockUi, failed: Boolean) {
-    val colors = MiuixTheme.colorScheme
+    val colors = COUITheme.colorScheme
     val labels = buildList {
         if (failed) add(stringResource(R.string.terminal_exit_code, block.exitCode ?: 0) to colors.error)
-        if (block.truncated) add(stringResource(R.string.terminal_output_truncated) to colors.onSurfaceVariantSummary)
+        if (block.truncated) add(stringResource(R.string.terminal_output_truncated) to colors.labelSecondary)
     }
     if (!block.running && labels.isEmpty()) return
     Row(
@@ -320,12 +296,12 @@ private fun BlockFooter(block: TerminalBlockUi, failed: Boolean) {
             InfiniteProgressIndicator(size = 12.dp)
             Text(
                 text = stringResource(R.string.terminal_running),
-                style = MiuixTheme.textStyles.footnote2,
-                color = colors.onSurfaceVariantSummary,
+                style = COUITheme.textStyles.bodyXS,
+                color = colors.labelSecondary,
             )
         }
         labels.forEach { (text, color) ->
-            Text(text = text, style = MiuixTheme.textStyles.footnote2, color = color)
+            Text(text = text, style = COUITheme.textStyles.bodyXS, color = color)
         }
     }
 }
@@ -344,83 +320,28 @@ private suspend fun Clipboard.setPlainText(text: String) {
 }
 
 @Composable
-private fun BlockMenu(
-    show: Boolean,
+private fun rememberBlockMenuEntries(
     hasOutput: Boolean,
-    anchor: CouiMenuAnchor,
-    onDismiss: () -> Unit,
     onCopyCommand: () -> Unit,
     onCopyOutput: () -> Unit,
     onReinput: () -> Unit,
-) {
+): List<DropdownEntry> {
     val copyCommandText = stringResource(R.string.terminal_copy_command)
     val copyOutputText = stringResource(R.string.terminal_copy_output)
     val reinputText = stringResource(R.string.terminal_reinput)
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            val menuItems = remember(copyCommandText, copyOutputText, reinputText, hasOutput) {
-                listOf(
-                    CouiMenuItem(value = 0, text = copyCommandText),
-                    CouiMenuItem(value = 1, text = copyOutputText, enabled = hasOutput),
-                    CouiMenuItem(value = 2, text = reinputText),
-                )
-            }
-            Menu(
-                expanded = show,
-                onDismissRequest = onDismiss,
-                items = menuItems,
-                onItemClick = { item ->
-                    onDismiss()
-                    when (item.value) {
-                        0 -> onCopyCommand()
-                        1 -> onCopyOutput()
-                        2 -> onReinput()
-                    }
-                },
-                anchor = anchor,
-            )
-        }
-        AppearanceUiStyle.MIUIX -> {
-            WindowListPopup(
-                show = show,
-                alignment = PopupPositionProvider.Align.Start,
-                onDismissRequest = onDismiss,
-            ) {
-                ListPopupColumn {
-                    DropdownImpl(
-                        text = copyCommandText,
-                        optionSize = 3,
-                        isSelected = false,
-                        index = 0,
-                        onSelectedIndexChange = {
-                            onDismiss()
-                            onCopyCommand()
-                        },
-                    )
-                    DropdownImpl(
-                        text = copyOutputText,
-                        optionSize = 3,
-                        isSelected = false,
-                        index = 1,
-                        enabled = hasOutput,
-                        onSelectedIndexChange = {
-                            onDismiss()
-                            onCopyOutput()
-                        },
-                    )
-                    DropdownImpl(
-                        text = reinputText,
-                        optionSize = 3,
-                        isSelected = false,
-                        index = 2,
-                        onSelectedIndexChange = {
-                            onDismiss()
-                            onReinput()
-                        },
-                    )
-                }
-            }
-        }
+    val currentCopyCommand by rememberUpdatedState(onCopyCommand)
+    val currentCopyOutput by rememberUpdatedState(onCopyOutput)
+    val currentReinput by rememberUpdatedState(onReinput)
+    return remember(copyCommandText, copyOutputText, reinputText, hasOutput) {
+        listOf(
+            DropdownEntry(
+                items = listOf(
+                    DropdownItem(text = copyCommandText, onClick = { currentCopyCommand() }),
+                    DropdownItem(text = copyOutputText, enabled = hasOutput, onClick = { currentCopyOutput() }),
+                    DropdownItem(text = reinputText, onClick = { currentReinput() }),
+                ),
+            ),
+        )
     }
 }
 
@@ -428,8 +349,8 @@ private fun BlockMenu(
 private fun SystemBlock(block: TerminalBlockUi) {
     Text(
         text = block.output,
-        style = MiuixTheme.textStyles.footnote2,
-        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        style = COUITheme.textStyles.bodyXS,
+        color = COUITheme.colorScheme.labelSecondary,
         textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth(),
     )
@@ -448,7 +369,7 @@ private fun InputPanel(
     onSubmit: () -> Unit,
     onStop: () -> Unit,
 ) {
-    val colors = MiuixTheme.colorScheme
+    val colors = COUITheme.colorScheme
     val canSend = input.isNotBlank()
     Column(
         modifier = Modifier
@@ -458,8 +379,8 @@ private fun InputPanel(
         if (cwd.isNotEmpty()) {
             Text(
                 text = cwd,
-                style = MiuixTheme.textStyles.footnote2.copy(fontFamily = EtaMonospace),
-                color = colors.onSurfaceVariantSummary,
+                style = COUITheme.textStyles.bodyXS.copy(fontFamily = EtaMonospace),
+                color = colors.labelSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.StartEllipsis,
                 modifier = Modifier.padding(start = 6.dp, end = 6.dp, bottom = 6.dp),
@@ -479,7 +400,7 @@ private fun InputPanel(
                 autoCorrectEnabled = false,
             ),
             keyboardActions = KeyboardActions(onSend = { onSubmit() }),
-            textStyle = MiuixTheme.textStyles.body2.copy(fontFamily = EtaMonospace),
+            textStyle = COUITheme.textStyles.bodyM.copy(fontFamily = EtaMonospace),
             trailingIcon = {
                 val stopMode = running && !canSend
                 IconButton(
@@ -504,7 +425,7 @@ private fun InputPanel(
                         tint = when {
                             stopMode -> colors.error
                             canSend -> colors.onPrimary
-                            else -> colors.onSurfaceVariantSummary.copy(alpha = 0.5f)
+                            else -> colors.labelSecondary.copy(alpha = 0.5f)
                         },
                     )
                 }
@@ -542,7 +463,7 @@ internal fun TerminalPlaceholder(
     secondaryActionText: String? = null,
     onSecondaryAction: (() -> Unit)? = null,
 ) {
-    val colors = MiuixTheme.colorScheme
+    val colors = COUITheme.colorScheme
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -553,54 +474,37 @@ internal fun TerminalPlaceholder(
         Box(
             modifier = Modifier
                 .size(52.dp)
-                .squircleBackground(colors.surfaceContainer, 16.dp),
+                .squircleBackground(colors.surfaceWithCard, 16.dp),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(26.dp),
-                tint = colors.onSurfaceVariantSummary,
+                tint = colors.labelSecondary,
             )
         }
         Text(
             text = message,
-            style = MiuixTheme.textStyles.footnote1,
-            color = colors.onSurfaceVariantSummary,
+            style = COUITheme.textStyles.bodyS,
+            color = colors.labelSecondary,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 14.dp),
         )
         if (actionText != null && onAction != null) {
-            if (LocalUiStyle.current == AppearanceUiStyle.COUI) {
-                CouiButton(
-                    text = actionText,
-                    onClick = onAction,
-                    role = CouiButtonRole.Primary,
-                    modifier = Modifier.padding(top = 18.dp),
-                )
-            } else {
-                TextButton(
-                    text = actionText,
-                    onClick = onAction,
-                    colors = ButtonDefaults.textButtonColorsPrimary(),
-                    modifier = Modifier.padding(top = 18.dp),
-                )
-            }
+            CouiButton(
+                text = actionText,
+                onClick = onAction,
+                role = CouiButtonRole.Primary,
+                modifier = Modifier.padding(top = 18.dp),
+            )
         }
         if (secondaryActionText != null && onSecondaryAction != null) {
-            if (LocalUiStyle.current == AppearanceUiStyle.COUI) {
-                CouiButton(
-                    text = secondaryActionText,
-                    onClick = onSecondaryAction,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
-            } else {
-                TextButton(
-                    text = secondaryActionText,
-                    onClick = onSecondaryAction,
-                    modifier = Modifier.padding(top = 12.dp),
-                )
-            }
+            CouiButton(
+                text = secondaryActionText,
+                onClick = onSecondaryAction,
+                modifier = Modifier.padding(top = 12.dp),
+            )
         }
     }
 }

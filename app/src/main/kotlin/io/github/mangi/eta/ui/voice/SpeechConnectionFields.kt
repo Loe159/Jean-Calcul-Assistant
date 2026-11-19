@@ -15,26 +15,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.itos.coui.layout.CouiPageDefaults
-import com.itos.coui.layout.Divider
 import io.github.mangi.eta.R
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.data.model.AsrProvider
 import io.github.mangi.eta.data.model.DoubaoSpeechConfig
 import io.github.mangi.eta.data.model.QwenSpeechConfig
 import io.github.mangi.eta.data.model.SpeechCredentialField
 import io.github.mangi.eta.data.model.SpeechRegion
 import io.github.mangi.eta.data.model.TtsProvider
-import io.github.mangi.eta.ui.app.LocalUiStyle
-import io.github.mangi.eta.ui.components.coui.CouiDropdownPreference
-import io.github.mangi.eta.ui.components.coui.CouiIcon
-import io.github.mangi.eta.ui.components.coui.CouiPreference
-import io.github.mangi.eta.ui.components.coui.CouiSwitchPreference
-import top.yukonga.miuix.kmp.basic.BasicComponent
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
-import top.yukonga.miuix.kmp.preference.SwitchPreference
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.BasicComponent
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.preference.OverlayDropdownPreference
+import io.github.suqi8.coui.kmp.preference.SwitchPreference
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import androidx.compose.foundation.layout.padding
+import io.github.suqi8.coui.kmp.basic.HorizontalDivider
 
 @Composable
 internal fun SpeechConnectionSection(store: SpeechSettingsStore, synthesis: Boolean) {
@@ -96,7 +90,6 @@ private fun QwenDoubaoConnectionSection(store: SpeechSettingsStore, synthesis: B
         else -> error("Not a provider credential")
     }
     var advanced by rememberSaveable(keyField) { mutableStateOf(false) }
-    val uiStyle = LocalUiStyle.current
 
     Column {
         SpeechGroupCard(title = stringResource(R.string.speech_group_connection)) {
@@ -109,26 +102,15 @@ private fun QwenDoubaoConnectionSection(store: SpeechSettingsStore, synthesis: B
                     stringResource(R.string.speech_region_beijing),
                     stringResource(R.string.speech_region_singapore),
                 )
-                if (uiStyle == AppearanceUiStyle.COUI) {
-                    CouiDropdownPreference(
-                        title = stringResource(R.string.speech_region),
-                        items = regionItems,
-                        selectedIndex = config.region.ordinal,
-                        onSelectedIndexChange = { index ->
-                            SpeechRegion.entries.getOrNull(index)?.let { change(config.copy(region = it)) }
-                        },
-                    )
-                    Divider()
-                } else {
-                    OverlayDropdownPreference(
-                        title = stringResource(R.string.speech_region),
-                        items = regionItems,
-                        selectedIndex = config.region.ordinal,
-                        onSelectedIndexChange = { index ->
-                            SpeechRegion.entries.getOrNull(index)?.let { change(config.copy(region = it)) }
-                        },
-                    )
-                }
+                OverlayDropdownPreference(
+                    title = stringResource(R.string.speech_region),
+                    items = regionItems,
+                    selectedIndex = config.region.ordinal,
+                    onSelectedIndexChange = { index ->
+                        SpeechRegion.entries.getOrNull(index)?.let { change(config.copy(region = it)) }
+                    },
+                )
+                HorizontalDivider(modifier = Modifier.padding(start = 16.dp, end = 16.dp))
                 SpeechFieldColumn {
                     SpeechField(
                         label = "API Key",
@@ -162,42 +144,23 @@ private fun QwenDoubaoConnectionSection(store: SpeechSettingsStore, synthesis: B
             }
 
             val chevronRotation by animateFloatAsState(if (advanced) 180f else 0f)
-            if (uiStyle == AppearanceUiStyle.COUI) {
-                val colors = CouiPageDefaults.themeColors()
-                Divider()
-                CouiPreference(
-                    title = stringResource(R.string.speech_advanced),
-                    showChevron = false,
-                    trailing = {
-                        CouiIcon(
-                            imageVector = Icons.Rounded.ExpandMore,
-                            contentDescription = stringResource(
-                                if (advanced) R.string.speech_collapse else R.string.speech_expand,
-                            ),
-                            tint = colors.summary,
-                            modifier = Modifier
-                                .size(22.dp)
-                                .rotate(chevronRotation),
-                        )
-                    },
-                    onClick = { advanced = !advanced },
-                )
-            } else {
-                BasicComponent(
-                    title = stringResource(R.string.speech_advanced),
-                    endActions = {
-                        Icon(
-                            imageVector = Icons.Rounded.ExpandMore,
-                            contentDescription = stringResource(
-                                if (advanced) R.string.speech_collapse else R.string.speech_expand,
-                            ),
-                            tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                            modifier = Modifier.rotate(chevronRotation),
-                        )
-                    },
-                    onClick = { advanced = !advanced },
-                )
-            }
+            HorizontalDivider(modifier = Modifier.padding(start = 16.dp, end = 16.dp))
+            BasicComponent(
+                title = stringResource(R.string.speech_advanced),
+                endActions = {
+                    Icon(
+                        imageVector = Icons.Rounded.ExpandMore,
+                        contentDescription = stringResource(
+                            if (advanced) R.string.speech_collapse else R.string.speech_expand,
+                        ),
+                        tint = COUITheme.colorScheme.labelSecondary,
+                        modifier = Modifier
+                            .size(22.dp)
+                            .rotate(chevronRotation),
+                    )
+                },
+                onClick = { advanced = !advanced },
+            )
             AnimatedVisibility(visible = advanced) {
                 Column {
                     if (qwen) {
@@ -222,20 +185,12 @@ private fun QwenDoubaoConnectionSection(store: SpeechSettingsStore, synthesis: B
                                 else settings.copy(doubaoAsr = config.copy(legacyAuth = enabled)),
                             )
                         }
-                        if (uiStyle == AppearanceUiStyle.COUI) {
-                            Divider()
-                            CouiSwitchPreference(
-                                title = stringResource(R.string.speech_legacy_auth),
-                                checked = config.legacyAuth,
-                                onCheckedChange = onLegacyChange,
-                            )
-                        } else {
-                            SwitchPreference(
-                                title = stringResource(R.string.speech_legacy_auth),
-                                checked = config.legacyAuth,
-                                onCheckedChange = onLegacyChange,
-                            )
-                        }
+                        HorizontalDivider(modifier = Modifier.padding(start = 16.dp, end = 16.dp))
+                        SwitchPreference(
+                            title = stringResource(R.string.speech_legacy_auth),
+                            checked = config.legacyAuth,
+                            onCheckedChange = onLegacyChange,
+                        )
                         SpeechFieldColumn {
                             SpeechField(
                                 label = stringResource(R.string.speech_base_url),

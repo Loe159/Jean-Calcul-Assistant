@@ -2,7 +2,7 @@
 
 Un module Android `app`, Kotlin/Compose. Namespace interne `io.github.mangi.eta`, applicationId `fr.loevan.jeancalcul.v2`.
 
-- `ui/` : composants COUI, navigation et stores des écrans. Miuix reste une dépendance interne utilisée par les thèmes/navigation partagés ; le style alternatif n’est plus sélectionnable.
+- `ui/` : écrans et stores, construits sur COUI 2.0 (`io.github.suqi8.coui.kmp` : ui, preference, blur, nav, icons) avec un seul `COUITheme` et la palette ColorOS native. `ui/components/coui/` ne contient que les compositions d’app recommandées par COUI : échafaudage de page (barre repliable, lueur COUI 17, fond enregistré pour le flou), pont de flou, dialogues d’app et éléments de préférence absents de la bibliothèque (valeur de ligne, note de section).
 - `agent/runtime`, `agent/model` : boucle, streaming, sessions, arrêt, providers et outils.
 - `agent/tool`, `agent/accessibility`, `agent/virtualdisplay` : exécution Android avec contrôles de disponibilité/permissions.
 - `agent/voice`, `agent/auth`, `agent/mcp`, `agent/skill`, `agent/subagent`, `agent/terminal` : moteurs amont conservés pour les blocs retenus.

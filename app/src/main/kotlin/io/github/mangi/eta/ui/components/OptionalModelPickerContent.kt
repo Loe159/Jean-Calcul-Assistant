@@ -30,18 +30,15 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
 import io.github.mangi.eta.ui.components.coui.CouiChipTabs
 import io.github.mangi.eta.ui.components.coui.CouiSearchBarBox
 import io.github.mangi.eta.ui.model.AgentModelOptionUi
 import io.github.mangi.eta.ui.model.AgentModelPickerUiState
 import io.github.mangi.eta.ui.model.filterGroups
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.InputField
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.squircle.squircleSurface
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.squircle.squircleSurface
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 @Composable
 internal fun OptionalModelPickerContent(
@@ -59,73 +56,29 @@ internal fun OptionalModelPickerContent(
     }
     val density = LocalDensity.current
     val sheetHeight = with(density) { LocalWindowInfo.current.containerSize.height.toDp() } * 0.68f
-    val isCoui = LocalUiStyle.current == AppearanceUiStyle.COUI
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .height(sheetHeight)
-            .then(if (isCoui) Modifier else Modifier.navigationBarsPadding()),
+            .then(Modifier),
     ) {
-        when (LocalUiStyle.current) {
-            AppearanceUiStyle.COUI -> {
-                CouiSearchBarBox(
-                    query = query,
-                    onQueryChange = { query = it },
-                    placeholder = "Search models or providers",
-                    backgroundColor = Color.Transparent,
-                )
-                if (pickerState.providerGroups.size > 1) {
-                    val tabItems = remember(pickerState.providerGroups) {
-                        listOf("" to "All") + pickerState.providerGroups.map { it.providerId to it.providerName }
-                    }
-                    CouiChipTabs(
-                        items = tabItems,
-                        selectedKey = providerFilter.orEmpty(),
-                        onSelectedKeyChange = { key -> providerFilter = key.takeIf { it.isNotEmpty() } },
-                        backgroundColor = Color.Transparent,
-                    )
-                }
+        CouiSearchBarBox(
+            query = query,
+            onQueryChange = { query = it },
+            placeholder = "Search models or providers",
+            backgroundColor = Color.Transparent,
+        )
+        if (pickerState.providerGroups.size > 1) {
+            val tabItems = remember(pickerState.providerGroups) {
+                listOf("" to "All") + pickerState.providerGroups.map { it.providerId to it.providerName }
             }
-            AppearanceUiStyle.MIUIX -> {
-                InputField(
-                    query = query,
-                    onQueryChange = { query = it },
-                    onSearch = {},
-                    expanded = false,
-                    onExpandedChange = {},
-                    label = "Search models or providers",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-                if (pickerState.providerGroups.size > 1) {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        item(key = "filter:all") {
-                            EtaChoiceChip(
-                                text = "All",
-                                selected = providerFilter == null,
-                                onClick = { providerFilter = null },
-                            )
-                        }
-                        items(
-                            items = pickerState.providerGroups,
-                            key = { "filter:${it.providerId}" },
-                        ) { group ->
-                            EtaChoiceChip(
-                                text = group.providerName,
-                                selected = providerFilter == group.providerId,
-                                onClick = {
-                                    providerFilter = if (providerFilter == group.providerId) null else group.providerId
-                                },
-                            )
-                        }
-                    }
-                }
-            }
+            CouiChipTabs(
+                items = tabItems,
+                selectedKey = providerFilter.orEmpty(),
+                onSelectedKeyChange = { key -> providerFilter = key.takeIf { it.isNotEmpty() } },
+                backgroundColor = Color.Transparent,
+            )
         }
 
         LazyColumn(
@@ -149,8 +102,8 @@ internal fun OptionalModelPickerContent(
                     item(key = "header:${group.providerId}") {
                         Text(
                             text = group.providerName,
-                            style = MiuixTheme.textStyles.footnote1,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            style = COUITheme.textStyles.bodyS,
+                            color = COUITheme.colorScheme.labelSecondary,
                             modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 4.dp),
                         )
                     }
@@ -201,9 +154,9 @@ private fun OptionalModelRow(
             .padding(horizontal = 12.dp, vertical = 2.dp)
             .squircleSurface(
                 color = if (selected) {
-                    MiuixTheme.colorScheme.tertiaryContainer
+                    COUITheme.colorScheme.containerThemeHalftone
                 } else {
-                    MiuixTheme.colorScheme.surface.copy(alpha = 0f)
+                    COUITheme.colorScheme.background.copy(alpha = 0f)
                 },
                 cornerRadius = 14.dp,
             )
@@ -220,17 +173,17 @@ private fun OptionalModelRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MiuixTheme.textStyles.body1,
+                style = COUITheme.textStyles.bodyXL,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                color = if (selected) MiuixTheme.colorScheme.onTertiaryContainer else MiuixTheme.colorScheme.onSurface,
+                color = if (selected) COUITheme.colorScheme.primaryText else COUITheme.colorScheme.labelPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             if (!subtitle.isNullOrBlank()) {
                 Text(
                     text = subtitle,
-                    style = MiuixTheme.textStyles.footnote2,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    style = COUITheme.textStyles.bodyXS,
+                    color = COUITheme.colorScheme.labelSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -240,7 +193,7 @@ private fun OptionalModelRow(
             Icon(
                 imageVector = Icons.Rounded.Check,
                 contentDescription = null,
-                tint = MiuixTheme.colorScheme.onTertiaryContainer,
+                tint = COUITheme.colorScheme.primaryText,
                 modifier = Modifier.size(18.dp),
             )
         }

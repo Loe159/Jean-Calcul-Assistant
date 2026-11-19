@@ -1,15 +1,15 @@
 package io.github.mangi.eta.ui.voice
 
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
-import com.itos.coui.layout.Divider
 import io.github.mangi.eta.R
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.data.model.MimoAsrLanguage
 import io.github.mangi.eta.data.model.SpeechCredentialField
-import io.github.mangi.eta.ui.app.LocalUiStyle
-import io.github.mangi.eta.ui.components.coui.CouiDropdownPreference
-import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
+import io.github.suqi8.coui.kmp.preference.OverlayDropdownPreference
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
+import io.github.suqi8.coui.kmp.basic.HorizontalDivider
 
 @Composable
 internal fun MimoAsrConnectionSection(store: SpeechSettingsStore) {
@@ -36,25 +36,13 @@ internal fun MimoAsrConnectionSection(store: SpeechSettingsStore) {
         onApiKey = { store.credential(SpeechCredentialField.MIMO_ASR, it) },
         note = stringResource(R.string.speech_mimo_asr_connection_note),
     ) {
-        when (LocalUiStyle.current) {
-            AppearanceUiStyle.COUI -> {
-                CouiDropdownPreference(
-                    title = stringResource(R.string.speech_recognition_language),
-                    items = items,
-                    selectedIndex = config.language.ordinal,
-                    onSelectedIndexChange = onLanguageChange,
-                )
-                Divider()
-            }
-            AppearanceUiStyle.MIUIX -> {
-                OverlayDropdownPreference(
-                    title = stringResource(R.string.speech_recognition_language),
-                    items = items,
-                    selectedIndex = config.language.ordinal,
-                    onSelectedIndexChange = onLanguageChange,
-                )
-            }
-        }
+        OverlayDropdownPreference(
+            title = stringResource(R.string.speech_recognition_language),
+            items = items,
+            selectedIndex = config.language.ordinal,
+            onSelectedIndexChange = onLanguageChange,
+        )
+        HorizontalDivider(modifier = Modifier.padding(start = 16.dp, end = 16.dp))
     }
 }
 

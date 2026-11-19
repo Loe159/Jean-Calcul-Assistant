@@ -13,8 +13,8 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLooper
-import top.yukonga.miuix.kmp.nav.core.NavBackStack
-import top.yukonga.miuix.kmp.nav.core.rememberNavBackStack
+import io.github.suqi8.coui.kmp.nav.core.NavBackStack
+import io.github.suqi8.coui.kmp.nav.core.rememberNavBackStack
 
 @RunWith(RobolectricTestRunner::class)
 @Config(application = Application::class, sdk = [34])

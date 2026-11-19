@@ -13,40 +13,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
-import com.itos.coui.dialog.CouiDialogAction
-import com.itos.coui.dialog.CouiDialogPlacement
-import com.itos.coui.dialog.Dialog
-import com.itos.coui.layout.Divider
-import com.itos.coui.layout.Footer
-import com.itos.coui.layout.Group
-import com.itos.coui.menu.rememberCouiWindowBackdrop
-import com.itos.coui.theme.CouiTheme
 import io.github.mangi.eta.EtaApp
 import io.github.mangi.eta.R
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.data.model.AssistantOverlaySettings
 import io.github.mangi.eta.data.model.ReasoningEffort
 import io.github.mangi.eta.data.model.enabledModel
 import io.github.mangi.eta.data.repository.ProviderRepository
 import io.github.mangi.eta.data.repository.RuntimeConfigRepository
-import io.github.mangi.eta.ui.app.LocalUiStyle
-import io.github.mangi.eta.ui.components.MiuixScaffoldPage
 import io.github.mangi.eta.ui.components.OptionalModelPickerContent
-import io.github.mangi.eta.ui.components.coui.CouiDropdownPreference
 import io.github.mangi.eta.ui.components.coui.CouiPageBottomSpacer
-import io.github.mangi.eta.ui.components.coui.CouiPreference
 import io.github.mangi.eta.ui.components.coui.CouiScaffoldPage
-import io.github.mangi.eta.ui.components.coui.rememberCouiDialogMaterial
 import io.github.mangi.eta.ui.model.AgentModelPickerProjector
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.BasicComponent
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
-import top.yukonga.miuix.kmp.preference.ArrowPreference
-import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.BasicComponent
+import io.github.suqi8.coui.kmp.basic.Card
+import io.github.suqi8.coui.kmp.preference.ArrowPreference
+import io.github.suqi8.coui.kmp.preference.OverlayDropdownPreference
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import io.github.mangi.eta.ui.components.coui.PreferenceFooter
+import io.github.suqi8.coui.kmp.basic.CardListGroup
+import io.github.suqi8.coui.kmp.preference.PreferenceCategory
+import io.github.mangi.eta.ui.components.coui.panelBlur
+import io.github.suqi8.coui.kmp.layout.BottomSheetDefaults
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.IconButton
+import io.github.suqi8.coui.kmp.blur.MaterialBlurDefaults
+import io.github.suqi8.coui.kmp.icon.COUIIcons
+import io.github.suqi8.coui.kmp.icon.basic.Close
+import io.github.suqi8.coui.kmp.overlay.OverlayBottomSheet
 
 @Composable
 internal fun AssistantOverlaySettingsScreen(
@@ -145,122 +139,71 @@ internal fun AssistantOverlaySettingsScreen(
     val unsupportedSummary = stringResource(R.string.conversation_title_settings_reasoning_unsupported)
     val noteText = stringResource(R.string.assistant_overlay_settings_note)
 
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            CouiScaffoldPage(
-                title = pageTitle,
-                onBack = onBack,
-                overlay = {
-                    val dark = CouiTheme.isDark
-                    Dialog(
-                        visible = showModelSheet,
-                        onDismissRequest = { showModelSheet = false },
-                        dark = dark,
-                        title = modelTitle,
-                        confirmAction = CouiDialogAction(
-                            text = stringResource(R.string.action_close),
-                            onClick = { showModelSheet = false },
-                        ),
-                        placement = CouiDialogPlacement.Bottom,
-                        material = rememberCouiDialogMaterial(dark),
-                        backdrop = rememberCouiWindowBackdrop(),
-                    ) {
-                        OptionalModelPickerContent(
-                            pickerState = pickerState,
-                            selectedSecondaryModelId = resolvedCustom?.model?.id,
-                            followTitle = followTitle,
-                            followSubtitle = followSubtitle,
-                            onSelectModel = onSelectModel,
+    CouiScaffoldPage(
+        title = pageTitle,
+        onBack = onBack,
+        overlay = {
+            val dark = COUITheme.isDark
+            val sheetBlur = panelBlur(MaterialBlurDefaults::bottomSheet)
+            OverlayBottomSheet(
+                show = showModelSheet,
+                title = modelTitle,
+                startAction = {
+                    IconButton(onClick = { showModelSheet = false }) {
+                        Icon(
+                            imageVector = COUIIcons.Basic.Close,
+                            contentDescription = stringResource(R.string.action_close),
+                            tint = COUITheme.colorScheme.labelPrimary,
                         )
                     }
                 },
+                backgroundModifier = sheetBlur?.backgroundModifier ?: Modifier,
+                backgroundColor = sheetBlur?.backgroundColor ?: BottomSheetDefaults.backgroundColor(),
+                onDismissRequest = { showModelSheet = false },
+                insideMargin = DpSize(16.dp, 0.dp),
+                materialStroke = sheetBlur != null,
             ) {
-                Group(title = groupTitle) {
-                    CouiPreference(
+                OptionalModelPickerContent(
+                    pickerState = pickerState,
+                    selectedSecondaryModelId = resolvedCustom?.model?.id,
+                    followTitle = followTitle,
+                    followSubtitle = followSubtitle,
+                    onSelectModel = onSelectModel,
+                )
+            }
+        },
+    ) {
+        PreferenceCategory(title = groupTitle)
+        Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+            CardListGroup {
+                item {
+                    ArrowPreference(
                         title = modelTitle,
                         summary = modelSummary,
                         onClick = { showModelSheet = true },
                     )
-                    Divider()
-                    if (effortOptions.size > 1) {
-                        CouiDropdownPreference(
+                }
+                if (effortOptions.size > 1) {
+                    item {
+                        OverlayDropdownPreference(
                             title = effortTitle,
                             items = effortLabels,
                             selectedIndex = selectedEffortIndex,
                             onSelectedIndexChange = onEffortChange,
                         )
-                    } else {
-                        CouiPreference(
+                    }
+                } else {
+                    item {
+                        BasicComponent(
                             title = effortTitle,
                             summary = unsupportedSummary,
                             enabled = false,
-                            showChevron = false,
                         )
                     }
                 }
-                Footer(text = noteText)
-                CouiPageBottomSpacer()
             }
         }
-
-        AppearanceUiStyle.MIUIX -> {
-            MiuixScaffoldPage(
-                title = pageTitle,
-                onBack = onBack,
-                overlay = {
-                    OverlayBottomSheet(
-                        show = showModelSheet,
-                        title = modelTitle,
-                        onDismissRequest = { showModelSheet = false },
-                        insideMargin = DpSize(0.dp, 0.dp),
-                    ) {
-                        OptionalModelPickerContent(
-                            pickerState = pickerState,
-                            selectedSecondaryModelId = resolvedCustom?.model?.id,
-                            followTitle = followTitle,
-                            followSubtitle = followSubtitle,
-                            onSelectModel = onSelectModel,
-                        )
-                    }
-                },
-            ) {
-                item(key = "assistant_overlay_settings_group") {
-                    SmallTitle(groupTitle)
-                    Card(
-                        modifier = Modifier
-                            .padding(horizontal = 12.dp)
-                            .padding(bottom = 12.dp),
-                    ) {
-                        ArrowPreference(
-                            title = modelTitle,
-                            summary = modelSummary,
-                            onClick = { showModelSheet = true },
-                        )
-                        if (effortOptions.size > 1) {
-                            OverlayDropdownPreference(
-                                title = effortTitle,
-                                items = effortLabels,
-                                selectedIndex = selectedEffortIndex,
-                                onSelectedIndexChange = onEffortChange,
-                            )
-                        } else {
-                            BasicComponent(
-                                title = effortTitle,
-                                summary = unsupportedSummary,
-                                enabled = false,
-                            )
-                        }
-                    }
-                    Text(
-                        text = noteText,
-                        style = MiuixTheme.textStyles.footnote2,
-                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        modifier = Modifier
-                            .padding(horizontal = 28.dp)
-                            .padding(bottom = 12.dp),
-                    )
-                }
-            }
-        }
+        PreferenceFooter(text = noteText)
+        CouiPageBottomSpacer()
     }
 }

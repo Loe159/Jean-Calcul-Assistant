@@ -57,14 +57,14 @@ import io.github.mangi.eta.ui.model.ToolActivityStatusUi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.squircle.squircleBorder
-import top.yukonga.miuix.kmp.squircle.squircleSurface
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.ButtonDefaults
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.IconButton
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.basic.TextButton
+import io.github.suqi8.coui.kmp.squircle.squircleBorder
+import io.github.suqi8.coui.kmp.squircle.squircleSurface
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 /**
  * 工作过程之外单独出现的工具条目（例如旧会话或语音浮层），沿用时间线节点外观。
@@ -166,15 +166,15 @@ internal fun ToolActivityRow(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 if (showTitle) {
-                    val dark = MiuixTheme.colorScheme.surface.luminance() < 0.5f
+                    val dark = COUITheme.isDark
                     ShimmerText(
                         text = title,
                         active = running,
-                        style = MiuixTheme.textStyles.body2.copy(fontSize = 13.5.sp),
+                        style = COUITheme.textStyles.bodyM.copy(fontSize = 13.5.sp),
                         color = if (running) {
-                            MiuixTheme.colorScheme.onSurface
+                            COUITheme.colorScheme.labelPrimary
                         } else {
-                            MiuixTheme.colorScheme.onSurface.copy(alpha = if (dark) 0.56f else 0.52f)
+                            COUITheme.colorScheme.labelPrimary.copy(alpha = if (dark) 0.56f else 0.52f)
                         },
                     )
                 }
@@ -182,14 +182,14 @@ internal fun ToolActivityRow(
                     Text(
                         text = subtitle,
                         style = if (message.isTerminalTool() && browserLine == null) {
-                            MiuixTheme.textStyles.footnote2.copy(fontFamily = EtaMonospace)
+                            COUITheme.textStyles.bodyXS.copy(fontFamily = EtaMonospace)
                         } else {
-                            MiuixTheme.textStyles.footnote2
+                            COUITheme.textStyles.bodyXS
                         },
                         color = if (failed) {
                             StatusError
                         } else {
-                            MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.72f)
+                            COUITheme.colorScheme.labelSecondary.copy(alpha = 0.72f)
                         },
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -200,8 +200,8 @@ internal fun ToolActivityRow(
             if (elapsedSeconds != null && elapsedSeconds >= RUNNING_TIMER_THRESHOLD_SECONDS) {
                 Text(
                     text = stringResource(R.string.tool_elapsed_seconds, elapsedSeconds),
-                    style = MiuixTheme.textStyles.footnote2,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.72f),
+                    style = COUITheme.textStyles.bodyXS,
+                    color = COUITheme.colorScheme.labelSecondary.copy(alpha = 0.72f),
                     modifier = Modifier.padding(start = 8.dp),
                 )
             }
@@ -262,25 +262,25 @@ internal fun ToolGroupRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                val dark = MiuixTheme.colorScheme.surface.luminance() < 0.5f
+                val dark = COUITheme.isDark
                 ShimmerText(
                     text = title,
                     active = running,
-                    style = MiuixTheme.textStyles.body2.copy(fontSize = 13.5.sp),
+                    style = COUITheme.textStyles.bodyM.copy(fontSize = 13.5.sp),
                     color = if (running) {
-                        MiuixTheme.colorScheme.onSurface
+                        COUITheme.colorScheme.labelPrimary
                     } else {
-                        MiuixTheme.colorScheme.onSurface.copy(alpha = if (dark) 0.56f else 0.52f)
+                        COUITheme.colorScheme.labelPrimary.copy(alpha = if (dark) 0.56f else 0.52f)
                     },
                 )
                 if (subtitle != null) {
                     Text(
                         text = subtitle,
-                        style = MiuixTheme.textStyles.footnote2,
+                        style = COUITheme.textStyles.bodyXS,
                         color = if (!running && group.failedCount > 0) {
                             StatusError
                         } else {
-                            MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.72f)
+                            COUITheme.colorScheme.labelSecondary.copy(alpha = 0.72f)
                         },
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -342,17 +342,17 @@ private fun ToolActivityDetail(
                 Text(
                     text = result,
                     style = if (message.isTerminalTool()) {
-                        MiuixTheme.textStyles.footnote2.copy(fontFamily = EtaMonospace)
+                        COUITheme.textStyles.bodyXS.copy(fontFamily = EtaMonospace)
                     } else {
-                        MiuixTheme.textStyles.footnote2
+                        COUITheme.textStyles.bodyXS
                     },
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    color = COUITheme.colorScheme.labelSecondary,
                     maxLines = MAX_RESULT_LINES,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .fillMaxWidth()
                         .squircleSurface(
-                            color = MiuixTheme.colorScheme.surfaceContainer,
+                            color = COUITheme.colorScheme.surfaceWithCard,
                             cornerRadius = 10.dp,
                         )
                         .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -369,7 +369,7 @@ private fun ToolActivityDetail(
                     onClick = onOpenBrowser,
                     colors = ButtonDefaults.textButtonColorsPrimary(),
                     minHeight = 36.dp,
-                    textStyle = MiuixTheme.textStyles.body2,
+                    textStyle = COUITheme.textStyles.bodyM,
                 )
             }
         }
@@ -400,9 +400,9 @@ private fun ToolActivityMessageUi.isTerminalTool(): Boolean =
 @Composable
 private fun ToolActivityStatusUi.dotColor() = when (this) {
     ToolActivityStatusUi.Running -> StatusRunning
-    ToolActivityStatusUi.Success -> MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.45f)
+    ToolActivityStatusUi.Success -> COUITheme.colorScheme.labelSecondary.copy(alpha = 0.45f)
     ToolActivityStatusUi.Failed -> StatusError
-    ToolActivityStatusUi.Unknown -> MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.45f)
+    ToolActivityStatusUi.Unknown -> COUITheme.colorScheme.labelSecondary.copy(alpha = 0.45f)
 }
 
 private const val RUNNING_TIMER_THRESHOLD_SECONDS = 3
@@ -435,7 +435,7 @@ private fun BrowserPagePreview(
         modifier = modifier
             .fillMaxWidth()
             .squircleSurface(
-                color = MiuixTheme.colorScheme.surfaceContainer,
+                color = COUITheme.colorScheme.surfaceWithCard,
                 cornerRadius = 10.dp,
             ),
     ) {
@@ -452,8 +452,8 @@ private fun BrowserPagePreview(
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = snapshot.host.ifBlank { snapshot.displayUrl },
-                style = MiuixTheme.textStyles.footnote2,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                style = COUITheme.textStyles.bodyXS,
+                color = COUITheme.colorScheme.labelSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -477,7 +477,7 @@ private fun BrowserPagePreview(
                     imageVector = Icons.Rounded.Language,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
-                    tint = MiuixTheme.colorScheme.outline,
+                    tint = COUITheme.colorScheme.outline,
                 )
             }
         }
@@ -485,8 +485,8 @@ private fun BrowserPagePreview(
             if (snapshot.title.isNotBlank()) {
                 Text(
                     text = snapshot.title,
-                    style = MiuixTheme.textStyles.body2,
-                    color = MiuixTheme.colorScheme.onSurface,
+                    style = COUITheme.textStyles.bodyM,
+                    color = COUITheme.colorScheme.labelPrimary,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -494,8 +494,8 @@ private fun BrowserPagePreview(
             if (snapshot.displayUrl.isNotBlank()) {
                 Text(
                     text = snapshot.displayUrl,
-                    style = MiuixTheme.textStyles.footnote2,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.8f),
+                    style = COUITheme.textStyles.bodyXS,
+                    color = COUITheme.colorScheme.labelSecondary.copy(alpha = 0.8f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -524,12 +524,12 @@ private fun ToolCommandBlock(
         modifier = modifier
             .fillMaxWidth()
             .squircleSurface(
-                color = MiuixTheme.colorScheme.surface,
+                color = COUITheme.colorScheme.background,
                 cornerRadius = 10.dp,
             )
             .squircleBorder(
                 width = 0.5.dp,
-                color = MiuixTheme.colorScheme.outline.copy(alpha = 0.5f),
+                color = COUITheme.colorScheme.outline.copy(alpha = 0.5f),
                 cornerRadius = 10.dp,
             ),
     ) {
@@ -541,8 +541,8 @@ private fun ToolCommandBlock(
         ) {
             Text(
                 text = context.ifBlank { stringResource(R.string.shell_command) },
-                style = MiuixTheme.textStyles.footnote2,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                style = COUITheme.textStyles.bodyXS,
+                color = COUITheme.colorScheme.labelSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
@@ -564,9 +564,9 @@ private fun ToolCommandBlock(
                     ),
                     modifier = Modifier.size(14.dp),
                     tint = if (copied) {
-                        MiuixTheme.colorScheme.primary
+                        COUITheme.colorScheme.primary
                     } else {
-                        MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.8f)
+                        COUITheme.colorScheme.labelSecondary.copy(alpha = 0.8f)
                     },
                 )
             }
@@ -576,13 +576,13 @@ private fun ToolCommandBlock(
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp)
                 .height(0.5.dp)
-                .background(MiuixTheme.colorScheme.outline.copy(alpha = 0.45f)),
+                .background(COUITheme.colorScheme.outline.copy(alpha = 0.45f)),
         )
         SelectionContainer {
             Text(
                 text = command,
-                style = MiuixTheme.textStyles.footnote2.copy(fontFamily = EtaMonospace),
-                color = MiuixTheme.colorScheme.onSurface,
+                style = COUITheme.textStyles.bodyXS.copy(fontFamily = EtaMonospace),
+                color = COUITheme.colorScheme.labelPrimary,
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
