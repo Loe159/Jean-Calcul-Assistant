@@ -10,6 +10,7 @@ import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.invalidateDraw
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -136,15 +137,15 @@ private class BgEffectNode(
         animationJob?.cancel()
         startOffset = animTime
         animationJob = coroutineScope.launch {
-            val minDeltaNanos = 1_000_000_000L / 60L
             val origin = withFrameNanos { it }
-            var lastEmit = origin
             while (isActive) {
                 val now = withFrameNanos { it }
-                if (now - lastEmit < minDeltaNanos) continue
-                lastEmit = now
                 animTime = startOffset + (now - origin) / 1_000_000_000f
                 invalidateDraw()
+                // Every frame of the halo redraws the whole page above it. Waiting before asking
+                // for the next frame caps it near 60 fps on a 120 Hz screen, instead of waking
+                // the frame clock on every vsync only to skip half of them.
+                delay(FRAME_INTERVAL_MS)
             }
         }
     }
@@ -168,3 +169,6 @@ private class BgEffectNode(
         drawContent()
     }
 }
+
+/** Pause between halo frames; the next frame then lands on the following vsync (~60 fps). */
+private const val FRAME_INTERVAL_MS = 10L

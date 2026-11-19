@@ -210,7 +210,7 @@ internal fun NowBriefScreen(
             BriefAmbientBackground(
                 visible = visible,
                 dark = dark,
-                scrollOffsetPx = scrollDistance,
+                scrollOffsetPx = { scrollDistance },
                 revealProgress = revealProgress,
             )
         },

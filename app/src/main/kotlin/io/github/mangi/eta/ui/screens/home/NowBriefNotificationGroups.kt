@@ -34,6 +34,7 @@ import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material.icons.rounded.WorkOutline
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -44,6 +45,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
@@ -75,6 +77,7 @@ import io.github.suqi8.coui.kmp.basic.ExpandableGroupArrow
 import io.github.suqi8.coui.kmp.basic.HorizontalDivider
 import io.github.suqi8.coui.kmp.basic.Icon
 import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.effect.LocalCOUIMaterialEffectEnabled
 import io.github.suqi8.coui.kmp.icon.COUIIcons
 import io.github.suqi8.coui.kmp.icon.basic.More
 import io.github.suqi8.coui.kmp.menu.OverlayIconDropdownMenu
@@ -293,13 +296,18 @@ internal fun BriefNotificationRow(
             BasicComponent(
                 startAction = { BriefApplicationIcon(entry.packageName, 32.dp) },
                 endActions = {
-                    OverlayIconDropdownMenu(entries = menu, minWidth = 36.dp, minHeight = 36.dp) {
-                        Icon(
-                            imageVector = COUIIcons.Basic.More,
-                            contentDescription = "Actions pour cette notification",
-                            tint = COUITheme.colorScheme.labelSecondary,
-                            modifier = Modifier.size(20.dp),
-                        )
+                    // A list row's "more" action is a bare icon in COUI; without this the
+                    // icon button draws a frosted material disc on every notification.
+                    CompositionLocalProvider(LocalCOUIMaterialEffectEnabled provides false) {
+                        OverlayIconDropdownMenu(entries = menu, minWidth = 36.dp, minHeight = 36.dp,
+                            backgroundColor = Color.Transparent) {
+                            Icon(
+                                imageVector = COUIIcons.Basic.More,
+                                contentDescription = "Actions pour cette notification",
+                                tint = COUITheme.colorScheme.labelSecondary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
                     }
                 },
                 cardListPosition = position,

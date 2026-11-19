@@ -58,6 +58,9 @@ internal object BriefMotionTiming {
     const val COUNTER_MS = 300
     const val BAR_MS = 280
     const val NOTIFICATION_MS = 210
+
+    /** The ambient halo drifts while the briefing opens, then holds still: no idle redraws. */
+    const val AMBIENT_PLAY_MS = 8_000L
 }
 
 internal fun briefHaloAlpha(revealProgress: Float): Float =
@@ -68,7 +71,7 @@ internal fun briefHaloAlpha(revealProgress: Float): Float =
 internal fun BriefAmbientBackground(
     visible: Boolean,
     dark: Boolean,
-    scrollOffsetPx: Float,
+    scrollOffsetPx: () -> Float,
     revealProgress: () -> Float = { if (visible) 1f else 0f },
     modifier: Modifier = Modifier,
 ) {
@@ -78,7 +81,17 @@ internal fun BriefAmbientBackground(
     val preset = remember(deviceType, dark) { BgEffectConfig.get(deviceType, dark) }
     val shaderSupported = remember { isRuntimeShaderSupported() }
     val painter = if (shaderSupported) remember { BgEffectPainter() } else null
-    val playing = visible && remember(context, visible) { briefAmbientAllowed(context) }
+    // Each halo frame redraws the whole briefing above it. Let it drift while the page opens,
+    // then hold the last frame: an idle briefing renders nothing instead of ~60 frames/s.
+    var drifting by remember { mutableStateOf(false) }
+    LaunchedEffect(visible) {
+        drifting = visible
+        if (visible) {
+            delay(BriefMotionTiming.AMBIENT_PLAY_MS)
+            drifting = false
+        }
+    }
+    val playing = drifting && remember(context, visible) { briefAmbientAllowed(context) }
     val baseColor = if (dark) Color.Black else Color(0xFFF0F1F2)
     if (painter == null) {
         Spacer(modifier.fillMaxSize().background(baseColor))
@@ -89,7 +102,7 @@ internal fun BriefAmbientBackground(
             .fillMaxSize()
             .graphicsLayer {
                 alpha = briefHaloAlpha(revealProgress())
-                translationY = -(scrollOffsetPx * 0.026f).coerceIn(0f, 12f)
+                translationY = -(scrollOffsetPx() * 0.026f).coerceIn(0f, 12f)
             }
             .bgEffectDraw(
                 painter = painter,
