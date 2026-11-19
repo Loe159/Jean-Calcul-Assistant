@@ -191,8 +191,60 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
         return
     }
 
+    // COUI dialogs must be drawn in the page overlay slot, where the overlay host lives.
+    val dialogs: @Composable () -> Unit = {
+        CouiInputDialog(
+            visible = pairingDialog,
+            title = "Associer le homelab",
+            message = "La chaîne contient un secret : elle est chiffrée par Android Keystore puis effacée de cet écran.",
+            value = pairingText,
+            onValueChange = { pairingText = it.trim().take(600) },
+            confirmText = "Associer",
+            confirmEnabled = MastraConnection.parsePairing(pairingText) != null,
+            onConfirm = {
+                val pairing = MastraConnection.parsePairing(pairingText)
+                pairingText = ""
+                pairingDialog = false
+                if (pairing == null) status = "Chaîne invalide (HTTPS requis)."
+                else {
+                    MastraConnection.save(context, pairing)
+                    paired = true
+                    homelabHost = MastraConnection.displayHost(context)
+                    status = "Homelab associé. Les nouvelles notifications seront analysées."
+                    MastraNotificationSync.request(context, delayMs = 0)
+                }
+            },
+            onDismissRequest = { pairingText = ""; pairingDialog = false },
+        )
+        CouiConfirmDialog(
+            visible = confirmForget, title = "Dissocier ce téléphone ?",
+            message = "Les notifications ne seront plus analysées. Révoquez aussi l'appareil sur le homelab.",
+            confirmText = "Dissocier", destructive = true,
+            onConfirm = {
+                MastraConnection.forget(context)
+                paired = false
+                confirmForget = false
+                status = "Homelab dissocié"
+            },
+            onDismissRequest = { confirmForget = false },
+        )
+        CouiConfirmDialog(
+            visible = confirmReset, title = "Réinitialiser l'apprentissage ?",
+            message = "Les notifications restent dans l'historique. Les préférences explicites du homelab sont conservées.",
+            confirmText = "Réinitialiser", destructive = true,
+            onConfirm = { confirmReset = false; action {
+                withContext(Dispatchers.IO) {
+                    NotificationHistoryRepository(context).resetLearning()
+                    MastraConnection.load(context)?.let { MastraNotificationClient(it).resetLearning(includeUserPreferences = false) }
+                }
+                NotificationActivityFeed.notifyChanged()
+                status = "Apprentissage réinitialisé"
+            } },
+            onDismissRequest = { confirmReset = false },
+        )
+    }
     CouiScaffoldPage(title = if (largeText) "Notifications" else "Notifications intelligentes",
-        onBack = onBack, compactTitle = true) {
+        onBack = onBack, compactTitle = true, overlay = dialogs) {
         PreferenceSection(title = "Homelab") {
             CardListGroup {
                 if (!paired) item {
@@ -392,53 +444,4 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
         }
     }
 
-    CouiInputDialog(
-        visible = pairingDialog,
-        title = "Associer le homelab",
-        message = "La chaîne contient un secret : elle est chiffrée par Android Keystore puis effacée de cet écran.",
-        value = pairingText,
-        onValueChange = { pairingText = it.trim().take(600) },
-        confirmText = "Associer",
-        confirmEnabled = MastraConnection.parsePairing(pairingText) != null,
-        onConfirm = {
-            val pairing = MastraConnection.parsePairing(pairingText)
-            pairingText = ""
-            pairingDialog = false
-            if (pairing == null) status = "Chaîne invalide (HTTPS requis)."
-            else {
-                MastraConnection.save(context, pairing)
-                paired = true
-                homelabHost = MastraConnection.displayHost(context)
-                status = "Homelab associé. Les nouvelles notifications seront analysées."
-                MastraNotificationSync.request(context, delayMs = 0)
-            }
-        },
-        onDismissRequest = { pairingText = ""; pairingDialog = false },
-    )
-    CouiConfirmDialog(
-        visible = confirmForget, title = "Dissocier ce téléphone ?",
-        message = "Les notifications ne seront plus analysées. Révoquez aussi l'appareil sur le homelab.",
-        confirmText = "Dissocier", destructive = true,
-        onConfirm = {
-            MastraConnection.forget(context)
-            paired = false
-            confirmForget = false
-            status = "Homelab dissocié"
-        },
-        onDismissRequest = { confirmForget = false },
-    )
-    CouiConfirmDialog(
-        visible = confirmReset, title = "Réinitialiser l'apprentissage ?",
-        message = "Les notifications restent dans l'historique. Les préférences explicites du homelab sont conservées.",
-        confirmText = "Réinitialiser", destructive = true,
-        onConfirm = { confirmReset = false; action {
-            withContext(Dispatchers.IO) {
-                NotificationHistoryRepository(context).resetLearning()
-                MastraConnection.load(context)?.let { MastraNotificationClient(it).resetLearning(includeUserPreferences = false) }
-            }
-            NotificationActivityFeed.notifyChanged()
-            status = "Apprentissage réinitialisé"
-        } },
-        onDismissRequest = { confirmReset = false },
-    )
 }

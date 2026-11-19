@@ -238,6 +238,8 @@ internal fun NowBriefScreen(
             )
         },
         modifier = modifier.fillMaxSize(),
+        // Action dialogs live in the page overlay slot (COUI overlay host).
+        overlay = { briefActions.dialogs() },
     ) {
         item(key = "date") {
             BriefReveal("date", visible, 0, visited) {
@@ -359,7 +361,6 @@ internal fun NowBriefScreen(
             }
         }
 
-        item(key = "brief-action-dialogs") { briefActions.dialogs() }
         // Additional cards are a real composable extension point, not fictional content.
         extensions.filter { it.id !in setOf("notifications", "header") }
             .sortedWith(compareBy(NowBriefCardExtension::priority, NowBriefCardExtension::id))
