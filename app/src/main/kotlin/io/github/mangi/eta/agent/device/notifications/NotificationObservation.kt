@@ -75,7 +75,8 @@ internal object NotificationObservation : NotificationBriefSource {
         NotificationFilterSettings.load(context).mode != NotificationFilterMode.OFF
 
     fun setEnabled(context: Context, enabled: Boolean) =
-        NotificationFilterSettings.setMode(context, if (enabled) NotificationFilterMode.OBSERVE else NotificationFilterMode.OFF)
+        NotificationFilterSettings.setMode(context,
+            if (enabled) NotificationFilterMode.PERSONALIZED else NotificationFilterMode.OFF)
 
     @Synchronized
     fun snapshot(): List<String> = history.toList()
@@ -289,7 +290,6 @@ internal object NotificationObservation : NotificationBriefSource {
         }
         val fingerprint = NotificationProtection.fingerprint(next)
         val body = NotificationProtection.text(snapshot)
-        val canRemove = live != null && NotificationProtection.safe(app, live)
         executor.execute {
             try {
                 val config = NotificationFilterSettings.load(app)
@@ -310,19 +310,48 @@ internal object NotificationObservation : NotificationBriefSource {
                         localHour = LocalTime.now().hour,
                     ),
                 )
-                val decision = evaluation.decision
+                val label = result.first().first
+                val store = NotificationHistoryRepository(app)
+                val preference = if (NotificationAdaptiveSettings.enabled(app))
+                    store.interest(next.packageName, snapshot.notification.channelId, label,
+                        snapshot.notification.extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString().orEmpty(),
+                        snapshot.notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString().orEmpty(),
+                        NotificationAdaptiveSettings.minExamples(app))
+                else NotificationPersonalization.Interest.NEUTRAL
+                val title = snapshot.notification.extras
+                    .getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString().orEmpty()
+                val content = snapshot.notification.extras
+                    .getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString().orEmpty()
+                val topic = store.learnedTopic(next.packageName, snapshot.notification.channelId, label,
+                    title, content)
+                    ?: NotificationTopics.classify(next.packageName, snapshot.notification.channelId,
+                        snapshot.notification.category, title, content, label)
+                val priority = NotificationPriorityInput(next.packageName, title, content,
+                    snapshot.notification.channelId, snapshot.notification.category, topic, label,
+                    personalInterest = preference,
+                    repeatedNewsHeadline = if (topic == "news" ||
+                        NotificationNewsPolicy.isNewsApp(next.packageName))
+                        store.isRepeatedNewsHeadline(next.key, next.packageName,
+                            title, content, next.postTime) else false)
+                val adapted = NotificationPriorityPolicy.automaticAction(priority, config,
+                    NotificationPersonalization.safeDecision(evaluation, preference, label, config),
+                    LocalTime.now().hour)
+                val decision = adapted.decision
+                val canRemove = live != null && NotificationProtection.safeForBrief(app, live, priority)
                 val state = when {
-                    !canRemove -> NotificationHistoryRepository.DecisionState.ANALYZED_PROTECTED
                     decision == NotificationFilterDecision.KEEP ->
                         NotificationHistoryRepository.DecisionState.KEPT
                     decision == NotificationFilterDecision.OBSERVE ->
                         NotificationHistoryRepository.DecisionState.OBSERVED
+                    !canRemove -> NotificationHistoryRepository.DecisionState.ANALYZED_PROTECTED
                     else -> NotificationHistoryRepository.DecisionState.PROPOSED
                 }
                 if (NotificationHistoryRepository(app).updateDecision(
                     next.key, next.postTime, state,
                     result.firstOrNull()?.first, result.firstOrNull()?.second,
-                    reason = if (!canRemove) "Protection Android ou notification plus active" else evaluation.reason,
+                    reason = if (!canRemove && decision != NotificationFilterDecision.KEEP)
+                        "Conservée : limite Android ou protection d'une alerte" else adapted.reason,
+                    topic = topic, personalInterest = preference.name,
                 )) NotificationActivityFeed.notifyChanged()
                 synchronized(this) {
                     if (decision == NotificationFilterDecision.KEEP || !canRemove) kept++ else reviewed++
@@ -334,7 +363,7 @@ internal object NotificationObservation : NotificationBriefSource {
                     append(next.packageName, result.first().first, result.first().second,
                         when {
                             !canRemove -> "Conservée · protégée ou absente d'Android"
-                            decision == NotificationFilterDecision.KEEP -> "Conservée · ${evaluation.reason}"
+                            decision == NotificationFilterDecision.KEEP -> "Conservée · ${adapted.reason}"
                             decision == NotificationFilterDecision.OBSERVE -> "Observation"
                             else -> "À filtrer : $decision"
                         },
@@ -427,6 +456,8 @@ internal object NotificationObservation : NotificationBriefSource {
             NotificationHistoryRepository.DecisionState.PROTECTED,
         )
         val selected = active.asSequence()
+            // Games have their own cheap, explicit policy; never load ONNX for them.
+            .filterNot { NotificationGameIdentity.isGame(context, it.packageName) }
             .filter {
                 System.currentTimeMillis() - it.postTime in 0L..MAX_PENDING_MS
             }

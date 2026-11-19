@@ -11,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -73,6 +74,8 @@ import com.itos.coui.theme.CouiTheme
 import io.github.mangi.eta.agent.device.notifications.NotificationBriefEvent
 import io.github.mangi.eta.agent.device.notifications.NotificationBriefOutcome
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterPolicy
+import io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback
+import io.github.mangi.eta.agent.device.notifications.NotificationPriority
 import io.github.mangi.eta.agent.device.notifications.NotificationObservation
 import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
 import io.github.mangi.eta.agent.device.AgentNotificationHistoryService
@@ -84,6 +87,7 @@ import io.github.mangi.eta.data.repository.NotificationHistoryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
 import io.github.mangi.eta.ui.components.coui.CouiIcon
 import io.github.mangi.eta.ui.components.coui.CouiButton
 import io.github.mangi.eta.ui.components.coui.CouiLazyScaffoldPage
@@ -122,84 +126,101 @@ internal fun NowBriefScreen(
     val notificationsChanged by NotificationActivityFeed.changes.collectAsState()
     var activityEntries by remember { mutableStateOf<List<NotificationHistoryRepository.RecentEntry>>(emptyList()) }
     var activityError by remember { mutableStateOf(false) }
-    var undoEntries by remember { mutableStateOf<List<NotificationHistoryRepository.RecentEntry>>(emptyList()) }
     val scope = rememberCoroutineScope()
     val repository = remember(context) { NotificationHistoryRepository(context) }
+    var hasMore by remember { mutableStateOf(true) }
+    var loadingMore by remember { mutableStateOf(false) }
+    val expandedTopics = remember { mutableStateMapOf<String, Boolean>() }
+    val listState = rememberLazyListState()
+    val pageSize = 40
     LaunchedEffect(visible, notificationsChanged) {
         if (visible) {
-            runCatching {
-                withContext(Dispatchers.IO) { repository.recent(limit = 300) }
-            }.onSuccess { activityEntries = it; activityError = false }
-                .onFailure { activityError = true }
+            runCatching { withContext(Dispatchers.IO) { repository.recentPage(pageSize) } }
+                .onSuccess { page ->
+                    if (activityEntries.isEmpty()) hasMore = page.size == pageSize
+                    // Keep already visited rows while new notifications arrive; do not reset scroll.
+                    activityEntries = (page + activityEntries).distinctBy { it.key }
+                        .sortedWith(compareByDescending<NotificationHistoryRepository.RecentEntry> { it.postedAt }
+                            .thenByDescending { it.key })
+                    activityError = false
+                }.onFailure { activityError = true }
         }
     }
-    val reviewedEntries = remember(activityEntries) {
-        activityEntries.filter { it.state in setOf(
-            NotificationHistoryRepository.DecisionState.PROPOSED,
-            NotificationHistoryRepository.DecisionState.QUEUED,
-            NotificationHistoryRepository.DecisionState.MODEL_MISSING,
-            NotificationHistoryRepository.DecisionState.BATTERY_PAUSED,
-            NotificationHistoryRepository.DecisionState.LIMIT_REACHED,
-            NotificationHistoryRepository.DecisionState.ANALYSIS_ERROR,
-            NotificationHistoryRepository.DecisionState.SNOOZED_1H,
-            NotificationHistoryRepository.DecisionState.SNOOZED_24H,
-            NotificationHistoryRepository.DecisionState.DISMISSED,
-        ) }
+    LaunchedEffect(visible) {
+        if (!visible || !hasMore || loadingMore || activityEntries.isEmpty()) return@LaunchedEffect
+        snapshotFlow {
+            val info = listState.layoutInfo
+            (info.totalItemsCount - (info.visibleItemsInfo.lastOrNull()?.index ?: 0)) to
+                listState.isScrollInProgress
+        }.collect { (remaining, scrolling) ->
+            if (scrolling && remaining <= 8 && hasMore && !loadingMore) {
+                loadingMore = true
+                try {
+                    val next = withContext(Dispatchers.IO) {
+                        repository.recentPage(pageSize, activityEntries.lastOrNull())
+                    }
+                    activityEntries = (activityEntries + next).distinctBy { it.key }
+                        .sortedWith(compareByDescending<NotificationHistoryRepository.RecentEntry> { it.postedAt }
+                            .thenByDescending { it.key })
+                    hasMore = next.size == pageSize
+                    activityError = false
+                } catch (_: Exception) { activityError = true; hasMore = false }
+                finally { loadingMore = false }
+            }
+        }
     }
-    val recentEntries = remember(activityEntries) { activityEntries - reviewedEntries.toSet() }
-    val reviewedGroups = remember(reviewedEntries) { groupBriefNotifications(reviewedEntries) }
-    val notificationGroups = remember(recentEntries) { groupBriefNotifications(recentEntries) }
-    val removedCount = reviewedEntries.count {
-        it.state == NotificationHistoryRepository.DecisionState.DISMISSED
-    }
-    val proposedCount = reviewedEntries.count {
-        it.state == NotificationHistoryRepository.DecisionState.PROPOSED
-    }
-    val snoozedCount = reviewedEntries.count {
-        it.state in setOf(
-            NotificationHistoryRepository.DecisionState.SNOOZED_1H,
-            NotificationHistoryRepository.DecisionState.SNOOZED_24H,
-        )
-    }
-    val pendingAnalysisCount = reviewedEntries.size - removedCount - proposedCount - snoozedCount
-    val filterConfig = remember(visible) { NotificationFilterSettings.load(context) }
-    val listenerReady = remember(visible) { AgentNotificationHistoryService.isEnabled(context) }
-    val modelReady = remember(visible) { LocalNotificationModel.installed(context) }
+    val notificationGroups = remember(activityEntries) { groupBriefNotifications(activityEntries) }
     val dismissActivityEntries: (List<String>) -> Unit = { keys ->
         val removed = activityEntries.filter { it.key in keys }
         if (removed.isNotEmpty()) {
             activityEntries = activityEntries.filterNot { it.key in keys }
             scope.launch {
-                runCatching { withContext(Dispatchers.IO) { repository.archiveFromBrief(keys) } }
-                    .onSuccess { undoEntries = (undoEntries + removed).distinctBy { it.key } }
-                    .onFailure {
-                        activityEntries = (activityEntries + removed).distinctBy { it.key }
-                            .sortedByDescending { it.postedAt }
-                        activityError = true
-                    }
+                runCatching { withContext(Dispatchers.IO) {
+                    repository.archiveFromBrief(keys)
+                    removed.forEach { repository.feedback(it.key, it.postedAt, NotificationUserFeedback.ARCHIVED) }
+                } }.onFailure {
+                    activityEntries = (activityEntries + removed).distinctBy { it.key }
+                        .sortedByDescending { it.postedAt }
+                    activityError = true
+                }
             }
         }
     }
-    val undoDismissal: () -> Unit = {
-        val restoring = undoEntries
-        undoEntries = emptyList()
-        scope.launch {
-            runCatching { withContext(Dispatchers.IO) { repository.restoreToBrief(restoring) } }
-                .onSuccess {
-                    activityEntries = (activityEntries + restoring).distinctBy { it.key }
-                        .sortedByDescending { it.postedAt }
-                    activityError = false
-                }
-                .onFailure { undoEntries = restoring; activityError = true }
+    val markFeedback: (NotificationHistoryRepository.RecentEntry, NotificationUserFeedback) -> Unit =
+        { entry, feedback ->
+            scope.launch {
+                runCatching { withContext(Dispatchers.IO) {
+                    repository.feedback(entry.key, entry.postedAt, feedback)
+                } }.onSuccess { NotificationActivityFeed.notifyChanged() }
+                    .onFailure { activityError = true }
+            }
         }
+    val correctCategory: (NotificationHistoryRepository.RecentEntry, String) -> Unit =
+        { entry, category ->
+            scope.launch {
+                runCatching { withContext(Dispatchers.IO) {
+                    repository.feedback(entry.key, entry.postedAt, NotificationUserFeedback.CATEGORY_CORRECTED, category)
+                } }.onSuccess { NotificationActivityFeed.notifyChanged() }
+                    .onFailure { activityError = true }
+            }
+        }
+    val openNotification: (NotificationHistoryRepository.RecentEntry) -> Unit = { entry ->
+        val opened = runCatching {
+            val active = AgentNotificationHistoryService.currentNotifications()
+                ?.firstOrNull { it.key == entry.key && it.postTime == entry.postedAt }
+            val pendingIntent = active?.notification?.contentIntent
+            if (pendingIntent != null) pendingIntent.send()
+            else {
+                val intent = context.packageManager.getLaunchIntentForPackage(entry.packageName)
+                    ?: error("Application indisponible")
+                context.startActivity(intent)
+            }
+        }.isSuccess
+        if (opened) markFeedback(entry, NotificationUserFeedback.OPENED)
     }
     val dateText = LocalDate.now().format(
         DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH),
     ).replaceFirstChar { it.uppercaseChar() }
-    val cardSurface = if (dark) Color(0xFF464A51) else Color(0xFFE9E9E9)
-    val showSessionSummary = summary.analyzed > 0 || summary.filtered > 0 ||
-        summary.kept > 0 || summary.proposed > 0
-    val listState = rememberLazyListState()
     val motionAllowed = remember(context, visible) { briefMotionAllowed(context) }
     val visited = BriefMotionSession.revealedCards
     LaunchedEffect(visible) {
@@ -220,9 +241,6 @@ internal fun NowBriefScreen(
         animationSpec = tween(BriefMotionTiming.TITLE_MS, easing = FastOutSlowInEasing),
         label = "brief-title-reveal",
     )
-    val heroPress = remember { MutableInteractionSource() }
-    var heroExpanded by remember { mutableStateOf(false) }
-    var categoryExpanded by remember { mutableStateOf(false) }
     Box(modifier = modifier) {
     CouiLazyScaffoldPage(
         title = "Mon briefing",
@@ -260,199 +278,86 @@ internal fun NowBriefScreen(
             }
         }
 
-        if (showSessionSummary) item(key = "notifications:hero") {
-            BriefReveal("hero", visible, 1, visited) {
-            Column(
-                modifier = Modifier.fillMaxWidth()
-                    .padding(horizontal = 28.dp).padding(bottom = 14.dp)
-                    .menuCardSurface(dark, prominent = true)
-                    .couiButtonFeedback(dark, heroPress, enabled = true)
-                    .clickable(
-                        interactionSource = heroPress, indication = null,
-                        role = Role.Button, onClickLabel = "Détails des notifications filtrées",
-                        onClick = { heroExpanded = !heroExpanded },
-                    )
-                    .semantics { stateDescription = if (heroExpanded) "Développé" else "Réduit" }
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(9.dp),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(9.dp),
-                ) {
-                    IconBubble(Icons.Rounded.AutoAwesome, colors.accent)
-                    CouiText(text = "Votre tranquillité", kind = CouiTextKind.ItemTitle, color = colors.title)
+        if (activityError) item(key = "notification-feed:error") {
+            CouiText(text = "Historique indisponible · réessayez en rouvrant le briefing",
+                kind = CouiTextKind.ItemSummary, color = colors.summary,
+                modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
+        }
+        if (notificationGroups.isEmpty()) {
+            item(key = "notification-feed:empty") {
+                BriefCard {
+                    CouiText(text = "Aucune notification récente", kind = CouiTextKind.ItemTitle,
+                        color = colors.title)
                 }
-                BriefAnimatedNumber(summary.filtered, visible, 36, colors.title)
-                CouiText(
-                    text = if (summary.filtered == 1) "notification filtrée pendant cette session"
-                    else "notifications filtrées pendant cette session",
-                    kind = CouiTextKind.ItemSummary,
-                    color = colors.summary,
-                )
-                if (LocalDensity.current.fontScale >= 1.25f) {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        BriefMetric("Analysées", summary.analyzed, visible, cardSurface, colors.title, colors.summary, Modifier.fillMaxWidth())
-                        BriefMetric("Conservées", summary.kept, visible, cardSurface, colors.title, colors.summary, Modifier.fillMaxWidth())
-                        BriefMetric("Reportées", summary.snoozed, visible, cardSurface, colors.title, colors.summary, Modifier.fillMaxWidth())
+            }
+        } else {
+            NotificationPriority.entries.forEach { tier ->
+                val groups = notificationGroups.filter { it.priority == tier }
+                if (groups.isNotEmpty()) {
+                    val label = when (tier) {
+                        NotificationPriority.NOW -> "À traiter maintenant"
+                        NotificationPriority.TODAY -> "À voir aujourd'hui"
+                        NotificationPriority.LOW -> "Sans importance"
                     }
-                } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        BriefMetric("Analysées", summary.analyzed, visible, cardSurface, colors.title, colors.summary, Modifier.weight(1f))
-                        BriefMetric("Conservées", summary.kept, visible, cardSurface, colors.title, colors.summary, Modifier.weight(1f))
-                        BriefMetric("Reportées", summary.snoozed, visible, cardSurface, colors.title, colors.summary, Modifier.weight(1f))
+                    val subtitle = when (tier) {
+                        NotificationPriority.NOW -> "À garder dans les notifications Android"
+                        NotificationPriority.TODAY -> "Pour plus tard · disponible dans le briefing"
+                        NotificationPriority.LOW -> "Publicités et rappels inutiles · repliés"
                     }
-                }
-                AnimatedVisibility(visible = heroExpanded) {
-                    CouiText(
-                        text = briefCount(summary.dismissed, "suppression confirmée", "suppressions confirmées") +
-                            " · " + briefCount(summary.proposed, "filtrage proposé", "filtrages proposés"),
-                        kind = CouiTextKind.ItemSummary, color = colors.summary,
-                    )
-                }
-            }
-            }
-        }
-
-        if (summary.filtered > 0) item(key = "notifications:categories") {
-            BriefReveal("categories", visible, 2, visited) {
-            BriefCard(onClick = { categoryExpanded = !categoryExpanded },
-                onClickLabel = "Afficher ou masquer le détail des catégories") {
-                SectionHeader("Ce qui a été filtré", "", colors.title, colors.summary)
-                Spacer(Modifier.height(11.dp))
-                val classified = summary.filtered
-                CategoryBar("Publicités", summary.filteredAds, classified, visible, colors.accent, colors.title, colors.summary)
-                Spacer(Modifier.height(11.dp))
-                CategoryBar("Spams", summary.filteredSpam, classified, visible, Color(0xFFCA8358), colors.title, colors.summary)
-                AnimatedVisibility(visible = categoryExpanded) {
-                    CouiText(
-                        text = "Reportées : ${summary.snoozed} · Supprimées : ${summary.dismissed}",
-                        kind = CouiTextKind.ItemSummary, color = colors.summary,
-                    )
-                }
-                if (summary.dismissed > 0) {
-                    Spacer(Modifier.height(13.dp))
-                    CouiText(
-                        text = briefCount(summary.dismissed, "suppression définitive", "suppressions définitives") +
-                            " · irréversible sur Android",
-                        kind = CouiTextKind.ItemSummary, color = colors.summary,
-                    )
-                }
-            }
-            }
-        }
-
-        item(key = "notification-filter:settings") {
-            BriefCard(onClick = { onClose(); onManageFiltering() },
-                onClickLabel = "Ouvrir les paramètres du filtrage") {
-                SectionHeader("Filtrage des notifications", "Paramètres", colors.title, colors.summary)
-                Spacer(Modifier.height(8.dp))
-                val description = when {
-                    !listenerReady -> "Accès aux notifications à autoriser"
-                    !modelReady -> "Modèle local à installer"
-                    filterConfig.mode == NotificationFilterMode.OFF -> "Désactivé"
-                    filterConfig.mode == NotificationFilterMode.OBSERVE ->
-                        "Observation uniquement · aucune suppression sur Android"
-                    filterConfig.mode == NotificationFilterMode.CAUTIOUS ->
-                        "Prudent · publicités très certaines reportées 1 h"
-                    filterConfig.action == NotificationFilterAction.DISMISS ->
-                        "Suppression automatique · toutes les applications éligibles"
-                    else -> "Filtrage automatique · toutes les applications éligibles"
-                }
-                CouiText(text = description, kind = CouiTextKind.ItemSummary, color = colors.summary)
-                if (pendingAnalysisCount + proposedCount > 0) {
-                    CouiText(
-                        text = briefCount(pendingAnalysisCount + proposedCount,
-                            "analyse à suivre", "analyses à suivre") + " · ouvrir le diagnostic",
-                        kind = CouiTextKind.GroupFooter, color = colors.summary,
-                    )
-                }
-            }
-        }
-        if (reviewedGroups.isNotEmpty() || notificationGroups.isNotEmpty()) {
-            item(key = "notification-feed:gesture-help") {
-                CouiText(
-                    text = "Glisser archive la copie de ce briefing. " +
-                        "Elle reste accessible dans les paramètres ; la notification Android reste intacte.",
-                    kind = CouiTextKind.GroupFooter, color = colors.summary,
-                    modifier = Modifier.padding(horizontal = 30.dp, vertical = 6.dp),
-                )
-            }
-        }
-        if (reviewedGroups.isNotEmpty()) {
-            item(key = "notification-filter:review-title") {
-                Row(
-                    modifier = Modifier.fillMaxWidth()
-                        .padding(top = 9.dp, bottom = 8.dp, start = 30.dp, end = 30.dp),
-                ) {
-                    BriefHeading("Suivi du filtrage", color = colors.title, size = 19)
-                }
-            }
-            item(key = "notification-filter:review-counts") {
-                val counts = buildList {
-                    if (removedCount > 0) add(briefCount(removedCount, "suppression définitive", "suppressions définitives"))
-                    if (snoozedCount > 0) add(briefCount(snoozedCount, "report", "reports"))
-                    if (proposedCount > 0) add(briefCount(proposedCount, "proposition", "propositions"))
-                    if (pendingAnalysisCount > 0) add(briefCount(pendingAnalysisCount, "analyse à suivre", "analyses à suivre"))
-                }
-                CouiText(
-                    text = counts.joinToString(" · "),
-                    kind = CouiTextKind.GroupFooter, color = colors.summary,
-                    modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp),
-                )
-            }
-            items(reviewedGroups, key = { "review:" + it.packageName }) { group ->
-                BriefNotificationAppCard(group, dismissActivityEntries, onNotificationTouchChange)
-            }
-        }
-
-        if (reviewedGroups.isEmpty() || notificationGroups.isNotEmpty()) {
-            item(key = "notifications:recent-title") {
-                BriefReveal("recent", visible, 3, visited) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 11.dp, start = 30.dp, end = 30.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        BriefHeading("Activité récente", color = colors.title, size = 19)
+                    item(key = "priority:${tier.name}") {
+                        Column(Modifier.fillMaxWidth().padding(start = 28.dp, end = 28.dp,
+                            top = 13.dp, bottom = 9.dp),
+                            verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            BriefHeading(label, color = colors.title, size = 19)
+                            CouiText(text = "${groups.sumOf { it.entries.size }} notification${if (groups.sumOf { it.entries.size } > 1) "s" else ""} · $subtitle",
+                                kind = CouiTextKind.ItemSummary, color = colors.summary,
+                                maxLines = 3)
+                        }
                     }
-                }
-            }
-            item(key = "notification-feed:description") {
-                CouiText(
-                    text = "7 derniers jours · " +
-                        briefCount(activityEntries.size, "notification reçue", "notifications reçues") +
-                        " · ${recentEntries.size} dans cette section"
-                        + if (activityEntries.size >= 300) " (limite d'affichage)" else "",
-                    kind = CouiTextKind.GroupFooter, color = colors.summary,
-                    modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 11.dp),
-                )
-            }
-            if (activityError) {
-                item(key = "notification-feed:error") {
-                    CouiText(
-                        text = "Historique indisponible. Vérifiez l'accès aux notifications.",
-                        kind = CouiTextKind.ItemSummary, color = colors.summary,
-                        modifier = Modifier.padding(horizontal = 30.dp, vertical = 8.dp),
-                    )
-                }
-            }
-            if (notificationGroups.isEmpty()) {
-                item(key = "notification-feed:empty") {
-                    BriefCard {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconBubble(Icons.Rounded.NotificationsNone, colors.summary)
-                            Spacer(Modifier.width(12.dp))
-                            CouiText(
-                                text = if (!listenerReady) "L’activité apparaîtra ici après autorisation"
-                                    else "Aucune notification récente",
-                                kind = CouiTextKind.ItemTitle, color = colors.title,
-                            )
+                    groups.forEach { group ->
+                        val key = "${tier.name}:${group.category}"
+                        val expanded = expandedTopics[key] ?: (tier != NotificationPriority.LOW)
+                        item(key = "topic:$key") {
+                            BriefNotificationAppCard(group = group,
+                                expanded = expanded,
+                                onToggle = { expandedTopics[key] = !expanded },
+                                onDismiss = dismissActivityEntries,
+                                onTouchChange = onNotificationTouchChange)
+                        }
+                        if (expanded) {
+                            items(group.entries, key = { "brief:$key:${it.key}" }) { entry ->
+                                BriefNotificationRow(entry, dismissActivityEntries, markFeedback,
+                                    correctCategory, openNotification, onNotificationTouchChange)
+                            }
                         }
                     }
                 }
-            } else {
-                items(notificationGroups, key = { "app:" + it.packageName }) { group ->
-                    BriefNotificationAppCard(group, dismissActivityEntries, onNotificationTouchChange)
+            }
+            if (loadingMore) item(key = "notification-feed:loading") {
+                CouiText(text = "Chargement…", kind = CouiTextKind.ItemSummary,
+                    color = colors.summary, modifier = Modifier.padding(24.dp))
+            }
+            if (hasMore && !loadingMore) item(key = "notification-feed:load-more") {
+                Box(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 10.dp),
+                    contentAlignment = Alignment.Center) {
+                    CouiButton(text = "Afficher les notifications précédentes", onClick = {
+                        if (!loadingMore) {
+                            loadingMore = true
+                            scope.launch {
+                                try {
+                                    val next = withContext(Dispatchers.IO) {
+                                        repository.recentPage(pageSize, activityEntries.lastOrNull())
+                                    }
+                                    activityEntries = (activityEntries + next).distinctBy { it.key }
+                                        .sortedWith(compareByDescending<NotificationHistoryRepository.RecentEntry> { it.postedAt }
+                                            .thenByDescending { it.key })
+                                    hasMore = next.size == pageSize
+                                } catch (_: Exception) {
+                                    activityError = true
+                                } finally { loadingMore = false }
+                            }
+                        }
+                    })
                 }
             }
         }
@@ -470,30 +375,6 @@ internal fun NowBriefScreen(
                 }
             }
 
-    }
-    if (undoEntries.isNotEmpty()) {
-        Column(
-            modifier = Modifier.align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .fillMaxWidth()
-                .menuCardSurface(dark)
-                .semantics { liveRegion = LiveRegionMode.Polite }
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            CouiText(
-                text = briefCount(undoEntries.size, "copie archivée", "copies archivées") +
-                    ". ${if (undoEntries.size == 1) "Retrouvez-la" else "Retrouvez-les"} " +
-                    "dans Paramètres › Notifications intelligentes › Archives du briefing.",
-                kind = CouiTextKind.ItemSummary, color = colors.title,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CouiButton(text = "Annuler", onClick = undoDismissal, modifier = Modifier.weight(1f))
-                CouiButton(text = "Fermer", onClick = { undoEntries = emptyList() },
-                    modifier = Modifier.weight(1f))
-            }
-        }
     }
     }
 }

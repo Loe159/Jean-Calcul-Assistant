@@ -28,6 +28,18 @@ import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class VisualScenarioTest {
+    private fun openNotificationSettings(device: UiDevice, context: android.content.Context) {
+        device.findObject(By.desc(context.getString(R.string.action_conversation_history))).click()
+        device.wait(Until.findObject(By.desc(context.getString(R.string.route_settings))), 10000).click()
+        val target = By.text("Notifications intelligentes")
+        var attempts = 0
+        while (!device.hasObject(target) && attempts++ < 18) {
+            device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
+                device.displayWidth / 2, device.displayHeight / 3, 26)
+        }
+        device.wait(Until.findObject(target), 10000).click()
+    }
+
     @Before fun prepareSyntheticPermissions() {
         if (!InstrumentationRegistry.getArguments().getString("scenario").orEmpty().startsWith("improvements_notifications")) {
             grantSyntheticNotificationPermission()
@@ -129,43 +141,13 @@ class VisualScenarioTest {
                     "settings", "providers", "appearance", "notifications", "notifications_modes",
                     "notifications_large_text" -> {
                         if (scenario in setOf("notifications", "notifications_modes", "notifications_large_text")) {
-                            device.findObject(By.desc("Ouvrir mon briefing")).click()
-                            val filterSettings = device.wait(
-                                Until.findObject(By.text("Filtrage des notifications")), 10000,
-                            ) ?: throw AssertionError("Filtering settings card is missing from briefing")
-                            filterSettings.click()
-                            if (scenario == "notifications_large_text") {
-                                assertTrue("Large text needs a complete settings title",
-                                    device.wait(Until.hasObject(By.text("Notifications")), 10000))
-                            }
-                            assertTrue("Offline model install entry should appear",
-                                device.wait(Until.hasObject(By.text("Installer le modèle")), 10000))
-                            val safeMode = By.text("Prudent")
-                            val personalMode = By.text("Filtrage automatique")
-                            var modeScrolls = 0
-                            var prudentSeen = false
-                            var personalSeen = false
-                            while (modeScrolls++ < 36) {
-                                prudentSeen = prudentSeen || device.hasObject(safeMode)
-                                personalSeen = personalSeen || device.hasObject(personalMode)
-                                if (prudentSeen && personalSeen) break
-                                device.swipe(device.displayWidth / 2, device.displayHeight * 2 / 3,
-                                    device.displayWidth / 2, device.displayHeight / 2, 30)
-                                device.waitForIdle(750)
-                            }
-                            assertTrue("Prudent mode must be reachable", prudentSeen)
-                            assertTrue("Automatic filtering mode must be reachable", personalSeen)
-                            if (scenario == "notifications") {
-                                val input = By.text("Titre et contenu d'une notification")
-                                var inputScrolls = 0
-                                while (!device.hasObject(input) && inputScrolls++ < 36) {
-                                    device.swipe(device.displayWidth / 2, device.displayHeight * 2 / 3,
-                                        device.displayWidth / 2, device.displayHeight / 2, 30)
-                                    device.waitForIdle(750)
-                                }
-                                assertTrue("Manual input must be reachable",
-                                    device.wait(Until.hasObject(input), 5000))
-                            }
+                            openNotificationSettings(device, context)
+                            assertTrue("The only filter switch must be reachable",
+                                device.wait(Until.hasObject(By.text("Filtrage automatique")), 10000))
+                            assertFalse("Intermediate observation modes must be hidden",
+                                device.hasObject(By.text("Prudent")))
+                            assertFalse("Manual notification simulator must be removed",
+                                device.hasObject(By.text("Tester une notification")))
                         } else {
                             device.findObject(By.desc(context.getString(R.string.action_conversation_history))).click()
                             device.wait(Until.findObject(By.desc(context.getString(R.string.route_settings))), 10000).click()
@@ -216,7 +198,7 @@ class VisualScenarioTest {
                             device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
                         assertTrue("Settings card must not appear in briefing",
                             !device.hasObject(By.text("Notifications intelligentes")))
-                        assertTrue("Filtering status must be visible without activity",
+                        assertFalse("Filtering settings are not part of the briefing",
                             device.hasObject(By.text("Filtrage des notifications")))
                         assertTrue("Single halo ambient, no cycle labels",
                             !device.hasObject(By.textContains("Ambiance ")))
@@ -229,7 +211,7 @@ class VisualScenarioTest {
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
                         assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
                         assertTrue("Brief stays accessible on second opening",
-                            device.hasObject(By.text("Filtrage des notifications")))
+                            device.hasObject(By.text("Mon briefing")))
                     }
                     "brief_notifications" -> {
                         val repo = NotificationHistoryRepository(context)
@@ -242,7 +224,7 @@ class VisualScenarioTest {
                             "Information", "Alerte synthétique", null, now - 200)
                         NotificationActivityFeed.notifyChanged()
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
-                        val total = By.textContains("3 notifications reçues")
+                        val total = By.textContains("3 notifications")
                         var countScrolls = 0
                         while (!device.hasObject(total) && countScrolls++ < 6) {
                             device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
@@ -253,7 +235,9 @@ class VisualScenarioTest {
                         // The group initially sits below the visible fold of the
                         // Now Brief dashboard. UIAutomator can find its clipped
                         // text but cannot safely tap it until it is on screen.
-                        val groupSelector = By.textContains("2 notifications")
+                        assertTrue("The non-urgent tier is visible",
+                            device.wait(Until.hasObject(By.text("À voir aujourd'hui")), 6000))
+                        val groupSelector = By.text("Autres")
                         var app = device.wait(Until.findObject(groupSelector), 10000)
                             ?: throw AssertionError("App grouping did not aggregate the two records")
                         var attempts = 0
@@ -271,8 +255,10 @@ class VisualScenarioTest {
                         assertTrue("App group must be fully within the interactive viewport",
                             app.visibleBounds.centerY() in
                                 device.displayHeight / 4..device.displayHeight * 3 / 4)
-                        app.click()
-                        // The expanded rows can also be below the fold on small devices.
+                        // NOW and TODAY groups are expanded by default.
+                        // Their rows may be beyond the visible screen, but must
+                        // never be collapsed by this test before scrolling.
+                        // Expanded rows can be below the fold on smaller devices.
                         attempts = 0
                         while (!device.hasObject(By.text("Test de sécurité")) && attempts++ < 8) {
                             device.swipe(
@@ -282,7 +268,7 @@ class VisualScenarioTest {
                         }
                         assertTrue("Expanded group exposes the actual notification title",
                             device.wait(Until.hasObject(By.text("Test de sécurité")), 5000))
-                        var remove = device.wait(Until.findObject(By.desc("Archiver la copie")), 8000)
+                        var remove = device.wait(Until.findObject(By.desc("Actions pour cette notification")), 8000)
                             ?: throw AssertionError("Explicit archive control missing")
                         attempts = 0
                         while (remove.visibleBounds.centerY() !in
@@ -293,10 +279,11 @@ class VisualScenarioTest {
                                 device.displayWidth / 2, device.displayHeight * 3 / 4,
                                 device.displayWidth / 2, device.displayHeight / 3, 26,
                             )
-                            remove = device.wait(Until.findObject(By.desc("Archiver la copie")), 5000)
+                            remove = device.wait(Until.findObject(By.desc("Actions pour cette notification")), 5000)
                                 ?: throw AssertionError("Archive button disappeared")
                         }
                         remove.click()
+                        device.wait(Until.findObject(By.text("Archiver la copie")), 5000).click()
                         var persisted = false
                         repeat(30) {
                             if (repo.recent(100).size == 2) persisted = true
@@ -307,16 +294,8 @@ class VisualScenarioTest {
                             repo.archived(100).size)
                         assertFalse("Archiving needs no confirmation dialog",
                             device.hasObject(By.textContains("Confirmer")))
-                        val undo = device.wait(Until.findObject(By.text("Annuler")), 8000)
-                            ?: throw AssertionError("Undo action missing after local removal")
-                        undo.click()
-                        var restored = false
-                        repeat(30) {
-                            if (repo.recent(100).size == 3) restored = true
-                            if (!restored) SystemClock.sleep(100)
-                        }
-                        assertTrue("Undo must restore the local copy", restored)
-                        assertTrue("Undo must clear the archive", repo.archived(100).isEmpty())
+                        assertFalse("Archiving is immediate; no confirmation banner",
+                            device.hasObject(By.textContains("Retrouvez-les")))
                     }
                     "brief_archive", "brief_archive_dark", "brief_archive_large_text" -> {
                         val repo = NotificationHistoryRepository(context)
@@ -325,10 +304,7 @@ class VisualScenarioTest {
                             "Notification archivée", "Archive consultable dans les paramètres", null, now)
                         repo.archiveFromBrief(listOf("archive-synthetic"))
                         NotificationActivityFeed.notifyChanged()
-                        device.findObject(By.desc("Ouvrir mon briefing")).click()
-                        val filtering = device.wait(Until.findObject(By.text("Filtrage des notifications")), 10000)
-                            ?: throw AssertionError("Filtering settings must be reachable from briefing")
-                        filtering.click()
+                        openNotificationSettings(device, context)
                         val archiveLink = By.text("Archives du briefing")
                         var attempts = 0
                         while (!device.hasObject(archiveLink) && attempts++ < 8) {
@@ -352,8 +328,7 @@ class VisualScenarioTest {
                         repo.record("restore-synthetic", "com.android.settings",
                             "Archive à restaurer", "Contenu local conservé", null, now)
                         repo.archiveFromBrief(listOf("restore-synthetic"))
-                        device.findObject(By.desc("Ouvrir mon briefing")).click()
-                        device.wait(Until.findObject(By.text("Filtrage des notifications")), 10000).click()
+                        openNotificationSettings(device, context)
                         val archiveLink = By.text("Archives du briefing")
                         var attempts = 0
                         while (!device.hasObject(archiveLink) && attempts++ < 8) {
@@ -377,28 +352,10 @@ class VisualScenarioTest {
                         assertTrue("Restoration removes the archive entry", repo.archived(100).isEmpty())
                     }
                     "notifications_no_confirmation" -> {
-                        val original = NotificationFilterSettings.load(context)
-                        NotificationFilterSettings.save(context,
-                            original.copy(mode = NotificationFilterMode.PERSONALIZED))
-                        device.findObject(By.desc("Ouvrir mon briefing")).click()
-                        val filtering = device.wait(Until.findObject(By.text("Filtrage des notifications")), 10000)
-                            ?: throw AssertionError("Filtering settings must be reachable")
-                        filtering.click()
-                        val action = By.text("Supprimer définitivement")
-                        var attempts = 0
-                        while (!device.hasObject(action) && attempts++ < 18) {
-                            device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
-                                device.displayWidth / 2, device.displayHeight / 3, 26)
-                            device.waitForIdle(750)
-                        }
-                        val option = device.wait(Until.findObject(action), 5000)
-                            ?: throw AssertionError("Permanent Android action must be reachable")
-                        option.click()
-                        assertEquals("Android action applies on selection",
-                            NotificationFilterAction.DISMISS,
-                            NotificationFilterSettings.load(context).action)
-                        assertFalse("No confirmation dialog is shown",
-                            device.hasObject(By.text("Activer la suppression définitive ?")))
+                        openNotificationSettings(device, context)
+                        assertTrue(device.wait(Until.hasObject(By.text("Filtrage automatique")), 10000))
+                        assertFalse(device.hasObject(By.text("Prudent")))
+                        assertFalse(device.hasObject(By.text("Tester une notification")))
                     }
                     "brief_decisions" -> {
                         // Synthetic local history; no real Android notifications
@@ -415,7 +372,7 @@ class VisualScenarioTest {
                         NotificationActivityFeed.notifyChanged()
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
                         assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
-                        val marker = By.textContains("1 suppression")
+                        val marker = By.textContains("1 notification")
                         var attempts = 0
                         while (!device.hasObject(marker) && attempts++ < 12) {
                             device.swipe(
@@ -424,7 +381,7 @@ class VisualScenarioTest {
                             )
                             device.waitForIdle()
                         }
-                        assertTrue("Confirmed removals must remain in the review section",
+                        assertTrue("Confirmed removals remain in the category history",
                             device.wait(Until.hasObject(marker), 5000))
                     }
                     "brief_swipe_isolation" -> {
@@ -435,7 +392,7 @@ class VisualScenarioTest {
                         NotificationActivityFeed.notifyChanged()
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
                         assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
-                        val selector = By.textContains("1 notification · Test de glissement")
+                        val selector = By.textContains("1 notification")
                         var group = device.wait(Until.findObject(selector), 10000)
                             ?: throw AssertionError("Synthetic notification group missing")
                         var attempts = 0

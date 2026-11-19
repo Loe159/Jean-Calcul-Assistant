@@ -15,9 +15,19 @@ class NotificationFilterSettingsTest {
     private val app by lazy { RuntimeEnvironment.getApplication() }
     private fun prefs() = app.getSharedPreferences("notification_local", Context.MODE_PRIVATE)
 
-    @Test fun oldObservationFlagMigratesWithoutActivatingFilter() {
+    @Test fun oldObservationFlagDoesNotActivateDeletionWithoutConsent() {
         prefs().edit().clear().putBoolean("observation_enabled", true).commit()
-        assertEquals(NotificationFilterMode.OBSERVE, NotificationFilterSettings.load(app).mode)
+        assertEquals(NotificationFilterMode.OFF, NotificationFilterSettings.load(app).mode)
+    }
+
+    @Test fun previouslyEnabledModesUseTheNewBinaryActiveFilter() {
+        listOf("CAUTIOUS", "OBSERVE").forEach { oldMode ->
+            prefs().edit().clear().putString("filter_config_v2", JSONObject()
+                .put("mode", oldMode).put("action", "SNOOZE_1H")
+                .put("ads", true).put("spam", false).toString()).commit()
+            val migrated = NotificationFilterSettings.load(app)
+            assertEquals(NotificationFilterMode.PERSONALIZED, migrated.mode)
+        }
     }
 
     @Test fun allAppsConfigPersistsWithoutPackageIdentifiers() {

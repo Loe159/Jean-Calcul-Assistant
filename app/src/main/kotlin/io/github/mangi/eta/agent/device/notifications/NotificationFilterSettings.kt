@@ -68,13 +68,17 @@ internal object NotificationFilterSettings {
         val v2 = prefs.getString(PREVIOUS_KEY, null)
         val v1 = prefs.getString(LEGACY_KEY, null)
         val serialized = v3 ?: v2 ?: v1
-        if (serialized == null) return NotificationFilterConfig(
-            mode = if (prefs.getBoolean(LEGACY_OBSERVE, false)) NotificationFilterMode.OBSERVE
-            else NotificationFilterMode.OFF,
-        )
+        // An old observation-only flag is not consent to delete notifications.
+        // Keep filtering OFF until the user enables the new binary switch.
+        if (serialized == null) return NotificationFilterConfig(mode = NotificationFilterMode.OFF)
         return runCatching {
             val json = JSONObject(serialized)
-            val mode = enumValueOr(NotificationFilterMode.OFF, json.optString("mode"))
+            val legacyMode = enumValueOr(NotificationFilterMode.OFF, json.optString("mode"))
+            // OBSERVE/CAUTIOUS are no longer exposed. Previously enabled users
+            // get the single active filter mode rather than a switch that appears
+            // ON while silently performing no Android removal.
+            val mode = if (legacyMode == NotificationFilterMode.OFF) NotificationFilterMode.OFF
+                else NotificationFilterMode.PERSONALIZED
             val rawAction = enumValueOr(NotificationFilterAction.SNOOZE_1H, json.optString("action"))
             val labels = if (v3 != null) {
                 val data = json.getJSONArray("labels")

@@ -7,23 +7,29 @@ import kotlin.math.abs
 import org.junit.Test
 
 class NowBriefNotificationGroupsTest {
-    private fun entry(id: String, pkg: String, time: Long) =
+    private fun entry(id: String, pkg: String, time: Long, topic: String = "other") =
         NotificationHistoryRepository.RecentEntry(
             key = id, packageName = pkg,
-            title = "Title $id", text = "Body $id", postedAt = time,
+            title = "Title $id", text = "Body $id", postedAt = time, topic = topic,
         )
 
-    @Test fun sameAppIsGroupedAndSortedNewestFirst() {
+    @Test fun notificationsAreGroupedByTopicAcrossAppsAndSortedNewestFirst() {
         val items = listOf(
-            entry("a1", "org.alpha", 100),
-            entry("b1", "org.beta", 300),
-            entry("a2", "org.alpha", 500),
-            entry("c1", "org.charlie", 200),
+            entry("a1", "org.alpha", 100, "messages"),
+            entry("b1", "org.beta", 300, "promotions"),
+            entry("a2", "org.alpha", 500, "messages"),
+            entry("c1", "org.charlie", 200, "other"),
         )
         val groups = groupBriefNotifications(items)
-        assertEquals(listOf("org.alpha", "org.beta", "org.charlie"), groups.map { it.packageName })
+        assertEquals(listOf("messages", "other", "promotions"), groups.map { it.category })
         assertEquals(listOf("a2", "a1"), groups.first().entries.map { it.key })
         assertEquals(4, groups.sumOf { it.entries.size })
+        assertEquals(listOf("NOW", "TODAY", "LOW"), groups.map { it.priority.name })
+    }
+
+    @Test fun correctionOverridesModelTopic() {
+        val corrected = entry("n", "fr.leboncoin", 20, "promotions").copy(userTopic = "messages")
+        assertEquals("messages", groupBriefNotifications(listOf(corrected)).single().category)
     }
 
     @Test fun stickyMotionStartsResistantAcceleratesAndIsSymmetrical() {

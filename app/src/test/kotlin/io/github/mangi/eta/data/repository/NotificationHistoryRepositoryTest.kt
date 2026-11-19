@@ -29,6 +29,97 @@ class NotificationHistoryRepositoryTest {
     }
 
     @Test
+    fun `user corrections persist across repository instances without duplicate learning`() {
+        val time = System.currentTimeMillis()
+        repository.record("one", "fr.leboncoin", "Offres", "Une offre", null, time,
+            channelId = "marketing", fingerprint = "snapshot-1")
+        repository.updateDecision("one", time, NotificationHistoryRepository.DecisionState.KEPT,
+            "a promotional advertisement", 0.85, topic = "promotions")
+        assertEquals(true, repository.feedback("one", time,
+            io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback.CATEGORY_CORRECTED,
+            "shopping"))
+        assertEquals(false, repository.feedback("one", time,
+            io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback.CATEGORY_CORRECTED,
+            "shopping"))
+        assertEquals("shopping", NotificationHistoryRepository(context).recent().single().userTopic)
+        assertEquals(true, repository.feedback("one", time,
+            io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback.UNWANTED))
+        assertEquals(false, repository.feedback("one", time,
+            io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback.UNWANTED))
+        assertEquals("UNWANTED", NotificationHistoryRepository(context).recent().single().personalInterest)
+        repository.resetLearning()
+        assertEquals(null, NotificationHistoryRepository(context).recent().single().userTopic)
+        assertEquals("Aucun apprentissage enregistré", repository.feedbackStats())
+    }
+
+    @Test
+    fun `unchanged classified notification is not inferred a second time`() {
+        val time = System.currentTimeMillis()
+        assertEquals(true, repository.record("same", "fr.leboncoin", "Promo", "-20%", null, time,
+            fingerprint = "abc"))
+        repository.updateDecision("same", time, NotificationHistoryRepository.DecisionState.KEPT, "a promotional advertisement", .91)
+        assertEquals(false, repository.record("same", "fr.leboncoin", "Promo", "-20%", null, time,
+            fingerprint = "abc"))
+        assertEquals(NotificationHistoryRepository.DecisionState.KEPT, repository.recent().single().state)
+        assertEquals(true, repository.record("same", "fr.leboncoin", "Promo", "-30%", null, time,
+            fingerprint = "xyz"))
+        assertEquals(NotificationHistoryRepository.DecisionState.RECEIVED, repository.recent().single().state)
+    }
+
+    @Test
+    fun `repeated news headlines are detected locally by source and distinct key`() {
+        val now = System.currentTimeMillis()
+        val title = "Le Monde"
+        val headline = "Les changements des taux d'intérêt européens se précisent"
+        repository.record("news-1", "com.feedly", title, headline, null, now - 1000)
+        assertFalse(repository.isRepeatedNewsHeadline("news-1", "com.feedly", title, headline, now - 1000))
+        repository.record("news-2", "com.feedly", title, headline, null, now)
+        assertEquals(true,
+            repository.isRepeatedNewsHeadline("news-2", "com.feedly", title, headline, now))
+        assertEquals(false,
+            repository.isRepeatedNewsHeadline("news-2", "com.feedly", title,
+                "Une analyse différente sur les marchés et les entreprises", now))
+        assertEquals(false,
+            repository.isRepeatedNewsHeadline("news-2", "com.lemonde.androidapp", title, headline, now))
+        val second = repository.recent().first { it.key == "news-2" }
+        assertEquals("news", second.topic)
+        assertEquals(true, second.repeatedNewsHeadline)
+    }
+
+    @Test
+    fun `brief pagination returns each notification once even with identical timestamps`() {
+        val now = System.currentTimeMillis()
+        repeat(105) { index ->
+            repository.record("page-$index", "org.example.app", "Title $index", null, null, now - index / 3)
+        }
+        val pages = mutableListOf<NotificationHistoryRepository.RecentEntry>()
+        var cursor: NotificationHistoryRepository.RecentEntry? = null
+        repeat(4) {
+            val page = repository.recentPage(40, cursor)
+            pages += page
+            cursor = page.lastOrNull()
+        }
+        assertEquals(105, pages.size)
+        assertEquals(105, pages.map { it.key }.distinct().size)
+        assertEquals(pages, pages.sortedWith(
+            compareByDescending<NotificationHistoryRepository.RecentEntry> { it.postedAt }
+                .thenByDescending { it.key }))
+    }
+
+    @Test
+    fun `game notifications are categorized even before onnx inference and historical rows stay visible`() {
+        val now = System.currentTimeMillis()
+        repository.record("brawl-quest", "com.supercell.brawlstars", "Brawl Stars",
+            "De nouvelles quêtes sont disponibles !", null, now)
+        val row = repository.recent().first { it.key == "brawl-quest" }
+        assertEquals("games", row.topic)
+        assertEquals(NotificationHistoryRepository.DecisionState.RECEIVED, row.state)
+        assertEquals(true, repository.feedback("brawl-quest", now,
+            io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback.CATEGORY_CORRECTED, "other"))
+        assertEquals("other", repository.recent().first { it.key == "brawl-quest" }.userTopic)
+    }
+
+    @Test
     fun `query and package filters only return matching notification`() {
         val now = System.currentTimeMillis()
         repository.record("one", "com.example.food", "订单配送中", "骑手即将送达", null, now)
