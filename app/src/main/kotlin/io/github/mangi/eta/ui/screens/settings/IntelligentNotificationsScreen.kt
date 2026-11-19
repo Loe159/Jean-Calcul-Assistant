@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,21 +24,19 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.mangi.eta.agent.device.AgentNotificationHistoryService
-import io.github.mangi.eta.agent.device.notifications.GameNotificationKind
-import io.github.mangi.eta.agent.device.notifications.LocalNotificationModel
 import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
 import io.github.mangi.eta.agent.device.notifications.NotificationAdaptiveSettings
-import io.github.mangi.eta.agent.device.notifications.NotificationFilterAction
-import io.github.mangi.eta.agent.device.notifications.NotificationFilterConfig
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterMode
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterSettings
-import io.github.mangi.eta.agent.device.notifications.NotificationGameSettings
-import io.github.mangi.eta.agent.device.notifications.NotificationLabelRule
-import io.github.mangi.eta.agent.device.notifications.NotificationLabelRules
 import io.github.mangi.eta.agent.device.notifications.NotificationTopics
+import io.github.mangi.eta.agent.device.notifications.remote.HomelabPreferences
+import io.github.mangi.eta.agent.device.notifications.remote.MastraConnection
+import io.github.mangi.eta.agent.device.notifications.remote.MastraNotificationClient
+import io.github.mangi.eta.agent.device.notifications.remote.MastraNotificationSync
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
 import io.github.mangi.eta.ui.components.coui.CouiButton
-import io.github.mangi.eta.ui.components.coui.CouiButtonRole
+import io.github.mangi.eta.ui.components.coui.CouiConfirmDialog
+import io.github.mangi.eta.ui.components.coui.CouiInputDialog
 import io.github.mangi.eta.ui.components.coui.CouiScaffoldPage
 import io.github.mangi.eta.ui.components.coui.CouiTextField
 import io.github.mangi.eta.ui.components.coui.PreferenceFooter
@@ -47,24 +46,10 @@ import io.github.suqi8.coui.kmp.basic.CardListGroup
 import io.github.suqi8.coui.kmp.basic.ExpandableGroupContent
 import io.github.suqi8.coui.kmp.basic.ExpandableGroupHeader
 import io.github.suqi8.coui.kmp.preference.ArrowPreference
-import io.github.suqi8.coui.kmp.preference.MarkPreference
-import io.github.suqi8.coui.kmp.preference.SliderPreference
 import io.github.suqi8.coui.kmp.preference.SwitchPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.roundToInt
-
-private fun labelTitle(label: String): String = when (label) {
-    "a promotional advertisement" -> "Publicité"
-    "spam or a scam" -> "Spam ou arnaque"
-    "a personal message" -> "Message personnel"
-    "a security alert" -> "Alerte de sécurité"
-    "a delivery update" -> "Suivi de livraison"
-    "an appointment reminder" -> "Rappel de rendez-vous"
-    "a useful service update" -> "Information utile"
-    else -> label
-}
 
 private val WORK_RULES = listOf(
     "PR à revoir ou valider" to "Immédiat · conservée sur Android",
@@ -143,21 +128,21 @@ private fun PriorityGroup(
     if (expanded && footer != null) PreferenceFooter(text = footer)
 }
 
-/** The page is the only place where a model download can be requested. */
+
+/**
+ * Settings of the notification pipeline. Business decisions belong to the private homelab
+ * (Mastra); this page manages the connection, the consents and the Android-side guards.
+ */
 @Composable
 internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val largeText = LocalDensity.current.fontScale >= 1.5f
     val scope = rememberCoroutineScope()
-    var installed by remember { mutableStateOf(LocalNotificationModel.installed(context)) }
     var listenerGranted by remember { mutableStateOf(AgentNotificationHistoryService.isEnabled(context)) }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                installed = LocalNotificationModel.installed(context)
-                listenerGranted = AgentNotificationHistoryService.isEnabled(context)
-            }
+            if (event == Lifecycle.Event.ON_RESUME) listenerGranted = AgentNotificationHistoryService.isEnabled(context)
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -165,69 +150,40 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
     var status by remember { mutableStateOf("") }
     var config by remember { mutableStateOf(NotificationFilterSettings.load(context)) }
     var showArchives by rememberSaveable { mutableStateOf(false) }
-    var learningEnabled by remember { mutableStateOf(NotificationAdaptiveSettings.enabled(context)) }
-    var minLearning by remember { mutableStateOf(NotificationAdaptiveSettings.minExamples(context).toFloat()) }
     var showCategories by rememberSaveable { mutableStateOf(false) }
     var categoryName by remember { mutableStateOf("") }
     var editingName by remember { mutableStateOf<String?>(null) }
     var confirmReset by remember { mutableStateOf(false) }
-    var showAdvanced by rememberSaveable { mutableStateOf(false) }
-    var showAdvancedRules by rememberSaveable { mutableStateOf(false) }
-    var showGameRules by rememberSaveable { mutableStateOf(false) }
-    var gameDeletes by remember { mutableStateOf(NotificationGameSettings.enabledKinds(context)) }
-    var expandedRule by remember { mutableStateOf<String?>(null) }
-    var editedLabel by remember { mutableStateOf("") }
-    var newLabel by remember { mutableStateOf("") }
-    var scoreDrafts by remember { mutableStateOf<Map<String, Float>>(emptyMap()) }
-    var marginDrafts by remember { mutableStateOf<Map<String, Float>>(emptyMap()) }
-
-    fun saveConfig(next: NotificationFilterConfig) {
-        NotificationFilterSettings.save(context, next)
-        config = next
-    }
-
-    fun changeRule(old: String, new: NotificationLabelRule) {
-        val updated = config.labelRules.map { if (it.label == old) new else it }
-        if (!NotificationLabelRules.valid(updated)) {
-            status = "Label invalide ou déjà utilisé (3–96 caractères, sans doublon)."
-            return
-        }
-        saveConfig(config.copy(labelRules = updated))
-    }
-
-    fun selectMode(mode: NotificationFilterMode) {
-        if (mode != NotificationFilterMode.OFF && !installed) {
-            status = "Installez le modèle avant d'activer un mode."
-        } else if (mode != NotificationFilterMode.OFF && !listenerGranted) {
-            status = "Autorisez d'abord l'accès aux notifications Android."
-        } else {
-            saveConfig(config.copy(mode = mode, action =
-                if (mode != NotificationFilterMode.PERSONALIZED &&
-                    config.action == NotificationFilterAction.DISMISS)
-                    NotificationFilterAction.SNOOZE_1H else config.action))
-            status = when (mode) {
-                NotificationFilterMode.OFF -> "Filtrage désactivé"
-                NotificationFilterMode.PERSONALIZED ->
-                    "Filtrage automatique : configurez les catégories et l'action"
-                else -> "Filtrage automatique"
-            }
-        }
-    }
-
     var busy by remember { mutableStateOf(false) }
+    var paired by remember { mutableStateOf(MastraConnection.enabled(context)) }
+    var homelabHost by remember { mutableStateOf(MastraConnection.displayHost(context)) }
+    var pairingDialog by remember { mutableStateOf(false) }
+    var pairingText by remember { mutableStateOf("") }
+    var confirmForget by remember { mutableStateOf(false) }
+    var learningConsent by remember { mutableStateOf(MastraConnection.learningConsent(context)) }
+    var lastSync by remember { mutableStateOf(MastraConnection.lastStatus(context)) }
+    var preferences by remember { mutableStateOf<List<Pair<String, String>>?>(null) }
+    var showPreferences by rememberSaveable { mutableStateOf(false) }
 
     fun action(task: suspend () -> Unit) {
         if (busy) return
         busy = true
         scope.launch {
             try { task() } catch (error: Exception) {
-                status = error.message?.take(170) ?: "Erreur locale"
+                status = error.message?.take(170) ?: "Erreur"
             } finally {
                 busy = false
-                installed = LocalNotificationModel.installed(context)
+                lastSync = MastraConnection.lastStatus(context)
             }
         }
     }
+
+    fun loadPreferences() = action {
+        val pairing = MastraConnection.load(context) ?: return@action
+        preferences = withContext(Dispatchers.IO) { HomelabPreferences.list(pairing) }
+    }
+
+    LaunchedEffect(showPreferences, paired) { if (showPreferences && paired) loadPreferences() }
 
     BackHandler(showArchives) { showArchives = false }
     if (showArchives) {
@@ -237,32 +193,83 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
 
     CouiScaffoldPage(title = if (largeText) "Notifications" else "Notifications intelligentes",
         onBack = onBack, compactTitle = true) {
-        PreferenceSection(title = "Filtrage") {
+        PreferenceSection(title = "Homelab") {
             CardListGroup {
-                item {
-                    SwitchPreference(
-                        title = "Filtrage automatique",
-                        summary = "Classe les notifications sur cet appareil",
-                        checked = config.mode != NotificationFilterMode.OFF,
-                        onCheckedChange = { enabled ->
-                            selectMode(if (enabled) NotificationFilterMode.PERSONALIZED else NotificationFilterMode.OFF)
-                        },
+                if (!paired) item {
+                    ArrowPreference(
+                        title = "Associer le homelab",
+                        summary = "Coller la chaîne affichée par « npm run mobile:device -- add »",
+                        onClick = { pairingText = ""; pairingDialog = true },
                     )
+                } else {
+                    item {
+                        BasicComponent(
+                            title = homelabHost ?: "Homelab associé",
+                            summary = lastSync ?: "Aucune synchronisation pour l'instant",
+                        )
+                    }
+                    item {
+                        ArrowPreference(
+                            title = "Tester la connexion",
+                            summary = "Vérifie l'authentification et le modèle local",
+                            enabled = !busy,
+                            onClick = { action {
+                                val pairing = MastraConnection.load(context) ?: error("Homelab non configuré")
+                                val health = withContext(Dispatchers.IO) { MastraNotificationClient(pairing).health() }
+                                status = "Connecté · ${health.policyVersion}" + when (health.model.available) {
+                                    true -> " · modèle local disponible"
+                                    false -> " · modèle local indisponible : règles seules, inconnus conservés"
+                                    null -> " · règles seules"
+                                }
+                            } },
+                        )
+                    }
+                    item {
+                        ArrowPreference(
+                            title = "Synchroniser maintenant",
+                            summary = "Envoie les notifications et retours en attente",
+                            enabled = !busy,
+                            onClick = { action {
+                                val outcome = withContext(Dispatchers.IO) { MastraNotificationSync(context).run() }
+                                NotificationActivityFeed.notifyChanged()
+                                status = if (outcome == MastraNotificationSync.Outcome.DONE) "Synchronisation terminée"
+                                    else "Synchronisation incomplète · nouvel essai automatique"
+                            } },
+                        )
+                    }
+                    item {
+                        SwitchPreference(
+                            title = "Apprentissage sur le homelab",
+                            summary = "Conserver vos retours et exemples anonymisés pour améliorer les décisions",
+                            checked = learningConsent,
+                            onCheckedChange = { learningConsent = it; MastraConnection.setLearningConsent(context, it) },
+                        )
+                    }
+                    item {
+                        ArrowPreference(
+                            title = "Dissocier ce téléphone",
+                            summary = "Efface le secret de l'appareil ; l'historique local est conservé",
+                            onClick = { confirmForget = true },
+                        )
+                    }
                 }
             }
         }
-        if (!installed || !listenerGranted) PreferenceSection(title = "Préparation locale") {
+        PreferenceFooter(text = "Les notifications sont analysées par votre homelab privé, sans service cloud. " +
+            "Les codes numériques sont masqués avant l'envoi ; les icônes restent sur le téléphone.")
+        PreferenceSection(title = "Android") {
             CardListGroup {
-                if (!installed) item {
-                    ArrowPreference(
-                        title = "Installer le modèle",
-                        summary = "Modèle local · environ 302 Mo",
-                        enabled = !busy,
-                        onClick = {
-                            action {
-                                withContext(Dispatchers.IO) {
-                                    LocalNotificationModel.install(context) { message -> status = message }
-                                }
+                item {
+                    SwitchPreference(
+                        title = "Retrait automatique",
+                        summary = "Retirer du panneau Android ce que le homelab juge différable ou sans importance",
+                        checked = config.mode == NotificationFilterMode.PERSONALIZED,
+                        onCheckedChange = { enabled ->
+                            if (enabled && !listenerGranted) status = "Autorisez d'abord l'accès aux notifications Android."
+                            else {
+                                val next = config.copy(mode = if (enabled) NotificationFilterMode.PERSONALIZED else NotificationFilterMode.OFF)
+                                NotificationFilterSettings.save(context, next)
+                                config = next
                             }
                         },
                     )
@@ -276,17 +283,38 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                 }
             }
         }
-        PreferenceFooter(text = "Toutes les analyses et préférences restent sur cet appareil.")
-        PreferenceSection(title = "Apprentissage et catégories") {
+        PreferenceFooter(text = "Toujours conservés : appels, alarmes, vraies conversations, codes, sécurité, paiements, " +
+            "notifications non effaçables et applications système. Une décision tardive ou périmée n'efface rien.")
+        if (status.isNotBlank()) PreferenceFooter(text = status)
+        if (paired) PreferenceSection(title = "Préférences du homelab") {
             CardListGroup {
                 item {
-                    SwitchPreference(
-                        title = "Apprentissage adaptatif",
-                        summary = "Utilise uniquement vos actions réelles ; aucune notification n'est envoyée sur Internet",
-                        checked = learningEnabled,
-                        onCheckedChange = { learningEnabled = it; NotificationAdaptiveSettings.setEnabled(context, it) },
+                    ExpandableGroupHeader(
+                        title = "Préférences enregistrées",
+                        expanded = showPreferences,
+                        onExpandedChange = { showPreferences = it },
+                        summary = "Issues de vos corrections · modifiables sans mise à jour de l'app",
                     )
                 }
+                if (showPreferences) {
+                    val list = preferences
+                    if (list == null) item { BasicComponent(title = "Chargement…") }
+                    else if (list.isEmpty()) item { BasicComponent(title = "Aucune préférence", summary = "Corrigez une priorité depuis Mon briefing") }
+                    else list.forEach { (id, label) ->
+                        item(key = "pref_$id") {
+                            ArrowPreference(title = label, summary = "Toucher pour supprimer", enabled = !busy, onClick = { action {
+                                val pairing = MastraConnection.load(context) ?: return@action
+                                withContext(Dispatchers.IO) { HomelabPreferences.delete(pairing, id) }
+                                preferences = withContext(Dispatchers.IO) { HomelabPreferences.list(pairing) }
+                                status = "Préférence supprimée"
+                            } })
+                        }
+                    }
+                }
+            }
+        }
+        PreferenceSection(title = "Catégories et apprentissage") {
+            CardListGroup {
                 item {
                     ExpandableGroupHeader(
                         title = "Renommer les catégories",
@@ -322,104 +350,35 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                         }
                     }
                 }
-                if (confirmReset) {
-                    item {
-                        ArrowPreference(
-                            title = "Confirmer la réinitialisation",
-                            summary = "Efface les exemples et préférences locales",
-                            onClick = { action {
-                                withContext(Dispatchers.IO) { NotificationHistoryRepository(context).resetLearning() }
-                                NotificationAdaptiveSettings.reset(context)
-                                minLearning = 3f
-                                confirmReset = false
-                                NotificationActivityFeed.notifyChanged()
-                                status = "Apprentissage réinitialisé"
-                            } },
-                        )
-                    }
-                    item { ArrowPreference(title = "Annuler", onClick = { confirmReset = false }) }
-                } else item {
+                item {
                     ArrowPreference(
                         title = "Réinitialiser l'apprentissage",
-                        summary = "Conserve les notifications, efface les préférences apprises",
+                        summary = "Efface les retours locaux et, si associé, l'apprentissage du homelab",
                         onClick = { confirmReset = true },
                     )
                 }
             }
         }
-        PreferenceSection(title = "Messages et réseaux sociaux") {
+        PreferenceSection(title = "Règles initiales") {
             CardListGroup {
                 listOf(
                     "Messages personnels" to "Immédiat · conservés sur Android",
-                    "Mentions et identifications" to "Ce soir · visibles dans le briefing",
-                    "Invitations et demandes d'amis" to "Ce soir · visibles dans le briefing",
-                    "Activité sociale secondaire" to "Indésirable · repliée dans le briefing",
-                    "Suggestions et recommandations" to "Indésirable · repliées dans le briefing",
-                    "Publications des abonnements" to "Indésirable · repliées dans le briefing",
+                    "Mentions et identifications" to "Aujourd'hui · visibles dans le briefing",
+                    "Invitations et demandes d'amis" to "Aujourd'hui · visibles dans le briefing",
+                    "Invitations personnelles dans les jeux" to "Immédiat · conservées sur Android",
+                    "Récompenses, quêtes et défis de jeux" to "Sans importance · repliés dans le briefing",
+                    "Activité sociale secondaire" to "Sans importance · repliée dans le briefing",
+                    "Suggestions et recommandations" to "Sans importance · repliées dans le briefing",
+                    "Publications des abonnements" to "Sans importance · repliées dans le briefing",
                 ).forEach { (title, summary) -> item { BasicComponent(title = title, summary = summary) } }
             }
         }
-        PriorityGroup(
-            title = "Travail, GitHub et IA",
-            summary = "Interventions urgentes · bilans ce soir · bots ignorés",
-            rules = WORK_RULES,
-        )
-        PriorityGroup(
-            title = "Agenda et rappels",
-            summary = "Aujourd'hui et changements urgents · futur ce soir · suggestions ignorées",
-            rules = AGENDA_RULES,
-        )
-        PriorityGroup(
-            title = "Système",
-            summary = "Alertes critiques conservées · informations ce soir · bruit ignoré",
-            rules = SYSTEM_RULES,
-            footer = "Services actifs, alertes de sécurité et notifications non effaçables restent protégés.",
-        )
-        PriorityGroup(
-            title = "Achats et Leboncoin",
-            summary = "Échanges et problèmes urgents · suivis ce soir · publicités ignorées",
-            rules = SHOPPING_RULES,
-            footer = "Les annonces hors critères ne sont écartées que si la notification indique une recommandation, pas sur une estimation de tes critères.",
-        )
-        PriorityGroup(
-            title = "Actualités et veille",
-            summary = "Événements majeurs immédiats · veille ce soir · recommandations ignorées",
-            rules = NEWS_RULES,
-            footer = "Les doublons sont détectés localement, par source et titre. Les alertes ambiguës sont conservées.",
-        )
-        PreferenceSection(title = "Jeux") {
-            CardListGroup {
-                item {
-                    ExpandableGroupHeader(
-                        title = "Filtrage des jeux",
-                        expanded = showGameRules,
-                        onExpandedChange = { showGameRules = it },
-                        summary = "4 types supprimés · invitations conservées",
-                    )
-                }
-                if (showGameRules) listOf(
-                    GameNotificationKind.REWARD to "Récompenses et quêtes",
-                    GameNotificationKind.STREAK to "Séries et rappels",
-                    GameNotificationKind.EVENT to "Événements et nouveautés",
-                    GameNotificationKind.PUZZLE to "Défis et puzzles",
-                ).forEach { (kind, title) ->
-                    item(key = kind) {
-                        SwitchPreference(
-                            title = title,
-                            summary = if (kind in gameDeletes) "Supprimer automatiquement" else "Conserver",
-                            checked = kind in gameDeletes,
-                            onCheckedChange = { delete ->
-                                NotificationGameSettings.setDelete(context, kind, delete)
-                                gameDeletes = NotificationGameSettings.enabledKinds(context)
-                            },
-                        )
-                    }
-                }
-            }
-        }
-        if (showGameRules) {
-            PreferenceFooter(text = "Invitations d'amis : toujours conservées. Les notifications ambiguës restent visibles.")
-        }
+        PriorityGroup(title = "Travail, GitHub et IA", summary = "Interventions urgentes · bilans ce soir · bots ignorés", rules = WORK_RULES)
+        PriorityGroup(title = "Agenda et rappels", summary = "Aujourd'hui et changements urgents · futur ce soir", rules = AGENDA_RULES)
+        PriorityGroup(title = "Système", summary = "Alertes critiques conservées · bruit ignoré", rules = SYSTEM_RULES)
+        PriorityGroup(title = "Achats", summary = "Échanges et problèmes urgents · publicités ignorées", rules = SHOPPING_RULES)
+        PriorityGroup(title = "Actualités et veille", summary = "Événements majeurs immédiats · recommandations ignorées", rules = NEWS_RULES)
+        PreferenceFooter(text = "Préférences initiales appliquées par le homelab. Vos corrections les remplacent.")
         PreferenceSection(title = "Historique local") {
             CardListGroup {
                 item {
@@ -431,225 +390,55 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                 }
             }
         }
-        PreferenceSection(title = "Avancé") {
-            CardListGroup {
-                item {
-                    ExpandableGroupHeader(
-                        title = "Personnaliser le filtrage",
-                        expanded = showAdvanced,
-                        onExpandedChange = { showAdvanced = it },
-                        summary = "Seuils, catégories et action automatique",
-                    )
-                }
-                if (showAdvanced) item {
-                    SliderPreference(
-                        title = "Exemples minimum par préférence",
-                        value = minLearning,
-                        valueText = "${minLearning.roundToInt()} retours",
-                        valueRange = 3f..20f,
-                        steps = 16,
-                        onValueChange = { minLearning = it },
-                        onValueChangeFinished = {
-                            val minimum = minLearning.roundToInt().coerceIn(3, 20)
-                            NotificationAdaptiveSettings.setMinExamples(context, minimum)
-                            minLearning = minimum.toFloat()
-                        },
-                    )
-                }
-            }
-        }
-        if (showAdvanced && config.mode != NotificationFilterMode.OFF) {
-            PreferenceSection(title = "Catégories et seuils") {
-                CardListGroup {
-                    item {
-                        ExpandableGroupHeader(
-                            title = "Catégories et seuils",
-                            expanded = showAdvancedRules,
-                            onExpandedChange = { showAdvancedRules = it },
-                            summary = "${config.labelRules.count { it.enabled }} catégories actives sur ${config.labelRules.size} · réglages avancés",
-                        )
-                    }
-                    if (showAdvancedRules) {
-                        config.labelRules.forEach { rule ->
-                            item(key = "rule_${rule.label}") {
-                                SwitchPreference(
-                                    title = labelTitle(rule.label),
-                                    summary = rule.label + " · score ≥ ${rule.minimumScore} % · écart ≥ ${rule.minimumMargin} points",
-                                    checked = rule.enabled,
-                                    onCheckedChange = { changeRule(rule.label, rule.copy(enabled = it)) },
-                                )
-                            }
-                            item(key = "rule_toggle_${rule.label}") {
-                                ExpandableGroupHeader(
-                                    title = "Régler : ${labelTitle(rule.label)}",
-                                    expanded = expandedRule == rule.label,
-                                    onExpandedChange = { open ->
-                                        expandedRule = if (open) rule.label else null
-                                        editedLabel = rule.label
-                                    },
-                                    summary = "Seuils de filtrage indépendants pour cette catégorie",
-                                )
-                            }
-                            if (expandedRule == rule.label) {
-                                item(key = "rule_score_${rule.label}") {
-                                    val score = scoreDrafts[rule.label] ?: rule.minimumScore.toFloat()
-                                    SliderPreference(
-                                        title = "Score minimum",
-                                        value = score,
-                                        valueText = "${score.roundToInt()} %",
-                                        valueRange = 0f..100f,
-                                        onValueChange = { value -> scoreDrafts = scoreDrafts + (rule.label to value) },
-                                        onValueChangeFinished = {
-                                            val chosen = (scoreDrafts[rule.label] ?: rule.minimumScore.toFloat()).roundToInt()
-                                            changeRule(rule.label, rule.copy(minimumScore = chosen))
-                                            scoreDrafts = scoreDrafts - rule.label
-                                        },
-                                    )
-                                }
-                                item(key = "rule_margin_${rule.label}") {
-                                    val margin = marginDrafts[rule.label] ?: rule.minimumMargin.toFloat()
-                                    SliderPreference(
-                                        title = "Avance sur le 2e label",
-                                        value = margin,
-                                        valueText = "${margin.roundToInt()} points",
-                                        valueRange = 0f..100f,
-                                        onValueChange = { value -> marginDrafts = marginDrafts + (rule.label to value) },
-                                        onValueChangeFinished = {
-                                            val chosen = (marginDrafts[rule.label] ?: rule.minimumMargin.toFloat()).roundToInt()
-                                            changeRule(rule.label, rule.copy(minimumMargin = chosen))
-                                            marginDrafts = marginDrafts - rule.label
-                                        },
-                                    )
-                                }
-                                item(key = "rule_label_${rule.label}", showDivider = false) {
-                                    Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                                        verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                        CouiTextField(
-                                            value = editedLabel,
-                                            onValueChange = { editedLabel = it.take(96) },
-                                            label = "Hypothèse en anglais (ex. : a gaming promotion)",
-                                            singleLine = true,
-                                        )
-                                        CouiButton(text = "Enregistrer le label", onClick = {
-                                            val proposed = editedLabel.trim()
-                                            if (proposed != rule.label) {
-                                                val newRule = rule.copy(label = proposed, enabled = false)
-                                                val updated = config.labelRules.map {
-                                                    if (it.label == rule.label) newRule else it
-                                                }
-                                                if (NotificationLabelRules.valid(updated)) {
-                                                    saveConfig(config.copy(labelRules = updated))
-                                                    expandedRule = proposed
-                                                    status = "Label modifié. Réactivez la catégorie pour la filtrer."
-                                                } else status = "Label invalide ou déjà présent."
-                                            }
-                                        })
-                                        if (config.labelRules.size > 2) {
-                                            CouiButton(text = "Retirer ce label", role = CouiButtonRole.Destructive,
-                                                onClick = {
-                                                    saveConfig(config.copy(
-                                                        labelRules = config.labelRules.filterNot { it.label == rule.label }))
-                                                    expandedRule = null
-                                                    status = "Label retiré de la classification locale."
-                                                })
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        if (config.labelRules.size < NotificationLabelRules.MAX_LABELS) {
-                            item(key = "rule_new", showDivider = false) {
-                                Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                    CouiTextField(
-                                        value = newLabel,
-                                        onValueChange = { newLabel = it.take(96) },
-                                        label = "Nouvelle catégorie (en anglais)",
-                                        placeholder = "Ex. : a social media promotion",
-                                        singleLine = true,
-                                    )
-                                    CouiButton(text = "Ajouter le label", onClick = {
-                                        val proposed = newLabel.trim()
-                                        val updated = config.labelRules + NotificationLabelRule(proposed)
-                                        if (NotificationLabelRules.valid(updated)) {
-                                            saveConfig(config.copy(labelRules = updated))
-                                            expandedRule = proposed
-                                            editedLabel = proposed
-                                            newLabel = ""
-                                            status = "Label ajouté, filtrage désactivé par défaut."
-                                        } else status = "Label invalide, en doublon ou limite atteinte."
-                                    })
-                                }
-                            }
-                        }
-                        item(key = "rule_restore") {
-                            ArrowPreference(
-                                title = "Restaurer les 7 labels d'origine",
-                                summary = "Restaure les seuils 40 % / 8 points pour la publicité et 65 % / 20 points pour le spam.",
-                                onClick = {
-                                    saveConfig(config.copy(labelRules = NotificationLabelRules.defaults()))
-                                    expandedRule = null
-                                    status = "Labels et seuils d'origine restaurés."
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-            PreferenceSection(title = "Plage horaire") {
-                CardListGroup {
-                    item {
-                        SwitchPreference(
-                            title = "Seulement pendant une plage horaire",
-                            checked = config.onlyQuietHours,
-                            summary = "Heure locale · ${config.quietFrom} h à ${config.quietUntil} h",
-                            onCheckedChange = { saveConfig(config.copy(onlyQuietHours = it)) },
-                        )
-                    }
-                    if (config.onlyQuietHours) listOf(22 to 7, 0 to 7, 9 to 18).forEach { (from, until) ->
-                        item(key = "quiet_$from") {
-                            MarkPreference(
-                                title = "$from h à $until h",
-                                checked = config.quietFrom == from && config.quietUntil == until,
-                                onClick = { saveConfig(config.copy(quietFrom = from, quietUntil = until)) },
-                            )
-                        }
-                    }
-                }
-            }
-            PreferenceSection(title = "Action automatique") {
-                CardListGroup {
-                    item {
-                        MarkPreference(
-                            title = "Reporter 1 heure",
-                            summary = "Les notifications peuvent réapparaître ensuite",
-                            checked = config.action == NotificationFilterAction.SNOOZE_1H,
-                            onClick = { saveConfig(config.copy(action = NotificationFilterAction.SNOOZE_1H)) },
-                        )
-                    }
-                    item {
-                        MarkPreference(
-                            title = "Reporter 24 heures",
-                            summary = "Les notifications peuvent réapparaître ensuite",
-                            checked = config.action == NotificationFilterAction.SNOOZE_24H,
-                            onClick = { saveConfig(config.copy(action = NotificationFilterAction.SNOOZE_24H)) },
-                        )
-                    }
-                    item {
-                        MarkPreference(
-                            title = "Supprimer définitivement",
-                            summary = "Suppression Android irréversible · toutes les applications tierces éligibles",
-                            checked = config.action == NotificationFilterAction.DISMISS,
-                            onClick = {
-                                saveConfig(config.copy(action = NotificationFilterAction.DISMISS))
-                                status = "Suppression Android activée pour les applications tierces éligibles."
-                            },
-                        )
-                    }
-                }
-            }
-            PreferenceFooter(text = "Les alertes sensibles et importantes restent protégées.")
-        }
-        if (status.isNotBlank()) PreferenceFooter(text = status)
     }
+
+    CouiInputDialog(
+        visible = pairingDialog,
+        title = "Associer le homelab",
+        message = "La chaîne contient un secret : elle est chiffrée par Android Keystore puis effacée de cet écran.",
+        value = pairingText,
+        onValueChange = { pairingText = it.trim().take(600) },
+        confirmText = "Associer",
+        confirmEnabled = MastraConnection.parsePairing(pairingText) != null,
+        onConfirm = {
+            val pairing = MastraConnection.parsePairing(pairingText)
+            pairingText = ""
+            pairingDialog = false
+            if (pairing == null) status = "Chaîne invalide (HTTPS requis)."
+            else {
+                MastraConnection.save(context, pairing)
+                paired = true
+                homelabHost = MastraConnection.displayHost(context)
+                status = "Homelab associé. Les nouvelles notifications seront analysées."
+                MastraNotificationSync.request(context, delayMs = 0)
+            }
+        },
+        onDismissRequest = { pairingText = ""; pairingDialog = false },
+    )
+    CouiConfirmDialog(
+        visible = confirmForget, title = "Dissocier ce téléphone ?",
+        message = "Les notifications ne seront plus analysées. Révoquez aussi l'appareil sur le homelab.",
+        confirmText = "Dissocier", destructive = true,
+        onConfirm = {
+            MastraConnection.forget(context)
+            paired = false
+            confirmForget = false
+            status = "Homelab dissocié"
+        },
+        onDismissRequest = { confirmForget = false },
+    )
+    CouiConfirmDialog(
+        visible = confirmReset, title = "Réinitialiser l'apprentissage ?",
+        message = "Les notifications restent dans l'historique. Les préférences explicites du homelab sont conservées.",
+        confirmText = "Réinitialiser", destructive = true,
+        onConfirm = { confirmReset = false; action {
+            withContext(Dispatchers.IO) {
+                NotificationHistoryRepository(context).resetLearning()
+                MastraConnection.load(context)?.let { MastraNotificationClient(it).resetLearning(includeUserPreferences = false) }
+            }
+            NotificationActivityFeed.notifyChanged()
+            status = "Apprentissage réinitialisé"
+        } },
+        onDismissRequest = { confirmReset = false },
+    )
 }

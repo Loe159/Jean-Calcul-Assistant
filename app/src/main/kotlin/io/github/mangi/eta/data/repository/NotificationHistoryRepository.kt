@@ -8,18 +8,6 @@ import io.github.mangi.eta.agent.device.notifications.NotificationFilterDecision
 import io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback
 import io.github.mangi.eta.agent.device.notifications.NotificationPersonalization
 import io.github.mangi.eta.agent.device.notifications.NotificationTopics
-import io.github.mangi.eta.agent.device.notifications.NotificationGameIdentity
-import io.github.mangi.eta.agent.device.notifications.NotificationSocialPolicy
-import io.github.mangi.eta.agent.device.notifications.SocialNotificationKind
-import io.github.mangi.eta.agent.device.notifications.NotificationWorkPolicy
-import io.github.mangi.eta.agent.device.notifications.WorkNotificationKind
-import io.github.mangi.eta.agent.device.notifications.NotificationSystemPolicy
-import io.github.mangi.eta.agent.device.notifications.SystemNotificationKind
-import io.github.mangi.eta.agent.device.notifications.NotificationShoppingPolicy
-import io.github.mangi.eta.agent.device.notifications.ShoppingNotificationKind
-import io.github.mangi.eta.agent.device.notifications.NotificationNewsPolicy
-import io.github.mangi.eta.agent.device.notifications.NewsNotificationKind
-import android.app.Notification
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -28,6 +16,41 @@ internal class NotificationHistoryRepository(context: Context) {
     private val appContext = context.applicationContext
     private val database = Database(context.applicationContext)
 
+    /**
+     * Structural Android metadata kept with the local copy, so the homelab request can
+     * be built later, even after the notification left the shade. No business meaning.
+     */
+    data class StructuralMeta(
+        val clearable: Boolean = true,
+        val ongoing: Boolean = false,
+        val groupSummary: Boolean = false,
+        val hasRemoteInput: Boolean = false,
+        val conversation: Boolean = false,
+        val systemApp: Boolean = false,
+        val appCategory: String? = null,
+        val appLabel: String? = null,
+    ) {
+        fun toJson(): String = JSONObject().put("clearable", clearable).put("ongoing", ongoing)
+            .put("groupSummary", groupSummary).put("hasRemoteInput", hasRemoteInput)
+            .put("conversation", conversation).put("systemApp", systemApp)
+            .put("appCategory", appCategory ?: JSONObject.NULL).put("appLabel", appLabel ?: JSONObject.NULL).toString()
+
+        companion object {
+            fun fromJson(raw: String?): StructuralMeta = runCatching {
+                val o = JSONObject(raw ?: return StructuralMeta())
+                StructuralMeta(o.optBoolean("clearable", true), o.optBoolean("ongoing"), o.optBoolean("groupSummary"),
+                    o.optBoolean("hasRemoteInput"), o.optBoolean("conversation"), o.optBoolean("systemApp"),
+                    o.optString("appCategory").takeIf { !o.isNull("appCategory") && it.isNotBlank() },
+                    o.optString("appLabel").takeIf { !o.isNull("appLabel") && it.isNotBlank() })
+            }.getOrDefault(StructuralMeta())
+        }
+    }
+
+    /**
+     * Saves the local copy. No classification happens here: when the homelab is enabled,
+     * a new or changed notification is queued for Mastra under a new revision.
+     * Returns true when the content is new or changed.
+     */
     fun record(
         key: String,
         packageName: String,
@@ -38,6 +61,8 @@ internal class NotificationHistoryRepository(context: Context) {
         channelId: String? = null,
         androidCategory: String? = null,
         fingerprint: String? = null,
+        meta: StructuralMeta = StructuralMeta(),
+        queueForRemote: Boolean = false,
     ): Boolean {
         // A silent notification still belongs in the received history.
         if (key.isBlank() || packageName.isBlank()) return false
@@ -52,9 +77,7 @@ internal class NotificationHistoryRepository(context: Context) {
             put("channel_id", channelId?.take(150))
             put("android_category", androidCategory?.take(100))
             put("content_fingerprint", fingerprint)
-            put("topic", NotificationTopics.classify(packageName, channelId, androidCategory,
-                title.orEmpty(), text.orEmpty(), null,
-                isGame = NotificationGameIdentity.isGame(appContext, packageName)))
+            put("meta_json", meta.toJson())
         }
         database.writableDatabase.transaction {
             delete(HIDDEN_TABLE, "dismissed_at<?",
@@ -66,23 +89,43 @@ internal class NotificationHistoryRepository(context: Context) {
                 arrayOf(key.take(MAX_KEY_CHARS)), null, null, null, "1",
             ).use { it.moveToFirst() }
             if (alreadyDismissed) { needsAnalysis = false; return@transaction }
-            query(
-                TABLE, arrayOf("posted_at", "filter_state", "filter_label", "filter_score", "filter_reason", "topic", "user_topic", "personal_interest", "content_fingerprint"),
-                "notification_key=?", arrayOf(key.take(MAX_KEY_CHARS)), null, null, null, "1",
-            ).use { cursor ->
-                if (cursor.moveToFirst() && cursor.getLong(0) == postedAt &&
-                    cursor.getString(8) == fingerprint) {
-                    if (cursor.getString(1) in setOf("KEPT", "OBSERVED", "PROPOSED",
-                            "ANALYZED_PROTECTED", "SNOOZED_1H", "SNOOZED_24H", "DISMISSED"))
-                        needsAnalysis = false
-                    values.put("filter_state", cursor.getString(1))
-                    values.put("filter_label", cursor.getString(2))
-                    if (!cursor.isNull(3)) values.put("filter_score", cursor.getDouble(3))
-                    values.put("filter_reason", cursor.getString(4))
-                    values.put("topic", cursor.getString(5))
-                    values.put("user_topic", cursor.getString(6))
-                    values.put("personal_interest", cursor.getString(7))
+            val previous = query(TABLE, null, "notification_key=?", arrayOf(key.take(MAX_KEY_CHARS)),
+                null, null, null, "1").use { cursor ->
+                if (!cursor.moveToFirst()) null
+                else (0 until cursor.columnCount).associate { i ->
+                    cursor.getColumnName(i) to when (cursor.getType(i)) {
+                        android.database.Cursor.FIELD_TYPE_NULL -> null
+                        android.database.Cursor.FIELD_TYPE_INTEGER -> cursor.getLong(i)
+                        android.database.Cursor.FIELD_TYPE_FLOAT -> cursor.getDouble(i)
+                        else -> cursor.getString(i)
+                    }
                 }
+            }
+            if (previous != null && previous["posted_at"] == postedAt &&
+                previous["content_fingerprint"] == fingerprint) {
+                // Unchanged notification replayed by Android (e.g. listener reconnect):
+                // keep every decision, remote state and Android action state.
+                if (previous["filter_state"] in setOf("KEPT", "OBSERVED", "PROPOSED",
+                        "ANALYZED_PROTECTED", "SNOOZED_1H", "SNOOZED_24H", "DISMISSED"))
+                    needsAnalysis = false
+                if (previous["sync_state"] in setOf("QUEUED", "SENT", "DECIDED")) needsAnalysis = false
+                for ((column, value) in previous) if (!values.containsKey(column) && column != "archived_at") when (value) {
+                    null -> values.putNull(column)
+                    is Long -> values.put(column, value)
+                    is Double -> values.put(column, value)
+                    else -> values.put(column, value.toString())
+                }
+            } else {
+                // New content for this key: the opaque id is kept, the revision increases,
+                // so a late decision for older content can never act on the new one.
+                values.put("event_id", previous?.get("event_id") as? String
+                    ?: io.github.mangi.eta.agent.device.notifications.remote.MastraNotificationClient.opaqueId("n"))
+                values.put("revision", ((previous?.get("revision") as? Long) ?: 0L) + 1)
+                if (queueForRemote) {
+                    values.put("sync_state", SyncState.QUEUED.name)
+                    values.put("filter_state", DecisionState.QUEUED.name)
+                } else values.put("sync_state", SyncState.LOCAL.name)
+                values.put("android_action_state", AndroidActionState.NONE.name)
             }
             insertWithOnConflict(TABLE, null, values, SQLiteDatabase.CONFLICT_REPLACE)
             delete(TABLE, "posted_at<?", arrayOf((System.currentTimeMillis() - RETENTION_MS).toString()))
@@ -135,6 +178,148 @@ internal class NotificationHistoryRepository(context: Context) {
         KEPT, OBSERVED, PROPOSED, SNOOZED_1H, SNOOZED_24H, DISMISSED,
     }
 
+    /** Remote analysis lifecycle, separate from the Android action actually performed. */
+    enum class SyncState { LOCAL, QUEUED, SENT, DECIDED, ERROR, REJECTED, EXPIRED }
+
+    /** What really happened on Android. A DISMISS recommendation is not proof of removal. */
+    enum class AndroidActionState { NONE, REQUESTED, CONFIRMED, SKIPPED_PROTECTED, SKIPPED_STALE, SKIPPED_NO_CONSENT, FAILED }
+
+    /** One notification waiting for Mastra, with its local Android key (never sent). */
+    data class PendingRemote(
+        val key: String, val eventId: String, val revision: Int, val packageName: String,
+        val title: String?, val text: String?, val subText: String?, val postedAt: Long,
+        val channelId: String?, val androidCategory: String?, val fingerprint: String?, val meta: StructuralMeta,
+    )
+
+    /** Queued notifications, oldest first. Older than [maxAgeMs] become EXPIRED: kept, never acted upon. */
+    fun pendingRemote(limit: Int, maxAgeMs: Long = 24L * HOUR_MS, now: Long = System.currentTimeMillis()): List<PendingRemote> {
+        val db = database.writableDatabase
+        db.update(TABLE, ContentValues().apply {
+            put("sync_state", SyncState.EXPIRED.name)
+            put("filter_state", DecisionState.EXPIRED.name)
+        }, "sync_state IN ('QUEUED','SENT','ERROR') AND posted_at<?", arrayOf((now - maxAgeMs).toString()))
+        return db.query(TABLE, arrayOf("notification_key", "event_id", "revision", "package_name", "title", "text",
+            "sub_text", "posted_at", "channel_id", "android_category", "content_fingerprint", "meta_json"),
+            "sync_state IN ('QUEUED','SENT','ERROR') AND event_id IS NOT NULL", null, null, null,
+            "posted_at ASC", limit.coerceIn(1, 50).toString()).use { c ->
+            buildList {
+                while (c.moveToNext()) add(PendingRemote(c.getString(0), c.getString(1), c.getInt(2), c.getString(3),
+                    c.getString(4), c.getString(5), c.getString(6), c.getLong(7), c.getString(8), c.getString(9),
+                    c.getString(10), StructuralMeta.fromJson(c.getString(11))))
+            }
+        }
+    }
+
+    fun markRemote(eventIds: Collection<String>, state: SyncState, error: String? = null) {
+        if (eventIds.isEmpty()) return
+        database.writableDatabase.transaction {
+            eventIds.forEach { id ->
+                update(TABLE, ContentValues().apply {
+                    put("sync_state", state.name)
+                    if (state == SyncState.ERROR) put("filter_state", DecisionState.ANALYSIS_ERROR.name)
+                    if (error != null) put("filter_reason", error.take(180))
+                }, "event_id=? AND sync_state IN ('QUEUED','SENT','ERROR')", arrayOf(id))
+            }
+        }
+    }
+
+    data class RemoteTarget(val key: String, val postedAt: Long, val fingerprint: String?, val packageName: String)
+
+    /**
+     * Stores a validated Mastra decision for the exact event, revision and content hash.
+     * Returns the Android target only when this decision concerns the current local content.
+     * A decision for an older revision is ignored: it can never act on newer content.
+     */
+    fun applyRemoteDecision(d: io.github.mangi.eta.agent.device.notifications.remote.RemoteDecision,
+                            expectedContentHash: (PendingRemote) -> String): RemoteTarget? {
+        var target: RemoteTarget? = null
+        database.writableDatabase.transaction {
+            val row = query(TABLE, arrayOf("notification_key", "event_id", "revision", "package_name", "title", "text",
+                "sub_text", "posted_at", "channel_id", "android_category", "content_fingerprint", "meta_json", "user_topic"),
+                "event_id=? AND revision=?", arrayOf(d.id, d.revision.toString()), null, null, null, "1").use { c ->
+                if (!c.moveToFirst()) null else PendingRemote(c.getString(0), c.getString(1), c.getInt(2), c.getString(3),
+                    c.getString(4), c.getString(5), c.getString(6), c.getLong(7), c.getString(8), c.getString(9),
+                    c.getString(10), StructuralMeta.fromJson(c.getString(11)))
+            } ?: return@transaction
+            if (expectedContentHash(row) != d.contentHash) return@transaction
+            val keep = d.recommendedAndroidAction == io.github.mangi.eta.agent.device.notifications.remote.AndroidAction.KEEP
+            update(TABLE, ContentValues().apply {
+                put("sync_state", SyncState.DECIDED.name)
+                put("remote_topic", d.topic); put("remote_subtype", d.subtype)
+                put("remote_priority", d.priority.name); put("remote_interest", d.interest.name)
+                put("remote_action", d.recommendedAndroidAction.name); put("remote_reason", d.reason.take(160))
+                put("remote_uncertainty", d.uncertainty.name); put("remote_source", d.source.name)
+                put("remote_protected", if (d.protected) 1 else 0)
+                put("policy_version", d.policyVersion.take(64)); put("model_version", d.modelVersion?.take(96))
+                put("actions_json", io.github.mangi.eta.agent.device.notifications.remote.MastraContract.json.encodeToString(
+                    kotlinx.serialization.builtins.ListSerializer(
+                        io.github.mangi.eta.agent.device.notifications.remote.ActionProposal.serializer()), d.actions))
+                put("decided_at", System.currentTimeMillis())
+                put("topic", d.topic)
+                put("filter_state", (if (keep) DecisionState.KEPT else DecisionState.PROPOSED).name)
+                put("filter_reason", d.reason.take(180))
+                put("personal_interest", d.interest.name.takeIf { it != "NEUTRAL" })
+            }, "event_id=? AND revision=?", arrayOf(d.id, d.revision.toString()))
+            if (!keep) target = RemoteTarget(row.key, row.postedAt, row.fingerprint, row.packageName)
+        }
+        return target
+    }
+
+    /** Records what Android really did (or why nothing was done). */
+    fun setAndroidActionState(key: String, postedAt: Long, state: AndroidActionState, reason: String? = null): Boolean {
+        val values = ContentValues().apply {
+            put("android_action_state", state.name)
+            when (state) {
+                AndroidActionState.CONFIRMED -> put("filter_state", DecisionState.DISMISSED.name)
+                AndroidActionState.SKIPPED_PROTECTED, AndroidActionState.SKIPPED_STALE,
+                AndroidActionState.SKIPPED_NO_CONSENT, AndroidActionState.FAILED -> put("filter_state", DecisionState.KEPT.name)
+                else -> Unit
+            }
+            if (reason != null) put("filter_reason", reason.take(180))
+        }
+        return database.writableDatabase.update(TABLE, values, "notification_key=? AND posted_at=?",
+            arrayOf(key.take(MAX_KEY_CHARS), postedAt.toString())) == 1
+    }
+
+    /** Feedback waiting to be sent to Mastra, in order. */
+    data class OutboxItem(val id: String, val payload: String)
+
+    fun pendingFeedback(limit: Int = 100): List<OutboxItem> = database.readableDatabase.query(OUTBOX_TABLE,
+        arrayOf("event_id", "payload"), null, null, null, null, "created_at ASC", limit.coerceIn(1, 100).toString()).use { c ->
+        buildList { while (c.moveToNext()) add(OutboxItem(c.getString(0), c.getString(1))) }
+    }
+
+    fun removeFeedback(ids: Collection<String>) {
+        if (ids.isEmpty()) return
+        database.writableDatabase.transaction { ids.forEach { delete(OUTBOX_TABLE, "event_id=?", arrayOf(it)) } }
+    }
+
+    /** Remote events for one local feedback; nothing is queued for a notification Mastra never saw. */
+    fun enqueueRemoteFeedback(key: String, postedAt: Long, type: String, correctedTopic: String? = null,
+                              correctedPriority: String? = null, actionType: String? = null): Boolean {
+        val row = database.readableDatabase.query(TABLE, arrayOf("event_id", "revision", "package_name", "channel_id",
+            "remote_subtype", "sync_state"), "notification_key=? AND posted_at=?",
+            arrayOf(key.take(MAX_KEY_CHARS), postedAt.toString()), null, null, null, "1").use { c ->
+            if (!c.moveToFirst() || c.isNull(0)) null
+            else listOf(c.getString(0), c.getInt(1).toString(), c.getString(2), c.getString(3), c.getString(4), c.getString(5))
+        } ?: return false
+        if (row[5] !in setOf(SyncState.DECIDED.name, SyncState.SENT.name)) return false
+        val eventId = io.github.mangi.eta.agent.device.notifications.remote.MastraNotificationClient.opaqueId("fb")
+        val payload = JSONObject().put("eventId", eventId).put("notificationId", row[0]).put("revision", row[1].toInt())
+            .put("type", type).put("occurredAt", java.time.OffsetDateTime.now().toString())
+            .put("context", JSONObject().put("package", row[2]).put("channelId", row[3] ?: JSONObject.NULL)
+                .put("subtype", row[4] ?: JSONObject.NULL))
+        correctedTopic?.let { payload.put("correctedTopic", it) }
+        correctedPriority?.let { payload.put("correctedPriority", it) }
+        actionType?.let { payload.put("actionType", it) }
+        database.writableDatabase.insert(OUTBOX_TABLE, null, ContentValues().apply {
+            put("event_id", eventId); put("payload", payload.toString()); put("created_at", System.currentTimeMillis())
+        })
+        database.writableDatabase.execSQL("DELETE FROM $OUTBOX_TABLE WHERE event_id NOT IN " +
+            "(SELECT event_id FROM $OUTBOX_TABLE ORDER BY created_at DESC LIMIT 1000)")
+        return true
+    }
+
     /**
      * Called after local inference or a verified Android removal callback.
      * Match the original post time to avoid attributing a stale classifier result
@@ -185,6 +370,15 @@ internal class NotificationHistoryRepository(context: Context) {
         val userTopic: String? = null,
         val personalInterest: String? = null,
         val repeatedNewsHeadline: Boolean = false,
+        val syncState: SyncState = SyncState.LOCAL,
+        val remotePriority: String? = null,
+        val remoteSubtype: String? = null,
+        val remoteSource: String? = null,
+        val remoteUncertainty: String? = null,
+        val remoteProtected: Boolean = false,
+        val androidActionState: AndroidActionState = AndroidActionState.NONE,
+        val actionsJson: String? = null,
+        val userPriority: String? = null,
     )
 
     fun recent(limit: Int = 200): List<RecentEntry> = entries(archived = false, limit = limit)
@@ -196,6 +390,7 @@ internal class NotificationHistoryRepository(context: Context) {
     /** Copies hidden from Now Brief but still available locally for seven days. */
     fun archived(limit: Int = 200): List<RecentEntry> = entries(archived = true, limit = limit)
 
+    /** Reads stored values only: the phone no longer recomputes a business classification. */
     private fun entries(archived: Boolean, limit: Int, before: RecentEntry? = null): List<RecentEntry> {
         val cutoff = System.currentTimeMillis() - RETENTION_MS
         val selection = "posted_at>=? AND archived_at IS ${if (archived) "NOT " else ""}NULL" +
@@ -206,48 +401,14 @@ internal class NotificationHistoryRepository(context: Context) {
             TABLE,
             arrayOf("notification_key", "package_name", "title", "text", "sub_text",
                 "posted_at", "filter_state", "filter_label", "filter_score", "filter_reason",
-                "channel_id", "android_category", "topic", "user_topic", "personal_interest"),
+                "channel_id", "android_category", "topic", "user_topic", "personal_interest",
+                "sync_state", "remote_priority", "remote_subtype", "remote_source", "remote_uncertainty",
+                "remote_protected", "android_action_state", "actions_json", "remote_topic", "user_priority"),
             selection, arguments,
             null, null, "posted_at DESC, notification_key DESC", limit.coerceIn(1, MAX_RECORDS).toString(),
         ).use { cursor ->
-            val gamePackages = mutableMapOf<String, Boolean>()
             buildList {
                 while (cursor.moveToNext()) {
-                    val pkg = cursor.getString(1)
-                    val isGame = gamePackages.getOrPut(pkg) { NotificationGameIdentity.isGame(appContext, pkg) }
-                    val savedTopic = cursor.getString(12) ?: "other"
-                    val socialKind = NotificationSocialPolicy.classify(pkg,
-                        cursor.getString(2).orEmpty(), cursor.getString(3).orEmpty(),
-                        cursor.getString(11))
-                    val fallbackTopic = when {
-                        isGame -> NotificationTopics.classify(pkg, cursor.getString(10),
-                            cursor.getString(11), cursor.getString(2).orEmpty(),
-                            cursor.getString(3).orEmpty(), null, isGame = true)
-                        socialKind == SocialNotificationKind.DIRECT -> "messages"
-                        socialKind != SocialNotificationKind.UNKNOWN -> "social"
-                        else -> when (NotificationShoppingPolicy.classify(pkg,
-                            cursor.getString(2).orEmpty(), cursor.getString(3).orEmpty(),
-                            cursor.getString(11))) {
-                            ShoppingNotificationKind.DIRECT_MESSAGE -> "messages"
-                            ShoppingNotificationKind.UNKNOWN -> when (NotificationWorkPolicy.classify(pkg,
-                                cursor.getString(2).orEmpty(), cursor.getString(3).orEmpty(),
-                                cursor.getString(11))) {
-                            WorkNotificationKind.COLLEAGUE_MESSAGE -> "work"
-                            WorkNotificationKind.UNKNOWN -> {
-                                val systemKind = NotificationSystemPolicy.classify(pkg,
-                                    cursor.getString(2).orEmpty(), cursor.getString(3).orEmpty(),
-                                    cursor.getString(11), savedTopic)
-                                if (systemKind != SystemNotificationKind.UNKNOWN) "system"
-                                else if (NotificationNewsPolicy.classify(pkg,
-                                        cursor.getString(2).orEmpty(), cursor.getString(3).orEmpty(),
-                                        savedTopic) != NewsNotificationKind.UNKNOWN) "news"
-                                else savedTopic
-                            }
-                                else -> "development"
-                            }
-                            else -> "shopping"
-                        }
-                    }
                     add(RecentEntry(
                         key = cursor.getString(0),
                         packageName = cursor.getString(1),
@@ -262,14 +423,20 @@ internal class NotificationHistoryRepository(context: Context) {
                         reason = cursor.getString(9),
                         channelId = cursor.getString(10),
                         androidCategory = cursor.getString(11),
-                        topic = fallbackTopic,
+                        // Mastra's topic first; rows recorded before the migration keep their old topic.
+                        topic = cursor.getString(23) ?: cursor.getString(12) ?: "other",
                         userTopic = cursor.getString(13),
                         personalInterest = cursor.getString(14),
-                        repeatedNewsHeadline = if (fallbackTopic == "news" ||
-                            NotificationNewsPolicy.isNewsApp(pkg))
-                            isRepeatedNewsHeadline(cursor.getString(0), pkg,
-                                cursor.getString(2).orEmpty(), cursor.getString(3).orEmpty(),
-                                cursor.getLong(5)) else false,
+                        syncState = runCatching { SyncState.valueOf(cursor.getString(15)) }.getOrDefault(SyncState.LOCAL),
+                        remotePriority = cursor.getString(16),
+                        remoteSubtype = cursor.getString(17),
+                        remoteSource = cursor.getString(18),
+                        remoteUncertainty = cursor.getString(19),
+                        remoteProtected = !cursor.isNull(20) && cursor.getInt(20) == 1,
+                        androidActionState = runCatching { AndroidActionState.valueOf(cursor.getString(21)) }
+                            .getOrDefault(AndroidActionState.NONE),
+                        actionsJson = cursor.getString(22),
+                        userPriority = cursor.getString(24),
                     ))
                 }
             }
@@ -314,8 +481,10 @@ internal class NotificationHistoryRepository(context: Context) {
 
     /** Explicit and implicit human events only; duplicate delivery cannot train twice. */
     fun feedback(key: String, postedAt: Long, kind: NotificationUserFeedback,
-                 correctedTopic: String? = null): Boolean {
+                 correctedTopic: String? = null, correctedPriority: String? = null,
+                 actionType: String? = null): Boolean {
         if (correctedTopic != null && correctedTopic !in NotificationTopics.titles) return false
+        if (correctedPriority != null && correctedPriority !in setOf("NOW", "TODAY", "LOW")) return false
         var recorded = false
         database.writableDatabase.transaction {
             val row = query(TABLE, arrayOf("package_name", "channel_id", "filter_label", "title", "text"),
@@ -325,7 +494,7 @@ internal class NotificationHistoryRepository(context: Context) {
             val featureList = NotificationPersonalization.features(row[0].orEmpty(), row[1], row[2],
                 "${row[3].orEmpty()} ${row[4].orEmpty()}")
             // Corrections are deduplicated by (key, post time, kind, topic).
-            val id = "$key:$postedAt:${kind.name}:${correctedTopic.orEmpty()}"
+            val id = "$key:$postedAt:${kind.name}:${correctedTopic.orEmpty()}${correctedPriority.orEmpty()}${actionType.orEmpty()}"
             val added = insertWithOnConflict(FEEDBACK_TABLE, null, ContentValues().apply {
                 put("event_id", id.take(1200)); put("event_type", kind.name)
                 put("created_at", System.currentTimeMillis()); put("model_version", NotificationPersonalization.VERSION)
@@ -335,6 +504,12 @@ internal class NotificationHistoryRepository(context: Context) {
             if (kind in setOf(NotificationUserFeedback.INTERESTING, NotificationUserFeedback.UNWANTED,
                     NotificationUserFeedback.WRONG_REMOVAL)) {
                 update(TABLE, ContentValues().apply { put("personal_interest", if (kind.wanted == true) "WANTED" else "UNWANTED") },
+                    "notification_key=? AND posted_at=?", arrayOf(key, postedAt.toString()))
+            }
+            // The homelab learns from the same events, when it saw this notification.
+            enqueueRemoteFeedback(key, postedAt, kind.remoteType, correctedTopic, correctedPriority, actionType)
+            if (correctedPriority != null) {
+                update(TABLE, ContentValues().apply { put("user_priority", correctedPriority) },
                     "notification_key=? AND posted_at=?", arrayOf(key, postedAt.toString()))
             }
             if (correctedTopic != null) {
@@ -403,7 +578,8 @@ internal class NotificationHistoryRepository(context: Context) {
             delete(FEEDBACK_TABLE, null, null)
             delete(LEARNING_TABLE, null, null)
             delete(TOPIC_TABLE, null, null)
-            execSQL("UPDATE $TABLE SET user_topic=NULL, personal_interest=NULL")
+            execSQL("UPDATE $TABLE SET user_topic=NULL, user_priority=NULL, personal_interest=NULL")
+            delete(OUTBOX_TABLE, null, null)
         }
     }
 
@@ -466,7 +642,7 @@ internal class NotificationHistoryRepository(context: Context) {
     private fun String.escapeLike(): String =
         replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
-    private class Database(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, 6) {
+    private class Database(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, 7) {
         override fun onCreate(db: SQLiteDatabase) {
             createHiddenTable(db)
             db.execSQL(
@@ -480,6 +656,7 @@ internal class NotificationHistoryRepository(context: Context) {
             )
             db.execSQL("CREATE INDEX notification_history_posted_at ON $TABLE(posted_at DESC)")
             createLearningTables(db)
+            addRemoteColumns(db)
         }
 
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -500,6 +677,20 @@ internal class NotificationHistoryRepository(context: Context) {
                     .forEach { db.execSQL("ALTER TABLE $TABLE ADD COLUMN $it TEXT") }
                 createLearningTables(db)
             }
+            if (oldVersion < 7) addRemoteColumns(db)
+        }
+
+        /** v7: Mastra decisions and Android action states. Existing history and preferences are kept. */
+        private fun addRemoteColumns(db: SQLiteDatabase) {
+            listOf("event_id TEXT", "revision INTEGER NOT NULL DEFAULT 0", "sync_state TEXT NOT NULL DEFAULT 'LOCAL'",
+                "remote_topic TEXT", "remote_subtype TEXT", "remote_priority TEXT", "remote_interest TEXT",
+                "remote_action TEXT", "remote_reason TEXT", "remote_uncertainty TEXT", "remote_source TEXT",
+                "remote_protected INTEGER", "policy_version TEXT", "model_version TEXT", "actions_json TEXT",
+                "decided_at INTEGER", "android_action_state TEXT NOT NULL DEFAULT 'NONE'", "meta_json TEXT", "user_priority TEXT")
+                .forEach { db.execSQL("ALTER TABLE $TABLE ADD COLUMN $it") }
+            db.execSQL("CREATE INDEX IF NOT EXISTS notification_history_event ON $TABLE(event_id, revision)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS notification_history_sync ON $TABLE(sync_state, posted_at)")
+            db.execSQL("CREATE TABLE IF NOT EXISTS $OUTBOX_TABLE (event_id TEXT PRIMARY KEY, payload TEXT NOT NULL, created_at INTEGER NOT NULL)")
         }
 
         private fun createLearningTables(db: SQLiteDatabase) {
@@ -530,6 +721,7 @@ internal class NotificationHistoryRepository(context: Context) {
         private const val FEEDBACK_TABLE = "notification_feedback"
         private const val LEARNING_TABLE = "notification_learning"
         private const val TOPIC_TABLE = "notification_topic_learning"
+        private const val OUTBOX_TABLE = "notification_remote_feedback_outbox"
         private const val MAX_RECORDS = 1_000
         private const val RETENTION_DAYS = 7
         private const val HOUR_MS = 60L * 60 * 1_000

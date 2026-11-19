@@ -157,8 +157,8 @@ class VisualScenarioTest {
                     "notifications_large_text" -> {
                         if (scenario in setOf("notifications", "notifications_modes", "notifications_large_text")) {
                             openNotificationSettings(device, context)
-                            assertTrue("The only filter switch must be reachable",
-                                device.wait(Until.hasObject(By.text("Filtrage automatique")), 10000))
+                            assertTrue("The Android removal consent must be reachable",
+                                device.wait(Until.hasObject(By.text("Retrait automatique")), 10000))
                             assertFalse("Intermediate observation modes must be hidden",
                                 device.hasObject(By.text("Prudent")))
                             assertFalse("Manual notification simulator must be removed",
@@ -368,7 +368,7 @@ class VisualScenarioTest {
                     }
                     "notifications_no_confirmation" -> {
                         openNotificationSettings(device, context)
-                        assertTrue(device.wait(Until.hasObject(By.text("Filtrage automatique")), 10000))
+                        assertTrue(device.wait(Until.hasObject(By.text("Retrait automatique")), 10000))
                         assertFalse(device.hasObject(By.text("Prudent")))
                         assertFalse(device.hasObject(By.text("Tester une notification")))
                     }
@@ -398,6 +398,51 @@ class VisualScenarioTest {
                         }
                         assertTrue("Confirmed removals remain in the category history",
                             device.wait(Until.hasObject(marker), 5000))
+                    }
+                    "brief_mastra" -> {
+                        // Synthetic decisions as returned by the homelab; nothing is sent
+                        // over the network and no real Android notification is touched.
+                        val repo = NotificationHistoryRepository(context)
+                        val sync = io.github.mangi.eta.agent.device.notifications.remote.MastraNotificationSync(context)
+                        val now = System.currentTimeMillis()
+                        fun decide(key: String, pkg: String, title: String, text: String, priority: String,
+                                   topic: String, subtype: String, action: String, reason: String,
+                                   actions: List<io.github.mangi.eta.agent.device.notifications.remote.ActionProposal> = emptyList()) {
+                            repo.record(key, pkg, title, text, null, now, fingerprint = "fp-$key", queueForRemote = true)
+                            val p = repo.pendingRemote(50).single { it.key == key }
+                            val n = sync.toRemote(p)
+                            repo.applyRemoteDecision(io.github.mangi.eta.agent.device.notifications.remote.RemoteDecision(
+                                id = n.id, revision = n.revision, contentHash = n.contentHash, topic = topic, subtype = subtype,
+                                priority = io.github.mangi.eta.agent.device.notifications.remote.Priority.valueOf(priority),
+                                interest = io.github.mangi.eta.agent.device.notifications.remote.Interest.NEUTRAL,
+                                recommendedAndroidAction = io.github.mangi.eta.agent.device.notifications.remote.AndroidAction.valueOf(action),
+                                protected = false, reason = reason,
+                                uncertainty = io.github.mangi.eta.agent.device.notifications.remote.Uncertainty.LOW,
+                                source = io.github.mangi.eta.agent.device.notifications.remote.DecisionSource.RULE,
+                                actions = actions, policyVersion = "rules-2026.11.19+p0", decidedAt = "2026-11-19T18:30:06+01:00",
+                            )) { sync.toRemote(it).contentHash }
+                        }
+                        decide("mastra-github", "com.android.settings", "Review requested on PR #42", "homelab-ai",
+                            "NOW", "development", "action_required", "KEEP", "Intervention demandée sur le développement",
+                            listOf(io.github.mangi.eta.agent.device.notifications.remote.ActionProposal(
+                                actionId = "act_0123456789abcdef01234567",
+                                type = io.github.mangi.eta.agent.device.notifications.remote.ActionType.CREATE_TASK,
+                                status = "PROPOSED", label = "Créer une tâche",
+                                payload = kotlinx.serialization.json.buildJsonObject {
+                                    put("title", kotlinx.serialization.json.JsonPrimitive("Traiter : Review requested on PR #42"))
+                                }, requiresApproval = true)))
+                        decide("mastra-snap", "com.android.systemui", "Suggestion d'ami", "Découvrez Paul",
+                            "LOW", "social", "friend_suggestion", "DISMISS", "Suggestion sociale sans intérêt personnel")
+                        repo.setAndroidActionState("mastra-snap", now,
+                            NotificationHistoryRepository.AndroidActionState.CONFIRMED, "Retirée des notifications Android")
+                        repo.record("mastra-pending", "com.android.settings", "Nouveautés", "Les nouveautés de la semaine",
+                            null, now - 1, fingerprint = "fp-pending", queueForRemote = true)
+                        NotificationActivityFeed.notifyChanged()
+                        device.findObject(By.desc("Ouvrir mon briefing")).click()
+                        assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
+                        assertTrue("Mastra NOW tier is shown", device.wait(Until.hasObject(By.text("À traiter maintenant")), 8000))
+                        assertTrue("Pending analysis is explicit",
+                            device.wait(Until.hasObject(By.textContains("Analyse en attente")), 8000))
                     }
                     "brief_swipe_isolation" -> {
                         val repo = NotificationHistoryRepository(context)

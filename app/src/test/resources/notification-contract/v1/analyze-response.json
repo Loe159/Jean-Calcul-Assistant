@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "batchId": "batch_456_0001",
+  "decisions": [
+    {
+      "id": "notif_001_snap",
+      "revision": 1,
+      "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+      "topic": "social",
+      "subtype": "friend_suggestion",
+      "priority": "LOW",
+      "interest": "UNWANTED",
+      "recommendedAndroidAction": "DISMISS",
+      "protected": false,
+      "reason": "Suggestion sociale sans intérêt personnel",
+      "uncertainty": "LOW",
+      "source": "RULE",
+      "ruleId": "social.suggestion",
+      "actions": [],
+      "policyVersion": "rules-2026.11.19+p0",
+      "modelVersion": null,
+      "decidedAt": "2026-11-19T18:30:06.120+01:00"
+    },
+    {
+      "id": "notif_002_github",
+      "revision": 1,
+      "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+      "topic": "development",
+      "subtype": "action_required",
+      "priority": "NOW",
+      "interest": "NEUTRAL",
+      "recommendedAndroidAction": "KEEP",
+      "protected": false,
+      "reason": "Intervention demandée sur le développement",
+      "uncertainty": "LOW",
+      "source": "RULE",
+      "ruleId": "work.action_required",
+      "actions": [
+        {
+          "actionId": "act_0123456789abcdef01234567",
+          "type": "CREATE_TASK",
+          "status": "PROPOSED",
+          "label": "Créer une tâche",
+          "payload": { "title": "Traiter : Review requested on PR #42", "dueDate": null },
+          "missing": ["dueDate"],
+          "requiresApproval": true
+        },
+        {
+          "actionId": "act_fedcba9876543210fedcba98",
+          "type": "OPEN_SOURCE_APP",
+          "status": "PROPOSED",
+          "label": "Ouvrir",
+          "payload": {},
+          "missing": [],
+          "requiresApproval": false
+        }
+      ],
+      "policyVersion": "rules-2026.11.19+p0",
+      "modelVersion": null,
+      "decidedAt": "2026-11-19T18:30:06.121+01:00"
+    }
+  ],
+  "errors": [
+    { "id": "notif_bad_0003", "index": 2, "code": "INVALID", "message": "package: Invalid string" }
+  ]
+}

@@ -113,3 +113,10 @@ notifications can be requeued. In Settings > Notifications intelligentes,
 recovery on demand. "Diagnostic de l'analyse locale" reports installation,
 listener access, power limits, queue count, daily quota and the last error
 class without exposing any private notification text.
+
+## Décisions Mastra (19/11/2026)
+
+Les sections ci-dessus décrivant le classifieur NLI local sont historiques. La classification,
+les priorités et les retraits recommandés viennent désormais du homelab Mastra :
+voir [MASTRA-NOTIFICATIONS.md](MASTRA-NOTIFICATIONS.md). Le téléphone n'exécute plus de modèle
+en fonctionnement normal et conserve uniquement ses protections natives.

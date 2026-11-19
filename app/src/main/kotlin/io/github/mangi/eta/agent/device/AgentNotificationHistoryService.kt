@@ -1,66 +1,53 @@
 package io.github.mangi.eta.agent.device
 
 import android.app.Notification
-import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Context
-import android.service.notification.NotificationListenerService
-import android.service.notification.StatusBarNotification
-import io.github.mangi.eta.data.repository.NotificationHistoryRepository
-import io.github.mangi.eta.agent.device.notifications.NotificationObservation
-import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
-import io.github.mangi.eta.agent.device.notifications.NotificationProtection
-import io.github.mangi.eta.agent.device.notifications.NotificationFilterDecision
-import io.github.mangi.eta.agent.device.notifications.NotificationFilterPolicy
-import io.github.mangi.eta.agent.device.notifications.NotificationFilterSettings
-import io.github.mangi.eta.agent.device.notifications.NotificationFilterCandidate
-import io.github.mangi.eta.agent.device.notifications.NotificationAdaptiveSettings
-import io.github.mangi.eta.agent.device.notifications.NotificationPersonalization
-import io.github.mangi.eta.agent.device.notifications.NotificationGameIdentity
-import io.github.mangi.eta.agent.device.notifications.NotificationGameSettings
-import io.github.mangi.eta.agent.device.notifications.NotificationGamePolicy
-import io.github.mangi.eta.agent.device.notifications.GameNotificationKind
-import io.github.mangi.eta.agent.device.notifications.NotificationTopics
-import io.github.mangi.eta.agent.device.notifications.NotificationPriorityInput
-import io.github.mangi.eta.agent.device.notifications.NotificationPriorityPolicy
+import android.content.pm.ApplicationInfo
 import android.os.Handler
 import android.os.Looper
-import java.time.LocalTime
+import android.service.notification.NotificationListenerService
+import android.service.notification.StatusBarNotification
+import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
+import io.github.mangi.eta.agent.device.notifications.NotificationFilterDecision
+import io.github.mangi.eta.agent.device.notifications.NotificationFilterMode
+import io.github.mangi.eta.agent.device.notifications.NotificationFilterSettings
+import io.github.mangi.eta.agent.device.notifications.NotificationProtection
+import io.github.mangi.eta.agent.device.notifications.remote.MastraConnection
+import io.github.mangi.eta.agent.device.notifications.remote.MastraNotificationSync
+import io.github.mangi.eta.data.repository.NotificationHistoryRepository
+import io.github.mangi.eta.data.repository.NotificationHistoryRepository.AndroidActionState
+import java.util.concurrent.Executors
 
+/**
+ * Single Android entry point for notifications. It no longer classifies anything:
+ * 1. save locally, 2. queue for Mastra, 3. (later) receive the decision,
+ * 4. re-check native protections on the main thread, 5. act, 6. confirm via callback.
+ */
 class AgentNotificationHistoryService : NotificationListenerService() {
     private val repository by lazy { NotificationHistoryRepository(this) }
-    private val pending = mutableMapOf<String, Pending>()
+    private val pending = mutableMapOf<String, Long>()
     private val processed = LinkedHashMap<String, Long>()
-    private data class Pending(
-        val pkg: String, val label: String, val score: Double,
-        val expected: NotificationFilterDecision,
-        val postedAt: Long,
-        val gameKind: GameNotificationKind? = null,
-    )
-
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if (record(sbn) && !handleGameNotification(sbn)) NotificationObservation.observe(this, sbn)
+        val snapshot = Snapshot.of(this, sbn)
+        // SQLite work never runs on the listener's main thread.
+        io.execute { if (record(snapshot)) MastraNotificationSync.request(applicationContext) }
     }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
         connectedService = this
-        NotificationObservation.attachService(this)
-        val active = activeNotifications.orEmpty()
-        active.forEach { sbn ->
-            // Game alerts use the deterministic fast path even after a service restart.
-            if (record(sbn)) handleGameNotification(sbn)
+        val active = activeNotifications.orEmpty().map { Snapshot.of(this, it) }
+        io.execute {
+            // Replays of unchanged notifications keep their state and are not re-sent.
+            val queued = active.count { record(it) }
+            if (queued > 0 || MastraConnection.enabled(this)) MastraNotificationSync.request(applicationContext)
+            NotificationActivityFeed.notifyChanged()
         }
-        // The old implementation left rows as RECEIVED when throttled and
-        // silently lost work on process restart. Recover recent still-active
-        // alerts, but never reprocess already classified or dismissed entries.
-        NotificationObservation.recoverActive(this, active)
-        NotificationActivityFeed.notifyChanged()
     }
 
     override fun onListenerDisconnected() {
-        NotificationObservation.detachService()
         pending.clear()
         processed.clear()
         if (connectedService === this) connectedService = null
@@ -68,242 +55,128 @@ class AgentNotificationHistoryService : NotificationListenerService() {
     }
 
     override fun onDestroy() {
-        NotificationObservation.detachService()
         pending.clear()
         processed.clear()
         if (connectedService === this) connectedService = null
         super.onDestroy()
     }
 
-    override fun onNotificationRemoved(
-        sbn: StatusBarNotification,
-        rankingMap: RankingMap,
-        reason: Int,
-    ) {
-        NotificationObservation.notificationGone(this, sbn)
-        val action = pending.remove(sbn.key) ?: return
-        val confirmed = when (action.expected) {
-            NotificationFilterDecision.DISMISS -> reason == REASON_LISTENER_CANCEL
-            else -> reason == REASON_SNOOZED
-        }
-        if (confirmed) {
-            // The model's proposal is not proof of removal. Persist the state
-            // only after Android confirms the actual listener action.
-            NotificationHistoryRepository.confirmedState(action.expected)?.let { state ->
-                repository.updateDecision(sbn.key, action.postedAt, state, action.label,
-                    if (action.gameKind == null) action.score else null)
+    override fun onNotificationRemoved(sbn: StatusBarNotification, rankingMap: RankingMap, reason: Int) {
+        val postedAt = pending.remove(sbn.key) ?: return
+        if (postedAt != sbn.postTime) return
+        // Mastra's DISMISS is not proof of removal: only this callback is.
+        val state = if (reason == REASON_LISTENER_CANCEL) AndroidActionState.CONFIRMED else AndroidActionState.NONE
+        io.execute {
+            if (repository.setAndroidActionState(sbn.key, sbn.postTime, state,
+                    if (state == AndroidActionState.CONFIRMED) "Retirée des notifications Android" else null))
                 NotificationActivityFeed.notifyChanged()
-            }
-            if (action.gameKind == null)
-                NotificationObservation.recordAction(action.pkg, action.label, action.score, action.expected)
         }
     }
 
-    /** Game rules are cheap, deterministic and do not load the 300 MB ONNX model. */
-    private fun handleGameNotification(sbn: StatusBarNotification): Boolean {
-        if (!NotificationGameIdentity.isGame(this, sbn.packageName)) return false
-        val n = sbn.notification
-        val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
-        val body = n.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
-        val kind = NotificationGamePolicy.classify(title, body, n.category)
-        val config = NotificationFilterSettings.load(this)
-        val preference = if (NotificationAdaptiveSettings.enabled(this))
-            repository.interest(sbn.packageName, n.channelId, "games:${kind.name}", title, body,
-                NotificationAdaptiveSettings.minExamples(this))
-        else NotificationPersonalization.Interest.NEUTRAL
-        val evaluation = NotificationGamePolicy.evaluate(config,
-            io.github.mangi.eta.agent.device.notifications.NotificationFilterEvaluation(
-                NotificationFilterDecision.KEEP, "Notification de jeu classée localement"),
-            preference, gameApp = true, kind = kind,
-            enabledKinds = NotificationGameSettings.enabledKinds(this), localHour = LocalTime.now().hour)
-        val wantsRemoval = evaluation.decision == NotificationFilterDecision.DISMISS
-        val isSafe = wantsRemoval && NotificationProtection.safe(this, sbn)
-        repository.updateDecision(sbn.key, sbn.postTime,
-            if (isSafe) NotificationHistoryRepository.DecisionState.PROPOSED
-            else NotificationHistoryRepository.DecisionState.KEPT,
-            label = "games:${kind.name}",
-            reason = if (wantsRemoval && !isSafe) "Conservée : protection Android" else evaluation.reason,
-            topic = "games", personalInterest = preference.name)
-        NotificationActivityFeed.notifyChanged()
-        if (isSafe) requestSafeGameFilter(sbn, NotificationProtection.fingerprint(sbn)) { applied ->
-            if (!applied && repository.updateDecision(sbn.key, sbn.postTime,
-                    NotificationHistoryRepository.DecisionState.KEPT,
-                    reason = "Conservée : notification changée ou priorité élevée"))
-                NotificationActivityFeed.notifyChanged()
-        }
-        return true
-    }
-
-    private fun applyIfStillSafe(
-        original: StatusBarNotification,
-        fingerprint: String,
-        scores: List<Pair<String, Double>>,
-        desired: NotificationFilterDecision,
-        gameRule: Boolean = false,
-    ): Boolean {
-        if (connectedService !== this || !isEnabled(this)) return false
-        val current = runCatching { activeNotifications?.firstOrNull { it.key == original.key } }
-            .getOrNull() ?: return false
-        if (current.packageName != original.packageName ||
-            current.postTime != original.postTime ||
-            NotificationProtection.fingerprint(current) != fingerprint ||
-            (gameRule && !NotificationProtection.safe(this, current))) return false
-        // Channel IMPORTANCE_HIGH is not the same as personal urgency: some
-        // promotions use that channel. The tier-aware guard below determines
-        // whether a user-relevant notification must stay; keep the old extra
-        // high-priority guard for the separate game-specific path.
-        val ranking = Ranking()
-        val rankAvailable = runCatching { currentRanking?.getRanking(current.key, ranking) == true }
-            .getOrDefault(false)
-        if (!rankAvailable ||
-            (gameRule && ranking.importance >= NotificationManager.IMPORTANCE_HIGH)) return false
-
-        val settings = NotificationFilterSettings.load(this)
-        val gameKind: GameNotificationKind?
-        val newDecision = if (gameRule) {
-            if (!NotificationGameIdentity.isGame(this, current.packageName)) return false
-            val n = current.notification
-            val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
-            val body = n.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
-            gameKind = NotificationGamePolicy.classify(title, body, n.category)
-            val preference = if (NotificationAdaptiveSettings.enabled(this))
-                repository.interest(current.packageName, n.channelId, "games:${gameKind.name}", title, body,
-                    NotificationAdaptiveSettings.minExamples(this))
-            else NotificationPersonalization.Interest.NEUTRAL
-            NotificationGamePolicy.evaluate(settings,
-                io.github.mangi.eta.agent.device.notifications.NotificationFilterEvaluation(
-                    NotificationFilterDecision.KEEP, "Notification de jeu"),
-                preference, gameApp = true, kind = gameKind,
-                enabledKinds = NotificationGameSettings.enabledKinds(this),
-                localHour = LocalTime.now().hour).decision
-        } else {
-            gameKind = null
-            val base = NotificationFilterPolicy.evaluate(settings, NotificationFilterCandidate(
-                app = current.packageName, safe = true, scores = scores, localHour = LocalTime.now().hour,
-            ))
-            val preference = if (NotificationAdaptiveSettings.enabled(this))
-                repository.interest(current.packageName, current.notification.channelId,
-                    scores.first().first, current.notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty(),
-                    current.notification.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty(),
-                    NotificationAdaptiveSettings.minExamples(this))
-            else NotificationPersonalization.Interest.NEUTRAL
-            val title = current.notification.extras
-                .getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
-            val body = current.notification.extras
-                .getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
-            val label = scores.first().first
-            val topic = repository.learnedTopic(current.packageName, current.notification.channelId,
-                label, title, body) ?: NotificationTopics.classify(
-                current.packageName, current.notification.channelId,
-                current.notification.category, title, body, label)
-            NotificationPriorityPolicy.automaticAction(
-                NotificationPriorityInput(current.packageName, title, body,
-                    current.notification.channelId, current.notification.category, topic, label,
-                    personalInterest = preference,
-                    repeatedNewsHeadline = if (topic == "news" ||
-                        io.github.mangi.eta.agent.device.notifications.NotificationNewsPolicy.isNewsApp(current.packageName))
-                        repository.isRepeatedNewsHeadline(current.key, current.packageName,
-                            title, body, current.postTime) else false),
-                settings, NotificationPersonalization.safeDecision(base, preference, label, settings),
-                LocalTime.now().hour,
-            ).decision
-        }
-        if (newDecision != desired) return false
-        if (!gameRule) {
-            val n = current.notification
-            val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
-            val content = n.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
-            val label = scores.firstOrNull()?.first
-            val topic = repository.learnedTopic(current.packageName, n.channelId, label,
-                title, content) ?: NotificationTopics.classify(current.packageName, n.channelId,
-                n.category, title, content, label)
-            val interest = if (NotificationAdaptiveSettings.enabled(this))
-                repository.interest(current.packageName, n.channelId, label, title, content,
-                    NotificationAdaptiveSettings.minExamples(this))
-            else NotificationPersonalization.Interest.NEUTRAL
-            if (!NotificationProtection.safeForBrief(this, current,
-                NotificationPriorityInput(current.packageName, title, content,
-                    n.channelId, n.category, topic, label, personalInterest = interest,
-                    repeatedNewsHeadline = if (topic == "news" ||
-                        io.github.mangi.eta.agent.device.notifications.NotificationNewsPolicy.isNewsApp(current.packageName))
-                        repository.isRepeatedNewsHeadline(current.key, current.packageName,
-                            title, content, current.postTime) else false))) return false
-        }
-        if (newDecision != desired) return false
-
-        val token = original.key + ":" + fingerprint
+    /** Main thread only. Every check is repeated here, against the live notification. */
+    private fun dismissIfStillSafe(target: NotificationHistoryRepository.RemoteTarget): AndroidActionState {
+        if (connectedService !== this || !isEnabled(this)) return AndroidActionState.FAILED
+        if (NotificationFilterSettings.load(this).mode != NotificationFilterMode.PERSONALIZED)
+            return AndroidActionState.SKIPPED_NO_CONSENT
+        val current = runCatching { activeNotifications?.firstOrNull { it.key == target.key } }.getOrNull()
+            ?: return AndroidActionState.SKIPPED_STALE
+        // A late decision never acts on a replaced or updated notification.
+        if (current.packageName != target.packageName || current.postTime != target.postedAt ||
+            NotificationProtection.fingerprint(current) != target.fingerprint) return AndroidActionState.SKIPPED_STALE
+        if (!NotificationProtection.remoteDismissAllowed(this, current)) return AndroidActionState.SKIPPED_PROTECTED
+        val token = target.key + ":" + target.fingerprint
         val now = android.os.SystemClock.elapsedRealtime()
-        val existing = processed[token]
-        if (existing != null && now - existing < 48L * 60 * 60 * 1000) return false
-        // Store before the call; a synchronous onNotificationRemoved callback is possible.
-        pending[original.key] = Pending(current.packageName,
-            if (gameRule) "games:${gameKind?.name}" else scores.first().first,
-            if (gameRule) 0.0 else scores.first().second,
-            desired, current.postTime, gameKind)
+        if (processed[token]?.let { now - it < 48L * 60 * 60 * 1000 } == true) return AndroidActionState.SKIPPED_STALE
+        // Stored before the call: onNotificationRemoved may run synchronously.
+        pending[current.key] = current.postTime
         return try {
-            when (desired) {
-                NotificationFilterDecision.SNOOZE_1H -> snoozeNotification(current.key, 60L * 60 * 1000)
-                NotificationFilterDecision.SNOOZE_24H -> snoozeNotification(current.key, 24L * 60 * 60 * 1000)
-                NotificationFilterDecision.DISMISS -> cancelNotification(current.key)
-                else -> { pending.remove(original.key); return false }
-            }
+            cancelNotification(current.key)
             processed[token] = now
-            while (processed.size > 100) processed.remove(processed.keys.first())
-            true
+            while (processed.size > 200) processed.remove(processed.keys.first())
+            AndroidActionState.REQUESTED
         } catch (_: RuntimeException) {
-            pending.remove(original.key)
-            false
+            pending.remove(current.key)
+            AndroidActionState.FAILED
         }
     }
 
-    private fun record(sbn: StatusBarNotification): Boolean {
-        val extras = sbn.notification.extras
+    private fun record(s: Snapshot): Boolean {
         val changed = repository.record(
-            key = sbn.key,
-            packageName = sbn.packageName,
-            title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString(),
-            text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString(),
-            subText = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString(),
-            postedAt = sbn.postTime,
-            channelId = sbn.notification.channelId,
-            androidCategory = sbn.notification.category,
-            fingerprint = NotificationProtection.fingerprint(sbn),
+            key = s.key, packageName = s.packageName, title = s.title, text = s.text, subText = s.subText,
+            postedAt = s.postTime, channelId = s.channelId, androidCategory = s.category, fingerprint = s.fingerprint,
+            meta = s.meta, queueForRemote = MastraConnection.enabled(this),
         )
         if (changed) NotificationActivityFeed.notifyChanged()
         return changed
     }
 
+    /** Immutable copy taken on the listener thread; the StatusBarNotification is not shared across threads. */
+    private data class Snapshot(
+        val key: String, val packageName: String, val title: String?, val text: String?, val subText: String?,
+        val postTime: Long, val channelId: String?, val category: String?, val fingerprint: String,
+        val meta: NotificationHistoryRepository.StructuralMeta,
+    ) {
+        companion object {
+            fun of(context: Context, sbn: StatusBarNotification): Snapshot {
+                val n = sbn.notification
+                val extras = n.extras
+                val app = runCatching { context.packageManager.getApplicationInfo(sbn.packageName, 0) }.getOrNull()
+                val meta = NotificationHistoryRepository.StructuralMeta(
+                    clearable = sbn.isClearable,
+                    ongoing = n.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE) != 0,
+                    groupSummary = n.flags and Notification.FLAG_GROUP_SUMMARY != 0,
+                    hasRemoteInput = n.actions?.any { it.remoteInputs?.isNotEmpty() == true } == true,
+                    conversation = extras.getParcelableArray(Notification.EXTRA_MESSAGES)?.isNotEmpty() == true ||
+                        n.shortcutId != null || extras.containsKey(Notification.EXTRA_PEOPLE_LIST),
+                    systemApp = app != null && app.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0,
+                    appCategory = when (app?.category) {
+                        ApplicationInfo.CATEGORY_GAME -> "GAME"; ApplicationInfo.CATEGORY_AUDIO -> "AUDIO"
+                        ApplicationInfo.CATEGORY_VIDEO -> "VIDEO"; ApplicationInfo.CATEGORY_IMAGE -> "IMAGE"
+                        ApplicationInfo.CATEGORY_SOCIAL -> "SOCIAL"; ApplicationInfo.CATEGORY_NEWS -> "NEWS"
+                        ApplicationInfo.CATEGORY_MAPS -> "MAPS"; ApplicationInfo.CATEGORY_PRODUCTIVITY -> "PRODUCTIVITY"
+                        ApplicationInfo.CATEGORY_ACCESSIBILITY -> "ACCESSIBILITY"; else -> null
+                    },
+                    appLabel = app?.let { runCatching { context.packageManager.getApplicationLabel(it).toString() }.getOrNull() },
+                )
+                return Snapshot(sbn.key, sbn.packageName, extras.getCharSequence(Notification.EXTRA_TITLE)?.toString(),
+                    extras.getCharSequence(Notification.EXTRA_TEXT)?.toString(),
+                    extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString(), sbn.postTime, n.channelId, n.category,
+                    NotificationProtection.fingerprint(sbn), meta)
+            }
+        }
+    }
+
     companion object {
-        /**
-         * All final checks and system actions execute on the listener's main thread.
-         * A background inference can NEVER act on an updated/removed notification.
-         */
-        internal fun requestSafeGameFilter(
-            sbn: StatusBarNotification, fingerprint: String,
-            onResult: (Boolean) -> Unit,
-        ) {
+        private val io = Executors.newSingleThreadExecutor { r -> Thread(r, "notification-history") }
+
+        @Volatile
+        private var connectedService: AgentNotificationHistoryService? = null
+
+        /** Called by the sync job after storing a Mastra DISMISS recommendation. */
+        internal fun requestRemoteDismiss(context: Context, target: NotificationHistoryRepository.RemoteTarget) {
             Handler(Looper.getMainLooper()).post {
-                val completed = connectedService?.applyIfStillSafe(sbn, fingerprint,
-                    scores = emptyList(), desired = NotificationFilterDecision.DISMISS, gameRule = true)
-                    ?: false
-                onResult(completed)
+                val outcome = connectedService?.dismissIfStillSafe(target) ?: AndroidActionState.FAILED
+                val reason = when (outcome) {
+                    AndroidActionState.SKIPPED_PROTECTED -> "Conservée : protection Android"
+                    AndroidActionState.SKIPPED_STALE -> "Conservée : notification modifiée ou disparue"
+                    AndroidActionState.SKIPPED_NO_CONSENT -> "Conservée : retrait automatique désactivé"
+                    AndroidActionState.FAILED -> "Conservée : retrait impossible"
+                    else -> null
+                }
+                io.execute {
+                    if (NotificationHistoryRepository(context).setAndroidActionState(target.key, target.postedAt, outcome, reason))
+                        NotificationActivityFeed.notifyChanged()
+                }
             }
         }
 
+        /** The legacy on-device classifier is retired from normal operation and can no longer act. */
+        @Suppress("UNUSED_PARAMETER")
         internal fun requestSafeFilter(
             sbn: StatusBarNotification, fingerprint: String,
             scores: List<Pair<String, Double>>, decision: NotificationFilterDecision,
             onResult: (Boolean) -> Unit,
-        ) {
-            Handler(Looper.getMainLooper()).post {
-                val service = connectedService
-                val completed = service?.applyIfStillSafe(sbn, fingerprint, scores, decision) ?: false
-                onResult(completed)
-            }
-        }
-
-        @Volatile
-        private var connectedService: AgentNotificationHistoryService? = null
+        ) = onResult(false)
 
         internal fun currentNotifications(): Array<StatusBarNotification>? {
             val service = connectedService ?: return null

@@ -30,6 +30,8 @@ import io.github.mangi.eta.agent.device.AgentNotificationHistoryService
 import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
 import io.github.mangi.eta.agent.device.notifications.NotificationPriority
 import io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback
+import io.github.mangi.eta.agent.device.notifications.remote.MastraConnection
+import io.github.mangi.eta.agent.device.notifications.remote.MastraNotificationSync
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
 import io.github.mangi.eta.ui.components.coui.CouiLazyScaffoldPage
 import io.github.suqi8.coui.kmp.basic.BasicComponent
@@ -122,8 +124,7 @@ internal fun NowBriefScreen(
             if (scrolling && remaining <= 8 && activityEntries.isNotEmpty()) loadMore()
         }
     }
-    // Priority classification runs the local regex policies on every entry: keep it off the
-    // main thread so opening or paging the briefing never drops frames. Null = not computed yet.
+    // Grouping by Mastra's stored priority; kept off the main thread. Null = not computed yet.
     val notificationGroups by produceState<List<BriefNotificationGroup>?>(null, activityEntries) {
         value = withContext(Dispatchers.Default) { groupBriefNotifications(activityEntries) }
     }
@@ -135,6 +136,7 @@ internal fun NowBriefScreen(
                 runCatching { withContext(Dispatchers.IO) {
                     repository.archiveFromBrief(keys)
                     removed.forEach { repository.feedback(it.key, it.postedAt, NotificationUserFeedback.ARCHIVED) }
+                    MastraNotificationSync.request(context)
                 } }.onFailure {
                     activityEntries = (activityEntries + removed).distinctBy { it.key }.sortedWith(newestFirst)
                     activityError = true
@@ -147,8 +149,24 @@ internal fun NowBriefScreen(
             scope.launch {
                 runCatching { withContext(Dispatchers.IO) {
                     repository.feedback(entry.key, entry.postedAt, feedback)
-                } }.onSuccess { NotificationActivityFeed.notifyChanged() }
-                    .onFailure { activityError = true }
+                } }.onSuccess {
+                    NotificationActivityFeed.notifyChanged()
+                    MastraNotificationSync.request(context)
+                }.onFailure { activityError = true }
+            }
+        }
+    // A priority correction is an explicit preference: Mastra applies it to future decisions.
+    val correctPriority: (NotificationHistoryRepository.RecentEntry, NotificationPriority) -> Unit =
+        { entry, priority ->
+            scope.launch {
+                runCatching { withContext(Dispatchers.IO) {
+                    repository.feedback(entry.key, entry.postedAt, NotificationUserFeedback.PRIORITY_CORRECTED,
+                        correctedPriority = priority.name)
+                } }.onSuccess {
+                    activityEntries = activityEntries.map { if (it.key == entry.key) it.copy(userPriority = priority.name) else it }
+                    NotificationActivityFeed.notifyChanged()
+                    MastraNotificationSync.request(context)
+                }.onFailure { activityError = true }
             }
         }
     val correctCategory: (NotificationHistoryRepository.RecentEntry, String) -> Unit =
@@ -156,7 +174,10 @@ internal fun NowBriefScreen(
             scope.launch {
                 runCatching { withContext(Dispatchers.IO) {
                     repository.feedback(entry.key, entry.postedAt, NotificationUserFeedback.CATEGORY_CORRECTED, category)
-                } }.onSuccess { NotificationActivityFeed.notifyChanged() }
+                } }.onSuccess {
+                    NotificationActivityFeed.notifyChanged()
+                    MastraNotificationSync.request(context)
+                }
                     .onFailure { activityError = true }
             }
         }
@@ -174,6 +195,8 @@ internal fun NowBriefScreen(
         }.isSuccess
         if (opened) markFeedback(entry, NotificationUserFeedback.OPENED)
     }
+    val briefActions = rememberBriefActionController(repository, openNotification)
+    val homelabEnabled = remember(notificationsChanged) { MastraConnection.enabled(context) }
     val dateText = remember {
         LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH))
             .replaceFirstChar { it.uppercaseChar() }
@@ -225,6 +248,14 @@ internal fun NowBriefScreen(
                     modifier = secondaryText.padding(bottom = 4.dp),
                 )
             }
+        }
+        if (!homelabEnabled) item(key = "notification-feed:homelab") {
+            Text(
+                text = "Homelab non configuré : notifications conservées sans analyse ni retrait automatique",
+                style = COUITheme.textStyles.bodyS,
+                color = COUITheme.colorScheme.labelSecondary,
+                modifier = secondaryText.padding(vertical = 4.dp),
+            )
         }
         if (activityError) item(key = "notification-feed:error") {
             Text(
@@ -299,6 +330,8 @@ internal fun NowBriefScreen(
                                 onCategoryChange = correctCategory,
                                 onOpen = openNotification,
                                 onTouchChange = onNotificationTouchChange,
+                                onPriorityChange = correctPriority,
+                                onAction = briefActions.onAction,
                             )
                         }
                     }
@@ -326,6 +359,7 @@ internal fun NowBriefScreen(
             }
         }
 
+        item(key = "brief-action-dialogs") { briefActions.dialogs() }
         // Additional cards are a real composable extension point, not fictional content.
         extensions.filter { it.id !in setOf("notifications", "header") }
             .sortedWith(compareBy(NowBriefCardExtension::priority, NowBriefCardExtension::id))

@@ -81,9 +81,8 @@ class NotificationHistoryRepositoryTest {
                 "Une analyse différente sur les marchés et les entreprises", now))
         assertEquals(false,
             repository.isRepeatedNewsHeadline("news-2", "com.lemonde.androidapp", title, headline, now))
-        val second = repository.recent().first { it.key == "news-2" }
-        assertEquals("news", second.topic)
-        assertEquals(true, second.repeatedNewsHeadline)
+        // Business topics are decided by Mastra: nothing is classified on the phone.
+        assertEquals("other", repository.recent().first { it.key == "news-2" }.topic)
     }
 
     @Test
@@ -107,12 +106,12 @@ class NotificationHistoryRepositoryTest {
     }
 
     @Test
-    fun `game notifications are categorized even before onnx inference and historical rows stay visible`() {
+    fun `game notifications are no longer classified locally and historical rows stay visible`() {
         val now = System.currentTimeMillis()
         repository.record("brawl-quest", "com.supercell.brawlstars", "Brawl Stars",
             "De nouvelles quêtes sont disponibles !", null, now)
         val row = repository.recent().first { it.key == "brawl-quest" }
-        assertEquals("games", row.topic)
+        assertEquals("other", row.topic)
         assertEquals(NotificationHistoryRepository.DecisionState.RECEIVED, row.state)
         assertEquals(true, repository.feedback("brawl-quest", now,
             io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback.CATEGORY_CORRECTED, "other"))
@@ -194,6 +193,46 @@ class NotificationHistoryRepositoryTest {
         assertEquals("Ancienne alerte", repository.recent().single().title)
         repository.archiveFromBrief(listOf("old"))
         assertEquals("Ancienne alerte", repository.archived().single().title)
+    }
+
+    @Test
+    fun `version six history and learning survive the Mastra migration`() {
+        val now = System.currentTimeMillis()
+        context.openOrCreateDatabase("eta_notification_history.db", Context.MODE_PRIVATE, null).use { db ->
+            db.execSQL("CREATE TABLE notification_history (notification_key TEXT PRIMARY KEY NOT NULL,package_name TEXT NOT NULL," +
+                "title TEXT,text TEXT,sub_text TEXT,posted_at INTEGER NOT NULL,filter_state TEXT NOT NULL DEFAULT 'RECEIVED'," +
+                "filter_label TEXT,filter_score REAL,filter_reason TEXT,archived_at INTEGER,channel_id TEXT,android_category TEXT," +
+                "topic TEXT,user_topic TEXT,personal_interest TEXT,content_fingerprint TEXT)")
+            db.execSQL("CREATE TABLE dismissed_from_brief (notification_key TEXT PRIMARY KEY NOT NULL,dismissed_at INTEGER NOT NULL)")
+            db.execSQL("CREATE TABLE notification_feedback (event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, created_at INTEGER NOT NULL, model_version INTEGER NOT NULL)")
+            db.execSQL("CREATE TABLE notification_learning (feature TEXT PRIMARY KEY, wanted REAL NOT NULL, unwanted REAL NOT NULL, examples INTEGER NOT NULL)")
+            db.execSQL("CREATE TABLE notification_topic_learning (feature TEXT PRIMARY KEY, examples INTEGER NOT NULL)")
+            db.execSQL("INSERT INTO notification_history (notification_key,package_name,title,text,posted_at,filter_state,topic,user_topic,content_fingerprint) " +
+                "VALUES ('v6','com.example.app','Ancienne','Toujours là',$now,'DISMISSED','promotions','shopping','fp')")
+            db.execSQL("INSERT INTO notification_learning VALUES ('package:com.example.app', 0, 4, 1)")
+            db.version = 6
+        }
+        val row = repository.recent().single()
+        assertEquals("Ancienne", row.title)
+        assertEquals(NotificationHistoryRepository.DecisionState.DISMISSED, row.state)
+        assertEquals("shopping", row.userTopic)
+        assertEquals("promotions", row.topic)
+        assertEquals(NotificationHistoryRepository.SyncState.LOCAL, row.syncState)
+        assertEquals("Aucun apprentissage enregistré", repository.feedbackStats())
+        // Existing rows are never retro-sent; only new notifications are queued.
+        assertEquals(emptyList<NotificationHistoryRepository.PendingRemote>(), repository.pendingRemote(50))
+    }
+
+    @Test
+    fun `changed content gets a new revision and stale decisions cannot target it`() {
+        val now = System.currentTimeMillis()
+        assertEquals(true, repository.record("rev", "com.example.app", "A", "un", null, now, fingerprint = "f1", queueForRemote = true))
+        val first = repository.pendingRemote(10).single()
+        assertEquals(1, first.revision)
+        assertEquals(true, repository.record("rev", "com.example.app", "A", "deux", null, now + 5, fingerprint = "f2", queueForRemote = true))
+        val second = repository.pendingRemote(10).single()
+        assertEquals(first.eventId, second.eventId)
+        assertEquals(2, second.revision)
     }
 
     @Test

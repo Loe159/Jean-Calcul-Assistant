@@ -1,0 +1,18 @@
+{
+  "actionId": "act_0123456789abcdef01234567",
+  "notificationId": "notif_002_github",
+  "revision": 1,
+  "type": "CREATE_TASK",
+  "state": "AWAITING_APPROVAL",
+  "label": "Créer une tâche",
+  "payload": { "title": "Traiter : Review requested on PR #42", "dueDate": null },
+  "missing": [],
+  "approval": {
+    "summary": "Créer la tâche « Traiter : Review requested on PR #42 »",
+    "fingerprint": "3333333333333333333333333333333333333333333333333333333333333333"
+  },
+  "draft": null,
+  "result": null,
+  "error": null,
+  "updatedAt": "2026-11-19T17:45:00.000Z"
+}

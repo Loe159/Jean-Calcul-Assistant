@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "deviceId": "device_opaque_123",
+  "batchId": "batch_456_0001",
+  "sentAt": "2026-11-19T18:30:05+01:00",
+  "timeZone": "Europe/Paris",
+  "learningConsent": true,
+  "notifications": [
+    {
+      "id": "notif_001_snap",
+      "revision": 1,
+      "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+      "package": "com.snapchat.android",
+      "appLabel": "Snapchat",
+      "postedAt": "2026-11-19T18:30:00+01:00",
+      "title": "Snapchat",
+      "content": "Suggestion d'ami : découvrez Paul",
+      "subText": null,
+      "channelId": "suggestions",
+      "androidCategory": "msg",
+      "clearable": true,
+      "ongoing": false,
+      "groupSummary": false,
+      "hasRemoteInput": false,
+      "conversation": false,
+      "systemApp": false,
+      "appCategory": "SOCIAL",
+      "redactions": []
+    },
+    {
+      "id": "notif_002_github",
+      "revision": 1,
+      "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+      "package": "com.github.android",
+      "appLabel": "GitHub",
+      "postedAt": "2026-11-19T18:31:00+01:00",
+      "title": "Review requested on PR #42",
+      "content": "Loe159/homelab-ai: add notification intelligence",
+      "subText": null,
+      "channelId": "review_requests",
+      "androidCategory": null,
+      "clearable": true,
+      "ongoing": false,
+      "groupSummary": false,
+      "hasRemoteInput": false,
+      "conversation": false,
+      "systemApp": false,
+      "appCategory": "PRODUCTIVITY",
+      "redactions": []
+    }
+  ]
+}

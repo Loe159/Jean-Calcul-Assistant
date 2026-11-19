@@ -7,24 +7,30 @@ import kotlin.math.abs
 import org.junit.Test
 
 class NowBriefNotificationGroupsTest {
-    private fun entry(id: String, pkg: String, time: Long, topic: String = "other") =
+    private fun entry(id: String, pkg: String, time: Long, topic: String = "other", priority: String? = null) =
         NotificationHistoryRepository.RecentEntry(
             key = id, packageName = pkg,
-            title = "Title $id", text = "Body $id", postedAt = time, topic = topic,
+            title = "Title $id", text = "Body $id", postedAt = time, topic = topic, remotePriority = priority,
         )
 
     @Test fun notificationsAreGroupedByTopicAcrossAppsAndSortedNewestFirst() {
         val items = listOf(
-            entry("a1", "org.alpha", 100, "messages"),
-            entry("b1", "org.beta", 300, "promotions"),
-            entry("a2", "org.alpha", 500, "messages"),
-            entry("c1", "org.charlie", 200, "other"),
+            entry("a1", "org.alpha", 100, "messages", "NOW"),
+            entry("b1", "org.beta", 300, "promotions", "LOW"),
+            entry("a2", "org.alpha", 500, "messages", "NOW"),
+            entry("c1", "org.charlie", 200, "other", "TODAY"),
         )
         val groups = groupBriefNotifications(items)
         assertEquals(listOf("messages", "other", "promotions"), groups.map { it.category })
         assertEquals(listOf("a2", "a1"), groups.first().entries.map { it.key })
         assertEquals(4, groups.sumOf { it.entries.size })
         assertEquals(listOf("NOW", "TODAY", "LOW"), groups.map { it.priority.name })
+    }
+
+    @Test fun withoutMastraDecisionNothingIsClassifiedLocally() {
+        // Even an obvious promotion waits in "Aujourd'hui" until Mastra decides.
+        val pending = entry("p", "org.shop", 10, "promotions")
+        assertEquals("TODAY", groupBriefNotifications(listOf(pending)).single().priority.name)
     }
 
     @Test fun correctionOverridesModelTopic() {

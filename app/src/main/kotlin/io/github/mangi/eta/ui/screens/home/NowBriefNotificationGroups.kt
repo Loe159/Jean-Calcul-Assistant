@@ -60,11 +60,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.agent.device.notifications.NotificationAdaptiveSettings
-import io.github.mangi.eta.agent.device.notifications.NotificationFilterPolicy
-import io.github.mangi.eta.agent.device.notifications.NotificationPersonalization
 import io.github.mangi.eta.agent.device.notifications.NotificationPriority
-import io.github.mangi.eta.agent.device.notifications.NotificationPriorityInput
-import io.github.mangi.eta.agent.device.notifications.NotificationPriorityPolicy
+import io.github.mangi.eta.agent.device.notifications.remote.ActionProposal
+import io.github.mangi.eta.agent.device.notifications.remote.ActionType
+import io.github.mangi.eta.agent.device.notifications.remote.MastraNotificationSync
 import io.github.mangi.eta.agent.device.notifications.NotificationTopics
 import io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
@@ -103,23 +102,14 @@ internal data class BriefNotificationGroup(
     val entries: List<NotificationHistoryRepository.RecentEntry>,
 )
 
+/**
+ * The priority comes from Mastra (or the user's own correction). Now Brief never
+ * recomputes a business decision: a notification awaiting analysis sits in "Aujourd'hui".
+ */
 internal fun priorityForBrief(entry: NotificationHistoryRepository.RecentEntry): NotificationPriority =
-    NotificationPriorityPolicy.classify(NotificationPriorityInput(
-        packageName = entry.packageName,
-        title = entry.title,
-        body = entry.text,
-        channelId = entry.channelId,
-        androidCategory = entry.androidCategory,
-        topic = entry.userTopic ?: entry.topic,
-        predictedLabel = entry.category,
-        game = entry.topic == "games",
-        repeatedNewsHeadline = entry.repeatedNewsHeadline,
-        personalInterest = when (entry.personalInterest) {
-            "WANTED" -> NotificationPersonalization.Interest.WANTED
-            "UNWANTED" -> NotificationPersonalization.Interest.UNWANTED
-            else -> NotificationPersonalization.Interest.NEUTRAL
-        },
-    ))
+    (entry.userPriority ?: entry.remotePriority)
+        ?.let { runCatching { NotificationPriority.valueOf(it) }.getOrNull() }
+        ?: NotificationPriority.TODAY
 
 internal fun groupBriefNotifications(entries: List<NotificationHistoryRepository.RecentEntry>): List<BriefNotificationGroup> =
     entries.sortedWith(compareByDescending<NotificationHistoryRepository.RecentEntry> { it.postedAt }.thenByDescending { it.key })
@@ -229,19 +219,25 @@ internal fun BriefNotificationRow(
     onCategoryChange: (NotificationHistoryRepository.RecentEntry, String) -> Unit,
     onOpen: (NotificationHistoryRepository.RecentEntry) -> Unit,
     onTouchChange: (Boolean) -> Unit = {},
+    onPriorityChange: (NotificationHistoryRepository.RecentEntry, NotificationPriority) -> Unit = { _, _ -> },
+    onAction: (NotificationHistoryRepository.RecentEntry, ActionProposal) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
     val appName = remember(entry.packageName) { applicationName(context, entry.packageName) }
     var details by remember(entry.key) { mutableStateOf(false) }
-    val status = when (entry.state) {
-        NotificationHistoryRepository.DecisionState.DISMISSED -> "Supprimée sur Android"
-        NotificationHistoryRepository.DecisionState.SNOOZED_1H -> "Reportée 1 h"
-        NotificationHistoryRepository.DecisionState.SNOOZED_24H -> "Reportée 24 h"
-        NotificationHistoryRepository.DecisionState.PROPOSED -> "À vérifier"
-        NotificationHistoryRepository.DecisionState.QUEUED -> "Analyse en attente"
-        NotificationHistoryRepository.DecisionState.ANALYSIS_ERROR -> "Analyse échouée"
-        NotificationHistoryRepository.DecisionState.BATTERY_PAUSED -> "Économie d'énergie"
-        else -> ""
+    val status = when {
+        entry.androidActionState == NotificationHistoryRepository.AndroidActionState.CONFIRMED ->
+            "Retirée des notifications Android"
+        entry.androidActionState == NotificationHistoryRepository.AndroidActionState.REQUESTED -> "Retrait demandé"
+        entry.syncState == NotificationHistoryRepository.SyncState.QUEUED ||
+            entry.syncState == NotificationHistoryRepository.SyncState.SENT -> "Analyse en attente"
+        entry.syncState == NotificationHistoryRepository.SyncState.ERROR -> "Analyse en attente · homelab indisponible"
+        entry.syncState == NotificationHistoryRepository.SyncState.EXPIRED -> "Non analysée"
+        entry.remoteProtected -> "Protégée"
+        else -> legacyStatus(entry.state)
+    }
+    val actions = remember(entry.actionsJson) {
+        MastraNotificationSync.decodeActions(entry.actionsJson).filter { it.type != ActionType.OPEN_SOURCE_APP }
     }
     val meta = remember(entry.postedAt, appName, status) {
         buildString {
@@ -255,18 +251,24 @@ internal fun BriefNotificationRow(
         NotificationHistoryRepository.DecisionState.DISMISSED,
         NotificationHistoryRepository.DecisionState.SNOOZED_1H,
         NotificationHistoryRepository.DecisionState.SNOOZED_24H,
-    )
+    ) || entry.androidActionState == NotificationHistoryRepository.AndroidActionState.CONFIRMED
     val topics = NotificationTopics.titles.keys.toList()
-    val menu = remember(entry.key, removable, topics) {
+    val currentPriority = priorityForBrief(entry)
+    val menu = remember(entry.key, removable, topics, actions, currentPriority) {
         listOf(
-            DropdownEntry(items = listOf(
-                DropdownItem(text = "Ouvrir l'application", onClick = { onOpen(entry) }),
-            )),
+            DropdownEntry(items = buildList {
+                actions.forEach { action -> add(DropdownItem(text = action.label, onClick = { onAction(entry, action) })) }
+                add(DropdownItem(text = "Ouvrir l'application", onClick = { onOpen(entry) }))
+            }),
             DropdownEntry(items = buildList {
                 add(DropdownItem(text = "Intéressante",
                     onClick = { onFeedback(entry, NotificationUserFeedback.INTERESTING) }))
                 add(DropdownItem(text = "Indésirable",
                     onClick = { onFeedback(entry, NotificationUserFeedback.UNWANTED) }))
+                add(DropdownItem(text = "Corriger la priorité", children = NotificationPriority.entries.map { p ->
+                    DropdownItem(text = priorityTitle(p), selected = p == currentPriority,
+                        onClick = { onPriorityChange(entry, p) })
+                }))
                 add(DropdownItem(text = "Changer la catégorie", children = topics.map { topic ->
                     DropdownItem(
                         text = NotificationAdaptiveSettings.title(context, topic),
@@ -337,14 +339,17 @@ internal fun BriefNotificationRow(
                     maxLines = 2,
                     modifier = Modifier.padding(top = 4.dp),
                 )
-                if (details && entry.category != null && entry.score != null) {
-                    val label = when (entry.category) {
-                        NotificationFilterPolicy.AD -> "Publicité"
-                        NotificationFilterPolicy.SPAM -> "Spam"
-                        else -> entry.category
-                    }
+                if (details) {
+                    // Decision explanation from Mastra; nothing is recomputed on the phone.
+                    val explanation = buildList {
+                        add(NotificationAdaptiveSettings.title(context, entry.userTopic ?: entry.topic) + " · " +
+                            priorityTitle(priorityForBrief(entry)))
+                        entry.reason?.takeIf { it.isNotBlank() }?.let(::add)
+                        if (actions.isNotEmpty()) add("Suggestions : " + actions.joinToString(" · ") { it.label })
+                        if (entry.remoteUncertainty == "HIGH") add("Décision incertaine : conservée par prudence")
+                    }.joinToString("\n")
                     Text(
-                        text = "$label · " + String.format(Locale.FRANCE, "%.1f %%", entry.score * 100),
+                        text = explanation,
                         style = COUITheme.textStyles.bodyXS,
                         color = COUITheme.colorScheme.labelTertiary,
                         modifier = Modifier.padding(top = 2.dp),
@@ -353,6 +358,21 @@ internal fun BriefNotificationRow(
             }
         }
     }
+}
+
+internal fun priorityTitle(priority: NotificationPriority): String = when (priority) {
+    NotificationPriority.NOW -> "À traiter maintenant"
+    NotificationPriority.TODAY -> "À voir aujourd'hui"
+    NotificationPriority.LOW -> "Sans importance"
+}
+
+private fun legacyStatus(state: NotificationHistoryRepository.DecisionState): String = when (state) {
+    NotificationHistoryRepository.DecisionState.DISMISSED -> "Retirée des notifications Android"
+    NotificationHistoryRepository.DecisionState.SNOOZED_1H -> "Reportée 1 h"
+    NotificationHistoryRepository.DecisionState.SNOOZED_24H -> "Reportée 24 h"
+    NotificationHistoryRepository.DecisionState.QUEUED -> "Analyse en attente"
+    NotificationHistoryRepository.DecisionState.ANALYSIS_ERROR -> "Analyse en attente · homelab indisponible"
+    else -> ""
 }
 
 private fun applicationName(context: android.content.Context, packageName: String): String =
