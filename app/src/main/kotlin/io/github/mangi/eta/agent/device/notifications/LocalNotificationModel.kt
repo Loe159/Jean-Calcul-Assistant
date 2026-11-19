@@ -96,7 +96,13 @@ internal object LocalNotificationModel {
         require(text.isNotBlank()) { "Saisir une notification à tester" }
         require(NotificationLabelRules.valid(labels.map { NotificationLabelRule(it) })) { "Labels invalides" }
         // Session per test: no inference threads or ~300 MiB session retained while idle.
-        val tokenizer = AndroidHfTokenizer()
+        // A build without the native tokenizer (local builds: only CI compiles the Rust library)
+        // must fail this analysis, not kill the process from the inference thread.
+        val tokenizer = try {
+            AndroidHfTokenizer()
+        } catch (missing: UnsatisfiedLinkError) {
+            throw IllegalStateException("Tokenizer natif absent de cette version", missing)
+        }
         check(tokenizer.initialize(file(context, "tokenizer.json").absolutePath)) { "Tokenizer indisponible" }
         try {
         val batches = labels.map { label ->
