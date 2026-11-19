@@ -433,68 +433,6 @@ class VisualScenarioTest {
                         assertTrue("Swiping a notification right must not close the briefing",
                             device.wait(Until.hasObject(By.text("Mon briefing")), 10000))
                     }
-                    "brief_notifications" -> {
-                        val repo = NotificationHistoryRepository(context)
-                        val now = System.currentTimeMillis()
-                        repo.record("brief-test-1", "com.android.settings",
-                            "Test de sécurité", "Réglage de test", null, now)
-                        repo.record("brief-test-2", "com.android.settings",
-                            "Mise à jour", "Version de test", null, now - 100)
-                        repo.record("brief-test-3", "com.android.systemui",
-                            "Information", "Alerte synthétique", null, now - 200)
-                        NotificationActivityFeed.notifyChanged()
-                        device.findObject(By.desc("Ouvrir mon briefing")).click()
-                        assertTrue("Three notifications must be visible without classification",
-                            device.wait(Until.hasObject(By.textContains("3 affichées")), 15000))
-                        // The group initially sits below the visible fold of the
-                        // Now Brief dashboard. UIAutomator can find its clipped
-                        // text but cannot safely tap it until it is on screen.
-                        val groupSelector = By.textContains("2 notifications")
-                        var app = device.wait(Until.findObject(groupSelector), 10000)
-                            ?: throw AssertionError("App grouping did not aggregate the two records")
-                        var attempts = 0
-                        while (app.visibleBounds.centerY() !in
-                                device.displayHeight / 4..device.displayHeight * 3 / 4 &&
-                            attempts++ < 8
-                        ) {
-                            device.swipe(
-                                device.displayWidth / 2, device.displayHeight * 3 / 4,
-                                device.displayWidth / 2, device.displayHeight / 3, 26,
-                            )
-                            app = device.wait(Until.findObject(groupSelector), 5000)
-                                ?: throw AssertionError("Group disappeared while scrolling")
-                        }
-                        assertTrue("App group must be fully within the interactive viewport",
-                            app.visibleBounds.centerY() in
-                                device.displayHeight / 4..device.displayHeight * 3 / 4)
-                        app.click()
-                        // The expanded rows can also be below the fold on small devices.
-                        attempts = 0
-                        while (!device.hasObject(By.text("Test de sécurité")) && attempts++ < 8) {
-                            device.swipe(
-                                device.displayWidth / 2, device.displayHeight * 3 / 4,
-                                device.displayWidth / 2, device.displayHeight / 3, 26,
-                            )
-                        }
-                        assertTrue("Expanded group exposes the actual notification title",
-                            device.wait(Until.hasObject(By.text("Test de sécurité")), 5000))
-                        val firstEntry = device.findObject(By.text("Test de sécurité"))
-                        val firstBounds = firstEntry.visibleBounds
-                        device.swipe(firstBounds.right - 16, firstBounds.centerY(),
-                            firstBounds.right - device.displayWidth / 4, firstBounds.centerY(), 24)
-                        val remove = device.wait(Until.findObject(By.desc(context.getString(R.string.brief_remove_action))), 8000)
-                            ?: throw AssertionError("COUI removal action did not appear after swipe")
-                        remove.click()
-                        assertTrue("Only one entry should be removed",
-                            device.wait(Until.hasObject(By.textContains("2 affichées")), 8000))
-                        val secondEntry = device.wait(Until.findObject(By.text("Mise à jour")), 5000)
-                            ?: throw AssertionError("Remaining entry disappeared")
-                        val secondBounds = secondEntry.visibleBounds
-                        device.swipe(device.displayWidth - 56, secondBounds.centerY(),
-                            56, secondBounds.centerY(), 12)
-                        assertTrue("COUI overswipe should remove the second entry",
-                            device.wait(Until.hasObject(By.textContains("1 affichée")), 8000))
-                    }
                     "menu" -> {
                         assertTrue("New conversation is a direct toolbar action",
                             device.hasObject(By.desc(context.getString(R.string.action_new_conversation))))

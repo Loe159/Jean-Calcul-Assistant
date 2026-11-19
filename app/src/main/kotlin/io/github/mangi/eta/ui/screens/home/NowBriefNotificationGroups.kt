@@ -7,6 +7,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -149,6 +150,8 @@ private fun categoryIcon(category: String): ImageVector = when (category) {
  */
 @Composable
 internal fun Modifier.briefCardSegment(position: CardListPosition): Modifier {
+    // A middle segment has no rounded corner: a plain fill avoids the squircle's offscreen layer.
+    if (position == CardListPosition.Middle) return background(COUITheme.colorScheme.cardBackground)
     val radius = CardDefaults.CornerRadius
     val top = if (position == CardListPosition.Head || position == CardListPosition.Full) radius else 0.dp
     val bottom = if (position == CardListPosition.Tail || position == CardListPosition.Full) radius else 0.dp
