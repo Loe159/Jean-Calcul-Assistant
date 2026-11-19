@@ -77,7 +77,7 @@ internal class MastraNotificationSync(
         val started = System.nanoTime()
         val response = try {
             api.analyze(AnalyzeRequest(deviceId = pairing.deviceId, batchId = MastraNotificationClient.opaqueId("batch"),
-                sentAt = OffsetDateTime.now(zone).toString(), timeZone = zone.id,
+                sentAt = OffsetDateTime.now(zone).toString(), timeZone = contractZone(zone),
                 learningConsent = learningConsent(), notifications = pending.map(::toRemote)))
         } catch (e: MastraHttpException) {
             // Never a reason to remove anything: notifications simply stay pending or rejected.
@@ -127,6 +127,9 @@ internal class MastraNotificationSync(
     }
 
     companion object {
+        /** IANA region ids only; offsets such as "GMT+01:00" fall back to UTC (timestamps keep their offset). */
+        fun contractZone(zone: ZoneId): String =
+            zone.id.takeIf { Regex("^[A-Za-z_]+(/[A-Za-z0-9_+-]+)*$").matches(it) } ?: "UTC"
         private val lenient = Json { ignoreUnknownKeys = true }
         private const val JOB_ID = 0x4A43_0001
         private val running = AtomicBoolean(false)

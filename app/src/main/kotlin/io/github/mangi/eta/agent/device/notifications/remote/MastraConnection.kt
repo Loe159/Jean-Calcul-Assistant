@@ -35,7 +35,8 @@ internal object MastraConnection {
     fun validBaseUrl(url: String): Boolean = runCatching {
         val uri = java.net.URI(url)
         val host = uri.host ?: return false
-        uri.userInfo == null && uri.rawQuery == null && uri.rawFragment == null &&
+        // No path prefix: the signed path must equal the path the server sees.
+        uri.userInfo == null && uri.rawQuery == null && uri.rawFragment == null && uri.rawPath.isNullOrEmpty() &&
             (uri.scheme == "https" || (uri.scheme == "http" && host in loopbackHosts))
     }.getOrDefault(false)
 

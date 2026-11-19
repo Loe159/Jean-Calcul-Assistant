@@ -74,6 +74,9 @@ class MastraContractTest {
         assertNotNull(MastraConnection.parsePairing("jeancalcul-mastra:v1?url=http%3A%2F%2F10.0.2.2%3A4111&device=jc_device_0001&secret=$secret"))
         assertNull(MastraConnection.parsePairing("jeancalcul-mastra:v1?url=https%3A%2F%2Fh.example&device=jc_device_0001&secret=c2hvcnQ"))
         assertNull(MastraConnection.parsePairing("https://homelab.example"))
+        assertNull(MastraConnection.parsePairing("jeancalcul-mastra:v1?url=https%3A%2F%2Fh.example%2Fprefix&device=jc_device_0001&secret=$secret"))
+        assertEquals("Europe/Paris", MastraNotificationSync.contractZone(java.time.ZoneId.of("Europe/Paris")))
+        assertEquals("UTC", MastraNotificationSync.contractZone(java.time.ZoneId.of("GMT+01:00")))
     }
 
     @Test
