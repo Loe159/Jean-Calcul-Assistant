@@ -105,16 +105,21 @@ class VisualScenarioTest {
                     "improvements_notifications", "improvements_notifications_dark",
                     "improvements_notifications_small_screen", "improvements_notifications_large_text" -> {
                         activity.onActivity { it.startActivity(Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_APP_IMPROVEMENTS)) }
-                        // At 200% font scale the connection row starts below the fold.
-                        // Check the destination, then scroll to the permission control.
-                        assertTrue(device.wait(Until.hasObject(By.text("Improve Jean-Calcul")), 15000))
+                        assertTrue(device.wait(Until.hasObject(By.text("Describe a bug or feature")), 15000))
+                        val connected = By.text("GitHub connected")
                         val target = By.text("Allow notifications")
-                        for (attempt in 0 until 9) {
-                            if (device.hasObject(target)) break
-                            device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
-                                device.displayWidth / 2, device.displayHeight / 3, 25)
+                        var connectedSeen = false
+                        var targetSeen = false
+                        for (attempt in 0 until 36) {
+                            connectedSeen = connectedSeen || device.hasObject(connected)
+                            targetSeen = targetSeen || device.hasObject(target)
+                            if (connectedSeen && targetSeen) break
+                            device.swipe(device.displayWidth / 2, device.displayHeight * 2 / 3,
+                                device.displayWidth / 2, device.displayHeight / 2, 30)
+                            device.waitForIdle(750)
                         }
-                        assertTrue("Notification preference must remain reachable", device.wait(Until.hasObject(target), 10000))
+                        assertTrue("GitHub connection status must remain reachable", connectedSeen)
+                        assertTrue("Notification preference must remain reachable", targetSeen)
                     }
                     "improvement_question_notice", "improvement_finished_notice" -> {
                         val store = requireNotNull(improvements)
