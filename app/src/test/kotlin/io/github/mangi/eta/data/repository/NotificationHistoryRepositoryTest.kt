@@ -67,6 +67,26 @@ class NotificationHistoryRepositoryTest {
     }
 
     @Test
+    fun `repeated news headlines are detected locally by source and distinct key`() {
+        val now = System.currentTimeMillis()
+        val title = "Le Monde"
+        val headline = "Les changements des taux d'intérêt européens se précisent"
+        repository.record("news-1", "com.feedly", title, headline, null, now - 1000)
+        assertFalse(repository.isRepeatedNewsHeadline("news-1", "com.feedly", title, headline, now - 1000))
+        repository.record("news-2", "com.feedly", title, headline, null, now)
+        assertEquals(true,
+            repository.isRepeatedNewsHeadline("news-2", "com.feedly", title, headline, now))
+        assertEquals(false,
+            repository.isRepeatedNewsHeadline("news-2", "com.feedly", title,
+                "Une analyse différente sur les marchés et les entreprises", now))
+        assertEquals(false,
+            repository.isRepeatedNewsHeadline("news-2", "com.lemonde.androidapp", title, headline, now))
+        val second = repository.recent().first { it.key == "news-2" }
+        assertEquals("news", second.topic)
+        assertEquals(true, second.repeatedNewsHeadline)
+    }
+
+    @Test
     fun `brief pagination returns each notification once even with identical timestamps`() {
         val now = System.currentTimeMillis()
         repeat(105) { index ->

@@ -48,6 +48,8 @@ internal object NotificationTopics {
         if (shoppingKind != ShoppingNotificationKind.UNKNOWN) {
             return if (shoppingKind == ShoppingNotificationKind.DIRECT_MESSAGE) "messages" else "shopping"
         }
+        val newsKind = NotificationNewsPolicy.classify(pkg, title, body)
+        if (newsKind != NewsNotificationKind.UNKNOWN) return "news"
         // Content-driven topics take precedence over broad EMAIL/MESSAGE categories.
         val input = NotificationPriorityInput(pkg, title, body, channel, androidCategory)
         if (NotificationPriorityPolicy.githubBot(input) || pkg.contains("github", true)) return "development"

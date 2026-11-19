@@ -122,6 +122,10 @@ internal object NotificationProtection {
         val routineSystem = NotificationSystemPolicy.safeToClear(systemKind)
         val shoppingKind = NotificationShoppingPolicy.classify(pkg, title, text, n.category)
         val routineShipping = shoppingKind == ShoppingNotificationKind.ORDER_TRACKING
+        val newsKind = NotificationNewsPolicy.classify(pkg, title, text, input.topic,
+            input.repeatedNewsHeadline)
+        val editorialNews = NotificationNewsPolicy.isNewsApp(pkg) &&
+            newsKind != NewsNotificationKind.UNKNOWN && newsKind != NewsNotificationKind.MAJOR_BREAKING
         if (!sbn.isClearable || pkg == context.packageName ||
             n.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE or
                 Notification.FLAG_GROUP_SUMMARY or Notification.FLAG_NO_CLEAR) != 0 ||
@@ -165,7 +169,7 @@ internal object NotificationProtection {
                 WorkNotificationKind.BOT_ACTIVITY) &&
                 (pkg == "com.openai.chatgpt" || pkg.contains("github", ignoreCase = true))
             val routineShopping = NotificationShoppingPolicy.allowMessageCategoryDismiss(shoppingKind)
-            if (!routineWorkUpdate && !routineShopping && socialKind !in setOf(SocialNotificationKind.MENTION,
+            if (!routineWorkUpdate && !routineShopping && !editorialNews && socialKind !in setOf(SocialNotificationKind.MENTION,
                     SocialNotificationKind.INVITATION, SocialNotificationKind.ACTIVITY,
                     SocialNotificationKind.SUGGESTION, SocialNotificationKind.POST)) return false
         }

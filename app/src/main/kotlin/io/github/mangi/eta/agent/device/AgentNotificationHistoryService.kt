@@ -199,7 +199,11 @@ class AgentNotificationHistoryService : NotificationListenerService() {
             NotificationPriorityPolicy.automaticAction(
                 NotificationPriorityInput(current.packageName, title, body,
                     current.notification.channelId, current.notification.category, topic, label,
-                    personalInterest = preference),
+                    personalInterest = preference,
+                    repeatedNewsHeadline = if (topic == "news" ||
+                        io.github.mangi.eta.agent.device.notifications.NotificationNewsPolicy.isNewsApp(current.packageName))
+                        repository.isRepeatedNewsHeadline(current.key, current.packageName,
+                            title, body, current.postTime) else false),
                 settings, NotificationPersonalization.safeDecision(base, preference, label, settings),
                 LocalTime.now().hour,
             ).decision
@@ -219,7 +223,11 @@ class AgentNotificationHistoryService : NotificationListenerService() {
             else NotificationPersonalization.Interest.NEUTRAL
             if (!NotificationProtection.safeForBrief(this, current,
                 NotificationPriorityInput(current.packageName, title, content,
-                    n.channelId, n.category, topic, label, personalInterest = interest))) return false
+                    n.channelId, n.category, topic, label, personalInterest = interest,
+                    repeatedNewsHeadline = if (topic == "news" ||
+                        io.github.mangi.eta.agent.device.notifications.NotificationNewsPolicy.isNewsApp(current.packageName))
+                        repository.isRepeatedNewsHeadline(current.key, current.packageName,
+                            title, content, current.postTime) else false))) return false
         }
         if (newDecision != desired) return false
 

@@ -16,6 +16,7 @@ internal data class NotificationPriorityInput(
     val predictedLabel: String? = null,
     val game: Boolean = false,
     val personalInterest: NotificationPersonalization.Interest = NotificationPersonalization.Interest.NEUTRAL,
+    val repeatedNewsHeadline: Boolean = false,
 )
 
 /** Conservative, deterministic classification. Unknowns stay in Today, not automatically deleted. */
@@ -83,6 +84,7 @@ internal object NotificationPriorityPolicy {
         // Security alerts override every social/media heuristic, including mentions.
         if (security.containsMatchIn(text) || input.topic == "security")
             return NotificationPriority.NOW
+        if (directMessages.containsMatchIn(text)) return NotificationPriority.NOW
         val workKind = NotificationWorkPolicy.classify(input.packageName,
             input.title, input.body, input.androidCategory)
         if (workKind != WorkNotificationKind.UNKNOWN) {
@@ -127,6 +129,13 @@ internal object NotificationPriorityPolicy {
             val priority = NotificationShoppingPolicy.priority(shoppingKind)!!
             return if (input.personalInterest == NotificationPersonalization.Interest.WANTED &&
                 priority == NotificationPriority.LOW) NotificationPriority.TODAY else priority
+        }
+        val newsKind = NotificationNewsPolicy.classify(input.packageName,
+            input.title, input.body, input.topic, input.repeatedNewsHeadline)
+        if (newsKind != NewsNotificationKind.UNKNOWN) {
+            val tier = NotificationNewsPolicy.priority(newsKind)!!
+            return if (input.personalInterest == NotificationPersonalization.Interest.WANTED &&
+                tier == NotificationPriority.LOW) NotificationPriority.TODAY else tier
         }
         if (input.game || input.topic == "games") {
             return when (NotificationGamePolicy.classify(input.title, input.body, input.androidCategory)) {

@@ -144,6 +144,20 @@ class NotificationPriorityProtectionTest {
             "Votre commande a été expédiée", null, Notification.FLAG_FOREGROUND_SERVICE), "shopping"))
     }
 
+    @Test fun newsHeadlinesCanBeDeferredButRealAlertsStayOnAndroid() {
+        assertTrue(canDismiss(makeNotification("com.feedly", "Feedly",
+            "Nouvel article : inflation et économie en Europe", Notification.CATEGORY_RECOMMENDATION), "news"))
+        assertTrue(canDismiss(makeNotification("com.feedly", "Feedly",
+            "Articles recommandés pour vous", Notification.CATEGORY_MESSAGE), "news"))
+        assertFalse(canDismiss(makeNotification("com.feedly", "Dernière minute",
+            "Attentat et évacuation de population", Notification.CATEGORY_RECOMMENDATION), "news"))
+        assertFalse(canDismiss(makeNotification("com.feedly", "Feedly",
+            "Alerte de sécurité : code de connexion 123456", Notification.CATEGORY_MESSAGE), "news"))
+        assertFalse(canDismiss(makeNotification("com.feedly", "Feedly",
+            "Nouvel article : économie mondiale", Notification.CATEGORY_RECOMMENDATION,
+            Notification.FLAG_FOREGROUND_SERVICE), "news"))
+    }
+
     @Test fun neverClearSecurityMessagesCallsAndOngoingAlerts() {
         assertFalse(canDismiss(makeNotification("com.google.android.gm", "Google",
             "Alerte de sécurité : connexion inconnue", Notification.CATEGORY_EMAIL), "security"))

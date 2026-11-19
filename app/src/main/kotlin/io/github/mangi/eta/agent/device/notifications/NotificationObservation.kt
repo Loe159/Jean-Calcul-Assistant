@@ -328,7 +328,11 @@ internal object NotificationObservation : NotificationBriefSource {
                         snapshot.notification.category, title, content, label)
                 val priority = NotificationPriorityInput(next.packageName, title, content,
                     snapshot.notification.channelId, snapshot.notification.category, topic, label,
-                    personalInterest = preference)
+                    personalInterest = preference,
+                    repeatedNewsHeadline = if (topic == "news" ||
+                        NotificationNewsPolicy.isNewsApp(next.packageName))
+                        store.isRepeatedNewsHeadline(next.key, next.packageName,
+                            title, content, next.postTime) else false)
                 val adapted = NotificationPriorityPolicy.automaticAction(priority, config,
                     NotificationPersonalization.safeDecision(evaluation, preference, label, config),
                     LocalTime.now().hour)

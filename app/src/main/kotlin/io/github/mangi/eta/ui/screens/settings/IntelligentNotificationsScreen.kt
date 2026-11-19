@@ -105,6 +105,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
     var showAgendaRules by rememberSaveable { mutableStateOf(false) }
     var showSystemRules by rememberSaveable { mutableStateOf(false) }
     var showShoppingRules by rememberSaveable { mutableStateOf(false) }
+    var showNewsRules by rememberSaveable { mutableStateOf(false) }
     var gameDeletes by remember { mutableStateOf(NotificationGameSettings.enabledKinds(context)) }
     var expandedRule by remember { mutableStateOf<String?>(null) }
     var editedLabel by remember { mutableStateOf("") }
@@ -398,6 +399,36 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                     }
                 }
                 Footer(text = "Les annonces hors critères ne sont écartées que si la notification indique une recommandation, pas sur une estimation de tes critères.")
+            }
+        }
+        Group(title = "Actualités et veille") {
+            CouiPreference(
+                title = if (showNewsRules) "Masquer les priorités" else "Voir les priorités",
+                summary = "Événements majeurs immédiats · veille ce soir · recommandations ignorées",
+                onClick = { showNewsRules = !showNewsRules },
+            )
+            if (showNewsRules) {
+                val rules = listOf(
+                    "Actualité majeure ou urgente" to "Immédiat · conservée sur Android",
+                    "Veille IA, tech, cybersécurité" to "Ce soir · dans le briefing",
+                    "Actualités économiques et politiques" to "Ce soir · dans le briefing",
+                    "Articles de médias suivis" to "Ce soir · dans le briefing",
+                    "Informations locales utiles" to "Ce soir · dans le briefing",
+                    "Articles recommandés sans demande" to "Indésirable · repliés dans le briefing",
+                    "Titres répétés et sensationnalistes" to "Indésirable · repliés dans le briefing",
+                )
+                Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    rules.forEach { (name, priority) ->
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            CouiText(text = name, kind = CouiTextKind.ItemTitle,
+                                color = colors.title)
+                            CouiText(text = priority, kind = CouiTextKind.ItemSummary,
+                                color = colors.summary)
+                        }
+                    }
+                }
+                Footer(text = "Les doublons sont détectés localement, par source et titre. Les alertes ambiguës sont conservées.")
             }
         }
         Group(title = "Jeux") {

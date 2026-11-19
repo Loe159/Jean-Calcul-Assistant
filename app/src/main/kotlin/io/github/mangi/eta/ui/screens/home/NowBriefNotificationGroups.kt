@@ -116,6 +116,7 @@ internal fun priorityForBrief(entry: NotificationHistoryRepository.RecentEntry):
         topic = entry.userTopic ?: entry.topic,
         predictedLabel = entry.category,
         game = entry.topic == "games",
+        repeatedNewsHeadline = entry.repeatedNewsHeadline,
         personalInterest = when (entry.personalInterest) {
             "WANTED" -> NotificationPersonalization.Interest.WANTED
             "UNWANTED" -> NotificationPersonalization.Interest.UNWANTED

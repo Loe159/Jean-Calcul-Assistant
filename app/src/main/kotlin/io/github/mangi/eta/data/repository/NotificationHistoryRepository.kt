@@ -17,6 +17,8 @@ import io.github.mangi.eta.agent.device.notifications.NotificationSystemPolicy
 import io.github.mangi.eta.agent.device.notifications.SystemNotificationKind
 import io.github.mangi.eta.agent.device.notifications.NotificationShoppingPolicy
 import io.github.mangi.eta.agent.device.notifications.ShoppingNotificationKind
+import io.github.mangi.eta.agent.device.notifications.NotificationNewsPolicy
+import io.github.mangi.eta.agent.device.notifications.NewsNotificationKind
 import android.app.Notification
 import org.json.JSONArray
 import org.json.JSONObject
@@ -92,6 +94,40 @@ internal class NotificationHistoryRepository(context: Context) {
         return needsAnalysis
     }
 
+    /** Detect an exact repeated editorial headline across distinct notification keys.
+     * Indexed time window, bounded to 60 records and called only for known news contexts.
+     * Never count repeated updates to the same Android notification as another headline.
+     */
+    fun isRepeatedNewsHeadline(key: String, pkg: String, title: String, body: String,
+                               postedAt: Long): Boolean {
+        val expected = newsHeadline(title, body) ?: return false
+        if (key.isBlank() || pkg.isBlank() || postedAt <= 0L) return false
+        val from = postedAt - 24L * 60 * 60 * 1000
+        return database.readableDatabase.query(TABLE, arrayOf("title", "text"),
+            "package_name=? AND notification_key!=? AND posted_at>=? AND posted_at<=?",
+            arrayOf(pkg, key.take(MAX_KEY_CHARS), from.toString(), postedAt.toString()),
+            null, null, "posted_at DESC", "60",
+        ).use { cursor ->
+            var repeated = false
+            while (cursor.moveToNext()) {
+                if (newsHeadline(cursor.getString(0).orEmpty(), cursor.getString(1).orEmpty()) == expected) {
+                    repeated = true
+                    break
+                }
+            }
+            repeated
+        }
+    }
+
+    private fun newsHeadline(title: String, body: String): String? {
+        // News apps often put only the publisher in the Android title field.
+        val candidate = if (title.trim().length >= 26) title else body
+        val normalized = candidate.lowercase(java.util.Locale.ROOT)
+            .replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim()
+            .replace(Regex("\\s+"), " ").take(180)
+        return normalized.takeIf { it.length >= 26 }
+    }
+
     /** A confirmed Android listener result is distinct from the model's proposal. */
     enum class DecisionState {
         RECEIVED, QUEUED, PROTECTED, ANALYZED_PROTECTED, NO_CONTENT, MODEL_MISSING, BATTERY_PAUSED,
@@ -148,6 +184,7 @@ internal class NotificationHistoryRepository(context: Context) {
         val topic: String = "other",
         val userTopic: String? = null,
         val personalInterest: String? = null,
+        val repeatedNewsHeadline: Boolean = false,
     )
 
     fun recent(limit: Int = 200): List<RecentEntry> = entries(archived = false, limit = limit)
@@ -200,7 +237,11 @@ internal class NotificationHistoryRepository(context: Context) {
                                 val systemKind = NotificationSystemPolicy.classify(pkg,
                                     cursor.getString(2).orEmpty(), cursor.getString(3).orEmpty(),
                                     cursor.getString(11), savedTopic)
-                                if (systemKind != SystemNotificationKind.UNKNOWN) "system" else savedTopic
+                                if (systemKind != SystemNotificationKind.UNKNOWN) "system"
+                                else if (NotificationNewsPolicy.classify(pkg,
+                                        cursor.getString(2).orEmpty(), cursor.getString(3).orEmpty(),
+                                        savedTopic) != NewsNotificationKind.UNKNOWN) "news"
+                                else savedTopic
                             }
                                 else -> "development"
                             }
@@ -224,6 +265,11 @@ internal class NotificationHistoryRepository(context: Context) {
                         topic = fallbackTopic,
                         userTopic = cursor.getString(13),
                         personalInterest = cursor.getString(14),
+                        repeatedNewsHeadline = if (fallbackTopic == "news" ||
+                            NotificationNewsPolicy.isNewsApp(pkg))
+                            isRepeatedNewsHeadline(cursor.getString(0), pkg,
+                                cursor.getString(2).orEmpty(), cursor.getString(3).orEmpty(),
+                                cursor.getLong(5)) else false,
                     ))
                 }
             }
