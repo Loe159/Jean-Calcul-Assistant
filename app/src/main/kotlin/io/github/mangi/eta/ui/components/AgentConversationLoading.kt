@@ -14,10 +14,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.R
 import io.github.mangi.eta.ui.model.ConversationHistoryLoadState
-import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.CircularProgressIndicator
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.basic.TextButton
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 @Composable
 internal fun AgentConversationLoadState(
@@ -36,7 +36,7 @@ internal fun AgentConversationLoadState(
                 CircularProgressIndicator()
                 Text(
                     text = stringResource(R.string.conversation_loading),
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    color = COUITheme.colorScheme.labelSecondary,
                 )
             } else {
                 Text(text = stringResource(R.string.conversation_load_failed))

@@ -11,27 +11,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.itos.coui.layout.CouiPageDefaults
-import com.itos.coui.layout.Divider
-import com.itos.coui.layout.Group
 import io.github.mangi.eta.R
 import io.github.mangi.eta.agent.terminal.LinuxDistribution
 import io.github.mangi.eta.agent.terminal.LinuxExecutionBackend
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
 import io.github.mangi.eta.ui.components.coui.CouiButton
 import io.github.mangi.eta.ui.components.coui.CouiButtonRole
-import io.github.mangi.eta.ui.components.coui.CouiDropdownPreference
-import io.github.mangi.eta.ui.components.coui.CouiPreference
-import top.yukonga.miuix.kmp.basic.BasicComponent
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.DropdownItem
-import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.BasicComponent
+import io.github.suqi8.coui.kmp.basic.Card
+import io.github.suqi8.coui.kmp.basic.InfiniteProgressIndicator
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import io.github.mangi.eta.ui.components.coui.PreferenceValueText
+import io.github.suqi8.coui.kmp.basic.CardListGroup
+import io.github.suqi8.coui.kmp.preference.OverlayDropdownPreference
+import io.github.suqi8.coui.kmp.preference.PreferenceCategory
 
 @Composable
 internal fun LinuxEnvironmentStatusCard(
@@ -44,22 +37,17 @@ internal fun LinuxEnvironmentStatusCard(
     actionEnabled: Boolean,
     onAction: () -> Unit,
 ) {
-    val uiStyle = LocalUiStyle.current
     val body: @Composable () -> Unit = {
         Column(
-            modifier = if (uiStyle == AppearanceUiStyle.COUI) {
-                Modifier.padding(horizontal = CouiPageDefaults.rowPadding, vertical = 16.dp)
-            } else {
-                Modifier
-            },
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(text = title, style = MiuixTheme.textStyles.headline1)
+                Text(text = title, style = COUITheme.textStyles.headlineXS)
                 Text(
                     text = mode,
-                    style = MiuixTheme.textStyles.footnote1,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    style = COUITheme.textStyles.bodyS,
+                    color = COUITheme.colorScheme.labelSecondary,
                 )
             }
             Row(
@@ -69,53 +57,33 @@ internal fun LinuxEnvironmentStatusCard(
                 if (busy) InfiniteProgressIndicator(size = 20.dp)
                 Text(
                     text = summary,
-                    style = MiuixTheme.textStyles.body2,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    style = COUITheme.textStyles.bodyM,
+                    color = COUITheme.colorScheme.labelSecondary,
                     modifier = Modifier.weight(1f),
                 )
             }
             message?.let {
                 Text(
                     text = it,
-                    style = MiuixTheme.textStyles.footnote1,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    style = COUITheme.textStyles.bodyS,
+                    color = COUITheme.colorScheme.labelSecondary,
                 )
             }
             actionText?.let {
-                if (uiStyle == AppearanceUiStyle.COUI) {
-                    CouiButton(
-                        text = it,
-                        enabled = actionEnabled,
-                        role = CouiButtonRole.Primary,
-                        onClick = onAction,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                } else {
-                    TextButton(
-                        text = it,
-                        enabled = actionEnabled,
-                        onClick = onAction,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.textButtonColorsPrimary(),
-                    )
-                }
+                CouiButton(
+                    text = it,
+                    enabled = actionEnabled,
+                    role = CouiButtonRole.Primary,
+                    onClick = onAction,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }
 
-    when (uiStyle) {
-        AppearanceUiStyle.COUI -> {
-            Group {
-                body()
-            }
-        }
-        AppearanceUiStyle.MIUIX -> {
-            Card(
-                modifier = Modifier
-                    .padding(horizontal = 12.dp)
-                    .padding(top = 8.dp, bottom = 12.dp),
-                insideMargin = PaddingValues(16.dp),
-            ) {
+    Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+        CardListGroup {
+            item {
                 body()
             }
         }
@@ -133,90 +101,39 @@ internal fun LinuxEnvironmentConfiguration(
 ) {
     val distributions = LinuxDistribution.entries
     val backends = listOf(LinuxExecutionBackend.PROOT, LinuxExecutionBackend.CHROOT)
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            Group(title = stringResource(R.string.linux_environment_configuration)) {
-                CouiDropdownPreference(
+    PreferenceCategory(title = stringResource(R.string.linux_environment_configuration))
+    Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+        CardListGroup {
+            item {
+                OverlayDropdownPreference(
                     title = stringResource(R.string.linux_distribution_title),
                     items = distributions.map { it.displayName() },
                     selectedIndex = distributions.indexOf(distribution),
                     enabled = enabled,
                     onSelectedIndexChange = { onDistributionSelected(distributions[it]) },
                 )
-                Divider()
-                if (rootGranted || backend == LinuxExecutionBackend.CHROOT) {
-                    CouiDropdownPreference(
+            }
+            if (rootGranted || backend == LinuxExecutionBackend.CHROOT) {
+                item {
+                    OverlayDropdownPreference(
                         title = stringResource(R.string.capability_linux_backend),
                         items = backends.map { it.displayName() },
                         selectedIndex = backends.indexOf(backend),
                         enabled = enabled,
                         onSelectedIndexChange = { index ->
-                            val chosen = backends.getOrNull(index) ?: return@CouiDropdownPreference
+                            val chosen = backends.getOrNull(index) ?: return@OverlayDropdownPreference
                             if (chosen == LinuxExecutionBackend.PROOT || rootGranted) {
                                 onBackendSelected(chosen)
                             }
                         },
                     )
-                } else {
-                    CouiPreference(
-                        title = stringResource(R.string.capability_linux_backend),
-                        value = backend.displayName(),
-                        showChevron = false,
-                    )
                 }
-            }
-        }
-        AppearanceUiStyle.MIUIX -> {
-            Card(
-                modifier = Modifier
-                    .padding(horizontal = 12.dp)
-                    .padding(bottom = 12.dp),
-            ) {
-                WindowSpinnerPreference(
-                    title = stringResource(R.string.linux_distribution_title),
-                    items = distributions.map {
-                        DropdownItem(
-                            text = it.displayName(),
-                            summary = stringResource(
-                                when (it) {
-                                    LinuxDistribution.ALPINE -> R.string.linux_distribution_alpine_summary
-                                    LinuxDistribution.DEBIAN -> R.string.linux_distribution_debian_summary
-                                },
-                            ),
-                        )
-                    },
-                    selectedIndex = distributions.indexOf(distribution),
-                    enabled = enabled,
-                    onSelectedIndexChange = { onDistributionSelected(distributions[it]) },
-                )
-                if (rootGranted || backend == LinuxExecutionBackend.CHROOT) {
-                    WindowSpinnerPreference(
-                        title = stringResource(R.string.capability_linux_backend),
-                        items = backends.map {
-                            DropdownItem(
-                                text = it.displayName(),
-                                summary = stringResource(
-                                    when (it) {
-                                        LinuxExecutionBackend.PROOT -> R.string.capability_linux_proot_summary
-                                        LinuxExecutionBackend.CHROOT -> R.string.capability_linux_chroot_summary
-                                    },
-                                ),
-                                enabled = it == LinuxExecutionBackend.PROOT || rootGranted,
-                            )
-                        },
-                        selectedIndex = backends.indexOf(backend),
-                        enabled = enabled,
-                        onSelectedIndexChange = { onBackendSelected(backends[it]) },
-                    )
-                } else {
+            } else {
+                item {
                     BasicComponent(
                         title = stringResource(R.string.capability_linux_backend),
                         endActions = {
-                            Text(
-                                text = backend.displayName(),
-                                style = MiuixTheme.textStyles.body2,
-                                color = MiuixTheme.colorScheme.onSurfaceVariantActions,
-                            )
+                            PreferenceValueText(value = backend.displayName())
                         },
                     )
                 }

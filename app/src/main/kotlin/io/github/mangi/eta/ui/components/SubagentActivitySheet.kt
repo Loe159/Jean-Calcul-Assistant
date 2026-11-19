@@ -40,25 +40,23 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.itos.coui.dialog.CouiDialogAction
-import com.itos.coui.dialog.CouiDialogDefaults
-import com.itos.coui.dialog.CouiDialogPlacement
-import com.itos.coui.dialog.Dialog
-import com.itos.coui.menu.rememberCouiWindowBackdrop
-import com.itos.coui.theme.CouiTheme
 import io.github.mangi.eta.R
 import io.github.mangi.eta.agent.subagent.SubagentActivitySnapshot
 import io.github.mangi.eta.agent.subagent.SubagentStepSnapshot
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
-import io.github.mangi.eta.ui.components.coui.rememberCouiDialogMaterial
 import io.github.mangi.eta.ui.model.ToolActivityMessageUi
 import io.github.mangi.eta.ui.model.ToolActivityStatusUi
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
-import top.yukonga.miuix.kmp.squircle.squircleSurface
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.squircle.squircleSurface
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import androidx.compose.ui.unit.DpSize
+import io.github.mangi.eta.ui.components.coui.panelBlur
+import io.github.suqi8.coui.kmp.layout.BottomSheetDefaults
+import io.github.suqi8.coui.kmp.basic.IconButton
+import io.github.suqi8.coui.kmp.blur.MaterialBlurDefaults
+import io.github.suqi8.coui.kmp.icon.COUIIcons
+import io.github.suqi8.coui.kmp.icon.basic.Close
+import io.github.suqi8.coui.kmp.overlay.OverlayBottomSheet
 
 /**
  * 聊天时间线中的 Subagent 节点行：保持内联极简与留白，点击呼出实时检视面板。
@@ -105,11 +103,11 @@ internal fun SubagentActivityRow(
                     ShimmerText(
                         text = taskTitle,
                         active = running,
-                        style = MiuixTheme.textStyles.body2,
+                        style = COUITheme.textStyles.bodyM,
                         color = if (running) {
-                            MiuixTheme.colorScheme.onSurface
+                            COUITheme.colorScheme.labelPrimary
                         } else {
-                            MiuixTheme.colorScheme.onSurfaceVariantSummary
+                            COUITheme.colorScheme.labelSecondary
                         },
                         modifier = Modifier.weight(1f, fill = false),
                     )
@@ -117,11 +115,11 @@ internal fun SubagentActivityRow(
                 if (subtitle.isNotBlank()) {
                     Text(
                         text = subtitle,
-                        style = MiuixTheme.textStyles.footnote2,
+                        style = COUITheme.textStyles.bodyXS,
                         color = if (failed && !running) {
                             StatusError
                         } else {
-                            MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.75f)
+                            COUITheme.colorScheme.labelSecondary.copy(alpha = 0.75f)
                         },
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -132,8 +130,8 @@ internal fun SubagentActivityRow(
             if (elapsedSeconds != null && elapsedSeconds >= 3) {
                 Text(
                     text = stringResource(R.string.tool_elapsed_seconds, elapsedSeconds),
-                    style = MiuixTheme.textStyles.footnote2,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.75f),
+                    style = COUITheme.textStyles.bodyXS,
+                    color = COUITheme.colorScheme.labelSecondary.copy(alpha = 0.75f),
                     modifier = Modifier.padding(start = 8.dp),
                 )
             }
@@ -143,47 +141,36 @@ internal fun SubagentActivityRow(
                 modifier = Modifier
                     .padding(start = 6.dp, end = 8.dp)
                     .size(14.dp),
-                tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.6f),
+                tint = COUITheme.colorScheme.labelSecondary.copy(alpha = 0.6f),
             )
         }
     }
 
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            val dark = CouiTheme.isDark
-            Dialog(
-                visible = showInspector,
-                onDismissRequest = { showInspector = false },
-                dark = dark,
-                title = taskTitle,
-                confirmAction = CouiDialogAction(
-                    text = stringResource(R.string.action_close),
-                    onClick = { showInspector = false },
-                ),
-                placement = CouiDialogPlacement.Bottom,
-                material = rememberCouiDialogMaterial(dark),
-                backdrop = rememberCouiWindowBackdrop(),
-            ) {
-                SubagentInspectorContent(
-                    snapshot = snapshot,
-                    running = running,
-                    failed = failed,
+    val dark = COUITheme.isDark
+    val sheetBlur = panelBlur(MaterialBlurDefaults::bottomSheet)
+    OverlayBottomSheet(
+        show = showInspector,
+        title = taskTitle,
+        startAction = {
+            IconButton(onClick = { showInspector = false }) {
+                Icon(
+                    imageVector = COUIIcons.Basic.Close,
+                    contentDescription = stringResource(R.string.action_close),
+                    tint = COUITheme.colorScheme.labelPrimary,
                 )
             }
-        }
-        AppearanceUiStyle.MIUIX -> {
-            OverlayBottomSheet(
-                show = showInspector,
-                title = taskTitle,
-                onDismissRequest = { showInspector = false },
-            ) {
-                SubagentInspectorContent(
-                    snapshot = snapshot,
-                    running = running,
-                    failed = failed,
-                )
-            }
-        }
+        },
+        backgroundModifier = sheetBlur?.backgroundModifier ?: Modifier,
+        backgroundColor = sheetBlur?.backgroundColor ?: BottomSheetDefaults.backgroundColor(),
+        onDismissRequest = { showInspector = false },
+        insideMargin = DpSize(16.dp, 0.dp),
+        materialStroke = sheetBlur != null,
+    ) {
+        SubagentInspectorContent(
+            snapshot = snapshot,
+            running = running,
+            failed = failed,
+        )
     }
 }
 
@@ -194,14 +181,14 @@ private fun SubagentTypeBadge(
     modifier: Modifier = Modifier,
 ) {
     val containerColor = if (active) {
-        MiuixTheme.colorScheme.primary.copy(alpha = 0.12f)
+        COUITheme.colorScheme.primary.copy(alpha = 0.12f)
     } else {
-        MiuixTheme.colorScheme.surfaceContainer
+        COUITheme.colorScheme.surfaceWithCard
     }
     val contentColor = if (active) {
-        MiuixTheme.colorScheme.primary
+        COUITheme.colorScheme.primary
     } else {
-        MiuixTheme.colorScheme.onSurfaceVariantSummary
+        COUITheme.colorScheme.labelSecondary
     }
     Box(
         modifier = modifier
@@ -211,7 +198,7 @@ private fun SubagentTypeBadge(
     ) {
         Text(
             text = type,
-            style = MiuixTheme.textStyles.footnote2.copy(
+            style = COUITheme.textStyles.bodyXS.copy(
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Medium,
             ),
@@ -231,21 +218,12 @@ private fun SubagentInspectorContent(
     val maxSheetHeight = with(density) { LocalWindowInfo.current.containerSize.height.toDp() } * 0.76f
     var promptExpanded by rememberSaveable(snapshot.subagentId) { mutableStateOf(false) }
     val pulse = rememberDrawPhasePulse(active = running)
-    val isCoui = LocalUiStyle.current == AppearanceUiStyle.COUI
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .then(
-                if (isCoui) {
-                    Modifier.padding(horizontal = CouiDialogDefaults.contentPadding, vertical = 8.dp)
-                } else {
-                    Modifier
-                        .heightIn(max = maxSheetHeight)
-                        .verticalScroll(rememberScrollState())
-                        .navigationBarsPadding()
-                        .padding(bottom = 24.dp)
-                },
+                Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
             ),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -262,7 +240,7 @@ private fun SubagentInspectorContent(
                     .clip(CircleShape)
                     .background(
                         when {
-                            running -> MiuixTheme.colorScheme.primary
+                            running -> COUITheme.colorScheme.primary
                             failed -> StatusError
                             else -> StatusSuccess
                         },
@@ -272,15 +250,15 @@ private fun SubagentInspectorContent(
             if (snapshot.subagentId.isNotBlank()) {
                 Text(
                     text = snapshot.subagentId,
-                    style = MiuixTheme.textStyles.footnote2.copy(fontFamily = FontFamily.Monospace),
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.75f),
+                    style = COUITheme.textStyles.bodyXS.copy(fontFamily = FontFamily.Monospace),
+                    color = COUITheme.colorScheme.labelSecondary.copy(alpha = 0.75f),
                 )
             }
             if (snapshot.model.isNotBlank()) {
                 Text(
                     text = "· ${snapshot.model}",
-                    style = MiuixTheme.textStyles.footnote2,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.75f),
+                    style = COUITheme.textStyles.bodyXS,
+                    color = COUITheme.colorScheme.labelSecondary.copy(alpha = 0.75f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
@@ -294,7 +272,7 @@ private fun SubagentInspectorContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .squircleSurface(
-                        color = MiuixTheme.colorScheme.surfaceContainer,
+                        color = COUITheme.colorScheme.surfaceWithCard,
                         cornerRadius = 12.dp,
                     )
                     .clickable { promptExpanded = !promptExpanded }
@@ -307,8 +285,8 @@ private fun SubagentInspectorContent(
                 ) {
                     Text(
                         text = if (snapshot.resumed) "Prompt (Resumed)" else "Prompt",
-                        style = MiuixTheme.textStyles.footnote2.copy(fontFamily = FontFamily.Monospace),
-                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.7f),
+                        style = COUITheme.textStyles.bodyXS.copy(fontFamily = FontFamily.Monospace),
+                        color = COUITheme.colorScheme.labelSecondary.copy(alpha = 0.7f),
                         modifier = Modifier.weight(1f),
                     )
                     ExpandChevron(
@@ -318,8 +296,8 @@ private fun SubagentInspectorContent(
                 }
                 Text(
                     text = snapshot.prompt,
-                    style = MiuixTheme.textStyles.body2,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    style = COUITheme.textStyles.bodyM,
+                    color = COUITheme.colorScheme.labelSecondary,
                     maxLines = if (promptExpanded) Int.MAX_VALUE else 3,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -367,8 +345,8 @@ private fun SubagentInspectorContent(
                             ShimmerText(
                                 text = snapshot.currentAction.ifBlank { "Running…" },
                                 active = true,
-                                style = MiuixTheme.textStyles.body2,
-                                color = MiuixTheme.colorScheme.onSurface,
+                                style = COUITheme.textStyles.bodyM,
+                                color = COUITheme.colorScheme.labelPrimary,
                             )
                         }
                     }
@@ -381,7 +359,7 @@ private fun SubagentInspectorContent(
         if (error != null) {
             Text(
                 text = error,
-                style = MiuixTheme.textStyles.footnote1,
+                style = COUITheme.textStyles.bodyS,
                 color = StatusError,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -398,18 +376,18 @@ private fun SubagentInspectorContent(
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = if (running) "Streaming" else "Summary",
-                    style = MiuixTheme.textStyles.footnote2.copy(fontFamily = FontFamily.Monospace),
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.7f),
+                    style = COUITheme.textStyles.bodyXS.copy(fontFamily = FontFamily.Monospace),
+                    color = COUITheme.colorScheme.labelSecondary.copy(alpha = 0.7f),
                 )
                 SelectionContainer {
                     Text(
                         text = snapshot.output,
-                        style = MiuixTheme.textStyles.body2,
-                        color = MiuixTheme.colorScheme.onSurface,
+                        style = COUITheme.textStyles.bodyM,
+                        color = COUITheme.colorScheme.labelPrimary,
                         modifier = Modifier
                             .fillMaxWidth()
                             .squircleSurface(
-                                color = MiuixTheme.colorScheme.surfaceContainer,
+                                color = COUITheme.colorScheme.surfaceWithCard,
                                 cornerRadius = 12.dp,
                             )
                             .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -444,11 +422,11 @@ private fun SubagentStepRow(
             ShimmerText(
                 text = step.title.ifBlank { step.toolName.ifBlank { "Steps" } },
                 active = running,
-                style = MiuixTheme.textStyles.body2,
+                style = COUITheme.textStyles.bodyM,
                 color = when {
-                    running -> MiuixTheme.colorScheme.onSurface
+                    running -> COUITheme.colorScheme.labelPrimary
                     failed -> StatusError
-                    else -> MiuixTheme.colorScheme.onSurfaceVariantSummary
+                    else -> COUITheme.colorScheme.labelSecondary
                 },
                 modifier = Modifier.weight(1f),
             )
@@ -465,18 +443,18 @@ private fun SubagentStepRow(
                 Text(
                     text = step.detail,
                     style = if (step.kind == SubagentStepSnapshot.KIND_TOOL) {
-                        MiuixTheme.textStyles.footnote2.copy(fontFamily = FontFamily.Monospace)
+                        COUITheme.textStyles.bodyXS.copy(fontFamily = FontFamily.Monospace)
                     } else {
-                        MiuixTheme.textStyles.footnote2
+                        COUITheme.textStyles.bodyXS
                     },
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.85f),
+                    color = COUITheme.colorScheme.labelSecondary.copy(alpha = 0.85f),
                     maxLines = 16,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 6.dp)
                         .squircleSurface(
-                            color = MiuixTheme.colorScheme.surfaceContainer,
+                            color = COUITheme.colorScheme.surfaceWithCard,
                             cornerRadius = 10.dp,
                         )
                         .padding(horizontal = 12.dp, vertical = 8.dp),

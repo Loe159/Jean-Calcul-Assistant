@@ -73,13 +73,13 @@ import io.github.mangi.eta.ui.components.EtaMonospace
 import io.github.mangi.eta.ui.components.StatusSuccess
 import io.github.mangi.eta.ui.components.StatusWarning
 import kotlinx.coroutines.delay
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.squircle.squircleBorder
-import top.yukonga.miuix.kmp.squircle.squircleClip
-import top.yukonga.miuix.kmp.squircle.squircleSurface
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.IconButton
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.squircle.squircleBorder
+import io.github.suqi8.coui.kmp.squircle.squircleClip
+import io.github.suqi8.coui.kmp.squircle.squircleSurface
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 /**
  * 绘制一份已解析的 [MarkdownDocument]。
@@ -266,7 +266,7 @@ private fun MarkdownCodeBlock(block: MarkdownCode, scope: MarkdownRenderScope) {
         ) {
             Text(
                 text = block.language ?: stringResource(R.string.markdown_code_block),
-                style = MiuixTheme.textStyles.footnote2.copy(
+                style = COUITheme.textStyles.bodyXS.copy(
                     fontFamily = if (block.language != null) EtaMonospace else null,
                     fontSize = 11.5.sp,
                     fontWeight = FontWeight.Medium,
@@ -320,7 +320,7 @@ private fun CopyButton(text: String, tint: Color) {
             imageVector = if (copied) Icons.Rounded.Check else Icons.Rounded.ContentCopy,
             contentDescription = stringResource(if (copied) R.string.copy_copied else R.string.copy_code),
             modifier = Modifier.size(14.dp),
-            tint = if (copied) MiuixTheme.colorScheme.primary else tint,
+            tint = if (copied) COUITheme.colorScheme.primary else tint,
         )
     }
 }
@@ -397,7 +397,7 @@ private fun MarkdownAlertBlock(block: MarkdownAlert, scope: MarkdownRenderScope)
             Spacer(Modifier.width(6.dp))
             Text(
                 text = stringResource(block.kind.label),
-                style = MiuixTheme.textStyles.body2.copy(
+                style = COUITheme.textStyles.bodyM.copy(
                     fontSize = 13.5.sp,
                     fontWeight = FontWeight.Bold,
                 ),
@@ -431,11 +431,11 @@ private val MarkdownAlertKind.label: Int
 
 @Composable
 private fun MarkdownAlertKind.accentColor(): Color = when (this) {
-    MarkdownAlertKind.Note -> MiuixTheme.colorScheme.primary
+    MarkdownAlertKind.Note -> COUITheme.colorScheme.primary
     MarkdownAlertKind.Tip -> StatusSuccess
     MarkdownAlertKind.Important -> AlertImportantColor
     MarkdownAlertKind.Warning -> StatusWarning
-    MarkdownAlertKind.Caution -> MiuixTheme.colorScheme.error
+    MarkdownAlertKind.Caution -> COUITheme.colorScheme.error
 }
 
 private val AlertImportantColor = Color(0xFF8B5CF6)
@@ -551,7 +551,7 @@ private fun RowScope.ListMarker(
                     imageVector = if (item.checked) Icons.Rounded.CheckBox else Icons.Rounded.CheckBoxOutlineBlank,
                     contentDescription = null,
                     modifier = Modifier.size(17.dp),
-                    tint = if (item.checked) MiuixTheme.colorScheme.primary else style.markerColor,
+                    tint = if (item.checked) COUITheme.colorScheme.primary else style.markerColor,
                 )
             }
         }

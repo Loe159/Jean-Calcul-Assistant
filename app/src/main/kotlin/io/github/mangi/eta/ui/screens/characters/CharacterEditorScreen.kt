@@ -18,29 +18,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.itos.coui.layout.CouiPageDefaults
-import com.itos.coui.layout.Group
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.ui.app.CharacterLibraryStore
-import io.github.mangi.eta.ui.app.LocalUiStyle
-import io.github.mangi.eta.ui.components.MiuixScaffoldPage
 import io.github.mangi.eta.ui.components.coui.CouiButton
 import io.github.mangi.eta.ui.components.coui.CouiButtonRole
 import io.github.mangi.eta.ui.components.coui.CouiLazyScaffoldPage
-import io.github.mangi.eta.ui.components.coui.CouiPreference
-import io.github.mangi.eta.ui.components.coui.CouiSectionTitle
 import io.github.mangi.eta.ui.components.coui.CouiTextField
 import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.TextField
-import top.yukonga.miuix.kmp.preference.ArrowPreference
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Card
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.IconButton
+import io.github.suqi8.coui.kmp.preference.ArrowPreference
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import io.github.suqi8.coui.kmp.basic.CardListGroup
+import io.github.suqi8.coui.kmp.preference.PreferenceCategory
 
 @Composable
 internal fun CharacterEditorScreen(
@@ -55,7 +45,6 @@ internal fun CharacterEditorScreen(
     val card = store.draft
     val pageTitle = if (id == null) "Create character" else "Edit character"
     val canSave = !store.busy && store.draftName.isNotBlank()
-    val uiStyle = LocalUiStyle.current
 
     val listContent: LazyListScope.() -> Unit = {
         if (card == null) {
@@ -93,7 +82,7 @@ internal fun CharacterEditorScreen(
                         Icon(
                             imageVector = Icons.Rounded.Close,
                             contentDescription = "Remove greeting",
-                            tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            tint = COUITheme.colorScheme.labelSecondary,
                         )
                     }
                 }
@@ -102,45 +91,25 @@ internal fun CharacterEditorScreen(
                 val onAddGreeting: () -> Unit = {
                     store.updateDraft { it.withEdits(alternateGreetings = it.alternateGreetings + "") }
                 }
-                if (uiStyle == AppearanceUiStyle.COUI) {
-                    CouiButton(
-                        text = "Add alternative greeting",
-                        onClick = onAddGreeting,
-                        enabled = !store.busy,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = CouiPageDefaults.horizontalMargin, vertical = 6.dp),
-                    )
-                } else {
-                    TextButton(
-                        text = "Add alternative greeting",
-                        onClick = onAddGreeting,
-                        enabled = !store.busy,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                    )
-                }
+                CouiButton(
+                    text = "Add alternative greeting",
+                    onClick = onAddGreeting,
+                    enabled = !store.busy,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                )
             }
             item(key = "advanced") {
-                if (uiStyle == AppearanceUiStyle.COUI) {
-                    Group {
-                        CouiPreference(
-                            title = "Advanced settings",
-                            summary = "Personality, background, example dialogue, prompts, author and worldbook",
-                            onClick = { advanced = !advanced },
-                        )
-                    }
-                } else {
-                    Card(
-                        modifier = Modifier
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                    ) {
-                        ArrowPreference(
-                            title = "Advanced settings",
-                            summary = "Personality, background, example dialogue, prompts, author and worldbook",
-                            onClick = { advanced = !advanced },
-                        )
+                Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+                    CardListGroup {
+                        item {
+                            ArrowPreference(
+                                title = "Advanced settings",
+                                summary = "Personality, background, example dialogue, prompts, author and worldbook",
+                                onClick = { advanced = !advanced },
+                            )
+                        }
                     }
                 }
             }
@@ -167,64 +136,32 @@ internal fun CharacterEditorScreen(
             }
             item(key = "save") {
                 val saveText = if (store.busy) "Processing…" else "Save character"
-                if (uiStyle == AppearanceUiStyle.COUI) {
-                    CouiButton(
-                        text = saveText,
-                        onClick = { store.saveEditor(onSaved) },
-                        enabled = canSave,
-                        role = CouiButtonRole.Primary,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = CouiPageDefaults.horizontalMargin, vertical = 12.dp),
-                    )
-                } else {
-                    TextButton(
-                        text = saveText,
-                        onClick = { store.saveEditor(onSaved) },
-                        enabled = canSave,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 12.dp),
-                        colors = ButtonDefaults.textButtonColorsPrimary(),
-                    )
-                }
+                CouiButton(
+                    text = saveText,
+                    onClick = { store.saveEditor(onSaved) },
+                    enabled = canSave,
+                    role = CouiButtonRole.Primary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                )
             }
         }
     }
 
-    when (uiStyle) {
-        AppearanceUiStyle.COUI -> {
-            CouiLazyScaffoldPage(
-                title = pageTitle,
-                onBack = onBack,
-                actions = {
-                    CouiTopAppBarIconButton(
-                        icon = Icons.Rounded.Check,
-                        contentDescription = "Save character",
-                        enabled = canSave,
-                        onClick = { store.saveEditor(onSaved) },
-                    )
-                },
-                content = listContent,
+    CouiLazyScaffoldPage(
+        title = pageTitle,
+        onBack = onBack,
+        actions = {
+            CouiTopAppBarIconButton(
+                icon = Icons.Rounded.Check,
+                contentDescription = "Save character",
+                enabled = canSave,
+                onClick = { store.saveEditor(onSaved) },
             )
-        }
-        AppearanceUiStyle.MIUIX -> {
-            MiuixScaffoldPage(
-                title = pageTitle,
-                onBack = onBack,
-                modifier = Modifier.imePadding(),
-                actions = {
-                    IconButton(
-                        onClick = { store.saveEditor(onSaved) },
-                        enabled = canSave,
-                    ) {
-                        Icon(Icons.Rounded.Check, contentDescription = "Save character")
-                    }
-                },
-                content = listContent,
-            )
-        }
-    }
+        },
+        content = listContent,
+    )
 }
 
 @Composable
@@ -237,68 +174,46 @@ internal fun CharacterTextField(
     minLines: Int = 2,
     inGroup: Boolean = false,
 ) {
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            val fieldContent: @Composable () -> Unit = {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = CouiPageDefaults.rowPadding, vertical = 8.dp),
-                ) {
-                    CouiTextField(
-                        value = value,
-                        onValueChange = onChange,
-                        label = label,
-                        enabled = enabled,
-                        singleLine = singleLine,
-                        minLines = if (singleLine) 1 else minLines,
-                        maxLines = if (singleLine) 1 else Int.MAX_VALUE,
-                    )
-                }
-            }
-            if (inGroup) {
-                fieldContent()
-            } else {
-                Group {
-                    fieldContent()
-                }
-            }
-        }
-        AppearanceUiStyle.MIUIX -> {
-            TextField(
+    val fieldContent: @Composable () -> Unit = {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            CouiTextField(
                 value = value,
                 onValueChange = onChange,
                 label = label,
-                useLabelAsPlaceholder = !singleLine,
                 enabled = enabled,
                 singleLine = singleLine,
                 minLines = if (singleLine) 1 else minLines,
                 maxLines = if (singleLine) 1 else Int.MAX_VALUE,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
             )
+        }
+    }
+    if (inGroup) {
+        fieldContent()
+    } else {
+        Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+            CardListGroup {
+                item {
+                    fieldContent()
+                }
+            }
         }
     }
 }
 
 @Composable
 internal fun CharacterSectionHeader(text: String) {
-    if (LocalUiStyle.current == AppearanceUiStyle.COUI) {
-        CouiSectionTitle(text = text)
-    } else {
-        SmallTitle(text)
-    }
+    PreferenceCategory(
+        title = text,
+    )
 }
 
 @Composable
 internal fun CharacterFieldGroupLabel(text: String) {
-    if (LocalUiStyle.current == AppearanceUiStyle.COUI) {
-        CouiSectionTitle(text = text)
-    } else {
-        Text(
-            text = text,
-            style = MiuixTheme.textStyles.footnote1,
-            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            modifier = Modifier.padding(horizontal = 28.dp, vertical = 6.dp),
-        )
-    }
+    PreferenceCategory(
+        title = text,
+    )
 }

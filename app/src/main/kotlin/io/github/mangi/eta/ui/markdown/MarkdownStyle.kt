@@ -11,7 +11,7 @@ import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import io.github.mangi.eta.ui.components.EtaMonospace
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 /** 正文与思考共用同一套渲染器，只在字号、墨色浓度与留白节奏上区分层级。 */
 internal enum class MarkdownTone { Answer, Thinking }
@@ -75,14 +75,13 @@ internal class MarkdownStyle(
 
 @Composable
 internal fun rememberMarkdownStyle(tone: MarkdownTone): MarkdownStyle {
-    val colors = MiuixTheme.colorScheme
-    val textStyles = MiuixTheme.textStyles
-    return remember(tone, colors, textStyles) {
+    val colors = COUITheme.colorScheme
+    val textStyles = COUITheme.textStyles
+    val isDark = COUITheme.isDark
+    return remember(tone, colors, textStyles, isDark) {
         val answer = tone == MarkdownTone.Answer
-        val isDark = colors.surface.luminance() < 0.5f
-        // COUI 与 Miuix 的 onSurface 自带不同基础 alpha；统一归一为纯墨色基色后再按层级分配浓度，
-        // 避免两套主题下细线、引用与正文的视觉重量发生漂移。
-        val ink = colors.onSurface.copy(alpha = 1f)
+        // labelPrimary 自带基础 alpha；先归一为纯墨色，再按层级分配浓度。
+        val ink = colors.labelPrimary.copy(alpha = 1f)
         val strongColor = if (answer) {
             ink.copy(alpha = if (isDark) 0.96f else 0.95f)
         } else {
@@ -108,7 +107,7 @@ internal fun rememberMarkdownStyle(tone: MarkdownTone): MarkdownStyle {
         } else {
             ink.copy(alpha = if (isDark) 0.44f else 0.40f)
         }
-        val body = (if (answer) textStyles.body1 else textStyles.body2).copy(
+        val body = (if (answer) textStyles.bodyXL else textStyles.bodyM).copy(
             fontSize = if (answer) 16.sp else 13.5.sp,
             lineHeight = if (answer) ANSWER_LINE_HEIGHT_SP.sp else THINKING_LINE_HEIGHT_SP.sp,
             letterSpacing = if (answer) 0.1.sp else 0.sp,
@@ -155,10 +154,10 @@ internal fun rememberMarkdownStyle(tone: MarkdownTone): MarkdownStyle {
                 ),
             )
         }
-        val codeSurface = if (isDark && colors.surfaceContainer.luminance() < 0.005f) {
+        val codeSurface = if (isDark && colors.surfaceWithCard.luminance() < 0.005f) {
             Color(0xFF16171A)
         } else {
-            colors.surfaceContainer
+            colors.surfaceWithCard
         }
         val inlineCodeColor = if (answer) {
             ink.copy(alpha = if (isDark) 0.93f else 0.90f)

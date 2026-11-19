@@ -1,7 +1,7 @@
 package io.github.mangi.eta.ui.navigation
 
-import top.yukonga.miuix.kmp.nav.core.NavBackStack
-import top.yukonga.miuix.kmp.nav.core.NavKey
+import io.github.suqi8.coui.kmp.nav.core.NavBackStack
+import io.github.suqi8.coui.kmp.nav.core.NavKey
 
 class AgentNavigator(
     val backStack: NavBackStack,

@@ -45,34 +45,26 @@ import io.github.mangi.eta.agent.terminal.PackageProfileInstallResult
 import io.github.mangi.eta.agent.terminal.PackageProfileInstallStage
 import io.github.mangi.eta.agent.terminal.SharedFolderMounts
 import io.github.mangi.eta.agent.terminal.terminalEnvironment
-import com.itos.coui.layout.CouiPageDefaults
-import com.itos.coui.layout.Divider
-import com.itos.coui.layout.Group
-import com.itos.coui.text.CouiTextKind
-import com.itos.coui.text.Text as CouiText
 import io.github.mangi.eta.core.AndroidAgentLogger
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.data.repository.LinuxEnvironmentSettingsRepository
 import io.github.mangi.eta.ui.app.KimiWebLaunchResult
 import io.github.mangi.eta.ui.app.KimiWebLauncher
-import io.github.mangi.eta.ui.app.LocalUiStyle
 import io.github.mangi.eta.ui.app.launchForegroundExecution
 import io.github.mangi.eta.ui.app.message
 import io.github.mangi.eta.ui.app.rememberDeviceCapabilities
 import io.github.mangi.eta.ui.app.rememberExecutionNotificationRequest
-import io.github.mangi.eta.ui.components.MiuixScaffoldPage
 import io.github.mangi.eta.ui.components.coui.CouiButton
 import io.github.mangi.eta.ui.components.coui.CouiLazyScaffoldPage
-import io.github.mangi.eta.ui.components.coui.CouiPreference
 import io.github.mangi.eta.ui.navigation.AppRoute
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import top.yukonga.miuix.kmp.basic.BasicComponent
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.preference.ArrowPreference
+import io.github.suqi8.coui.kmp.basic.BasicComponent
+import io.github.suqi8.coui.kmp.basic.Card
+import io.github.suqi8.coui.kmp.preference.ArrowPreference
+import io.github.suqi8.coui.kmp.basic.CardListGroup
+import io.github.suqi8.coui.kmp.basic.HorizontalDivider
+import io.github.suqi8.coui.kmp.preference.PreferenceCategory
 
 private enum class InstallTarget {
     BASE,
@@ -297,7 +289,6 @@ internal fun LinuxEnvironmentScreen(
         }
     }
 
-    val uiStyle = LocalUiStyle.current
     val listContent: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
         item(key = "status-card") {
             val version = when (selectedDistribution) {
@@ -347,9 +338,6 @@ internal fun LinuxEnvironmentScreen(
             )
         }
         item(key = "configuration-title") {
-            if (uiStyle != AppearanceUiStyle.COUI) {
-                SmallTitle(stringResource(R.string.linux_environment_configuration))
-            }
         }
         item(key = "configuration-card") {
             LinuxEnvironmentConfiguration(
@@ -376,55 +364,33 @@ internal fun LinuxEnvironmentScreen(
             )
         }
         item(key = "files-title") {
-            if (uiStyle != AppearanceUiStyle.COUI) {
-                SmallTitle(stringResource(R.string.linux_environment_files))
-            }
         }
         item(key = "files-card") {
-            if (uiStyle == AppearanceUiStyle.COUI) {
-                Group(title = stringResource(R.string.linux_environment_files)) {
-                    CouiPreference(
-                        title = stringResource(R.string.capability_workspace),
-                        summary = stringResource(R.string.capability_workspace_summary),
-                        onClick = { onNavigate(AppRoute.Workspace) },
-                    )
-                    if (selectedBaseReady) {
-                        Divider()
-                        CouiPreference(
-                            title = stringResource(R.string.shared_folders_entry_title),
-                            summary = stringResource(R.string.linux_environment_shared_folders_summary),
-                            onClick = { onNavigate(AppRoute.SharedFolders) },
-                        )
-                        Divider()
-                        CouiPreference(
-                            title = stringResource(R.string.linux_files_entry_title),
-                            summary = stringResource(R.string.linux_files_entry_summary),
-                            onClick = { onNavigate(AppRoute.LinuxFiles(selectedDistribution.wireName)) },
+            PreferenceCategory(title = stringResource(R.string.linux_environment_files))
+            Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+                CardListGroup {
+                    item {
+                        ArrowPreference(
+                            title = stringResource(R.string.capability_workspace),
+                            summary = stringResource(R.string.capability_workspace_summary),
+                            onClick = { onNavigate(AppRoute.Workspace) },
                         )
                     }
-                }
-            } else {
-                Card(
-                    modifier = Modifier
-                        .padding(horizontal = 12.dp)
-                        .padding(bottom = 12.dp),
-                ) {
-                    ArrowPreference(
-                        title = stringResource(R.string.capability_workspace),
-                        summary = stringResource(R.string.capability_workspace_summary),
-                        onClick = { onNavigate(AppRoute.Workspace) },
-                    )
                     if (selectedBaseReady) {
-                        ArrowPreference(
-                            title = stringResource(R.string.shared_folders_entry_title),
-                            summary = stringResource(R.string.linux_environment_shared_folders_summary),
-                            onClick = { onNavigate(AppRoute.SharedFolders) },
-                        )
-                        ArrowPreference(
-                            title = stringResource(R.string.linux_files_entry_title),
-                            summary = stringResource(R.string.linux_files_entry_summary),
-                            onClick = { onNavigate(AppRoute.LinuxFiles(selectedDistribution.wireName)) },
-                        )
+                        item {
+                            ArrowPreference(
+                                title = stringResource(R.string.shared_folders_entry_title),
+                                summary = stringResource(R.string.linux_environment_shared_folders_summary),
+                                onClick = { onNavigate(AppRoute.SharedFolders) },
+                            )
+                        }
+                        item {
+                            ArrowPreference(
+                                title = stringResource(R.string.linux_files_entry_title),
+                                summary = stringResource(R.string.linux_files_entry_summary),
+                                onClick = { onNavigate(AppRoute.LinuxFiles(selectedDistribution.wireName)) },
+                            )
+                        }
                     }
                 }
             }
@@ -432,9 +398,6 @@ internal fun LinuxEnvironmentScreen(
 
         if (selectedToolsReady) {
             item(key = "optional-tools-title") {
-                if (uiStyle != AppearanceUiStyle.COUI) {
-                    SmallTitle(stringResource(R.string.ui_optional_tools_3097d6), modifier = Modifier.animateItem())
-                }
             }
             item(key = "optional-tools-card") {
                 val optionalItemsContent: @Composable () -> Unit = {
@@ -506,59 +469,30 @@ internal fun LinuxEnvironmentScreen(
                                 kimiWebRunning = !stopped
                             }
                         }
-                        if (uiStyle == AppearanceUiStyle.COUI) {
-                            CouiPreference(
-                                title = rowTitle,
-                                summary = rowSummary,
-                                showChevron = false,
-                                trailing = {
-                                    if (isKimi && kimiWebRunning) {
-                                        CouiButton(
-                                            text = stringResource(R.string.action_stop),
-                                            enabled = !kimiWebLaunching && !requiresRoot,
-                                            minHeight = 32.dp,
-                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                            onClick = onStopKimi,
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                    }
+                        BasicComponent(
+                            title = rowTitle,
+                            summary = rowSummary,
+                            endActions = {
+                                if (isKimi && kimiWebRunning) {
                                     CouiButton(
-                                        text = primaryText,
-                                        enabled = primaryEnabled,
+                                        text = stringResource(R.string.action_stop),
+                                        enabled = !kimiWebLaunching && !requiresRoot,
                                         minHeight = 32.dp,
                                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                        onClick = onPrimaryClick,
+                                        onClick = onStopKimi,
                                     )
-                                },
-                            )
-                            Divider()
-                        } else {
-                            BasicComponent(
-                                title = rowTitle,
-                                summary = rowSummary,
-                                endActions = {
-                                    if (isKimi && kimiWebRunning) {
-                                        TextButton(
-                                            text = stringResource(R.string.action_stop),
-                                            enabled = !kimiWebLaunching && !requiresRoot,
-                                            minWidth = 0.dp,
-                                            minHeight = 32.dp,
-                                            insideMargin = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                            onClick = onStopKimi,
-                                        )
-                                        Spacer(Modifier.width(8.dp))
-                                    }
-                                    TextButton(
-                                        text = primaryText,
-                                        enabled = primaryEnabled,
-                                        minWidth = 0.dp,
-                                        minHeight = 32.dp,
-                                        insideMargin = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                        onClick = onPrimaryClick,
-                                    )
-                                },
-                            )
-                        }
+                                    Spacer(Modifier.width(8.dp))
+                                }
+                                CouiButton(
+                                    text = primaryText,
+                                    enabled = primaryEnabled,
+                                    minHeight = 32.dp,
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                    onClick = onPrimaryClick,
+                                )
+                            },
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(start = 16.dp, end = 16.dp))
                     }
 
                     val apkSummary = apkAnalysisProgress?.summary(context) ?: if (apkAnalysisReady) {
@@ -589,75 +523,37 @@ internal fun LinuxEnvironmentScreen(
                             }
                         }
                     }
-                    if (uiStyle == AppearanceUiStyle.COUI) {
-                        CouiPreference(
-                            title = stringResource(R.string.ui_apk_analysis_95ad17),
-                            summary = apkSummary,
-                            showChevron = false,
-                            trailing = {
-                                CouiButton(
-                                    text = apkButtonText,
-                                    enabled = apkEnabled,
-                                    minHeight = 32.dp,
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                    onClick = onApkInstall,
-                                )
-                            },
-                        )
-                    } else {
-                        BasicComponent(
-                            title = stringResource(R.string.ui_apk_analysis_95ad17),
-                            summary = apkSummary,
-                            endActions = {
-                                TextButton(
-                                    text = apkButtonText,
-                                    enabled = apkEnabled,
-                                    minWidth = 0.dp,
-                                    minHeight = 32.dp,
-                                    insideMargin = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                    onClick = onApkInstall,
-                                )
-                            },
-                        )
-                    }
+                    BasicComponent(
+                        title = stringResource(R.string.ui_apk_analysis_95ad17),
+                        summary = apkSummary,
+                        endActions = {
+                            CouiButton(
+                                text = apkButtonText,
+                                enabled = apkEnabled,
+                                minHeight = 32.dp,
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                onClick = onApkInstall,
+                            )
+                        },
+                    )
                 }
-                if (uiStyle == AppearanceUiStyle.COUI) {
-                    Group(
-                        modifier = Modifier.animateItem(),
-                        title = stringResource(R.string.ui_optional_tools_3097d6),
-                    ) {
-                        optionalItemsContent()
-                    }
-                } else {
-                    Card(
-                        modifier = Modifier
-                            .animateItem()
-                            .padding(horizontal = 12.dp)
-                            .padding(bottom = 12.dp),
-                    ) {
-                        optionalItemsContent()
+                PreferenceCategory(title = stringResource(R.string.ui_optional_tools_3097d6))
+                Card(modifier = Modifier.animateItem().padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+                    CardListGroup {
+                        item {
+                            optionalItemsContent()
+                        }
                     }
                 }
             }
         }
     }
 
-    when (uiStyle) {
-        AppearanceUiStyle.COUI -> {
-            CouiLazyScaffoldPage(
-                title = stringResource(R.string.ui_linux_tool_environment_314d22),
-                onBack = onBack,
-                content = listContent,
-            )
-        }
-        AppearanceUiStyle.MIUIX -> {
-            MiuixScaffoldPage(
-                title = stringResource(R.string.ui_linux_tool_environment_314d22),
-                onBack = onBack,
-                content = listContent,
-            )
-        }
-    }
+    CouiLazyScaffoldPage(
+        title = stringResource(R.string.ui_linux_tool_environment_314d22),
+        onBack = onBack,
+        content = listContent,
+    )
 }
 
 private fun Long.toReadableSize(context: Context): String = Formatter.formatShortFileSize(context, this)

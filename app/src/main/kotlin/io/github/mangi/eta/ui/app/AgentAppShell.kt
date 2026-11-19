@@ -47,55 +47,28 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.itos.coui.icons.CouiIcons
-import com.itos.coui.layout.CouiPageDefaults
-import com.itos.coui.layout.Scaffold as CouiLayoutScaffold
-import com.itos.coui.menu.CouiMenuItem
-import com.itos.coui.menu.Menu
-import com.itos.coui.menu.couiMenuAnchor
-import com.itos.coui.menu.rememberCouiMenuAnchor
-import com.itos.coui.theme.CouiTheme
-import com.itos.coui.theme.LocalCouiTextStyle
-import com.itos.coui.topappbar.CouiTopAppBarDefaults
-import com.itos.coui.topappbar.TopAppBar as CouiTopAppBar
-import com.itos.coui.topappbar.TopAppBarButtonGroup
 import io.github.mangi.eta.R
-import io.github.mangi.eta.data.model.AppearanceUiStyle
+import io.github.suqi8.coui.kmp.basic.Scaffold
+import io.github.suqi8.coui.kmp.basic.SmallTopAppBar
+import io.github.suqi8.coui.kmp.basic.Text
 import io.github.mangi.eta.data.model.TtsProvider
 import io.github.mangi.eta.data.repository.SpeechSettingsRepository
-import io.github.mangi.eta.ui.components.AdaptiveTopAppBar
 import io.github.mangi.eta.ui.components.AgentTopBarChatHeader
 import io.github.mangi.eta.ui.components.ChatActionIcons
 import io.github.mangi.eta.ui.components.ChatImagePreviewHost
 import io.github.mangi.eta.ui.components.ConversationSidePaneScaffold
-import io.github.mangi.eta.ui.components.MiuixBackButton
 import io.github.mangi.eta.ui.components.RoleplayChatUi
-import io.github.mangi.eta.ui.components.TopBarBackdrop
-import io.github.mangi.eta.ui.components.captureForTopBar
 import io.github.mangi.eta.ui.components.coui.CouiBackButton
-import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
-import io.github.mangi.eta.ui.components.rememberTopBarBackdrop
-import io.github.mangi.eta.ui.components.topBarContainerColor
 import io.github.mangi.eta.ui.screens.home.NowBriefScreen
 import io.github.mangi.eta.ui.model.AgentModelPickerUiState
 import io.github.mangi.eta.ui.model.ConversationPaneUiState
 import io.github.mangi.eta.ui.model.ConversationSummaryUi
 import io.github.mangi.eta.ui.navigation.AppRoute
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.DropdownImpl
-import top.yukonga.miuix.kmp.basic.DropdownItem
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.ListPopupColumn
-import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.PopupPositionProvider
-import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.ScrollBehavior
-import top.yukonga.miuix.kmp.basic.SmallTopAppBar
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TopAppBarDefaults
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.window.WindowListPopup
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.IconButton
+import io.github.suqi8.coui.kmp.basic.TopAppBarDefaults
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 /**
  * Agent App 统一壳层。
@@ -145,145 +118,54 @@ internal fun AgentAppShell(
     onOpenCharacter: () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
-    val uiStyle = LocalUiStyle.current
     var briefOpen by remember { mutableStateOf(false) }
     val pageContent: @Composable () -> Unit = {
-        when (uiStyle) {
-            AppearanceUiStyle.COUI -> {
-                val dark = CouiTheme.isDark
-                val colors = CouiPageDefaults.themeColors(dark)
-                val isHome = currentRoute is AppRoute.Home
-                CouiLayoutScaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    containerColor = MiuixTheme.colorScheme.surface,
-                    windowInsets = WindowInsets.safeDrawing.only(
-                        WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
-                    ),
-                    topBar = {
-                        if (currentRoute !is AppRoute.Settings) {
-                            CouiTopAppBar(
-                                title = {
-                                    if (isHome && homeModelPickerState != null) {
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            AgentTopBarChatHeader(
-                                                conversationTitle = homeTitle,
-                                                character = homeCharacter,
-                                                state = homeModelPickerState,
-                                                isStreaming = isHomeStreaming,
-                                                onModelSelected = onHomeModelSelected,
-                                                onOpenCharacter = onOpenCharacter,
-                                            )
-                                        }
-                                    } else {
-                                        BasicText(
-                                            text = titleForRoute(currentRoute),
-                                            style = LocalCouiTextStyle.current,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                },
-                                navigationIcon = {
-                                    if (isHome) {
-                                        CouiTopAppBarIconButton(
-                                            icon = Icons.AutoMirrored.Outlined.ShortText,
-                                            contentDescription = stringResource(R.string.action_conversation_history),
-                                            onClick = onOpenConversationPane,
-                                            dark = dark,
-                                            colors = colors,
-                                        )
-                                    } else {
-                                        CouiBackButton(onClick = onBack, dark = dark, colors = colors)
-                                    }
-                                },
-                                actions = {
-                                    if (isHome) {
-                                        TopAppBarButtonGroup {
-                                            CouiTopAppBarIconButton(
-                                                icon = Icons.Rounded.DashboardCustomize,
-                                                contentDescription = "Ouvrir mon briefing",
-                                                onClick = { briefOpen = true },
-                                                dark = dark,
-                                                colors = colors,
-                                            )
-                                            CouiTopAppBarIconButton(
-                                                icon = ChatActionIcons.NewChat,
-                                                contentDescription = stringResource(R.string.action_new_conversation),
-                                                onClick = onNewConversation,
-                                                dark = dark,
-                                                colors = colors,
-                                            )
-                                        }
-                                    }
-                                },
-                                dark = dark,
-                                colors = CouiTopAppBarDefaults.colors(
-                                    backgroundColor = MiuixTheme.colorScheme.surface,
-                                    titleColor = colors.title,
-                                    dark = dark,
-                                ),
+        val isHome = currentRoute is AppRoute.Home
+        val barColor = COUITheme.colorScheme.background
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = barColor,
+            contentWindowInsets = WindowInsets.safeDrawing.only(
+                WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+            ),
+            topBar = {
+                when {
+                    currentRoute is AppRoute.Settings -> Unit
+                    isHome -> HomeTopBar(
+                        color = barColor,
+                        onOpenConversationPane = onOpenConversationPane,
+                        onOpenBrief = { briefOpen = true },
+                        onNewConversation = onNewConversation,
+                    ) {
+                        if (homeModelPickerState != null) {
+                            AgentTopBarChatHeader(
+                                conversationTitle = homeTitle,
+                                character = homeCharacter,
+                                state = homeModelPickerState,
+                                isStreaming = isHomeStreaming,
+                                onModelSelected = onHomeModelSelected,
+                                onOpenCharacter = onOpenCharacter,
+                            )
+                        } else {
+                            Text(
+                                text = titleForRoute(currentRoute),
+                                style = COUITheme.textStyles.headlineS,
+                                color = COUITheme.colorScheme.labelPrimary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
-                    },
-                ) { padding ->
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        content(padding)
                     }
+                    else -> SmallTopAppBar(
+                        title = titleForRoute(currentRoute),
+                        color = barColor,
+                        navigationIcon = { CouiBackButton(onClick = onBack) },
+                    )
                 }
-            }
-            AppearanceUiStyle.MIUIX -> {
-                // 首页顶栏高度固定，不参与折叠；未绑定顶栏的滚动行为会吞掉聊天列表的单向滑动。
-                val scrollBehavior = if (currentRoute is AppRoute.Home) null else MiuixScrollBehavior()
-                val backdrop = rememberTopBarBackdrop()
-                val topBarColor = topBarContainerColor(backdrop)
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    contentWindowInsets = WindowInsets.safeDrawing.only(
-                        WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
-                    ),
-                    topBar = {
-                        if (currentRoute !is AppRoute.Settings) {
-                            TopBarBackdrop(backdrop) {
-                                AgentTopBar(
-                                    route = currentRoute,
-                                    scrollBehavior = scrollBehavior,
-                                    color = topBarColor,
-                                    onBack = onBack,
-                                    onOpenConversationPane = onOpenConversationPane,
-                                    onNewConversation = onNewConversation,
-                                    onOpenTerminal = onOpenTerminal,
-                                    onLaunchKimiWeb = onLaunchKimiWeb,
-                                    kimiWebLabel = kimiWebLabel,
-                                    canStopKimiWeb = canStopKimiWeb,
-                                    onStopKimiWeb = onStopKimiWeb,
-                                    onRefreshKimiWeb = onRefreshKimiWeb,
-                                    onOpenBrowser = onOpenBrowser,
-                                    homeTitle = homeTitle,
-                                    homeCharacter = homeCharacter,
-                                    homeModelPickerState = homeModelPickerState,
-                                    isHomeStreaming = isHomeStreaming,
-                                    onHomeModelSelected = onHomeModelSelected,
-                                    onOpenCharacter = onOpenCharacter,
-                                )
-                            }
-                        }
-                    },
-                ) { padding ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .captureForTopBar(backdrop)
-                            .then(
-                                if (scrollBehavior != null) Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
-                                else Modifier,
-                            ),
-                    ) {
-                        content(padding)
-                    }
-                }
+            },
+        ) { padding ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                content(padding)
             }
         }
     }
@@ -330,186 +212,18 @@ internal fun AgentAppShell(
     }
 }
 
+
+
+/** The home bar: conversation pane, centered chat header, briefing and new conversation actions. */
 @Composable
-private fun CouiTopBarOverflowMenu(
-    dark: Boolean,
-    colors: com.itos.coui.layout.CouiPageColors,
-    onNewConversation: () -> Unit,
-    onOpenTerminal: () -> Unit,
-    onLaunchKimiWeb: () -> Unit,
-    kimiWebLabel: String,
-    canStopKimiWeb: Boolean,
-    onStopKimiWeb: () -> Unit,
-    onRefreshKimiWeb: () -> Unit,
-    onOpenBrowser: () -> Unit,
-) {
-    var showMenu by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val speechSettings by remember { SpeechSettingsRepository.settingsFlow() }.collectAsState(initial = null)
-    val hasSpeechPlayback = speechSettings?.let { it.tts != TtsProvider.NONE } == true
-    val autoReadEnabled = speechSettings?.chatAutoSpeak == true
-    val anchor = rememberCouiMenuAnchor()
-
-    val newConversationText = stringResource(R.string.action_new_conversation)
-    val openTerminalText = stringResource(R.string.action_open_terminal)
-    val stopKimiWebText = stringResource(R.string.capability_kimi_stop)
-    val openBrowserText = stringResource(R.string.action_open_browser)
-    val autoReadText = stringResource(
-        if (autoReadEnabled) R.string.speech_disable_auto_read else R.string.speech_enable_auto_read,
-    )
-    val menuItems = remember(
-        newConversationText,
-        openTerminalText,
-        kimiWebLabel,
-        openBrowserText,
-        stopKimiWebText,
-        canStopKimiWeb,
-        autoReadText,
-        hasSpeechPlayback,
-        autoReadEnabled,
-    ) {
-        buildList {
-            add(CouiMenuItem(value = 0, text = newConversationText, icon = ChatActionIcons.NewChat))
-            add(CouiMenuItem(value = 1, text = openTerminalText, icon = Icons.Rounded.Terminal))
-
-            add(CouiMenuItem(value = 3, text = openBrowserText, icon = Icons.Rounded.Language))
-            if (canStopKimiWeb) {
-
-            }
-            if (hasSpeechPlayback) {
-                add(
-                    CouiMenuItem(
-                        value = 5,
-                        text = autoReadText,
-                        icon = if (autoReadEnabled) Icons.AutoMirrored.Rounded.VolumeUp else Icons.AutoMirrored.Rounded.VolumeOff,
-                    ),
-                )
-            }
-        }
-    }
-
-    Box {
-        CouiTopAppBarIconButton(
-            icon = CouiIcons.Outlined.More,
-            contentDescription = stringResource(R.string.action_more),
-            modifier = Modifier.couiMenuAnchor(anchor),
-            dark = dark,
-            colors = colors,
-            onClick = {
-                onRefreshKimiWeb()
-                anchor.open { showMenu = true }
-            },
-        )
-        Menu(
-            expanded = showMenu,
-            onDismissRequest = { showMenu = false },
-            items = menuItems,
-            onItemClick = { item ->
-                showMenu = false
-                when (item.value) {
-                    0 -> onNewConversation()
-                    1 -> onOpenTerminal()
-                    2 -> onLaunchKimiWeb()
-                    3 -> onOpenBrowser()
-                    4 -> onStopKimiWeb()
-                    5 -> speechSettings?.let { current ->
-                        scope.launch {
-                            SpeechSettingsRepository.save(current.copy(chatAutoSpeak = !current.chatAutoSpeak))
-                        }
-                    }
-                }
-            },
-            anchor = anchor,
-        )
-    }
-}
-
-@Composable
-private fun AgentTopBar(
-    route: AppRoute?,
-    scrollBehavior: ScrollBehavior?,
-    color: Color,
-    onBack: () -> Unit,
-    onOpenConversationPane: () -> Unit,
-    onNewConversation: () -> Unit,
-    onOpenTerminal: () -> Unit,
-    onLaunchKimiWeb: () -> Unit,
-    kimiWebLabel: String,
-    canStopKimiWeb: Boolean,
-    onStopKimiWeb: () -> Unit,
-    onRefreshKimiWeb: () -> Unit,
-    onOpenBrowser: () -> Unit,
-    homeTitle: String?,
-    homeCharacter: RoleplayChatUi?,
-    homeModelPickerState: AgentModelPickerUiState?,
-    isHomeStreaming: Boolean,
-    onHomeModelSelected: (String) -> Unit,
-    onOpenCharacter: () -> Unit,
-) {
-    val isHome = route is AppRoute.Home
-    if (isHome && homeModelPickerState != null) {
-        HomeMiuixTopBar(
-            color = color,
-            onOpenConversationPane = onOpenConversationPane,
-            onNewConversation = onNewConversation,
-            onOpenTerminal = onOpenTerminal,
-            onLaunchKimiWeb = onLaunchKimiWeb,
-            kimiWebLabel = kimiWebLabel,
-            canStopKimiWeb = canStopKimiWeb,
-            onStopKimiWeb = onStopKimiWeb,
-            onRefreshKimiWeb = onRefreshKimiWeb,
-            onOpenBrowser = onOpenBrowser,
-        ) {
-            AgentTopBarChatHeader(
-                conversationTitle = homeTitle,
-                character = homeCharacter,
-                state = homeModelPickerState,
-                isStreaming = isHomeStreaming,
-                onModelSelected = onHomeModelSelected,
-                onOpenCharacter = onOpenCharacter,
-            )
-        }
-        return
-    }
-
-    val navigationIcon: @Composable () -> Unit = {
-        MiuixBackButton(onClick = onBack)
-    }
-    val actions: @Composable RowScope.() -> Unit = {}
-
-    if (route is AppRoute.Terminal) {
-        SmallTopAppBar(
-            title = titleForRoute(route),
-            color = color,
-            scrollBehavior = scrollBehavior,
-            navigationIcon = navigationIcon,
-            actions = actions,
-        )
-    } else {
-        AdaptiveTopAppBar(
-            title = titleForRoute(route),
-            color = color,
-            scrollBehavior = scrollBehavior,
-            navigationIcon = navigationIcon,
-            actions = actions,
-        )
-    }
-}
-
-@Composable
-private fun HomeMiuixTopBar(
+private fun HomeTopBar(
     color: Color,
     onOpenConversationPane: () -> Unit,
+    onOpenBrief: () -> Unit,
     onNewConversation: () -> Unit,
-    onOpenTerminal: () -> Unit,
-    onLaunchKimiWeb: () -> Unit,
-    kimiWebLabel: String,
-    canStopKimiWeb: Boolean,
-    onStopKimiWeb: () -> Unit,
-    onRefreshKimiWeb: () -> Unit,
-    onOpenBrowser: () -> Unit,
     centerContent: @Composable () -> Unit,
 ) {
+    val tint = COUITheme.colorScheme.labelPrimary
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -519,189 +233,41 @@ private fun HomeMiuixTopBar(
             .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top))
             .height(56.dp)
             .clipToBounds()
-            .pointerInput(Unit) {
-                detectTapGestures { }
-            }
-            .padding(
-                start = TopAppBarDefaults.NavigationIconPadding,
-                end = TopAppBarDefaults.ActionIconPadding,
-            ),
+            .pointerInput(Unit) { detectTapGestures { } }
+            .padding(horizontal = TopAppBarDefaults.HorizontalPaddingCompact),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(onClick = onOpenConversationPane) {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.ShortText,
-                modifier = Modifier.size(24.dp),
                 contentDescription = stringResource(R.string.action_conversation_history),
+                modifier = Modifier.size(24.dp),
+                tint = tint,
             )
         }
-        Box(
-            modifier = Modifier.weight(1f),
-            contentAlignment = Alignment.Center,
-        ) {
+        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
             centerContent()
+        }
+        IconButton(onClick = onOpenBrief) {
+            Icon(
+                imageVector = Icons.Rounded.DashboardCustomize,
+                contentDescription = "Ouvrir mon briefing",
+                modifier = Modifier.size(24.dp),
+                tint = tint,
+            )
         }
         IconButton(onClick = onNewConversation) {
             Icon(
                 imageVector = ChatActionIcons.NewChat,
                 contentDescription = stringResource(R.string.action_new_conversation),
                 modifier = Modifier.size(24.dp),
+                tint = tint,
             )
         }
     }
 }
 
-private val TopBarMenuIconSize = 20.dp
 
-@Composable
-private fun TopBarOverflowMenu(
-    onNewConversation: () -> Unit,
-    onOpenTerminal: () -> Unit,
-    onLaunchKimiWeb: () -> Unit,
-    kimiWebLabel: String,
-    canStopKimiWeb: Boolean,
-    onStopKimiWeb: () -> Unit,
-    onRefreshKimiWeb: () -> Unit,
-    onOpenBrowser: () -> Unit,
-) {
-    var showMenu by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val speechSettings by remember { SpeechSettingsRepository.settingsFlow() }.collectAsState(initial = null)
-    val hasSpeechPlayback = speechSettings?.let { it.tts != TtsProvider.NONE } == true
-    val autoReadEnabled = speechSettings?.chatAutoSpeak == true
-    Box {
-        IconButton(onClick = { onRefreshKimiWeb(); showMenu = true }) {
-            Icon(
-                imageVector = Icons.Outlined.MoreHoriz,
-                modifier = Modifier.size(24.dp),
-                contentDescription = stringResource(R.string.action_more),
-            )
-        }
-        WindowListPopup(
-            show = showMenu,
-            alignment = PopupPositionProvider.Align.End,
-            onDismissRequest = { showMenu = false },
-        ) {
-            val newConversationText = stringResource(R.string.action_new_conversation)
-            val openTerminalText = stringResource(R.string.action_open_terminal)
-            val launchKimiWebText = kimiWebLabel
-            val stopKimiWebText = stringResource(R.string.capability_kimi_stop)
-            val openBrowserText = stringResource(R.string.action_open_browser)
-            val autoReadText = stringResource(
-                if (autoReadEnabled) R.string.speech_disable_auto_read else R.string.speech_enable_auto_read,
-            )
-            val menuItems = remember(
-                newConversationText,
-                openTerminalText,
-                launchKimiWebText,
-                openBrowserText,
-                stopKimiWebText,
-                canStopKimiWeb,
-                autoReadText,
-                hasSpeechPlayback,
-                autoReadEnabled,
-            ) {
-                listOf(
-                    DropdownItem(
-                        text = newConversationText,
-                        icon = { modifier ->
-                            Icon(
-                                imageVector = ChatActionIcons.NewChat,
-                                contentDescription = null,
-                                modifier = modifier.size(TopBarMenuIconSize),
-                            )
-                        },
-                    ),
-                    DropdownItem(
-                        text = openTerminalText,
-                        icon = { modifier ->
-                            Icon(
-                                imageVector = Icons.Rounded.Terminal,
-                                contentDescription = null,
-                                modifier = modifier.size(TopBarMenuIconSize),
-                            )
-                        },
-                    ),
-                    DropdownItem(
-                        text = launchKimiWebText,
-                        icon = { modifier ->
-                            Icon(
-                                painter = painterResource(R.drawable.ic_kimi_code),
-                                contentDescription = null,
-                                modifier = modifier.size(TopBarMenuIconSize),
-                            )
-                        },
-                    ),
-                    DropdownItem(
-                        text = openBrowserText,
-                        icon = { modifier ->
-                            Icon(
-                                imageVector = Icons.Rounded.Language,
-                                contentDescription = null,
-                                modifier = modifier.size(TopBarMenuIconSize),
-                            )
-                        },
-                    ),
-                ) + (if (canStopKimiWeb) {
-                    listOf(
-                        DropdownItem(
-                            text = stopKimiWebText,
-                            icon = { modifier ->
-                                Icon(
-                                    imageVector = Icons.Rounded.Stop,
-                                    contentDescription = null,
-                                    modifier = modifier.size(TopBarMenuIconSize),
-                                )
-                            },
-                        ),
-                    )
-                } else {
-                    emptyList()
-                }) + if (hasSpeechPlayback) {
-                    listOf(
-                        DropdownItem(
-                            text = autoReadText,
-                            icon = { modifier ->
-                                Icon(
-                                    imageVector = if (autoReadEnabled) Icons.AutoMirrored.Rounded.VolumeUp
-                                    else Icons.AutoMirrored.Rounded.VolumeOff,
-                                    contentDescription = null,
-                                    modifier = modifier.size(TopBarMenuIconSize),
-                                )
-                            },
-                        ),
-                    )
-                } else emptyList()
-            }
-            ListPopupColumn {
-                menuItems.forEachIndexed { index, item ->
-                    DropdownImpl(
-                        item = item,
-                        optionSize = menuItems.size,
-                        isSelected = false,
-                        index = index,
-                        onSelectedIndexChange = {
-                            showMenu = false
-                            if (hasSpeechPlayback && index == menuItems.lastIndex) {
-                                speechSettings?.let { current ->
-                                    scope.launch {
-                                        SpeechSettingsRepository.save(current.copy(chatAutoSpeak = !current.chatAutoSpeak))
-                                    }
-                                }
-                            } else when (index) {
-                                0 -> onNewConversation()
-                                1 -> onOpenTerminal()
-                                2 -> onLaunchKimiWeb()
-                                3 -> onOpenBrowser()
-                                4 -> onStopKimiWeb()
-                            }
-                        },
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun titleForRoute(route: AppRoute?): String = when (route) {

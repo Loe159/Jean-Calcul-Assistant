@@ -38,7 +38,8 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import com.itos.coui.effect.LocalCouiContourGlowEnabled
+import io.github.suqi8.coui.kmp.effect.LocalCOUIMaterialEffectEnabled
+import io.github.mangi.eta.ui.app.LocalBlurEnabled
 import io.github.mangi.eta.EtaApp
 import io.github.mangi.eta.agent.accessibility.AgentAccessibilityService
 import io.github.mangi.eta.agent.device.RootAccess
@@ -74,10 +75,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import top.yukonga.miuix.kmp.squircle.LocalSquircleEnabled
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.theme.darkColorScheme
-import top.yukonga.miuix.kmp.theme.lightColorScheme
+import io.github.suqi8.coui.kmp.squircle.LocalSquircleEnabled
 
 /**
  * 模块进程内的通用 Agent Runtime。
@@ -1265,11 +1263,12 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                     appearance = appearance,
                     applyInterfaceScale = false,
                 ) {
-                    // 部分 ROM 会给 TYPE_ACCESSIBILITY_OVERLAY 分配软件 Canvas；Miuix 与 COUI 的
-                    // RuntimeShader 只检查系统版本，因此系统浮层统一使用无 RuntimeShader 的圆角回退。
+                    // Some ROMs give TYPE_ACCESSIBILITY_OVERLAY a software canvas while COUI only checks the
+                    // API level for RuntimeShader: system overlays use the shader-free COUI fallbacks.
                     CompositionLocalProvider(
                         LocalSquircleEnabled provides false,
-                        LocalCouiContourGlowEnabled provides false,
+                        LocalCOUIMaterialEffectEnabled provides false,
+                        LocalBlurEnabled provides false,
                     ) {
                         content()
                     }

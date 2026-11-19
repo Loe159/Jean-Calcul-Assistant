@@ -44,21 +44,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.agent.roleplay.CharacterMacros
 import io.github.mangi.eta.agent.roleplay.CharacterProfile
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
 import io.github.mangi.eta.ui.components.CharacterAvatar
 import io.github.mangi.eta.ui.components.coui.CouiButton
 import io.github.mangi.eta.ui.components.coui.CouiButtonRole
 import io.github.mangi.eta.ui.components.rememberCharacterImage
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.squircle.squircleBorder
-import top.yukonga.miuix.kmp.squircle.squircleClip
-import top.yukonga.miuix.kmp.squircle.squircleSurface
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.IconButton
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.squircle.squircleBorder
+import io.github.suqi8.coui.kmp.squircle.squircleClip
+import io.github.suqi8.coui.kmp.squircle.squircleSurface
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 private val HeroAvatarWidth = 132.dp
 private val HeroAvatarHeight = HeroAvatarWidth / CharacterPortraitAspect
@@ -80,7 +76,7 @@ internal fun CharacterHero(
 ) {
     val card = profile.card
     val description = remember(card, userName) { CharacterMacros.expand(card.description, card, userName) }
-    val colors = MiuixTheme.colorScheme
+    val colors = COUITheme.colorScheme
     val image = rememberCharacterImage(profile.avatarPath, HeroAvatarHeight)
     Box(modifier = Modifier.fillMaxWidth()) {
         if (image != null) {
@@ -102,10 +98,10 @@ internal fun CharacterHero(
                 .background(
                     // 上下两端都融回页面底色：顶部不在顶栏下切出硬边，底部自然接到下方分组。
                     Brush.verticalGradient(
-                        0f to colors.background,
-                        0.18f to colors.background.copy(alpha = 0f),
-                        0.6f to colors.background.copy(alpha = 0.2f),
-                        1f to colors.background,
+                        0f to colors.backgroundWithCard,
+                        0.18f to colors.backgroundWithCard.copy(alpha = 0f),
+                        0.6f to colors.backgroundWithCard.copy(alpha = 0.2f),
+                        1f to colors.backgroundWithCard,
                     ),
                 ),
         )
@@ -133,7 +129,7 @@ internal fun CharacterHero(
                         .align(Alignment.BottomEnd)
                         .offset(x = 10.dp, y = 10.dp)
                         .size(36.dp)
-                        .squircleSurface(colors.surface, 18.dp)
+                        .squircleSurface(colors.background, 18.dp)
                         .squircleBorder(0.5.dp, colors.outline.copy(alpha = 0.5f), 18.dp)
                         .clickable(enabled = !busy, onClick = onChangeAvatar),
                     contentAlignment = Alignment.Center,
@@ -142,7 +138,7 @@ internal fun CharacterHero(
                         imageVector = Icons.Rounded.PhotoCamera,
                         contentDescription = "Change avatar",
                         modifier = Modifier.size(18.dp),
-                        tint = colors.onSurface,
+                        tint = colors.labelPrimary,
                     )
                 }
             }
@@ -150,9 +146,9 @@ internal fun CharacterHero(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = card.name,
-                    style = MiuixTheme.textStyles.title2,
+                    style = COUITheme.textStyles.displayXS,
                     fontWeight = FontWeight.SemiBold,
-                    color = colors.onSurface,
+                    color = colors.labelPrimary,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
@@ -163,7 +159,7 @@ internal fun CharacterHero(
                         imageVector = if (card.favorite) Icons.Rounded.Star else Icons.Rounded.StarOutline,
                         contentDescription = if (card.favorite) "Remove favorite" else "Favorite",
                         modifier = Modifier.size(20.dp),
-                        tint = if (card.favorite) FavoriteColor else colors.onSurfaceVariantSummary,
+                        tint = if (card.favorite) FavoriteColor else colors.labelSecondary,
                     )
                 }
             }
@@ -174,8 +170,8 @@ internal fun CharacterHero(
             if (byline.isNotEmpty()) {
                 Text(
                     text = byline,
-                    style = MiuixTheme.textStyles.footnote1,
-                    color = colors.onSurfaceVariantSummary,
+                    style = COUITheme.textStyles.bodyS,
+                    color = colors.labelSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -190,11 +186,11 @@ internal fun CharacterHero(
                     card.tags.forEach { tag ->
                         Text(
                             text = tag,
-                            style = MiuixTheme.textStyles.footnote2,
-                            color = colors.onSurfaceVariantSummary,
+                            style = COUITheme.textStyles.bodyXS,
+                            color = colors.labelSecondary,
                             maxLines = 1,
                             modifier = Modifier
-                                .squircleSurface(colors.surfaceContainerHigh, 10.dp)
+                                .squircleSurface(colors.cardPressed, 10.dp)
                                 .padding(horizontal = 10.dp, vertical = 4.dp),
                         )
                     }
@@ -204,8 +200,8 @@ internal fun CharacterHero(
                 Spacer(Modifier.height(16.dp))
                 Text(
                     text = description,
-                    style = MiuixTheme.textStyles.body2,
-                    color = colors.onSurface.copy(alpha = 0.86f),
+                    style = COUITheme.textStyles.bodyM,
+                    color = colors.labelPrimary.copy(alpha = 0.86f),
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
@@ -216,23 +212,13 @@ internal fun CharacterHero(
                 )
             }
             Spacer(Modifier.height(20.dp))
-            if (LocalUiStyle.current == AppearanceUiStyle.COUI) {
-                CouiButton(
-                    text = "Start conversation",
-                    enabled = !busy,
-                    onClick = onStart,
-                    role = CouiButtonRole.Primary,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            } else {
-                TextButton(
-                    text = "Start conversation",
-                    enabled = !busy,
-                    onClick = onStart,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.textButtonColorsPrimary(),
-                )
-            }
+            CouiButton(
+                text = "Start conversation",
+                enabled = !busy,
+                onClick = onStart,
+                role = CouiButtonRole.Primary,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
@@ -249,7 +235,7 @@ internal fun GreetingPager(
     onSelect: (Int) -> Unit,
     onRead: (Int) -> Unit,
 ) {
-    val colors = MiuixTheme.colorScheme
+    val colors = COUITheme.colorScheme
     val pagerState = rememberPagerState(initialPage = selected.coerceIn(0, greetings.lastIndex)) { greetings.size }
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.settledPage }.collect(onSelect)
@@ -265,14 +251,14 @@ internal fun GreetingPager(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(GreetingCardHeight)
-                    .squircleSurface(colors.surfaceContainer, 20.dp)
+                    .squircleSurface(colors.surfaceWithCard, 20.dp)
                     .clickable(enabled = text.isNotBlank()) { onRead(page) }
                     .padding(16.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = greetingTitle(page),
-                        style = MiuixTheme.textStyles.footnote1,
+                        style = COUITheme.textStyles.bodyS,
                         fontWeight = FontWeight.Medium,
                         color = colors.primary,
                         modifier = Modifier.weight(1f),
@@ -302,8 +288,8 @@ internal fun GreetingPager(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = text.ifBlank { "No greeting configured. Start the conversation yourself." },
-                    style = MiuixTheme.textStyles.body2,
-                    color = if (text.isBlank()) colors.onSurfaceVariantSummary else colors.onSurface,
+                    style = COUITheme.textStyles.bodyM,
+                    color = if (text.isBlank()) colors.labelSecondary else colors.labelPrimary,
                     maxLines = 6,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
@@ -311,7 +297,7 @@ internal fun GreetingPager(
                 if (text.isNotBlank()) {
                     Text(
                         text = "Read more",
-                        style = MiuixTheme.textStyles.footnote1,
+                        style = COUITheme.textStyles.bodyS,
                         color = colors.primary,
                     )
                 }
@@ -325,7 +311,7 @@ internal fun GreetingPager(
 
 @Composable
 private fun PagerDots(count: Int, current: Int) {
-    val colors = MiuixTheme.colorScheme
+    val colors = COUITheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -339,7 +325,7 @@ private fun PagerDots(count: Int, current: Int) {
                     .height(6.dp)
                     .width(if (active) 16.dp else 6.dp)
                     .background(
-                        if (active) colors.primary else colors.onSurfaceVariantSummary.copy(alpha = 0.3f),
+                        if (active) colors.primary else colors.labelSecondary.copy(alpha = 0.3f),
                         CircleShape,
                     ),
             )

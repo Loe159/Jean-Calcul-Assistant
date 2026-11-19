@@ -79,7 +79,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import top.yukonga.miuix.kmp.squircle.LocalSquircleEnabled
+import io.github.suqi8.coui.kmp.squircle.LocalSquircleEnabled
 
 /**
  * Eta 数字助理的用户界面窗口。
@@ -321,8 +321,8 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
                 appearance = appearance,
                 applyInterfaceScale = false,
             ) {
-                // ColorOS 在 Overlay 窗口切换期间可能短暂使用软件画布；RuntimeShader
-                // 无法在该画布绘制，因此浮窗统一使用 Miuix 的圆角回退路径。
+                // ColorOS may hand the overlay window a software canvas while it switches; RuntimeShader
+                // cannot draw there, so the overlay uses COUI's plain rounded-corner fallback.
                 CompositionLocalProvider(LocalSquircleEnabled provides false,
                     LocalSpeechPlayback provides playback,
                     LocalSpeechPlaybackEnabled provides (speechSettings?.let { it.tts != TtsProvider.NONE } == true)) {

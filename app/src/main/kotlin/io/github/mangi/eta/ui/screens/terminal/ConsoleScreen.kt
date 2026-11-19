@@ -48,7 +48,7 @@ import io.github.mangi.eta.ui.app.UserTerminalStore
 import io.github.mangi.eta.ui.components.EtaMonospace
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 /** 终端入口：PTY 可用时默认进入交互式控制台，块式终端作为“跑一条命令看结果”的简洁模式。 */
 @Composable
@@ -69,7 +69,7 @@ internal fun TerminalEntryScreen(
         consoleState.ptySupported == null -> Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MiuixTheme.colorScheme.surface),
+                .background(COUITheme.colorScheme.background),
         )
         consoleMode && consoleState.ptySupported == true -> ConsoleScreen(
             store = consoleStore,
@@ -128,8 +128,8 @@ internal fun ConsoleScreen(
         }
     }
     LaunchedEffect(keyboard) { keyboard.show() }
-    val themeForeground = MiuixTheme.colorScheme.onSurface
-    val themeBackground = MiuixTheme.colorScheme.surface
+    val themeForeground = COUITheme.colorScheme.labelPrimary
+    val themeBackground = COUITheme.colorScheme.background
     LaunchedEffect(themeForeground, themeBackground) {
         store.setThemeColors(themeForeground.toArgb().toLong() and 0xFFFFFFFFL, themeBackground.toArgb().toLong() and 0xFFFFFFFFL)
     }
@@ -137,7 +137,7 @@ internal fun ConsoleScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MiuixTheme.colorScheme.surface)
+            .background(COUITheme.colorScheme.background)
             .imePadding()
             .navigationBarsPadding(),
     ) {
@@ -170,7 +170,7 @@ internal fun ConsoleScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(0.5.dp)
-                .background(MiuixTheme.colorScheme.dividerLine),
+                .background(COUITheme.colorScheme.divider),
         )
         ConsoleKeyBar(
             modifierKeys = modifierKeys,
@@ -235,14 +235,14 @@ private fun ConsoleGrid(
 ) {
     val density = LocalDensity.current
     val textMeasurer = rememberTextMeasurer()
-    val cellStyle = MiuixTheme.textStyles.footnote1.copy(fontFamily = EtaMonospace)
+    val cellStyle = COUITheme.textStyles.bodyS.copy(fontFamily = EtaMonospace)
     val glyphs = remember(textMeasurer, cellStyle) { ConsoleGlyphCache(textMeasurer, cellStyle) }
     val metrics = remember(glyphs) { glyphs.metrics() }
-    val colors = MiuixTheme.colorScheme
-    val palette = remember(colors.onSurface, colors.surface, colors.primary) {
+    val colors = COUITheme.colorScheme
+    val palette = remember(colors.labelPrimary, colors.background, colors.primary) {
         ConsolePalette(
-            foreground = colors.onSurface,
-            background = colors.surface,
+            foreground = colors.labelPrimary,
+            background = colors.background,
             composing = colors.primary,
         )
     }
@@ -304,7 +304,7 @@ private fun ConsoleGrid(
                 onAction = onReconnect,
                 secondaryActionText = state.failMessage?.let { stringResource(R.string.terminal_open_environment) },
                 onSecondaryAction = onOpenEnvironment,
-                modifier = Modifier.background(colors.surface),
+                modifier = Modifier.background(colors.background),
             )
         }
     }

@@ -31,12 +31,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.itos.coui.motion.couiPressMotion
-import com.itos.coui.motion.rememberCouiPressMotion
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.Text
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.utils.SinkFeedback
 
 private data class AssistantSuggestion(val label: String, val prompt: String)
 
@@ -78,7 +77,6 @@ internal fun EtaAssistantSuggestions(
                 val progress = remember(suggestion) { Animatable(0f) }
                 val opacity = remember(suggestion) { Animatable(0f) }
                 val interactionSource = remember(suggestion) { MutableInteractionSource() }
-                val press = rememberCouiPressMotion()
                 LaunchedEffect(visible) {
                     if (visible) {
                         progress.snapTo(0f)
@@ -113,20 +111,15 @@ internal fun EtaAssistantSuggestions(
                             scaleX = entryScale
                             scaleY = entryScale
                         }
-                        .couiPressMotion(press, enabled = visible, cancelOnConsumedMove = true)
                         .couiAssistantCapsule(
                             surfaceColor = colors.chipBackground,
                             strokeColor = colors.chipStroke,
                             dark = colors.dark,
                             elevation = AssistantCapsuleElevation.Chip,
-                            interactive = visible,
-                            interactionSource = interactionSource,
-                            pressMotion = press,
-                            spotlightEnabled = true,
                         )
                         .clickable(
                             interactionSource = interactionSource,
-                            indication = null,
+                            indication = SinkFeedback(),
                             enabled = visible,
                             role = Role.Button,
                         ) { onSuggestionClick(suggestion.prompt) }

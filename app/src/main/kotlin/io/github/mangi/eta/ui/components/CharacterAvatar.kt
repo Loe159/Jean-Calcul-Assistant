@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.sp
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import top.yukonga.miuix.kmp.basic.Text
+import io.github.suqi8.coui.kmp.basic.Text
 
 /** 角色在对话与列表中的身份信息；头像路径为空时用名字生成字标头像。 */
 @Immutable

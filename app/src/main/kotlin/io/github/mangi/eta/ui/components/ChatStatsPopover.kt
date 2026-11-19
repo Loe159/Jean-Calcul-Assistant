@@ -49,12 +49,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
-import com.itos.coui.effect.couiButtonFeedback
-import com.itos.coui.shape.CouiShape
-import com.itos.coui.theme.CouiTheme
 import io.github.mangi.eta.R
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
 import io.github.mangi.eta.ui.components.coui.CouiButton
 import io.github.mangi.eta.ui.components.coui.CouiButtonRole
 import io.github.mangi.eta.ui.model.AgentContextUsageUi
@@ -63,13 +58,11 @@ import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.squircle.squircleBorder
-import top.yukonga.miuix.kmp.squircle.squircleSurface
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import androidx.compose.foundation.LocalIndication
+import io.github.suqi8.coui.kmp.squircle.SquircleShape
 
 /**
  * 单轮回答底部的轻量性能统计胶囊：
@@ -102,12 +95,11 @@ internal fun TurnStatsPill(
         else -> return
     }
 
-    val isCoui = LocalUiStyle.current == AppearanceUiStyle.COUI
-    val couiDark = CouiTheme.isDark
+    val couiDark = COUITheme.isDark
     val interactionSource = remember { MutableInteractionSource() }
-    val restingTint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.78f)
+    val restingTint = COUITheme.colorScheme.labelSecondary.copy(alpha = 0.78f)
     val activeBg = if (open) {
-        MiuixTheme.colorScheme.onSurface.copy(alpha = 0.06f)
+        COUITheme.colorScheme.labelPrimary.copy(alpha = 0.06f)
     } else {
         Color.Transparent
     }
@@ -119,15 +111,11 @@ internal fun TurnStatsPill(
                 .clip(RoundedCornerShape(8.dp))
                 .background(activeBg, RoundedCornerShape(8.dp))
                 .then(
-                    if (isCoui) {
-                        Modifier.couiButtonFeedback(couiDark, interactionSource, enabled = true)
-                    } else {
-                        Modifier
-                    },
+                    Modifier,
                 )
                 .clickable(
                     interactionSource = interactionSource,
-                    indication = null,
+                    indication = LocalIndication.current,
                     role = Role.Button,
                     onClick = { open = !open },
                 )
@@ -143,7 +131,7 @@ internal fun TurnStatsPill(
             )
             Text(
                 text = pillLabel,
-                style = MiuixTheme.textStyles.footnote1.copy(
+                style = COUITheme.textStyles.bodyS.copy(
                     fontSize = 12.sp,
                     lineHeight = 18.sp,
                     fontFeatureSettings = "tnum",
@@ -223,11 +211,11 @@ internal fun ContextUsageStatsPopoverPopup(
             } else {
                 Text(
                     text = detailText,
-                    style = MiuixTheme.textStyles.footnote1.copy(
+                    style = COUITheme.textStyles.bodyS.copy(
                         fontSize = 12.sp,
                         lineHeight = 18.sp,
                     ),
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    color = COUITheme.colorScheme.labelSecondary,
                 )
             }
             if (stats.hasTokenUsage) {
@@ -331,33 +319,17 @@ internal fun ContextUsageStatsPopoverPopup(
         if (canCompact) {
             Spacer(Modifier.height(12.dp))
             val compactLabel = stringResource(R.string.context_compact_action)
-            if (LocalUiStyle.current == AppearanceUiStyle.COUI) {
-                CouiButton(
-                    text = compactLabel,
-                    onClick = {
-                        onDismissRequest()
-                        onCompact()
-                    },
-                    role = CouiButtonRole.Primary,
-                    minHeight = 34.dp,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            } else {
-                TextButton(
-                    text = compactLabel,
-                    onClick = {
-                        onDismissRequest()
-                        onCompact()
-                    },
-                    minWidth = 0.dp,
-                    minHeight = 34.dp,
-                    cornerRadius = 17.dp,
-                    colors = ButtonDefaults.textButtonColorsPrimary(),
-                    insideMargin = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
+            CouiButton(
+                text = compactLabel,
+                onClick = {
+                    onDismissRequest()
+                    onCompact()
+                },
+                role = CouiButtonRole.Primary,
+                minHeight = 34.dp,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
@@ -369,16 +341,15 @@ internal fun ChatStatsPopoverPopup(
 ) {
     val density = LocalDensity.current
     val positionProvider = remember(density) { StatsPopoverPositionProvider(density) }
-    val isCoui = LocalUiStyle.current == AppearanceUiStyle.COUI
-    val couiDark = CouiTheme.isDark
+    val couiDark = COUITheme.isDark
 
     Popup(
         popupPositionProvider = positionProvider,
         onDismissRequest = onDismissRequest,
         properties = PopupProperties(focusable = true),
     ) {
-        val cardModifier = if (isCoui) {
-            val shape = remember { CouiShape(18.dp, 2.2f) }
+        val cardModifier = run {
+            val shape = remember { SquircleShape(18.dp) }
             val bgColor = if (couiDark) Color(0xFF24262B) else Color.White
             val borderColor = if (couiDark) Color(0x24FFFFFF) else Color(0x12000000)
             Modifier
@@ -394,22 +365,6 @@ internal fun ChatStatsPopoverPopup(
                 .clip(shape)
                 .background(bgColor, shape)
                 .border(0.5.dp, borderColor, shape)
-        } else {
-            Modifier
-                .widthIn(min = 256.dp, max = 328.dp)
-                .dropShadow(
-                    shape = RoundedCornerShape(18.dp),
-                    shadow = Shadow(radius = 16.dp, color = Color.Black, alpha = 0.12f),
-                )
-                .squircleSurface(
-                    color = MiuixTheme.colorScheme.surfaceContainer,
-                    cornerRadius = 18.dp,
-                )
-                .squircleBorder(
-                    width = 0.5.dp,
-                    color = MiuixTheme.colorScheme.outline.copy(alpha = 0.5f),
-                    cornerRadius = 18.dp,
-                )
         }
 
         Column(
@@ -425,7 +380,7 @@ private fun StatsSectionHeader(
     title: String,
     value: String?,
 ) {
-    val primaryColor = MiuixTheme.colorScheme.onSurface
+    val primaryColor = COUITheme.colorScheme.labelPrimary
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -444,7 +399,7 @@ private fun StatsSectionHeader(
             Spacer(Modifier.width(6.dp))
             Text(
                 text = title,
-                style = MiuixTheme.textStyles.footnote1.copy(
+                style = COUITheme.textStyles.bodyS.copy(
                     fontSize = 13.sp,
                     lineHeight = 18.sp,
                     fontWeight = FontWeight.Medium,
@@ -458,7 +413,7 @@ private fun StatsSectionHeader(
             Spacer(Modifier.width(16.dp))
             Text(
                 text = value,
-                style = MiuixTheme.textStyles.footnote1.copy(
+                style = COUITheme.textStyles.bodyS.copy(
                     fontSize = 13.sp,
                     lineHeight = 18.sp,
                     fontWeight = FontWeight.Medium,
@@ -478,7 +433,7 @@ private fun StatsSectionDivider() {
             .fillMaxWidth()
             .padding(top = 8.dp, bottom = 10.dp)
             .height(0.5.dp)
-            .background(MiuixTheme.colorScheme.dividerLine),
+            .background(COUITheme.colorScheme.divider),
     )
 }
 
@@ -487,8 +442,8 @@ private fun StatsDetailRow(
     label: String,
     value: String,
 ) {
-    val labelColor = MiuixTheme.colorScheme.onSurfaceVariantSummary
-    val valueColor = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.82f)
+    val labelColor = COUITheme.colorScheme.labelSecondary
+    val valueColor = COUITheme.colorScheme.labelPrimary.copy(alpha = 0.82f)
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -496,7 +451,7 @@ private fun StatsDetailRow(
     ) {
         Text(
             text = label,
-            style = MiuixTheme.textStyles.footnote1.copy(
+            style = COUITheme.textStyles.bodyS.copy(
                 fontSize = 12.sp,
                 lineHeight = 18.sp,
             ),
@@ -508,7 +463,7 @@ private fun StatsDetailRow(
         Spacer(Modifier.width(16.dp))
         Text(
             text = value,
-            style = MiuixTheme.textStyles.footnote1.copy(
+            style = COUITheme.textStyles.bodyS.copy(
                 fontSize = 12.sp,
                 lineHeight = 18.sp,
                 fontFeatureSettings = "tnum",
@@ -525,8 +480,8 @@ private fun StatsOutputRow(
     outputTokens: Int,
     reasoningTokens: Int,
 ) {
-    val labelColor = MiuixTheme.colorScheme.onSurfaceVariantSummary
-    val valueColor = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.82f)
+    val labelColor = COUITheme.colorScheme.labelSecondary
+    val valueColor = COUITheme.colorScheme.labelPrimary.copy(alpha = 0.82f)
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -534,7 +489,7 @@ private fun StatsOutputRow(
     ) {
         Text(
             text = "Output",
-            style = MiuixTheme.textStyles.footnote1.copy(
+            style = COUITheme.textStyles.bodyS.copy(
                 fontSize = 12.sp,
                 lineHeight = 18.sp,
             ),
@@ -553,7 +508,7 @@ private fun StatsOutputRow(
         }
         Text(
             text = text,
-            style = MiuixTheme.textStyles.footnote1.copy(
+            style = COUITheme.textStyles.bodyS.copy(
                 fontSize = 12.sp,
                 lineHeight = 18.sp,
                 fontFeatureSettings = "tnum",

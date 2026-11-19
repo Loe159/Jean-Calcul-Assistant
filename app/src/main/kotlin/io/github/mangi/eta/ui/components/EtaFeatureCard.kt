@@ -21,17 +21,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.itos.coui.effect.couiButtonFeedback
-import com.itos.coui.layout.CouiPageDefaults
-import com.itos.coui.text.CouiTextKind
-import com.itos.coui.text.Text as CouiText
-import com.itos.coui.theme.CouiTheme
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.utils.PressFeedbackType
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import androidx.compose.foundation.LocalIndication
+import io.github.suqi8.coui.kmp.squircle.SquircleShape
 
 @Composable
 internal fun EtaFeatureCard(
@@ -43,81 +36,47 @@ internal fun EtaFeatureCard(
     action: (@Composable () -> Unit)? = null,
     footer: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            val dark = CouiTheme.isDark
-            val colors = CouiPageDefaults.themeColors(dark)
-            val source = remember { MutableInteractionSource() }
-            Column(
-                modifier = modifier
-                    .heightIn(min = 136.dp)
-                    .clip(CouiPageDefaults.shape)
-                    .background(colors.card)
-                    .couiButtonFeedback(dark, source, enabled = true)
-                    .clickable(
-                        interactionSource = source,
-                        indication = null,
-                        role = Role.Button,
-                        onClick = onClick,
-                    )
-                    .padding(16.dp),
-            ) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 40.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    icon()
-                    Spacer(Modifier.weight(1f))
-                    action?.invoke()
-                }
-                Spacer(Modifier.height(8.dp))
-                CouiText(
-                    text = title,
-                    kind = CouiTextKind.ItemTitle,
-                    color = colors.title,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(4.dp))
-                CouiText(
-                    text = summary,
-                    kind = CouiTextKind.ItemSummary,
-                    color = colors.summary,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                footer?.invoke(this)
-            }
-        }
-        AppearanceUiStyle.MIUIX -> {
-            Card(
-                modifier = modifier.heightIn(min = 136.dp),
-                insideMargin = PaddingValues(16.dp),
-                pressFeedbackType = PressFeedbackType.Sink,
-                showIndication = true,
+    val dark = COUITheme.isDark
+    val source = remember { MutableInteractionSource() }
+    Column(
+        modifier = modifier
+            .heightIn(min = 136.dp)
+            .clip(SquircleShape(24.dp))
+            .background(COUITheme.colorScheme.card)
+            .clickable(
+                interactionSource = source,
+                indication = LocalIndication.current,
+                role = Role.Button,
                 onClick = onClick,
-            ) {
-                Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
-                    icon()
-                    Spacer(Modifier.weight(1f))
-                    action?.invoke()
-                }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = title, style = MiuixTheme.textStyles.body1, fontWeight = FontWeight.Medium,
-                    color = MiuixTheme.colorScheme.onSurfaceContainer,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = summary, style = MiuixTheme.textStyles.body2,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    maxLines = 3, overflow = TextOverflow.Ellipsis,
-                )
-                footer?.invoke(this)
-            }
+            )
+            .padding(16.dp),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 40.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            icon()
+            Spacer(Modifier.weight(1f))
+            action?.invoke()
         }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = title,
+            style = COUITheme.textStyles.headlineXS,
+            color = COUITheme.colorScheme.labelPrimary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = summary,
+            style = COUITheme.textStyles.bodyS,
+            color = COUITheme.colorScheme.labelSecondary,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
+        footer?.invoke(this)
     }
 }

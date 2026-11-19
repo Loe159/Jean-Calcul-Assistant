@@ -28,7 +28,6 @@ import androidx.compose.ui.semantics.getOrNull
 import io.github.mangi.eta.R
 import io.github.mangi.eta.data.model.AppearanceSettings
 import io.github.mangi.eta.data.model.AppearanceThemeMode
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.ui.app.AgentAppTheme
 import io.github.mangi.eta.ui.model.ConversationModeUi
 import io.github.mangi.eta.ui.model.ConversationPaneUiState
@@ -68,7 +67,7 @@ class ConversationPanePanelTest {
     }
 
     @Test
-    fun sidePaneComposesAcrossStylesAndThemeModesAndHandlesNavigationActions() {
+    fun sidePaneComposesAcrossThemeModesAndHandlesNavigationActions() {
         val controller = Robolectric.buildActivity(ComponentActivity::class.java).setup().visible()
         val activity = controller.get()
         val frameClock = BroadcastFrameClock()
@@ -76,10 +75,7 @@ class ConversationPanePanelTest {
         val recomposer = Recomposer(recomposeScope.coroutineContext)
 
         var appearance by mutableStateOf(
-            AppearanceSettings(
-                uiStyle = AppearanceUiStyle.COUI,
-                themeMode = AppearanceThemeMode.LIGHT,
-            ),
+            AppearanceSettings(themeMode = AppearanceThemeMode.LIGHT),
         )
         var paneState by mutableStateOf(
             ConversationPaneUiState(
@@ -167,9 +163,9 @@ class ConversationPanePanelTest {
                 }
             }
 
-            for (style in listOf(AppearanceUiStyle.COUI, AppearanceUiStyle.MIUIX)) {
+            run {
                 for (theme in listOf(AppearanceThemeMode.LIGHT, AppearanceThemeMode.DARK)) {
-                    appearance = AppearanceSettings(uiStyle = style, themeMode = theme)
+                    appearance = AppearanceSettings(themeMode = theme)
                     pumpFrames(activity, frameClock)
 
                     val nodes = collectSemanticsNodes(activity.window.decorView)
@@ -178,18 +174,18 @@ class ConversationPanePanelTest {
                             node.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty()
                     }
                     assertTrue(
-                        "Expected workbench models entry for $style / $theme",
+                        "Expected workbench models entry for $theme",
                         allTexts.any { it.contains("claude-sonnet-4") },
                     )
                     assertTrue(
-                        "Expected conversation title for $style / $theme",
+                        "Expected conversation title for $theme",
                         allTexts.any { it == "你好，你是谁呀" },
                     )
                 }
             }
 
-            // 切回 COUI 浅色验证工作台、底栏与新建按钮交互
-            appearance = AppearanceSettings(uiStyle = AppearanceUiStyle.COUI, themeMode = AppearanceThemeMode.LIGHT)
+            // Light theme: workbench, dock and new conversation actions.
+            appearance = AppearanceSettings(themeMode = AppearanceThemeMode.LIGHT)
             pumpFrames(activity, frameClock)
 
             clickByLabel(activity, activity.getString(R.string.action_new_conversation))
@@ -233,7 +229,7 @@ class ConversationPanePanelTest {
             )
 
             // 点击清空按钮恢复工作台展示
-            clickByLabel(activity, activity.getString(R.string.page_clear_84fcd7))
+            clickByLabel(activity, "Clear text")
             pumpFrames(activity, frameClock)
             assertEquals("", paneState.searchQuery)
             val restoredTexts = collectAllTexts(activity)
@@ -242,8 +238,8 @@ class ConversationPanePanelTest {
                 restoredTexts.any { it == "claude-sonnet-4" },
             )
 
-            // 在 MIUIX 模式下也验证新建对话、工作台入口与底栏圆形按钮点击
-            appearance = AppearanceSettings(uiStyle = AppearanceUiStyle.MIUIX, themeMode = AppearanceThemeMode.DARK)
+            // Dark theme: the same actions stay reachable.
+            appearance = AppearanceSettings(themeMode = AppearanceThemeMode.DARK)
             pumpFrames(activity, frameClock)
             clickByLabel(activity, activity.getString(R.string.action_new_conversation))
             clickByLabel(activity, activity.getString(R.string.conversation_dock_models))
@@ -275,7 +271,7 @@ class ConversationPanePanelTest {
         val frameClock = BroadcastFrameClock()
         val recomposeScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + frameClock)
         val recomposer = Recomposer(recomposeScope.coroutineContext)
-        var style by mutableStateOf(AppearanceUiStyle.COUI)
+        var themeMode by mutableStateOf(AppearanceThemeMode.LIGHT)
         var conversations by mutableStateOf(
             listOf(
                 ConversationSummaryUi(
@@ -292,10 +288,7 @@ class ConversationPanePanelTest {
         try {
             mountWithDeterministicRecomposer(activity, recomposeScope, recomposer) {
                 AgentAppTheme(
-                    appearance = AppearanceSettings(
-                        uiStyle = style,
-                        themeMode = AppearanceThemeMode.LIGHT,
-                    ),
+                    appearance = AppearanceSettings(themeMode = themeMode),
                     applyInterfaceScale = true,
                 ) {
                     ConversationSidePaneScaffold(
@@ -331,22 +324,22 @@ class ConversationPanePanelTest {
 
             conversations = emptyList()
             pumpFrames(activity, frameClock)
-            val couiEmptyTexts = collectAllTexts(activity)
+            val lightEmptyTexts = collectAllTexts(activity)
             assertTrue(
-                "COUI empty state title should be shown: $couiEmptyTexts",
-                couiEmptyTexts.any { it == activity.getString(R.string.conversation_empty) },
+                "Empty state title should be shown in light theme: $lightEmptyTexts",
+                lightEmptyTexts.any { it == activity.getString(R.string.conversation_empty) },
             )
 
-            style = AppearanceUiStyle.MIUIX
+            themeMode = AppearanceThemeMode.DARK
             pumpFrames(activity, frameClock)
-            val miuixEmptyTexts = collectAllTexts(activity)
+            val darkEmptyTexts = collectAllTexts(activity)
             assertTrue(
-                "MIUIX empty state title should be shown: $miuixEmptyTexts",
-                miuixEmptyTexts.any { it == activity.getString(R.string.conversation_empty) },
+                "Empty state title should be shown in dark theme: $darkEmptyTexts",
+                darkEmptyTexts.any { it == activity.getString(R.string.conversation_empty) },
             )
             assertTrue(
-                "Empty state hint should be shown: $miuixEmptyTexts",
-                miuixEmptyTexts.any { it == activity.getString(R.string.conversation_empty_hint) },
+                "Empty state hint should be shown: $darkEmptyTexts",
+                darkEmptyTexts.any { it == activity.getString(R.string.conversation_empty_hint) },
             )
         } finally {
             recomposer.cancel()

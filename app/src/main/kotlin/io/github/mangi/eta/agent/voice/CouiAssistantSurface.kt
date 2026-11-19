@@ -42,28 +42,18 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import com.itos.coui.dialog.CouiDialogDefaults
-import com.itos.coui.effect.CouiContour
-import com.itos.coui.effect.CouiContourStyle
-import com.itos.coui.effect.CouiShadowOutline
-import com.itos.coui.effect.CouiShadowRenderer
-import com.itos.coui.effect.CouiShadowStyle
-import com.itos.coui.effect.LocalCouiContourGlowEnabled
-import com.itos.coui.effect.SpotlightPreset
-import com.itos.coui.effect.couiButtonFeedback
-import com.itos.coui.effect.rememberCouiSpotlight
-import com.itos.coui.motion.CouiPressMotion
-import com.itos.coui.motion.CouiTouchMotion
-import com.itos.coui.shape.CouiCapsuleShape
-import com.itos.coui.theme.CouiTheme
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
+import androidx.compose.foundation.shape.CircleShape
 import kotlin.math.PI
 import kotlin.math.ceil
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
 
 @Immutable
 internal data class EtaVoicePanelColors(
@@ -90,18 +80,9 @@ internal data class EtaVoicePanelColors(
 
 @Composable
 internal fun rememberEtaVoicePanelColors(): EtaVoicePanelColors {
-    val isCoui = LocalUiStyle.current == AppearanceUiStyle.COUI
-    val dark = if (isCoui) {
-        CouiTheme.isDark
-    } else {
-        MiuixTheme.colorScheme.background.luminance() < 0.5f
-    }
-    val accent = if (isCoui) {
-        CouiTheme.colorSchemeFor(dark).accent
-    } else {
-        MiuixTheme.colorScheme.primary
-    }
-    val destructive = CouiDialogDefaults.colors(dark).destructive
+    val dark = COUITheme.isDark
+    val accent = COUITheme.colorScheme.primary
+    val destructive = COUITheme.colorScheme.error
     return remember(dark, accent, destructive) {
         if (dark) {
             EtaVoicePanelColors(
@@ -248,8 +229,9 @@ internal enum class AssistantCapsuleElevation {
 }
 
 /**
- * COUI 悬浮胶囊表面：硬件加速画布上启用逆裁剪网格投影、轮廓内晕与跟手光；
- * 遇到窗口切换期的软件画布或单元测试位图回读时，自动回退为同轮廓的纯矢量填充与细描边。
+ * Floating assistant capsule: an opaque theme fill (the overlay window has no backdrop to filter),
+ * a soft drop shadow, a hairline and the focus highlight. Press feedback comes from the caller's
+ * `clickable` with the native COUI [io.github.suqi8.coui.kmp.utils.SinkFeedback].
  */
 @Composable
 internal fun Modifier.couiAssistantCapsule(
@@ -259,159 +241,29 @@ internal fun Modifier.couiAssistantCapsule(
     elevation: AssistantCapsuleElevation = AssistantCapsuleElevation.Composer,
     highlightProgress: Float = 0f,
     highlightColor: Color = Color.Unspecified,
-    interactive: Boolean = false,
-    interactionSource: MutableInteractionSource? = null,
-    pressMotion: CouiPressMotion? = null,
-    touchMotion: CouiTouchMotion? = null,
-    spotlightEnabled: Boolean = false,
 ): Modifier {
-    val contourEnabled = LocalCouiContourGlowEnabled.current
-    val contour = remember(contourEnabled) {
-        if (contourEnabled && Build.VERSION.SDK_INT >= 33) {
-            runCatching { CouiContour(style = CouiContourStyle.Button) }.getOrNull()
-        } else {
-            null
-        }
+    val shadow = when (elevation) {
+        AssistantCapsuleElevation.Composer -> Shadow(radius = 24.dp, color = Color.Black, alpha = if (dark) 0.40f else 0.12f)
+        AssistantCapsuleElevation.Chip -> Shadow(radius = 14.dp, color = Color.Black, alpha = if (dark) 0.32f else 0.08f)
+        AssistantCapsuleElevation.InlineControl -> null
     }
-    val shadowRenderer = remember(elevation) {
-        if (elevation != AssistantCapsuleElevation.InlineControl && Build.VERSION.SDK_INT >= 34) {
-            runCatching { CouiShadowRenderer() }.getOrNull()
-        } else {
-            null
-        }
-    }
-    val shadowStyle = remember(dark, elevation) {
-        when (elevation) {
-            AssistantCapsuleElevation.Composer -> CouiShadowStyle(
-                elevation = if (dark) 32.dp else 76.dp,
-                color = Color(if (dark) 0x66000000 else 0x22000000),
-                lightY = (-220).dp,
-                lightZ = 10000.dp,
-                lightRadius = 2200.dp,
-            )
-            AssistantCapsuleElevation.Chip -> CouiShadowStyle(
-                elevation = if (dark) 22.dp else 48.dp,
-                color = Color(if (dark) 0x54000000 else 0x1A000000),
-                lightY = (-180).dp,
-                lightZ = 10000.dp,
-                lightRadius = 1800.dp,
-            )
-            AssistantCapsuleElevation.InlineControl -> null
-        }
-    }
-    val contourPaint = remember { Paint(Paint.ANTI_ALIAS_FLAG) }
-    val (lightInput, drawLight) = rememberCouiSpotlight(
-        interactive = spotlightEnabled && interactive,
-        preset = SpotlightPreset.OpaqueMedium2,
-        dark = dark,
-        cancelOnConsumedMove = true,
-    )
-
-    val motionLayer = if (pressMotion != null || touchMotion != null) {
-        Modifier.graphicsLayer {
-            val touchScaleX = touchMotion?.scaleX?.value ?: 1f
-            val touchScaleY = touchMotion?.scaleY?.value ?: 1f
-            val pressScale = pressMotion?.scale?.value ?: 1f
-            scaleX = touchScaleX + pressScale - 1f
-            scaleY = touchScaleY + pressScale - 1f
-            translationX = touchMotion?.translationX?.value ?: 0f
-            translationY = touchMotion?.translationY?.value ?: 0f
-        }
+    val highlight = if (highlightProgress > 0.01f && highlightColor != Color.Unspecified) {
+        Modifier.border(1.15.dp, highlightColor.copy(alpha = highlightColor.alpha * highlightProgress), CircleShape)
     } else {
         Modifier
     }
-
-    val feedbackModifier = if (interactionSource != null && interactive) {
-        Modifier.couiButtonFeedback(
-            dark = dark,
-            interactionSource = interactionSource,
-            enabled = true,
-        )
-    } else {
-        Modifier
-    }
-
     return this
-        .then(motionLayer)
-        .then(lightInput)
-        .drawBehind {
-            val native = drawContext.canvas.nativeCanvas
-            val hardware = native.isHardwareAccelerated
-            val isRound = kotlin.math.abs(size.width - size.height) < 1f
-            if (hardware && Build.VERSION.SDK_INT >= 34 && shadowRenderer != null && shadowStyle != null) {
-                shadowRenderer.draw(
-                    canvas = native,
-                    slot = 0,
-                    width = size.width,
-                    height = size.height,
-                    sx = 1f,
-                    sy = 1f,
-                    windowX = 0f,
-                    windowY = 0f,
-                    alpha = surfaceColor.alpha,
-                    color = shadowStyle.color.toArgb(),
-                    elevation = shadowStyle.elevation.roundToPx().toFloat(),
-                    lightY = shadowStyle.lightY.roundToPx().toFloat(),
-                    lightZ = shadowStyle.lightZ.roundToPx().toFloat(),
-                    lightRadius = shadowStyle.lightRadius.roundToPx().toFloat(),
-                    outline = if (isRound) CouiShadowOutline.Oval else CouiShadowOutline.SmoothCapsule,
-                    radius = size.minDimension * 0.5f,
-                    clipping = true,
-                )
-            }
-            val outline = CouiCapsuleShape.createOutline(size, layoutDirection, this)
-            if (hardware && Build.VERSION.SDK_INT >= 33 && contour != null && size.minDimension > 1f) {
-                val lineAlpha = if (dark) {
-                    0.18f + 0.10f * highlightProgress
-                } else {
-                    0.82f
-                }
-                val innerAlpha = if (dark) 0.03f else 0.08f
-                contourPaint.shader = contour.shader(
-                    size = size,
-                    density = density,
-                    radiusPx = size.minDimension * 0.5f,
-                    cornerWeight = if (isRound) 2f else 1f,
-                    surfaceColor = surfaceColor,
-                    innerGlowAlpha = innerAlpha,
-                    lineAlpha = lineAlpha.coerceIn(0f, 1f),
-                    effectAlpha = 1f,
-                    lineWidthPx = 2.6f * density,
-                )
-                drawIntoCanvas { canvas ->
-                    canvas.nativeCanvas.drawRect(0f, 0f, size.width, size.height, contourPaint)
-                }
-                if (strokeColor.alpha > 0f && !dark) {
-                    drawOutline(
-                        outline = outline,
-                        color = strokeColor.copy(alpha = strokeColor.alpha * 0.50f),
-                        style = Stroke(width = 0.5.dp.toPx()),
-                    )
-                }
+        .then(if (shadow != null) Modifier.dropShadow(shape = CircleShape, shadow = shadow) else Modifier)
+        .clip(CircleShape)
+        .background(surfaceColor, CircleShape)
+        .then(
+            if (strokeColor.alpha > 0f) {
+                Modifier.border(if (dark) 0.75.dp else 0.5.dp, strokeColor, CircleShape)
             } else {
-                drawOutline(outline = outline, color = surfaceColor)
-                if (strokeColor.alpha > 0f) {
-                    drawOutline(
-                        outline = outline,
-                        color = strokeColor,
-                        style = Stroke(width = 0.75.dp.toPx()),
-                    )
-                }
-            }
-            if (highlightProgress > 0.01f && highlightColor != Color.Unspecified) {
-                drawOutline(
-                    outline = outline,
-                    color = highlightColor.copy(alpha = highlightColor.alpha * highlightProgress),
-                    style = Stroke(width = 1.15.dp.toPx()),
-                )
-            }
-        }
-        .clip(CouiCapsuleShape)
-        .then(feedbackModifier)
-        .drawWithContent {
-            drawContent()
-            drawLight?.invoke(this)
-        }
+                Modifier
+            },
+        )
+        .then(highlight)
 }
 
 internal enum class AssistantGlyphKind {

@@ -8,11 +8,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
 import io.github.mangi.eta.agent.browser.AgentBrowserSession
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 @Composable
 internal fun BrowserWebViewHost(session: AgentBrowserSession, modifier: Modifier = Modifier) {
-    val backgroundColor = MiuixTheme.colorScheme.surface.toArgb()
+    val backgroundColor = COUITheme.colorScheme.background.toArgb()
     AndroidView(
         factory = { context ->
             FrameLayout(context).apply {

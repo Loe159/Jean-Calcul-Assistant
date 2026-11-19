@@ -31,12 +31,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.itos.coui.effect.couiButtonFeedback
-import com.itos.coui.motion.couiPressMotion
-import com.itos.coui.motion.rememberCouiPressMotion
-import com.itos.coui.shape.CouiCapsuleShape
 import io.github.mangi.eta.R
-import top.yukonga.miuix.kmp.basic.Text
+import io.github.suqi8.coui.kmp.basic.Text
+import androidx.compose.foundation.LocalIndication
+import io.github.suqi8.coui.kmp.utils.SinkFeedback
 
 internal enum class EtaSpeechPhase { IDLE, STARTING, LISTENING, RECOGNIZING }
 
@@ -64,7 +62,6 @@ internal fun EtaSpeechFeedback(
     val actionTint = colors.accent
     val actionBackground = actionTint.copy(alpha = if (colors.dark) 0.22f else 0.12f)
     val rowSource = remember { MutableInteractionSource() }
-    val rowPress = rememberCouiPressMotion()
     val buttonSource = remember { MutableInteractionSource() }
 
     AnimatedVisibility(
@@ -87,22 +84,17 @@ internal fun EtaSpeechFeedback(
             Row(
                 modifier = Modifier
                     .heightIn(min = 38.dp)
-                    .couiPressMotion(rowPress, enabled = speech.configureAvailable, cancelOnConsumedMove = true)
                     .couiAssistantCapsule(
                         surfaceColor = colors.chipBackground,
                         strokeColor = colors.chipStroke,
                         dark = colors.dark,
                         elevation = AssistantCapsuleElevation.Chip,
-                        interactive = speech.configureAvailable,
-                        interactionSource = rowSource,
-                        pressMotion = if (speech.configureAvailable) rowPress else null,
-                        spotlightEnabled = speech.configureAvailable,
                     )
                     .then(
                         if (speech.configureAvailable) {
                             Modifier.clickable(
                                 interactionSource = rowSource,
-                                indication = null,
+                                indication = SinkFeedback(),
                                 role = Role.Button,
                                 onClick = onOpenSpeechSettings,
                             )
@@ -138,12 +130,11 @@ internal fun EtaSpeechFeedback(
                     Spacer(modifier = Modifier.width(2.dp))
                     Box(
                         modifier = Modifier
-                            .clip(CouiCapsuleShape)
-                            .background(actionBackground, CouiCapsuleShape)
-                            .couiButtonFeedback(colors.dark, buttonSource, enabled = true)
+                            .clip(CircleShape)
+                            .background(actionBackground, CircleShape)
                             .clickable(
                                 interactionSource = buttonSource,
-                                indication = null,
+                                indication = LocalIndication.current,
                                 role = Role.Button,
                                 onClick = onOpenSpeechSettings,
                             )

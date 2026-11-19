@@ -48,24 +48,16 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
-import com.itos.coui.menu.CouiMenuItem
-import com.itos.coui.menu.Menu
-import com.itos.coui.menu.couiMenuAnchor
-import com.itos.coui.menu.rememberCouiMenuAnchor
 import io.github.mangi.eta.R
+import io.github.suqi8.coui.kmp.basic.DropdownEntry
+import io.github.suqi8.coui.kmp.menu.OverlayIconDropdownMenu
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import io.github.suqi8.coui.kmp.basic.Icon
 import io.github.mangi.eta.agent.browser.BrowserSessionSnapshot
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
-import top.yukonga.miuix.kmp.basic.DropdownImpl
-import top.yukonga.miuix.kmp.basic.DropdownItem
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.ListPopupColumn
-import top.yukonga.miuix.kmp.basic.PopupPositionProvider
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.squircle.squircleSurface
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.window.WindowListPopup
+import io.github.suqi8.coui.kmp.basic.DropdownItem
+import io.github.suqi8.coui.kmp.basic.IconButton
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.squircle.squircleSurface
 
 @Composable
 internal fun BrowserAddressBar(
@@ -84,7 +76,7 @@ internal fun BrowserAddressBar(
     onClosePage: () -> Unit,
     onClearData: () -> Unit,
 ) {
-    val colors = MiuixTheme.colorScheme
+    val colors = COUITheme.colorScheme
     val addressLabel = stringResource(R.string.browser_search_or_address)
     Row(
         modifier = Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 6.dp),
@@ -115,7 +107,7 @@ internal fun BrowserAddressBar(
                 .weight(1f)
                 .padding(horizontal = 4.dp)
                 .height(40.dp)
-                .squircleSurface(color = colors.surfaceContainerHigh, cornerRadius = 20.dp)
+                .squircleSurface(color = colors.cardPressed, cornerRadius = 20.dp)
                 .padding(start = 12.dp, end = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -123,15 +115,15 @@ internal fun BrowserAddressBar(
                 imageVector = if (snapshot.url.startsWith("https://")) Icons.Rounded.Lock else Icons.Rounded.Language,
                 contentDescription = null,
                 modifier = Modifier.size(15.dp),
-                tint = colors.onSurfaceVariantSummary,
+                tint = colors.labelSecondary,
             )
             Spacer(Modifier.width(8.dp))
             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                 if (address.text.isEmpty()) {
                     Text(
                         text = addressLabel,
-                        style = MiuixTheme.textStyles.body2,
-                        color = colors.onSurfaceVariantSummary,
+                        style = COUITheme.textStyles.bodyM,
+                        color = colors.labelSecondary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -140,7 +132,7 @@ internal fun BrowserAddressBar(
                     value = address,
                     onValueChange = onAddressChange,
                     singleLine = true,
-                    textStyle = MiuixTheme.textStyles.body2.copy(color = colors.onSurface),
+                    textStyle = COUITheme.textStyles.bodyM.copy(color = colors.labelPrimary),
                     cursorBrush = SolidColor(colors.primary),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Go),
                     keyboardActions = KeyboardActions(onGo = { onGo() }),
@@ -197,7 +189,7 @@ private fun BrowserRefreshButton(
 ) {
     val description = stringResource(if (loading) R.string.browser_stop_loading else R.string.browser_refresh)
     val tint by animateColorAsState(
-        targetValue = if (enabled) MiuixTheme.colorScheme.onSurface else MiuixTheme.colorScheme.disabledOnSecondaryVariant,
+        targetValue = if (enabled) COUITheme.colorScheme.labelPrimary else COUITheme.colorScheme.disabledNeutral,
         animationSpec = tween(180),
         label = "browser_refresh_tint",
     )
@@ -249,60 +241,13 @@ private fun BrowserSubmitAction(
 
 @Composable
 private fun BrowserOverflowMenu(items: List<DropdownItem>) {
-    var expanded by remember { mutableStateOf(false) }
-    val anchor = rememberCouiMenuAnchor()
-    Box {
-        BrowserControlButton(
-            icon = Icons.Rounded.MoreVert,
-            description = stringResource(R.string.action_more),
-            onClick = { anchor.open { expanded = true } },
-            modifier = Modifier.couiMenuAnchor(anchor),
+    val entry = remember(items) { DropdownEntry(items = items) }
+    OverlayIconDropdownMenu(entry = entry, minWidth = 40.dp, minHeight = 40.dp) {
+        Icon(
+            imageVector = Icons.Rounded.MoreVert,
+            contentDescription = stringResource(R.string.action_more),
+            tint = COUITheme.colorScheme.labelPrimary,
         )
-        when (LocalUiStyle.current) {
-            AppearanceUiStyle.COUI -> {
-                val menuItems = remember(items) {
-                    items.mapIndexed { index, item ->
-                        CouiMenuItem(
-                            value = index,
-                            text = item.text,
-                            enabled = item.enabled,
-                        )
-                    }
-                }
-                Menu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                    items = menuItems,
-                    onItemClick = { menuItem ->
-                        expanded = false
-                        items.getOrNull(menuItem.value)?.onClick?.invoke()
-                    },
-                    anchor = anchor,
-                )
-            }
-            AppearanceUiStyle.MIUIX -> {
-                WindowListPopup(
-                    show = expanded,
-                    alignment = PopupPositionProvider.Align.End,
-                    onDismissRequest = { expanded = false },
-                ) {
-                    ListPopupColumn {
-                        items.forEachIndexed { index, item ->
-                            DropdownImpl(
-                                item = item,
-                                optionSize = items.size,
-                                isSelected = false,
-                                index = index,
-                                onSelectedIndexChange = {
-                                    expanded = false
-                                    item.onClick?.invoke()
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -320,7 +265,7 @@ private fun BrowserControlButton(
             imageVector = icon,
             contentDescription = description,
             modifier = Modifier.size(20.dp),
-            tint = if (enabled) MiuixTheme.colorScheme.onSurface else MiuixTheme.colorScheme.disabledOnSecondaryVariant,
+            tint = if (enabled) COUITheme.colorScheme.labelPrimary else COUITheme.colorScheme.disabledNeutral,
         )
     }
 }

@@ -21,13 +21,13 @@ import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.R
 import io.github.mangi.eta.ui.model.ActiveRunSummaryUi
 import io.github.mangi.eta.ui.model.RunStatusUi
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.InfiniteProgressIndicator
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.ButtonDefaults
+import io.github.suqi8.coui.kmp.basic.Card
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.InfiniteProgressIndicator
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.basic.TextButton
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 @Composable
 fun AgentStatusCard(
@@ -49,8 +49,8 @@ fun AgentStatusCard(
                 Text(
                     text = activeRun.title,
                     modifier = Modifier.weight(1f),
-                    style = MiuixTheme.textStyles.headline1,
-                    color = MiuixTheme.colorScheme.onSurfaceContainer,
+                    style = COUITheme.textStyles.headlineXS,
+                    color = COUITheme.colorScheme.labelPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -58,16 +58,16 @@ fun AgentStatusCard(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = activeRun.currentStep,
-                style = MiuixTheme.textStyles.body2,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                style = COUITheme.textStyles.bodyM,
+                color = COUITheme.colorScheme.labelSecondary,
             )
             Spacer(modifier = Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = activeRun.elapsedLabel,
                     modifier = Modifier.weight(1f),
-                    style = MiuixTheme.textStyles.footnote1,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                    style = COUITheme.textStyles.bodyS,
+                    color = COUITheme.colorScheme.labelSecondary,
                 )
                 if (activeRun.status == RunStatusUi.Running) {
                     TextButton(
@@ -86,25 +86,25 @@ private fun StatusIndicator(status: RunStatusUi) {
     when (status) {
         RunStatusUi.Running -> InfiniteProgressIndicator(
             modifier = Modifier.size(18.dp),
-            color = MiuixTheme.colorScheme.primary,
+            color = COUITheme.colorScheme.primary,
         )
         RunStatusUi.Success -> Icon(
             imageVector = Icons.Rounded.Check,
             contentDescription = null,
             modifier = Modifier.size(18.dp),
-            tint = MiuixTheme.colorScheme.primary,
+            tint = COUITheme.colorScheme.primary,
         )
         RunStatusUi.Failed -> Icon(
             imageVector = Icons.Rounded.Close,
             contentDescription = null,
             modifier = Modifier.size(18.dp),
-            tint = MiuixTheme.colorScheme.primary,
+            tint = COUITheme.colorScheme.primary,
         )
         RunStatusUi.Cancelled -> Icon(
             imageVector = Icons.Rounded.MoreHoriz,
             contentDescription = null,
             modifier = Modifier.size(18.dp),
-            tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+            tint = COUITheme.colorScheme.labelSecondary,
         )
     }
 }

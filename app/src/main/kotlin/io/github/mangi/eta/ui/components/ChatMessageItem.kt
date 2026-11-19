@@ -95,21 +95,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.itos.coui.dialog.CouiDialogDefaults
-import com.itos.coui.effect.couiButtonFeedback
-import com.itos.coui.layout.CouiPageDefaults
-import com.itos.coui.menu.CouiMenuItem
-import com.itos.coui.menu.Menu
-import com.itos.coui.menu.couiMenuAnchor
-import com.itos.coui.menu.rememberCouiMenuAnchor
-import com.itos.coui.shape.CouiCapsuleShape
-import com.itos.coui.shape.CouiShape
-import com.itos.coui.theme.CouiTheme
 import io.github.mangi.eta.R
 import io.github.mangi.eta.agent.model.AgentFileReferencePromptCodec
 import io.github.mangi.eta.agent.overlay.toolDisplayName
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
 import io.github.mangi.eta.ui.markdown.EditorialLineHeightStyle
 import io.github.mangi.eta.ui.markdown.MarkdownTone
 import io.github.mangi.eta.ui.markdown.StaticMarkdown
@@ -128,17 +116,20 @@ import io.github.mangi.eta.ui.model.ToolSummaryMessageUi
 import io.github.mangi.eta.ui.model.UserMessageUi
 import io.github.mangi.eta.ui.voice.SpeechReadAloudButton
 import kotlinx.coroutines.delay
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.RichTooltip
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TooltipAnchorPosition
-import top.yukonga.miuix.kmp.basic.TooltipBox
-import top.yukonga.miuix.kmp.basic.TooltipDefaults
-import top.yukonga.miuix.kmp.basic.rememberTooltipState
-import top.yukonga.miuix.kmp.squircle.squircleBorder
-import top.yukonga.miuix.kmp.squircle.squircleSurface
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.IconButton
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.basic.TooltipBox
+import io.github.suqi8.coui.kmp.basic.Tooltip
+import io.github.suqi8.coui.kmp.basic.TooltipMode
+import io.github.suqi8.coui.kmp.basic.DropdownEntry
+import io.github.suqi8.coui.kmp.basic.DropdownItem
+import io.github.suqi8.coui.kmp.menu.OverlayContextMenu
+import io.github.suqi8.coui.kmp.squircle.squircleClip
+import io.github.suqi8.coui.kmp.squircle.squircleBorder
+import io.github.suqi8.coui.kmp.basic.rememberTooltipState
+import io.github.suqi8.coui.kmp.squircle.squircleSurface
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 private val chatImageBitmapCache = object : LruCache<String, ImageBitmap>(48 * 1024 * 1024) {
     override fun sizeOf(key: String, value: ImageBitmap): Int =
@@ -186,7 +177,7 @@ fun AITypingIndicator(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .size(6.dp)
                     .graphicsLayer(alpha = alpha)
-                    .background(MiuixTheme.colorScheme.onSurfaceVariantSummary, CircleShape)
+                    .background(COUITheme.colorScheme.labelSecondary, CircleShape)
             )
         }
     }
@@ -320,7 +311,6 @@ internal fun ChatMessageItem(
 
 // ── 用户消息：轻盈美观气泡 ──────────────────────────────────────────────
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun UserMessageBubble(
     message: UserMessageUi,
@@ -333,65 +323,58 @@ private fun UserMessageBubble(
 ) {
     @Suppress("DEPRECATION")
     val clipboardManager = LocalClipboardManager.current
-    val tooltipState = rememberTooltipState(isPersistent = true)
     val haptic = LocalHapticFeedback.current
-    var showCouiMenu by remember { mutableStateOf(false) }
-    val couiAnchor = rememberCouiMenuAnchor()
-    LaunchedEffect(actionsEnabled) {
-        if (!actionsEnabled) {
-            tooltipState.dismiss()
-            showCouiMenu = false
-        }
-    }
-    LaunchedEffect(tooltipState) {
-        snapshotFlow { tooltipState.isVisible }.collect { visible ->
-            if (visible) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        }
-    }
     val visiblePrompt = remember(message.content) {
         AgentFileReferencePromptCodec.parse(message.content)
     }
-    val isDark = MiuixTheme.colorScheme.background.luminance() < 0.5f
-    val uiStyle = LocalUiStyle.current
-    val overlayBubbleColor = when {
-        uiStyle == AppearanceUiStyle.COUI && isDark -> Color(0xFF21293A)
-        uiStyle == AppearanceUiStyle.COUI -> Color(0xFFEAF0FC)
-        isDark -> Color(0xFF37393D)
-        else -> Color(0xFFE5E7EA)
-    }
+    val colors = COUITheme.colorScheme
+    val isDark = COUITheme.isDark
+    val bubbleColor = colors.primary.copy(alpha = if (isDark) 0.20f else 0.08f)
     val imagePreviewer = LocalChatImagePreviewer.current
     val hasTextBubble = visiblePrompt.references.isNotEmpty() || visiblePrompt.request.isNotBlank()
     val canCopy = message.content.isNotBlank()
-    val bubbleContent: @Composable () -> Unit = {
-        if (visiblePrompt.references.isNotEmpty()) {
-            SentFileReferenceFlow(
-                references = visiblePrompt.references,
-                modifier = Modifier.padding(
-                    bottom = if (visiblePrompt.request.isNotBlank()) 8.dp else 0.dp,
-                ),
-            )
-        }
-        if (visiblePrompt.request.isNotBlank()) {
-            SelectionContainer {
-                Text(
-                    text = visiblePrompt.request,
-                    style = MiuixTheme.textStyles.body1.copy(
-                        lineHeight = 23.sp,
-                        lineHeightStyle = EditorialLineHeightStyle,
+    val copyText = stringResource(R.string.ui_copy_4edd1d)
+    val editText = stringResource(R.string.ui_edit_a7f814)
+    val deleteText = stringResource(R.string.ui_delete_3755f5)
+    val menuEntries = remember(canCopy, copyText, editText, deleteText, message.content, onEdit, onDelete) {
+        listOf(
+            DropdownEntry(
+                items = buildList {
+                    if (canCopy) {
+                        add(
+                            DropdownItem(
+                                text = copyText,
+                                icon = { iconModifier -> Icon(Icons.Rounded.ContentCopy, null, iconModifier) },
+                                onClick = {
+                                    @Suppress("DEPRECATION")
+                                    clipboardManager.setText(AnnotatedString(message.content))
+                                    haptic.performHapticFeedback(HapticFeedbackType.Confirm)
+                                },
+                            ),
+                        )
+                    }
+                    add(
+                        DropdownItem(
+                            text = editText,
+                            icon = { iconModifier -> Icon(Icons.Rounded.Edit, null, iconModifier) },
+                            onClick = onEdit,
+                        ),
+                    )
+                },
+            ),
+            DropdownEntry(
+                items = listOf(
+                    DropdownItem(
+                        text = deleteText,
+                        icon = { iconModifier -> Icon(Icons.Rounded.Delete, null, iconModifier) },
+                        onClick = onDelete,
+                        alert = true,
                     ),
-                    color = MiuixTheme.colorScheme.onSurface,
-                )
-            }
-        }
-        if (message.isEdited) {
-            Text(
-                text = stringResource(R.string.ui_edited_c36776),
-                style = MiuixTheme.textStyles.body2,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
+                ),
+            ),
+        )
     }
+    val bubbleShape = if (assistantOverlay) OverlayUserBubbleShape else UserBubbleShape
 
     Row(
         modifier = modifier
@@ -404,211 +387,74 @@ private fun UserMessageBubble(
             ),
         horizontalArrangement = Arrangement.End,
     ) {
-        if (uiStyle == AppearanceUiStyle.COUI && !assistantOverlay) {
-            val couiDark = CouiTheme.isDark
-            val couiBubbleBg = if (couiDark) Color(0xFF202634) else Color(0xFFEEF2FA)
-            val couiColors = CouiPageDefaults.themeColors(couiDark)
-            val destructiveColor = CouiDialogDefaults.themeColors(couiDark).destructive
-            val copyText = stringResource(R.string.ui_copy_4edd1d)
-            val editText = stringResource(R.string.ui_edit_a7f814)
-            val deleteText = stringResource(R.string.ui_delete_3755f5)
-            val menuItems = remember(canCopy, copyText, editText, deleteText, destructiveColor) {
-                buildList {
-                    if (canCopy) {
-                        add(CouiMenuItem(value = 0, text = copyText, icon = Icons.Rounded.ContentCopy))
-                    }
-                    add(CouiMenuItem(value = 1, text = editText, icon = Icons.Rounded.Edit))
-                    add(
-                        CouiMenuItem(
-                            value = 2,
-                            text = deleteText,
-                            icon = Icons.Rounded.Delete,
-                            iconTint = destructiveColor,
-                            dividerBefore = true,
-                        ),
+        // The assistant overlay has no editing callbacks and no root Scaffold for overlays.
+        OverlayContextMenu(
+            entries = menuEntries,
+            enabled = actionsEnabled && !assistantOverlay,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (message.images.isNotEmpty()) {
+                    UserMessageImages(
+                        messageId = message.id,
+                        images = message.images,
+                        assistantOverlay = assistantOverlay,
+                        highlightBorder = isEditing && !hasTextBubble,
+                        highlightColor = colors.primary,
+                        previewer = imagePreviewer.takeUnless { assistantOverlay },
                     )
                 }
-            }
-            val openCouiMenu: (() -> Unit)? = if (actionsEnabled) {
-                {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    couiAnchor.open { showCouiMenu = true }
-                }
-            } else {
-                null
-            }
-            Box {
-                Column(
-                    modifier = Modifier.couiMenuAnchor(couiAnchor),
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    if (message.images.isNotEmpty()) {
-                        UserMessageImages(
-                            messageId = message.id,
-                            images = message.images,
-                            assistantOverlay = false,
-                            isCoui = true,
-                            couiDark = couiDark,
-                            highlightBorder = isEditing && !hasTextBubble,
-                            highlightColor = couiColors.accent,
-                            previewer = imagePreviewer,
-                            onLongClick = openCouiMenu,
-                        )
-                    }
-                    if (hasTextBubble) {
-                        Column(
-                            modifier = Modifier
-                                .widthIn(max = 316.dp)
-                                .clip(UserBubbleShape)
-                                .background(couiBubbleBg, UserBubbleShape)
-                                .then(
-                                    if (isEditing) {
-                                        Modifier.border(1.dp, couiColors.accent, UserBubbleShape)
-                                    } else {
-                                        Modifier
-                                    },
-                                )
-                                .combinedClickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = {},
-                                    onLongClick = openCouiMenu,
-                                )
-                                .padding(horizontal = 16.dp, vertical = 10.5.dp),
-                        ) {
-                            bubbleContent()
-                        }
-                    } else if (message.isEdited) {
-                        Text(
-                            text = stringResource(R.string.ui_edited_c36776),
-                            style = MiuixTheme.textStyles.footnote2,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        )
-                    }
-                }
-                Menu(
-                    expanded = showCouiMenu && actionsEnabled,
-                    onDismissRequest = { showCouiMenu = false },
-                    items = menuItems,
-                    onItemClick = { item ->
-                        showCouiMenu = false
-                        when (item.value) {
-                            0 -> {
-                                @Suppress("DEPRECATION")
-                                clipboardManager.setText(AnnotatedString(message.content))
-                                haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                            }
-                            1 -> onEdit()
-                            2 -> onDelete()
-                        }
-                    },
-                    anchor = couiAnchor,
-                )
-            }
-        } else {
-            TooltipBox(
-                positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                    positioning = TooltipAnchorPosition.Below,
-                ),
-                tooltip = {
-                    RichTooltip(insideMargin = PaddingValues(horizontal = 8.dp, vertical = 6.dp)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                            if (canCopy) {
-                                MessageTooltipAction(
-                                    icon = Icons.Rounded.ContentCopy,
-                                    label = stringResource(R.string.ui_copy_4edd1d),
-                                    onClick = {
-                                        @Suppress("DEPRECATION")
-                                        clipboardManager.setText(AnnotatedString(message.content))
-                                        haptic.performHapticFeedback(HapticFeedbackType.Confirm)
-                                        tooltipState.dismiss()
-                                    },
-                                )
-                            }
-                            MessageTooltipAction(
-                                icon = Icons.Rounded.Edit,
-                                label = stringResource(R.string.ui_edit_a7f814),
-                                onClick = {
-                                    tooltipState.dismiss()
-                                    onEdit()
-                                },
+                if (hasTextBubble) {
+                    Column(
+                        modifier = Modifier
+                            .widthIn(max = 316.dp)
+                            .clip(bubbleShape)
+                            .background(bubbleColor, bubbleShape)
+                            .then(
+                                if (isEditing) Modifier.border(1.dp, colors.primary, bubbleShape) else Modifier,
                             )
-                            MessageTooltipAction(
-                                icon = Icons.Rounded.Delete,
-                                label = stringResource(R.string.ui_delete_3755f5),
-                                onClick = {
-                                    tooltipState.dismiss()
-                                    onDelete()
-                                },
-                            )
-                        }
-                    }
-                },
-                state = tooltipState,
-                focusable = true,
-                enableUserInput = actionsEnabled,
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    if (message.images.isNotEmpty()) {
-                        UserMessageImages(
-                            messageId = message.id,
-                            images = message.images,
-                            assistantOverlay = assistantOverlay,
-                            isCoui = false,
-                            couiDark = false,
-                            highlightBorder = isEditing && !hasTextBubble,
-                            highlightColor = MiuixTheme.colorScheme.primary,
-                            previewer = imagePreviewer.takeUnless { assistantOverlay },
-                            onLongClick = null,
-                        )
-                    }
-                    if (hasTextBubble) {
-                        val bubbleShape = when {
-                            assistantOverlay && uiStyle == AppearanceUiStyle.COUI -> OverlayCouiUserBubbleShape
-                            assistantOverlay -> OverlayUserBubbleShape
-                            else -> UserBubbleShape
-                        }
-                        Column(
-                            modifier = Modifier
-                                .widthIn(max = 316.dp)
-                                .clip(bubbleShape)
-                                .background(
-                                    color = if (assistantOverlay) {
-                                        overlayBubbleColor
-                                    } else {
-                                        MiuixTheme.colorScheme.surfaceContainerHigh
-                                    },
-                                    shape = bubbleShape,
-                                )
-                                .then(
-                                    if (isEditing) {
-                                        Modifier.border(
-                                            width = 1.dp,
-                                            color = MiuixTheme.colorScheme.primary,
-                                            shape = bubbleShape,
-                                        )
-                                    } else {
-                                        Modifier
-                                    },
-                                )
-                                .padding(
-                                    horizontal = if (assistantOverlay) 14.dp else 16.dp,
-                                    vertical = if (assistantOverlay) 9.dp else 10.5.dp,
+                            .padding(
+                                horizontal = if (assistantOverlay) 14.dp else 16.dp,
+                                vertical = if (assistantOverlay) 9.dp else 10.5.dp,
+                            ),
+                    ) {
+                        if (visiblePrompt.references.isNotEmpty()) {
+                            SentFileReferenceFlow(
+                                references = visiblePrompt.references,
+                                modifier = Modifier.padding(
+                                    bottom = if (visiblePrompt.request.isNotBlank()) 8.dp else 0.dp,
                                 ),
-                        ) {
-                            bubbleContent()
+                            )
                         }
-                    } else if (message.isEdited) {
-                        Text(
-                            text = stringResource(R.string.ui_edited_c36776),
-                            style = MiuixTheme.textStyles.footnote2,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        )
+                        if (visiblePrompt.request.isNotBlank()) {
+                            SelectionContainer {
+                                Text(
+                                    text = visiblePrompt.request,
+                                    style = COUITheme.textStyles.bodyXL.copy(
+                                        lineHeight = 23.sp,
+                                        lineHeightStyle = EditorialLineHeightStyle,
+                                    ),
+                                    color = colors.labelPrimary,
+                                )
+                            }
+                        }
+                        if (message.isEdited) {
+                            Text(
+                                text = stringResource(R.string.ui_edited_c36776),
+                                style = COUITheme.textStyles.bodyM,
+                                color = colors.labelSecondary,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
                     }
+                } else if (message.isEdited) {
+                    Text(
+                        text = stringResource(R.string.ui_edited_c36776),
+                        style = COUITheme.textStyles.bodyXS,
+                        color = colors.labelSecondary,
+                    )
                 }
             }
         }
@@ -624,13 +470,6 @@ private val UserBubbleShape = RoundedCornerShape(
 )
 
 private val OverlayUserBubbleShape = RoundedCornerShape(
-    topStart = 14.dp,
-    topEnd = 14.dp,
-    bottomEnd = 4.dp,
-    bottomStart = 14.dp,
-)
-
-private val OverlayCouiUserBubbleShape = RoundedCornerShape(
     topStart = 20.dp,
     topEnd = 20.dp,
     bottomEnd = 5.dp,
@@ -647,14 +486,11 @@ private fun UserMessageImages(
     messageId: String,
     images: List<String>,
     assistantOverlay: Boolean,
-    isCoui: Boolean,
-    couiDark: Boolean,
     highlightBorder: Boolean,
     highlightColor: Color,
     previewer: ChatImagePreviewer?,
-    onLongClick: (() -> Unit)?,
 ) {
-    val outlineColor = MiuixTheme.colorScheme.outline.copy(alpha = 0.55f)
+    val outlineColor = COUITheme.colorScheme.outline.copy(alpha = 0.55f)
     val borderWidth = if (highlightBorder) 1.dp else 0.5.dp
     val borderColor = if (highlightBorder) highlightColor else outlineColor
     val single = images.size == 1
@@ -686,9 +522,6 @@ private fun UserMessageImages(
             width = cardW,
             height = cardH,
             cornerRadius = cornerRadius,
-            assistantOverlay = assistantOverlay,
-            isCoui = isCoui,
-            couiDark = couiDark,
             borderWidth = borderWidth,
             borderColor = borderColor,
             isHiddenInViewer = { previewer?.isPresenting(messageId, 0) == true },
@@ -704,7 +537,6 @@ private fun UserMessageImages(
                     )
                 }
             },
-            onLongClick = onLongClick,
         )
         return
     }
@@ -740,9 +572,6 @@ private fun UserMessageImages(
                 width = cardW,
                 height = cardH,
                 cornerRadius = cornerRadius,
-                assistantOverlay = assistantOverlay,
-                isCoui = isCoui,
-                couiDark = couiDark,
                 borderWidth = borderWidth,
                 borderColor = borderColor,
                 isHiddenInViewer = { previewer?.isPresenting(messageId, index) == true },
@@ -758,40 +587,23 @@ private fun UserMessageImages(
                         )
                     }
                 },
-                onLongClick = onLongClick,
             )
         }
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun UserMessageImageCard(
     bitmap: ImageBitmap,
     width: Dp,
     height: Dp,
     cornerRadius: Dp,
-    assistantOverlay: Boolean,
-    isCoui: Boolean,
-    couiDark: Boolean,
     borderWidth: Dp,
     borderColor: Color,
     isHiddenInViewer: () -> Boolean,
     onBoundsChanged: (Rect) -> Unit,
     onClick: (() -> Unit)?,
-    onLongClick: (() -> Unit)?,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val clickModifier = when {
-        onLongClick != null || (isCoui && onClick != null) -> Modifier.combinedClickable(
-            interactionSource = interactionSource,
-            indication = null,
-            onClick = { onClick?.invoke() },
-            onLongClick = onLongClick,
-        )
-        onClick != null -> Modifier.clickable(onClick = onClick)
-        else -> Modifier
-    }
     Box(
         modifier = Modifier
             .size(width = width, height = height)
@@ -801,36 +613,9 @@ private fun UserMessageImageCard(
             .graphicsLayer {
                 alpha = if (isHiddenInViewer()) 0f else 1f
             }
-            .then(
-                when {
-                    assistantOverlay -> {
-                        val shape = RoundedCornerShape(cornerRadius)
-                        Modifier
-                            .clip(shape)
-                            .background(MiuixTheme.colorScheme.surfaceContainer, shape)
-                            .border(borderWidth, borderColor, shape)
-                    }
-                    isCoui -> {
-                        val shape = CouiShape(cornerRadius, 2.2f)
-                        Modifier
-                            .then(
-                                if (onClick != null) {
-                                    Modifier.couiButtonFeedback(couiDark, interactionSource, enabled = true)
-                                } else {
-                                    Modifier
-                                },
-                            )
-                            .clip(shape)
-                            .background(MiuixTheme.colorScheme.surfaceContainer, shape)
-                            .border(borderWidth, borderColor, shape)
-                    }
-                    else -> Modifier.squircleSurface(
-                        color = MiuixTheme.colorScheme.surfaceContainer,
-                        cornerRadius = cornerRadius,
-                    )
-                },
-            )
-            .then(clickModifier),
+            .squircleClip(cornerRadius)
+            .background(COUITheme.colorScheme.surfaceWithCard)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
     ) {
         Image(
             bitmap = bitmap,
@@ -840,44 +625,15 @@ private fun UserMessageImageCard(
             contentScale = ContentScale.Crop,
             modifier = Modifier.matchParentSize(),
         )
-        if (!assistantOverlay && !isCoui) {
-            // squircleBorder 在 onDrawBehind 中绘制，置于前景层才能叠在位图之上收边。
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .squircleBorder(width = borderWidth, color = borderColor, cornerRadius = cornerRadius),
-            )
-        }
+        // squircleBorder draws behind its node: keep it in a foreground layer above the bitmap.
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .squircleBorder(width = borderWidth, color = borderColor, cornerRadius = cornerRadius),
+        )
     }
 }
 
-@Composable
-private fun MessageTooltipAction(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Icon(
-            imageVector = icon,
-            // 下方文字已经命名该操作，图标不再重复朗读。
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MiuixTheme.colorScheme.onSurface,
-        )
-        Text(
-            text = label,
-            style = MiuixTheme.textStyles.body2,
-            color = MiuixTheme.colorScheme.onSurface,
-        )
-    }
-}
 
 // ── 上下文压缩：时间线中的轻量胶囊标记 ─────────────────────────────────
 
@@ -900,10 +656,10 @@ private fun ContextCompactionMarker(
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(percent = 50))
-                .background(MiuixTheme.colorScheme.surface)
+                .background(COUITheme.colorScheme.background)
                 .border(
                     0.5.dp,
-                    MiuixTheme.colorScheme.outline.copy(alpha = 0.5f),
+                    COUITheme.colorScheme.outline.copy(alpha = 0.5f),
                     RoundedCornerShape(percent = 50),
                 )
                 .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -916,17 +672,17 @@ private fun ContextCompactionMarker(
                     .size(12.dp)
                     .graphicsLayer(alpha = if (message.running) pulseAlpha else 1f),
                 tint = if (message.running) {
-                    MiuixTheme.colorScheme.primary
+                    COUITheme.colorScheme.primary
                 } else {
-                    MiuixTheme.colorScheme.onSurfaceVariantSummary
+                    COUITheme.colorScheme.labelSecondary
                 },
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = message.detail?.takeIf(String::isNotBlank)
                     ?: stringResource(R.string.context_compaction),
-                style = MiuixTheme.textStyles.footnote1,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                style = COUITheme.textStyles.bodyS,
+                color = COUITheme.colorScheme.labelSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1031,11 +787,11 @@ private fun AgentMessageBlock(
                 SelectionContainer {
                     Text(
                         text = message.content,
-                        style = MiuixTheme.textStyles.body1.copy(
+                        style = COUITheme.textStyles.bodyXL.copy(
                             lineHeight = 25.sp,
                             lineHeightStyle = EditorialLineHeightStyle,
                         ),
-                        color = MiuixTheme.colorScheme.onSurface,
+                        color = COUITheme.colorScheme.labelPrimary,
                     )
                 }
             }
@@ -1074,7 +830,7 @@ private fun AgentMessageBlock(
                         haptic.performHapticFeedback(HapticFeedbackType.Confirm)
                         copied = true
                     },
-                    tint = if (copied) MiuixTheme.colorScheme.primary else null,
+                    tint = if (copied) COUITheme.colorScheme.primary else null,
                 )
                 if (allowSpeech) SpeechReadAloudButton(message.id, message.content)
                 if (showMessageActions) {
@@ -1086,7 +842,7 @@ private fun AgentMessageBlock(
                             enabled = messageActionsEnabled,
                         )
                     }
-                    TooltipBox(text = stringResource(R.string.ui_regenerate_2e1905), enabled = messageActionsEnabled) {
+                    ActionHintTooltip(text = stringResource(R.string.ui_regenerate_2e1905), enabled = messageActionsEnabled) {
                         AnswerActionButton(
                             icon = ChatActionIcons.Refresh,
                             contentDescription = stringResource(R.string.ui_regenerate_reply_84a7d9),
@@ -1094,7 +850,7 @@ private fun AgentMessageBlock(
                             enabled = messageActionsEnabled,
                         )
                     }
-                    TooltipBox(text = stringResource(R.string.ui_delete_3755f5), enabled = messageActionsEnabled) {
+                    ActionHintTooltip(text = stringResource(R.string.ui_delete_3755f5), enabled = messageActionsEnabled) {
                         AnswerActionButton(
                             icon = ChatActionIcons.Trash,
                             contentDescription = stringResource(R.string.ui_delete_this_conversation_3f351b),
@@ -1103,7 +859,7 @@ private fun AgentMessageBlock(
                         )
                     }
                     if (showBranchAction) {
-                        TooltipBox(text = stringResource(R.string.conversation_branch)) {
+                        ActionHintTooltip(text = stringResource(R.string.conversation_branch), enabled = messageActionsEnabled) {
                             AnswerActionButton(
                                 icon = ChatActionIcons.Branch,
                                 contentDescription = stringResource(R.string.conversation_branch),
@@ -1155,9 +911,9 @@ private fun CharacterReplyHeader(character: RoleplayChatUi, isGreeting: Boolean)
         Spacer(Modifier.width(8.dp))
         Text(
             text = character.characterName,
-            style = MiuixTheme.textStyles.body2,
+            style = COUITheme.textStyles.bodyM,
             fontWeight = FontWeight.Medium,
-            color = MiuixTheme.colorScheme.onSurface,
+            color = COUITheme.colorScheme.labelPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f, fill = false),
@@ -1166,11 +922,11 @@ private fun CharacterReplyHeader(character: RoleplayChatUi, isGreeting: Boolean)
             Spacer(Modifier.width(8.dp))
             Text(
                 text = stringResource(R.string.chat_character_story_start),
-                style = MiuixTheme.textStyles.footnote2,
-                color = MiuixTheme.colorScheme.primary,
+                style = COUITheme.textStyles.bodyXS,
+                color = COUITheme.colorScheme.primary,
                 modifier = Modifier
                     .clip(RoundedCornerShape(percent = 50))
-                    .background(MiuixTheme.colorScheme.primary.copy(alpha = 0.1f))
+                    .background(COUITheme.colorScheme.primary.copy(alpha = 0.1f))
                     .padding(horizontal = 8.dp, vertical = 2.dp),
             )
         }
@@ -1194,39 +950,42 @@ internal fun AnswerActionButton(
     enabled: Boolean = true,
     tint: Color? = null,
 ) {
-    val isCoui = LocalUiStyle.current == AppearanceUiStyle.COUI
-    val couiDark = CouiTheme.isDark
-    val interactionSource = remember { MutableInteractionSource() }
-    Box(
-        modifier = Modifier
-            .size(AnswerActionSize)
-            .clip(RoundedCornerShape(8.dp))
-            .then(
-                if (isCoui) {
-                    Modifier.couiButtonFeedback(couiDark, interactionSource, enabled = enabled)
-                } else {
-                    Modifier
-                },
-            )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                enabled = enabled,
-                onClick = onClick,
-            ),
-        contentAlignment = Alignment.Center,
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        material = false,
+        cornerRadius = 8.dp,
+        minHeight = AnswerActionSize,
+        minWidth = AnswerActionSize,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
             modifier = Modifier.size(16.dp),
             tint = when {
-                !enabled -> MiuixTheme.colorScheme.disabledOnSurface
+                !enabled -> COUITheme.colorScheme.disabledNeutral
                 tint != null -> tint
-                else -> MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.72f)
+                else -> COUITheme.colorScheme.labelSecondary.copy(alpha = 0.72f)
             },
         )
     }
+}
+
+/** Long-press hint for a compact answer action, using the COUI info tooltip. */
+@Composable
+private fun ActionHintTooltip(
+    text: String,
+    enabled: Boolean,
+    content: @Composable () -> Unit,
+) {
+    val state = rememberTooltipState(isPersistent = false)
+    TooltipBox(
+        state = state,
+        tooltip = { Tooltip(text = text, mode = TooltipMode.Info) },
+        dismissOnTouchOutside = true,
+        enableUserInput = enabled,
+        content = content,
+    )
 }
 
 @Composable
@@ -1240,7 +999,7 @@ private fun CandidateSwitcher(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .clip(RoundedCornerShape(percent = 50))
-            .background(MiuixTheme.colorScheme.surfaceContainerHigh)
+            .background(COUITheme.colorScheme.cardPressed)
             .padding(horizontal = 2.dp),
     ) {
         AnswerActionButton(
@@ -1248,12 +1007,12 @@ private fun CandidateSwitcher(
             contentDescription = stringResource(R.string.chat_previous_candidate),
             onClick = { onSelect(selected - 1) },
             enabled = enabled && selected > 0,
-            tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            tint = COUITheme.colorScheme.labelSecondary,
         )
         Text(
             text = "${selected + 1}/$count",
-            style = MiuixTheme.textStyles.footnote1,
-            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            style = COUITheme.textStyles.bodyS,
+            color = COUITheme.colorScheme.labelSecondary,
             textAlign = TextAlign.Center,
             modifier = Modifier.widthIn(min = 28.dp),
         )
@@ -1262,7 +1021,7 @@ private fun CandidateSwitcher(
             contentDescription = stringResource(R.string.chat_next_candidate),
             onClick = { onSelect(selected + 1) },
             enabled = enabled && selected < count - 1,
-            tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            tint = COUITheme.colorScheme.labelSecondary,
         )
     }
 }
@@ -1309,12 +1068,12 @@ internal fun ThinkingRow(
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 4.dp)
             .squircleSurface(
-                color = MiuixTheme.colorScheme.surface,
+                color = COUITheme.colorScheme.background,
                 cornerRadius = ChatCardCorner,
             )
             .squircleBorder(
                 width = 0.5.dp,
-                color = MiuixTheme.colorScheme.outline.copy(alpha = ChatCardOutlineAlpha),
+                color = COUITheme.colorScheme.outline.copy(alpha = ChatCardOutlineAlpha),
                 cornerRadius = ChatCardCorner,
             )
     }
@@ -1345,9 +1104,9 @@ internal fun ThinkingRow(
                         .size(15.dp)
                         .graphicsLayer(alpha = if (message.isStreaming) pulseAlpha else 1f),
                     tint = if (message.isStreaming) {
-                        MiuixTheme.colorScheme.primary
+                        COUITheme.colorScheme.primary
                     } else {
-                        MiuixTheme.colorScheme.onSurfaceVariantSummary
+                        COUITheme.colorScheme.labelSecondary
                     },
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -1365,12 +1124,12 @@ internal fun ThinkingRow(
                         )
                     } ?: stringResource(R.string.reasoning_completed)
                 },
-                style = MiuixTheme.textStyles.body2.copy(fontSize = 13.5.sp),
+                style = COUITheme.textStyles.bodyM.copy(fontSize = 13.5.sp),
                 color = if (message.isStreaming) {
-                    MiuixTheme.colorScheme.onSurface
+                    COUITheme.colorScheme.labelPrimary
                 } else {
-                    val dark = MiuixTheme.colorScheme.surface.luminance() < 0.5f
-                    MiuixTheme.colorScheme.onSurface.copy(alpha = if (dark) 0.56f else 0.52f)
+                    val dark = COUITheme.isDark
+                    COUITheme.colorScheme.labelPrimary.copy(alpha = if (dark) 0.56f else 0.52f)
                 },
                 modifier = Modifier.weight(1f, fill = !compact),
             )
@@ -1391,7 +1150,7 @@ internal fun ThinkingRow(
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp)
                             .height(0.5.dp)
-                            .background(MiuixTheme.colorScheme.outline.copy(alpha = 0.45f)),
+                            .background(COUITheme.colorScheme.outline.copy(alpha = 0.45f)),
                     )
                 }
                 val contentModifier = Modifier
@@ -1489,10 +1248,10 @@ private fun RunTraceRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 4.dp)
-            .squircleSurface(color = MiuixTheme.colorScheme.surface, cornerRadius = ChatCardCorner)
+            .squircleSurface(color = COUITheme.colorScheme.background, cornerRadius = ChatCardCorner)
             .squircleBorder(
                 width = 0.5.dp,
-                color = MiuixTheme.colorScheme.outline.copy(alpha = ChatCardOutlineAlpha),
+                color = COUITheme.colorScheme.outline.copy(alpha = ChatCardOutlineAlpha),
                 cornerRadius = ChatCardCorner,
             )
             .clickable(onClick = onClick)
@@ -1503,20 +1262,20 @@ private fun RunTraceRow(
             imageVector = Icons.Rounded.Check,
             contentDescription = null,
             modifier = Modifier.size(15.dp),
-            tint = MiuixTheme.colorScheme.primary,
+            tint = COUITheme.colorScheme.primary,
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = stringResource(R.string.ui_available_capacity_743337),
-            style = MiuixTheme.textStyles.body2,
-            color = MiuixTheme.colorScheme.onSurface,
+            style = COUITheme.textStyles.bodyM,
+            color = COUITheme.colorScheme.labelPrimary,
             modifier = Modifier.weight(1f),
         )
         Icon(
             imageVector = Icons.Rounded.ChevronRight,
             contentDescription = null,
             modifier = Modifier.size(14.dp),
-            tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.7f),
+            tint = COUITheme.colorScheme.labelSecondary.copy(alpha = 0.7f),
         )
     }
 }
@@ -1541,10 +1300,10 @@ private fun ToolSummaryInline(
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
-                    .background(MiuixTheme.colorScheme.surface)
+                    .background(COUITheme.colorScheme.background)
                     .border(
                         0.5.dp,
-                        MiuixTheme.colorScheme.outline.copy(alpha = 0.5f),
+                        COUITheme.colorScheme.outline.copy(alpha = 0.5f),
                         RoundedCornerShape(10.dp),
                     )
                     .padding(horizontal = 10.dp, vertical = 6.dp),
@@ -1554,13 +1313,13 @@ private fun ToolSummaryInline(
                     imageVector = iconForTool(tool),
                     contentDescription = null,
                     modifier = Modifier.size(12.dp),
-                    tint = MiuixTheme.colorScheme.primary
+                    tint = COUITheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = toolDisplayName(tool),
-                    style = MiuixTheme.textStyles.footnote2,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary
+                    style = COUITheme.textStyles.bodyXS,
+                    color = COUITheme.colorScheme.labelSecondary
                 )
             }
         }
@@ -1587,10 +1346,10 @@ private fun SuggestionChipsRow(
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
-                    .background(MiuixTheme.colorScheme.surface)
+                    .background(COUITheme.colorScheme.background)
                     .border(
                         0.5.dp,
-                        MiuixTheme.colorScheme.outline.copy(alpha = 0.55f),
+                        COUITheme.colorScheme.outline.copy(alpha = 0.55f),
                         RoundedCornerShape(10.dp),
                     )
                     .clickable { onSuggestionClick(prompt) }
@@ -1601,13 +1360,13 @@ private fun SuggestionChipsRow(
                     imageVector = Icons.Rounded.AutoAwesome,
                     contentDescription = null,
                     modifier = Modifier.size(12.dp),
-                    tint = MiuixTheme.colorScheme.primary
+                    tint = COUITheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = prompt,
-                    style = MiuixTheme.textStyles.footnote1,
-                    color = MiuixTheme.colorScheme.onSurface,
+                    style = COUITheme.textStyles.bodyS,
+                    color = COUITheme.colorScheme.labelPrimary,
                 )
             }
         }

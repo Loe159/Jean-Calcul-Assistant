@@ -9,12 +9,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import io.github.mangi.eta.R
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.data.model.TtsProvider
-import io.github.mangi.eta.ui.app.LocalUiStyle
-import io.github.mangi.eta.ui.components.coui.CouiDropdownPreference
-import top.yukonga.miuix.kmp.basic.DropdownItem
-import top.yukonga.miuix.kmp.preference.OverlaySpinnerPreference
+import io.github.suqi8.coui.kmp.preference.OverlayDropdownPreference
 
 @Composable
 internal fun SpeechVoiceSection(store: SpeechSettingsStore) {
@@ -56,35 +52,18 @@ internal fun SpeechVoiceSection(store: SpeechSettingsStore) {
 
     Column {
         SpeechGroupCard(title = stringResource(R.string.speech_group_voice)) {
-            when (LocalUiStyle.current) {
-                AppearanceUiStyle.COUI -> {
-                    val labels = presets.map { preset ->
-                        listOfNotNull(
-                            stringResource(preset.name),
-                            preset.summary?.let { stringResource(it) },
-                        ).joinToString(" · ")
-                    } + customLabel
-                    CouiDropdownPreference(
-                        title = stringResource(R.string.speech_voice),
-                        items = labels,
-                        selectedIndex = if (custom) presets.size else presetIndex,
-                        onSelectedIndexChange = onSelectIndex,
-                    )
-                }
-                AppearanceUiStyle.MIUIX -> {
-                    OverlaySpinnerPreference(
-                        title = stringResource(R.string.speech_voice),
-                        items = presets.map { preset ->
-                            DropdownItem(
-                                text = stringResource(preset.name),
-                                summary = preset.summary?.let { stringResource(it) },
-                            )
-                        } + DropdownItem(text = customLabel),
-                        selectedIndex = if (custom) presets.size else presetIndex,
-                        onSelectedIndexChange = onSelectIndex,
-                    )
-                }
-            }
+            val labels = presets.map { preset ->
+                listOfNotNull(
+                    stringResource(preset.name),
+                    preset.summary?.let { stringResource(it) },
+                ).joinToString(" · ")
+            } + customLabel
+            OverlayDropdownPreference(
+                title = stringResource(R.string.speech_voice),
+                items = labels,
+                selectedIndex = if (custom) presets.size else presetIndex,
+                onSelectedIndexChange = onSelectIndex,
+            )
             AnimatedVisibility(visible = custom) {
                 SpeechFieldColumn {
                     SpeechField(

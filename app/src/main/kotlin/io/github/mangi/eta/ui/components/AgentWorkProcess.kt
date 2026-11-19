@@ -63,20 +63,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.itos.coui.shape.CouiCapsuleShape
 import io.github.mangi.eta.R
 import io.github.mangi.eta.agent.overlay.toolDisplayName
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
 import io.github.mangi.eta.ui.markdown.StreamingMarkdownState
 import io.github.mangi.eta.ui.model.AgentChatMessageUi
 import io.github.mangi.eta.ui.model.ThinkingMessageUi
 import io.github.mangi.eta.ui.model.ToolActivityMessageUi
 import io.github.mangi.eta.ui.model.ToolActivityStatusUi
 import io.github.mangi.eta.ui.model.ToolSummaryMessageUi
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 /**
  * 把连续的思考与工具调用收束为一条可展开的工作过程：折叠时只是一行摘要，展开后是
@@ -169,10 +166,10 @@ private fun AgentWorkHeader(
         working -> stringResource(R.string.work_analyzing)
         else -> workSummaryText(summary)
     }
-    val colors = MiuixTheme.colorScheme
-    val isDark = colors.surface.luminance() < 0.5f
-    val mutedInk = colors.onSurface.copy(alpha = if (isDark) 0.56f else 0.52f)
-    val iconInk = colors.onSurface.copy(alpha = if (isDark) 0.50f else 0.45f)
+    val colors = COUITheme.colorScheme
+    val isDark = COUITheme.isDark
+    val mutedInk = colors.labelPrimary.copy(alpha = if (isDark) 0.56f else 0.52f)
+    val iconInk = colors.labelPrimary.copy(alpha = if (isDark) 0.50f else 0.45f)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -197,7 +194,7 @@ private fun AgentWorkHeader(
         ShimmerText(
             text = text,
             active = working,
-            style = MiuixTheme.textStyles.body2.copy(fontSize = 13.5.sp),
+            style = COUITheme.textStyles.bodyM.copy(fontSize = 13.5.sp),
             color = mutedInk,
             modifier = Modifier.weight(1f, fill = false),
         )
@@ -313,9 +310,9 @@ internal fun WorkTimelineNode(
     connectTop: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    val colors = MiuixTheme.colorScheme
-    val isDark = colors.surface.luminance() < 0.5f
-    val lineColor = colors.onSurface.copy(alpha = if (isDark) 0.12f else 0.085f)
+    val colors = COUITheme.colorScheme
+    val isDark = COUITheme.isDark
+    val lineColor = colors.labelPrimary.copy(alpha = if (isDark) 0.12f else 0.085f)
     val hasHalo = tone != WorkNodeTone.Done
     Row(
         modifier = Modifier
@@ -364,7 +361,7 @@ internal fun WorkTimelineNode(
 
 @Composable
 private fun WorkNodeBadge(icon: ImageVector, tone: WorkNodeTone, isDark: Boolean) {
-    val colors = MiuixTheme.colorScheme
+    val colors = COUITheme.colorScheme
     val pulse = rememberDrawPhasePulse(active = tone == WorkNodeTone.Running)
     when (tone) {
         WorkNodeTone.Running -> Box(
@@ -400,7 +397,7 @@ private fun WorkNodeBadge(icon: ImageVector, tone: WorkNodeTone, isDark: Boolean
             imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(WorkDoneIconSize),
-            tint = colors.onSurface.copy(alpha = if (isDark) 0.46f else 0.40f),
+            tint = colors.labelPrimary.copy(alpha = if (isDark) 0.46f else 0.40f),
         )
     }
 }
@@ -434,7 +431,7 @@ internal fun ShimmerText(
     modifier: Modifier = Modifier,
 ) {
     val shimmerModifier = if (active) {
-        val highlight = MiuixTheme.colorScheme.onSurface
+        val highlight = COUITheme.colorScheme.labelPrimary
         val transition = rememberInfiniteTransition(label = "work_shimmer")
         val progress = transition.animateFloat(
             initialValue = 0f,
@@ -489,7 +486,7 @@ internal fun ExpandChevron(
         modifier = modifier
             .size(13.dp)
             .graphicsLayer { rotationZ = rotation },
-        tint = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.5f),
+        tint = COUITheme.colorScheme.labelSecondary.copy(alpha = 0.5f),
     )
 }
 

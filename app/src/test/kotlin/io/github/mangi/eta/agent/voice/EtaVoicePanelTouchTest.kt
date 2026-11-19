@@ -26,7 +26,6 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import io.github.mangi.eta.data.model.AppearanceSettings
 import io.github.mangi.eta.data.model.AppearanceThemeMode
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.R
 import io.github.mangi.eta.ui.app.AgentAppTheme
 import io.github.mangi.eta.ui.model.AgentMessageUi
@@ -46,7 +45,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import top.yukonga.miuix.kmp.squircle.LocalSquircleEnabled
+import io.github.suqi8.coui.kmp.squircle.LocalSquircleEnabled
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36], application = Application::class, qualifiers = "w411dp-h896dp-xhdpi")
@@ -211,15 +210,13 @@ class EtaVoicePanelTouchTest {
 
     @Test
     fun replyBackgroundCoversNavigationAreaWhileInputAvoidsIt() {
-        for (style in AppearanceUiStyle.entries) {
-            for (theme in listOf(AppearanceThemeMode.LIGHT, AppearanceThemeMode.DARK)) {
-                withPanel(appearance = AppearanceSettings(uiStyle = style, themeMode = theme)) { panel ->
-                    panel.showReply()
-                    for (navigationBottom in listOf(48, 144)) {
-                        panel.setBottomInsets(navigationBottom = navigationBottom)
-                        panel.advance(3)
-                        panel.assertNavigationBackgroundCovered(navigationBottom)
-                    }
+        for (theme in listOf(AppearanceThemeMode.LIGHT, AppearanceThemeMode.DARK)) {
+            withPanel(appearance = AppearanceSettings(themeMode = theme)) { panel ->
+                panel.showReply()
+                for (navigationBottom in listOf(48, 144)) {
+                    panel.setBottomInsets(navigationBottom = navigationBottom)
+                    panel.advance(3)
+                    panel.assertNavigationBackgroundCovered(navigationBottom, theme)
                 }
             }
         }
@@ -454,7 +451,7 @@ class EtaVoicePanelTouchTest {
             assertTrue("输入框必须避开侧边导航栏", bounds.right <= root().view.width - right)
         }
 
-        fun assertNavigationBackgroundCovered(navigationBottom: Int) {
+        fun assertNavigationBackgroundCovered(navigationBottom: Int, theme: AppearanceThemeMode) {
             val view = root().view
             assertTrue("输入框必须避开导航区域", textInputBottom() < view.height - navigationBottom)
             val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
@@ -464,7 +461,8 @@ class EtaVoicePanelTouchTest {
                 val contentColor = bitmap.getPixel(view.width / 2, view.height - navigationBottom - inset)
                 val navigationColor = bitmap.getPixel(view.width / 2, view.height - inset)
                 assertEquals("回复面板底色必须实际绘制为不透明", 255, contentColor ushr 24)
-                assertEquals("浮窗底色应连续覆盖导航区域，不能露出下层窗口", contentColor, navigationColor)
+                val sheetColor = if (theme == AppearanceThemeMode.DARK) 0xFF17191E.toInt() else 0xFFF7F8FA.toInt()
+                assertEquals("浮窗底色应连续覆盖导航区域，不能露出下层窗口", sheetColor, navigationColor)
             } finally {
                 bitmap.recycle()
             }

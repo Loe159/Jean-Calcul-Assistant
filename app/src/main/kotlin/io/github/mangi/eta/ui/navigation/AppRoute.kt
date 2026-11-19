@@ -2,7 +2,7 @@ package io.github.mangi.eta.ui.navigation
 
 import kotlinx.serialization.Serializable
 import io.github.mangi.eta.agent.browser.BrowserSessionRegistry
-import top.yukonga.miuix.kmp.nav.core.NavKey
+import io.github.suqi8.coui.kmp.nav.core.NavKey
 
 @Serializable
 sealed interface AppRoute : NavKey {

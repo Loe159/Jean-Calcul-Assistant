@@ -72,13 +72,14 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.itos.coui.motion.couiPressMotion
-import com.itos.coui.motion.rememberCouiPressMotion
 import io.github.mangi.eta.R
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.PressInteraction
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.Text
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.utils.SinkFeedback
 
 private val ComposerModeEasing = CubicBezierEasing(0.20f, 0f, 0f, 1f)
 
@@ -256,8 +257,6 @@ private fun AssistantInputBar(
                 elevation = AssistantCapsuleElevation.Composer,
                 highlightProgress = highlightProgress,
                 highlightColor = colors.accent.copy(alpha = if (colors.dark) 0.44f else 0.30f),
-                interactive = true,
-                spotlightEnabled = true,
             )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -347,18 +346,19 @@ private fun AssistantTrailingButton(
     onHoldCancel: () -> Unit,
 ) {
     val haptics = LocalHapticFeedback.current
-    val press = rememberCouiPressMotion()
     val currentClick by rememberUpdatedState(onClick)
     val currentHoldAvailable by rememberUpdatedState(holdToTalkAvailable)
     val currentHoldStart by rememberUpdatedState(onHoldStart)
     val currentHoldEnd by rememberUpdatedState(onHoldEnd)
     val currentHoldCancel by rememberUpdatedState(onHoldCancel)
+    val pressSource = remember { MutableInteractionSource() }
 
     Box(
         modifier = Modifier
             .size(38.dp)
+            .indication(pressSource, SinkFeedback())
             .graphicsLayer {
-                val scale = press.scale.value * if (holdingSpeech) 1.06f else 1f
+                val scale = if (holdingSpeech) 1.06f else 1f
                 scaleX = scale
                 scaleY = scale
             }
@@ -383,14 +383,21 @@ private fun AssistantTrailingButton(
                     enabled
                 }
             }
-            .pointerInput(enabled, press) {
+            .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
                 var holding = false
                 detectTapGestures(
-                    onPress = {
-                        press.press(size)
+                    onPress = { offset ->
+                        val pressInteraction = PressInteraction.Press(offset)
+                        pressSource.emit(pressInteraction)
                         val released = tryAwaitRelease()
-                        press.release()
+                        pressSource.emit(
+                            if (released) {
+                                PressInteraction.Release(pressInteraction)
+                            } else {
+                                PressInteraction.Cancel(pressInteraction)
+                            },
+                        )
                         if (holding) {
                             holding = false
                             if (released) currentHoldEnd() else currentHoldCancel()
@@ -497,7 +504,6 @@ private fun AssistantVoiceEntry(
                         strokeColor = colors.chipStroke,
                         dark = colors.dark,
                         elevation = AssistantCapsuleElevation.Chip,
-                        interactive = false,
                     )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -585,26 +591,21 @@ private fun AssistantFloatingRoundButton(
 ) {
     val haptics = LocalHapticFeedback.current
     val interactionSource = remember { MutableInteractionSource() }
-    val press = rememberCouiPressMotion()
     Box(
         modifier = Modifier
             .size(44.dp)
             .graphicsLayer {
                 val entryScale = 0.84f + progress * 0.16f
-                val totalScale = entryScale * press.scale.value
+                val totalScale = entryScale
                 alpha = progress
                 scaleX = totalScale
                 scaleY = totalScale
             }
-            .couiPressMotion(press, enabled = enabled)
             .couiAssistantCapsule(
                 surfaceColor = surfaceColor,
                 strokeColor = strokeColor,
                 dark = dark,
                 elevation = AssistantCapsuleElevation.Chip,
-                interactive = enabled,
-                interactionSource = interactionSource,
-                spotlightEnabled = true,
             )
             .semantics(mergeDescendants = true) {
                 this.contentDescription = contentDescription
@@ -613,7 +614,7 @@ private fun AssistantFloatingRoundButton(
             }
             .clickable(
                 interactionSource = interactionSource,
-                indication = null,
+                indication = SinkFeedback(),
                 enabled = enabled,
                 role = Role.Button,
                 onClick = {

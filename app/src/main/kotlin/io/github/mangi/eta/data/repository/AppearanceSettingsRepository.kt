@@ -2,7 +2,6 @@ package io.github.mangi.eta.data.repository
 
 import io.github.mangi.eta.data.datastore.SettingsDataStore
 import io.github.mangi.eta.data.model.AppearanceSettings
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -19,7 +18,4 @@ object AppearanceSettingsRepository {
         SettingsDataStore.updateAppearanceSettings(transform)
     }
 
-    suspend fun selectUiStyle(style: AppearanceUiStyle) {
-        SettingsDataStore.selectUiStyle(AppearanceUiStyle.COUI)
-    }
 }

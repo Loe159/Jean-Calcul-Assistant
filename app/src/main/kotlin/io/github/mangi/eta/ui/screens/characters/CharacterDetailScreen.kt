@@ -11,36 +11,24 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.itos.coui.dialog.CouiDialogDefaults
-import com.itos.coui.layout.CouiPageDefaults
-import com.itos.coui.layout.Divider
-import com.itos.coui.layout.Group
-import com.itos.coui.text.CouiTextKind
-import com.itos.coui.text.Text as CouiText
 import io.github.mangi.eta.agent.roleplay.CharacterCardFormat
 import io.github.mangi.eta.agent.roleplay.CharacterMacros
 import io.github.mangi.eta.agent.roleplay.RoleplayBinding
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.ui.app.CharacterLibraryStore
-import io.github.mangi.eta.ui.app.LocalUiStyle
 import io.github.mangi.eta.ui.components.ItemDescriptionDialog
-import io.github.mangi.eta.ui.components.MiuixDialogActions
-import io.github.mangi.eta.ui.components.MiuixScaffoldPage
 import io.github.mangi.eta.ui.components.coui.CouiConfirmDialog
 import io.github.mangi.eta.ui.components.coui.CouiPageBottomSpacer
-import io.github.mangi.eta.ui.components.coui.CouiPreference
 import io.github.mangi.eta.ui.components.coui.CouiScaffoldPage
-import io.github.mangi.eta.ui.components.coui.CouiSectionTitle
-import io.github.mangi.eta.ui.components.coui.CouiSwitchPreference
 import io.github.mangi.eta.ui.navigation.AppRoute
-import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.preference.ArrowPreference
-import top.yukonga.miuix.kmp.preference.SwitchPreference
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.window.WindowDialog
+import io.github.suqi8.coui.kmp.basic.BasicComponentDefaults
+import io.github.suqi8.coui.kmp.basic.Card
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.preference.ArrowPreference
+import io.github.suqi8.coui.kmp.preference.SwitchPreference
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import io.github.suqi8.coui.kmp.basic.BasicComponent
+import io.github.suqi8.coui.kmp.basic.CardListGroup
+import io.github.suqi8.coui.kmp.preference.PreferenceCategory
 
 internal fun greetingTitle(index: Int) = if (index == 0) "Default greeting" else "Greeting ${index + 1}"
 
@@ -69,240 +57,137 @@ internal fun CharacterDetailScreen(
     val profile = store.selected?.takeIf { it.id == id }
     val userName = if (store.usePersona) store.persona.name.ifBlank { "User" } else "User"
 
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            val pageColors = CouiPageDefaults.themeColors()
-            val dialogColors = CouiDialogDefaults.themeColors()
-            CouiScaffoldPage(title = "", onBack = onBack, compactTitle = true) {
-                if (profile == null) {
-                    CharacterPageMessage(if (store.busy) "Loading character…" else "Could not load character. Go back and try again.")
-                    return@CouiScaffoldPage
-                }
-                CharacterHero(
-                    profile = profile,
-                    busy = store.busy,
-                    onChangeAvatar = { avatarPicker.launch("image/*") },
-                    onToggleFavorite = { store.toggleFavorite(id) },
-                    onStart = { store.startConversation(id, onStart) },
-                    onReadDescription = {
-                        preview = CharacterTextPreview(
-                            "Character settings",
-                            CharacterMacros.expand(profile.card.description, profile.card, userName),
-                        )
-                    },
-                    userName = userName,
+    CouiScaffoldPage(title = "", onBack = onBack, compactTitle = true) {
+        if (profile == null) {
+            CharacterPageMessage(if (store.busy) "Loading character…" else "Could not load character. Go back and try again.")
+            return@CouiScaffoldPage
+        }
+        CharacterHero(
+            profile = profile,
+            busy = store.busy,
+            onChangeAvatar = { avatarPicker.launch("image/*") },
+            onToggleFavorite = { store.toggleFavorite(id) },
+            onStart = { store.startConversation(id, onStart) },
+            onReadDescription = {
+                preview = CharacterTextPreview(
+                    "Character settings",
+                    CharacterMacros.expand(profile.card.description, profile.card, userName),
                 )
-                Group {
-                    CouiSwitchPreference(
+            },
+            userName = userName,
+        )
+        Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+            CardListGroup {
+                item {
+                    SwitchPreference(
                         title = "Use my persona",
                         summary = store.persona.name.ifBlank { "No name configured" },
                         checked = store.usePersona,
                         onCheckedChange = { store.usePersona = it },
                     )
-                    Divider()
-                    CouiPreference(
+                }
+                item {
+                    ArrowPreference(
                         title = "Edit my persona",
                         onClick = { onNavigate(AppRoute.CharacterPersona) },
                     )
                 }
-                CouiSectionTitle(text = "Greeting")
-                val greetings = remember(profile.card, userName) {
-                    (listOf(profile.card.firstMessage) + profile.card.alternateGreetings)
-                        .map { CharacterMacros.expand(it, profile.card, userName) }
-                }
-                GreetingPager(
-                    greetings = greetings,
-                    selected = store.greetingIndex,
-                    onSelect = { store.greetingIndex = it },
-                    onRead = { index -> preview = CharacterTextPreview(greetingTitle(index), greetings[index]) },
-                )
-                Group(title = "Manage") {
-                    CouiPreference(
+            }
+        }
+        PreferenceCategory(
+            title = "Greeting",
+        )
+        val greetings = remember(profile.card, userName) {
+            (listOf(profile.card.firstMessage) + profile.card.alternateGreetings)
+                .map { CharacterMacros.expand(it, profile.card, userName) }
+        }
+        GreetingPager(
+            greetings = greetings,
+            selected = store.greetingIndex,
+            onSelect = { store.greetingIndex = it },
+            onRead = { index -> preview = CharacterTextPreview(greetingTitle(index), greetings[index]) },
+        )
+        PreferenceCategory(title = "Manage")
+        Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+            CardListGroup {
+                item {
+                    ArrowPreference(
                         title = "Edit character",
-                        enabled = !store.busy,
                         onClick = {
                             store.discardEditor()
                             onNavigate(AppRoute.CharacterEditor(id))
                         },
+                        enabled = !store.busy,
                     )
-                    Divider()
-                    CouiPreference(
+                }
+                item {
+                    ArrowPreference(
                         title = "Story memory",
                         summary = "Story and relationship memory shared across this character's conversations",
                         onClick = { onNavigate(AppRoute.CharacterMemory(id)) },
                     )
-                    Divider()
-                    CouiPreference(
+                }
+                item {
+                    ArrowPreference(
                         title = "Duplicate character",
-                        enabled = !store.busy,
                         onClick = { store.duplicate(id) { onNavigate(AppRoute.CharacterDetail(it)) } },
-                    )
-                    Divider()
-                    CouiPreference(
-                        title = "Export PNG character card",
                         enabled = !store.busy,
-                        onClick = { pngExporter.launch(characterExportName(profile.card.name, "png")) },
-                    )
-                    Divider()
-                    CouiPreference(
-                        title = "Export JSON character card",
-                        enabled = !store.busy,
-                        onClick = { jsonExporter.launch(characterExportName(profile.card.name, "json")) },
                     )
                 }
-                if (store.compatibilityWarnings.isNotEmpty()) {
-                    Group {
-                        CouiPreference(
+                item {
+                    ArrowPreference(
+                        title = "Export PNG character card",
+                        onClick = { pngExporter.launch(characterExportName(profile.card.name, "png")) },
+                        enabled = !store.busy,
+                    )
+                }
+                item {
+                    ArrowPreference(
+                        title = "Export JSON character card",
+                        onClick = { jsonExporter.launch(characterExportName(profile.card.name, "json")) },
+                        enabled = !store.busy,
+                    )
+                }
+            }
+        }
+        if (store.compatibilityWarnings.isNotEmpty()) {
+            Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+                CardListGroup {
+                    item {
+                        ArrowPreference(
                             title = "Compatibility notes",
                             summary = "${store.compatibilityWarnings.size} items handled according to supported compatibility",
                             onClick = { showCompatibility = !showCompatibility },
                         )
-                        if (showCompatibility) {
-                            Divider()
-                            store.compatibilityWarnings.forEach { warning ->
+                    }
+                    if (showCompatibility) {
+                        store.compatibilityWarnings.forEach { warning ->
+                            item {
                                 Text(
                                     text = warning,
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                    style = MiuixTheme.textStyles.body2,
-                                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                    style = COUITheme.textStyles.bodyM,
+                                    color = COUITheme.colorScheme.labelSecondary,
                                 )
                             }
                         }
                     }
                 }
-                Group {
-                    CouiPreference(
+            }
+        }
+        Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+            CardListGroup {
+                item {
+                    BasicComponent(
                         title = "Delete character",
-                        titleColor = dialogColors.destructive,
-                        enabled = !store.busy,
-                        showChevron = false,
+                        titleColor = BasicComponentDefaults.titleColor(color = COUITheme.colorScheme.error),
                         onClick = { showDeleteConfirm = true },
+                        enabled = !store.busy,
                     )
-                }
-                CouiPageBottomSpacer()
-            }
-        }
-
-        AppearanceUiStyle.MIUIX -> {
-            MiuixScaffoldPage(title = "", onBack = onBack, compactTitle = true) {
-                if (profile == null) {
-                    item { CharacterPageMessage(if (store.busy) "Loading character…" else "Could not load character. Go back and try again.") }
-                    return@MiuixScaffoldPage
-                }
-                item(key = "hero") {
-                    CharacterHero(
-                        profile = profile,
-                        busy = store.busy,
-                        onChangeAvatar = { avatarPicker.launch("image/*") },
-                        onToggleFavorite = { store.toggleFavorite(id) },
-                        onStart = { store.startConversation(id, onStart) },
-                        onReadDescription = {
-                            preview = CharacterTextPreview(
-                                "Character settings",
-                                CharacterMacros.expand(profile.card.description, profile.card, userName),
-                            )
-                        },
-                        userName = userName,
-                    )
-                }
-                item(key = "persona") {
-                    Card(
-                        modifier = Modifier
-                            .padding(horizontal = 12.dp)
-                            .padding(bottom = 12.dp),
-                    ) {
-                        SwitchPreference(
-                            title = "Use my persona",
-                            summary = store.persona.name.ifBlank { "No name configured" },
-                            checked = store.usePersona,
-                            onCheckedChange = { store.usePersona = it },
-                        )
-                        ArrowPreference(title = "Edit my persona", onClick = { onNavigate(AppRoute.CharacterPersona) })
-                    }
-                }
-                item(key = "greetings") {
-                    SmallTitle("Greeting")
-                    val greetings = remember(profile.card, userName) {
-                        (listOf(profile.card.firstMessage) + profile.card.alternateGreetings)
-                            .map { CharacterMacros.expand(it, profile.card, userName) }
-                    }
-                    GreetingPager(
-                        greetings = greetings,
-                        selected = store.greetingIndex,
-                        onSelect = { store.greetingIndex = it },
-                        onRead = { index -> preview = CharacterTextPreview(greetingTitle(index), greetings[index]) },
-                    )
-                }
-                item(key = "management") {
-                    SmallTitle("Manage")
-                    Card(
-                        modifier = Modifier
-                            .padding(horizontal = 12.dp)
-                            .padding(bottom = 12.dp),
-                    ) {
-                        ArrowPreference(title = "Edit character", enabled = !store.busy, onClick = {
-                            store.discardEditor()
-                            onNavigate(AppRoute.CharacterEditor(id))
-                        })
-                        ArrowPreference(title = "Story memory", summary = "Story and relationship memory shared across this character's conversations", onClick = {
-                            onNavigate(AppRoute.CharacterMemory(id))
-                        })
-                        ArrowPreference(title = "Duplicate character", enabled = !store.busy, onClick = {
-                            store.duplicate(id) { onNavigate(AppRoute.CharacterDetail(it)) }
-                        })
-                        ArrowPreference(
-                            title = "Export PNG character card",
-                            enabled = !store.busy,
-                            onClick = { pngExporter.launch(characterExportName(profile.card.name, "png")) },
-                        )
-                        ArrowPreference(
-                            title = "Export JSON character card",
-                            enabled = !store.busy,
-                            onClick = { jsonExporter.launch(characterExportName(profile.card.name, "json")) },
-                        )
-                    }
-                }
-                if (store.compatibilityWarnings.isNotEmpty()) {
-                    item(key = "compatibility") {
-                        Card(
-                            modifier = Modifier
-                                .padding(horizontal = 12.dp)
-                                .padding(bottom = 12.dp),
-                        ) {
-                            ArrowPreference(
-                                title = "Compatibility notes",
-                                summary = "${store.compatibilityWarnings.size} items handled according to supported compatibility",
-                                onClick = { showCompatibility = !showCompatibility },
-                            )
-                            if (showCompatibility) {
-                                store.compatibilityWarnings.forEach { warning ->
-                                    Text(
-                                        text = warning,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                        style = MiuixTheme.textStyles.body2,
-                                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-                item(key = "danger") {
-                    Card(
-                        modifier = Modifier
-                            .padding(horizontal = 12.dp)
-                            .padding(bottom = 12.dp),
-                    ) {
-                        ArrowPreference(
-                            title = "Delete character",
-                            titleColor = BasicComponentDefaults.titleColor(color = MiuixTheme.colorScheme.error),
-                            enabled = !store.busy,
-                            onClick = { showDeleteConfirm = true },
-                        )
-                    }
                 }
             }
         }
+        CouiPageBottomSpacer()
     }
 
     if (showDeleteConfirm && profile != null) {
@@ -311,36 +196,16 @@ internal fun CharacterDetailScreen(
             showDeleteConfirm = false
             store.delete(id) { onBack() }
         }
-        when (LocalUiStyle.current) {
-            AppearanceUiStyle.COUI -> {
-                CouiConfirmDialog(
-                    visible = true,
-                    title = "Delete character",
-                    message = message,
-                    confirmText = "Delete",
-                    confirmEnabled = !store.busy,
-                    destructive = true,
-                    onConfirm = onConfirmDelete,
-                    onDismissRequest = { showDeleteConfirm = false },
-                )
-            }
-            AppearanceUiStyle.MIUIX -> {
-                WindowDialog(
-                    show = true,
-                    title = "Delete character",
-                    summary = message,
-                    onDismissRequest = { showDeleteConfirm = false },
-                ) {
-                    MiuixDialogActions(
-                        confirmText = "Delete",
-                        destructive = true,
-                        confirmEnabled = !store.busy,
-                        onCancel = { showDeleteConfirm = false },
-                        onConfirm = onConfirmDelete,
-                    )
-                }
-            }
-        }
+        CouiConfirmDialog(
+            visible = true,
+            title = "Delete character",
+            message = message,
+            confirmText = "Delete",
+            confirmEnabled = !store.busy,
+            destructive = true,
+            onConfirm = onConfirmDelete,
+            onDismissRequest = { showDeleteConfirm = false },
+        )
     }
 
     preview?.let { current ->

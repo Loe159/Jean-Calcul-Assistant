@@ -13,28 +13,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.itos.coui.layout.Divider
 import io.github.mangi.eta.R
 import io.github.mangi.eta.agent.voice.validateSpeechSettings
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.data.model.AsrProvider
 import io.github.mangi.eta.data.model.SpeechSettings
-import io.github.mangi.eta.ui.app.LocalUiStyle
-import io.github.mangi.eta.ui.components.MiuixScaffoldPage
 import io.github.mangi.eta.ui.components.StatusError
 import io.github.mangi.eta.ui.components.coui.CouiButton
-import io.github.mangi.eta.ui.components.coui.CouiDropdownPreference
 import io.github.mangi.eta.ui.components.coui.CouiPageBottomSpacer
-import io.github.mangi.eta.ui.components.coui.CouiPreference
 import io.github.mangi.eta.ui.components.coui.CouiScaffoldPage
-import io.github.mangi.eta.ui.components.coui.CouiSwitchPreference
-import top.yukonga.miuix.kmp.basic.BasicComponent
-import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.preference.ArrowPreference
-import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
-import top.yukonga.miuix.kmp.preference.SwitchPreference
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.BasicComponent
+import io.github.suqi8.coui.kmp.basic.BasicComponentDefaults
+import io.github.suqi8.coui.kmp.preference.ArrowPreference
+import io.github.suqi8.coui.kmp.preference.OverlayDropdownPreference
+import io.github.suqi8.coui.kmp.preference.SwitchPreference
+import androidx.compose.foundation.layout.padding
+import io.github.suqi8.coui.kmp.basic.HorizontalDivider
 
 @Composable
 internal fun SpeechRecognitionScreen(onBack: () -> Unit, onOpenOss: () -> Unit) {
@@ -56,152 +49,68 @@ internal fun SpeechRecognitionScreen(onBack: () -> Unit, onOpenOss: () -> Unit) 
         AsrProvider.DOUBAO, AsrProvider.MIMO, AsrProvider.DEEPSEEK -> false
     }
 
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            CouiScaffoldPage(
-                title = stringResource(R.string.speech_recognition_title),
-                onBack = onBack,
-            ) {
-                if (!store.loaded) {
-                    SpeechLoadingState(store.message)
-                    return@CouiScaffoldPage
-                }
+    CouiScaffoldPage(
+        title = stringResource(R.string.speech_recognition_title),
+        onBack = onBack,
+    ) {
+        if (!store.loaded) {
+            SpeechLoadingState(store.message)
+            return@CouiScaffoldPage
+        }
+        SpeechGroupCard {
+            SwitchPreference(
+                title = stringResource(R.string.speech_recognition_enabled),
+                checked = settings.recognitionEnabled,
+                onCheckedChange = { store.edit(settings.copy(recognitionEnabled = it)) },
+            )
+        }
+        if (settings.recognitionEnabled) {
+            SpeechGroupCard(title = stringResource(R.string.speech_group_service)) {
+                OverlayDropdownPreference(
+                    title = stringResource(R.string.speech_service_and_model),
+                    items = asrLabels,
+                    selectedIndex = settings.asr.ordinal,
+                    onSelectedIndexChange = { index ->
+                        AsrProvider.entries.getOrNull(index)?.let { store.edit(settings.copy(asr = it)) }
+                    },
+                )
+            }
+            SpeechNote(stringResource(asrNoteRes))
+            SpeechConnectionSection(store, synthesis = false)
+            if (showQwenLanguage) {
                 SpeechGroupCard {
-                    CouiSwitchPreference(
-                        title = stringResource(R.string.speech_recognition_enabled),
-                        checked = settings.recognitionEnabled,
-                        onCheckedChange = { store.edit(settings.copy(recognitionEnabled = it)) },
-                    )
-                }
-                if (settings.recognitionEnabled) {
-                    SpeechGroupCard(title = stringResource(R.string.speech_group_service)) {
-                        CouiDropdownPreference(
-                            title = stringResource(R.string.speech_service_and_model),
-                            items = asrLabels,
-                            selectedIndex = settings.asr.ordinal,
-                            onSelectedIndexChange = { index ->
-                                AsrProvider.entries.getOrNull(index)?.let { store.edit(settings.copy(asr = it)) }
-                            },
-                        )
-                    }
-                    SpeechNote(stringResource(asrNoteRes))
-                    SpeechConnectionSection(store, synthesis = false)
-                    if (showQwenLanguage) {
-                        SpeechGroupCard {
-                            SpeechFieldColumn {
-                                SpeechField(
-                                    label = stringResource(R.string.speech_language_hint),
-                                    value = settings.language,
-                                    onChange = { store.edit(settings.copy(language = it.trim())) },
-                                )
-                            }
-                        }
-                    }
-                    SpeechResultSection(store)
-                    if (settings.asr == AsrProvider.QWEN_FILE) {
-                        SpeechGroupCard {
-                            CouiPreference(
-                                title = stringResource(R.string.speech_oss_title),
-                                summary = settings.oss.bucket.ifBlank { stringResource(R.string.speech_oss_configure) },
-                                onClick = onOpenOss,
-                            )
-                        }
-                    }
-                    SpeechRecognitionTestSection(store)
-                } else {
-                    SpeechNote(stringResource(R.string.speech_recognition_disabled_note))
-                }
-                SpeechSaveBlock(store) {
-                    validateSpeechSettings(
-                        store.settings,
-                        store.credentials,
-                        synthesis = false,
-                        hasProviderDeepSeekKey = store.hasProviderDeepSeekKey,
-                    )
-                }
-                CouiPageBottomSpacer()
-            }
-        }
-        AppearanceUiStyle.MIUIX -> {
-            MiuixScaffoldPage(
-                title = stringResource(R.string.speech_recognition_title),
-                onBack = onBack,
-                modifier = Modifier.imePadding(),
-            ) {
-                if (!store.loaded) {
-                    item(key = "loading") { SpeechLoadingState(store.message) }
-                    return@MiuixScaffoldPage
-                }
-                item(key = "recognition_enabled") {
-                    SpeechGroupCard {
-                        SwitchPreference(
-                            title = stringResource(R.string.speech_recognition_enabled),
-                            checked = settings.recognitionEnabled,
-                            onCheckedChange = { store.edit(settings.copy(recognitionEnabled = it)) },
+                    SpeechFieldColumn {
+                        SpeechField(
+                            label = stringResource(R.string.speech_language_hint),
+                            value = settings.language,
+                            onChange = { store.edit(settings.copy(language = it.trim())) },
                         )
                     }
                 }
-                if (settings.recognitionEnabled) {
-                    item(key = "service") {
-                        Column {
-                            SpeechGroupCard(title = stringResource(R.string.speech_group_service)) {
-                                OverlayDropdownPreference(
-                                    title = stringResource(R.string.speech_service_and_model),
-                                    items = asrLabels,
-                                    selectedIndex = settings.asr.ordinal,
-                                    onSelectedIndexChange = { index ->
-                                        AsrProvider.entries.getOrNull(index)?.let { store.edit(settings.copy(asr = it)) }
-                                    },
-                                )
-                            }
-                            SpeechNote(stringResource(asrNoteRes))
-                        }
-                    }
-                    item(key = "connection") {
-                        SpeechConnectionSection(store, synthesis = false)
-                    }
-                    if (showQwenLanguage) {
-                        item(key = "language") {
-                            SpeechGroupCard {
-                                SpeechFieldColumn {
-                                    SpeechField(
-                                        label = stringResource(R.string.speech_language_hint),
-                                        value = settings.language,
-                                        onChange = { store.edit(settings.copy(language = it.trim())) },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    item(key = "result") {
-                        SpeechResultSection(store)
-                    }
-                    if (settings.asr == AsrProvider.QWEN_FILE) {
-                        item(key = "oss") {
-                            SpeechGroupCard {
-                                ArrowPreference(
-                                    title = stringResource(R.string.speech_oss_title),
-                                    summary = settings.oss.bucket.ifBlank { stringResource(R.string.speech_oss_configure) },
-                                    onClick = onOpenOss,
-                                )
-                            }
-                        }
-                    }
-                    item(key = "test") {
-                        SpeechRecognitionTestSection(store)
-                    }
-                } else {
-                    item(key = "recognition_disabled_note") {
-                        SpeechNote(stringResource(R.string.speech_recognition_disabled_note))
-                    }
-                }
-                item(key = "save") {
-                    SpeechSaveBlock(store) {
-                        validateSpeechSettings(store.settings, store.credentials, synthesis = false)
-                    }
+            }
+            SpeechResultSection(store)
+            if (settings.asr == AsrProvider.QWEN_FILE) {
+                SpeechGroupCard {
+                    ArrowPreference(
+                        title = stringResource(R.string.speech_oss_title),
+                        summary = settings.oss.bucket.ifBlank { stringResource(R.string.speech_oss_configure) },
+                        onClick = onOpenOss,
+                    )
                 }
             }
+            SpeechRecognitionTestSection(store)
+        } else {
+            SpeechNote(stringResource(R.string.speech_recognition_disabled_note))
         }
+        SpeechSaveBlock(store) {
+            validateSpeechSettings(
+                store.settings,
+                store.credentials,
+                synthesis = false,
+                hasProviderDeepSeekKey = store.hasProviderDeepSeekKey,
+            )
+        }
+        CouiPageBottomSpacer()
     }
 }
 
@@ -220,47 +129,26 @@ private fun SpeechResultSection(store: SpeechSettingsStore) {
     val selectedOptionIndex = options.indexOf(settings.autoSendSilenceMs)
         .takeIf { it >= 0 }
         ?: options.indexOf(SpeechSettings.DEFAULT_AUTO_SEND_SILENCE_MS)
-    val uiStyle = LocalUiStyle.current
 
     Column {
         SpeechGroupCard(title = stringResource(R.string.speech_group_result)) {
             if (streaming) {
-                if (uiStyle == AppearanceUiStyle.COUI) {
-                    CouiDropdownPreference(
-                        title = stringResource(R.string.speech_auto_send_title),
-                        items = optionLabels,
-                        selectedIndex = selectedOptionIndex,
-                        onSelectedIndexChange = { index ->
-                            options.getOrNull(index)?.let { store.edit(settings.copy(autoSendSilenceMs = it)) }
-                        },
-                    )
-                    Divider()
-                } else {
-                    OverlayDropdownPreference(
-                        title = stringResource(R.string.speech_auto_send_title),
-                        items = optionLabels,
-                        selectedIndex = selectedOptionIndex,
-                        onSelectedIndexChange = { index ->
-                            options.getOrNull(index)?.let { store.edit(settings.copy(autoSendSilenceMs = it)) }
-                        },
-                    )
-                }
-            }
-            if (uiStyle == AppearanceUiStyle.COUI) {
-                CouiSwitchPreference(
-                    title = stringResource(R.string.speech_refine_title),
-                    summary = stringResource(R.string.speech_refine_summary),
-                    checked = settings.refineTranscript,
-                    onCheckedChange = { store.edit(settings.copy(refineTranscript = it)) },
+                OverlayDropdownPreference(
+                    title = stringResource(R.string.speech_auto_send_title),
+                    items = optionLabels,
+                    selectedIndex = selectedOptionIndex,
+                    onSelectedIndexChange = { index ->
+                        options.getOrNull(index)?.let { store.edit(settings.copy(autoSendSilenceMs = it)) }
+                    },
                 )
-            } else {
-                SwitchPreference(
-                    title = stringResource(R.string.speech_refine_title),
-                    summary = stringResource(R.string.speech_refine_summary),
-                    checked = settings.refineTranscript,
-                    onCheckedChange = { store.edit(settings.copy(refineTranscript = it)) },
-                )
+                HorizontalDivider(modifier = Modifier.padding(start = 16.dp, end = 16.dp))
             }
+            SwitchPreference(
+                title = stringResource(R.string.speech_refine_title),
+                summary = stringResource(R.string.speech_refine_summary),
+                checked = settings.refineTranscript,
+                onCheckedChange = { store.edit(settings.copy(refineTranscript = it)) },
+            )
         }
         if (streaming) SpeechNote(stringResource(R.string.speech_auto_send_note))
     }
@@ -276,52 +164,23 @@ private fun SpeechRecognitionTestSection(store: SpeechSettingsStore) {
 
     Column {
         SpeechGroupCard(title = stringResource(R.string.speech_test_recognition)) {
-            when (LocalUiStyle.current) {
-                AppearanceUiStyle.COUI -> {
-                    CouiPreference(
-                        title = title,
-                        summary = summary,
-                        summaryColor = if (state.error != null) StatusError else Color.Unspecified,
-                        enabled = !store.saving,
-                        showChevron = false,
-                        trailing = if (state.active) {
-                            {
-                                CouiButton(
-                                    text = stringResource(R.string.action_cancel),
-                                    onClick = { store.recognition.cancel() },
-                                    minHeight = 32.dp,
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                )
-                            }
-                        } else {
-                            null
-                        },
-                        onClick = { if (state.active) store.recognition.finish() else request() },
-                    )
-                }
-                AppearanceUiStyle.MIUIX -> {
-                    BasicComponent(
-                        title = title,
-                        summary = summary,
-                        summaryColor = BasicComponentDefaults.summaryColor(
-                            color = if (state.error != null) StatusError else MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        ),
-                        enabled = !store.saving,
-                        onClick = { if (state.active) store.recognition.finish() else request() },
-                        endActions = if (state.active) {
-                            {
-                                TextButton(
-                                    text = stringResource(R.string.action_cancel),
-                                    onClick = { store.recognition.cancel() },
-                                    minWidth = 0.dp,
-                                    minHeight = 32.dp,
-                                    insideMargin = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                )
-                            }
-                        } else null,
-                    )
-                }
-            }
+            BasicComponent(
+                title = title,
+                summary = summary,
+                summaryColor = BasicComponentDefaults.summaryColor(color = if (state.error != null) StatusError else Color.Unspecified),
+                endActions = {
+                    if (state.active) {
+                        CouiButton(
+                            text = stringResource(R.string.action_cancel),
+                            onClick = { store.recognition.cancel() },
+                            minHeight = 32.dp,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        )
+                    }
+                },
+                onClick = { if (state.active) store.recognition.finish() else request() },
+                enabled = !store.saving,
+            )
         }
         SpeechNote(stringResource(R.string.speech_test_note))
     }

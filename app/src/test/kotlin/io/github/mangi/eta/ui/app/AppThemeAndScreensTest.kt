@@ -8,7 +8,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -31,7 +30,7 @@ import io.github.mangi.eta.agent.overlay.AgentOverlayState
 import io.github.mangi.eta.agent.overlay.AgentOverlayStatus
 import io.github.mangi.eta.agent.overlay.AgentResultCard
 import io.github.mangi.eta.data.model.AppearanceSettings
-import io.github.mangi.eta.data.model.AppearanceUiStyle
+import io.github.mangi.eta.data.model.AppearanceThemeMode
 import io.github.mangi.eta.ui.AppearanceSettingsScreen
 import io.github.mangi.eta.ui.SettingsScreen
 import io.github.mangi.eta.ui.model.AgentMemoryUiState
@@ -72,39 +71,53 @@ import io.github.mangi.eta.ui.voice.SpeechSynthesisScreen
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.FixMethodOrder
 import org.junit.Test
+import org.junit.runners.MethodSorters
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.LooperMode
+import java.time.Duration
+import kotlin.math.abs
 
 @RunWith(RobolectricTestRunner::class)
 @Config(application = EtaApp::class, sdk = [36])
 @LooperMode(LooperMode.Mode.PAUSED)
-class UiStyleThemeAndScreensTest {
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+class AppThemeAndScreensTest {
 
     @Test
-    fun switchingUiStylePreservesStateAndSynchronizesPageAndDialogScaleWith100PercentBaseline() {
+    fun aScaleChangesPreserveStateAndSynchronizePageAndDialogScaleWith100PercentBaseline() {
         val controller = Robolectric.buildActivity(ComponentActivity::class.java).setup().visible()
         val activity = controller.get()
         val looper = shadowOf(Looper.getMainLooper())
         val baseDensity = activity.resources.configuration.densityDpi.toFloat() / DisplayMetrics.DENSITY_DEFAULT
 
         var appearance by mutableStateOf(
-            AppearanceSettings(
-                uiStyle = AppearanceUiStyle.COUI,
-                interfaceScale = 1.0f,
-            ),
+            AppearanceSettings(interfaceScale = 1.0f),
         )
-        var observedStyle by mutableStateOf<AppearanceUiStyle?>(null)
         var pageDensity by mutableStateOf(0f)
         var dialogDensity by mutableStateOf(0f)
         var mountCount = 0
         var latestDraft = ""
+        var updateDraft: ((String) -> Unit)? = null
+        var showDialog by mutableStateOf(false)
+        fun awaitComposition(condition: () -> Boolean) {
+            val deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos()
+            while (!condition() && System.nanoTime() < deadline) {
+                looper.idleFor(Duration.ofMillis(16))
+                measureAndLayoutActivity(activity)
+                looper.idle()
+                Thread.sleep(5)
+            }
+            assertTrue("Compose did not apply the pending state change", condition())
+        }
 
         try {
             activity.setContent {
@@ -113,53 +126,51 @@ class UiStyleThemeAndScreensTest {
                     applyInterfaceScale = true,
                 ) {
                     var draftText by rememberSaveable { mutableStateOf("initial-draft") }
-                    var counter by remember { mutableIntStateOf(1) }
-                    LaunchedEffect(Unit) {
-                        mountCount += 1
-                        draftText = "edited-draft-$counter"
-                    }
+                    remember { mountCount += 1; true }
+                    updateDraft = { draftText = it }
                     latestDraft = draftText
-                    observedStyle = LocalUiStyle.current
                     pageDensity = LocalDensity.current.density
                     Box(Modifier.size(100.dp))
-                    Dialog(onDismissRequest = {}) {
-                        dialogDensity = LocalDensity.current.density
-                        Box(Modifier.size(40.dp))
+                    if (showDialog) {
+                        Dialog(onDismissRequest = {}) {
+                            dialogDensity = LocalDensity.current.density
+                            Box(Modifier.size(40.dp))
+                        }
                     }
                 }
             }
             looper.idle()
             measureAndLayoutActivity(activity)
             looper.idle()
-
-            assertEquals(AppearanceUiStyle.COUI, observedStyle)
-            assertEquals(1, mountCount)
+            awaitComposition { mountCount == 1 }
+            assertEquals("pageDensity=$pageDensity dialogDensity=$dialogDensity latestDraft=$latestDraft", 1, mountCount)
+            updateDraft!!("edited-draft-1")
+            awaitComposition { latestDraft == "edited-draft-1" }
             assertEquals("edited-draft-1", latestDraft)
             assertEquals(baseDensity, pageDensity, 0.001f)
-            assertEquals(baseDensity, dialogDensity, 0.001f)
 
-            // 切换到 90% 缩放并切换 UI 样式到 Miuix：草稿与组合树状态保持不丢失，页面与独立窗口缩放一致
+            // 90% scale and dark theme: the draft and composition state survive, page and dialog windows agree.
             appearance = appearance.copy(
-                uiStyle = AppearanceUiStyle.MIUIX,
+                themeMode = AppearanceThemeMode.DARK,
                 interfaceScale = 0.9f,
             )
-            looper.idle()
-            measureAndLayoutActivity(activity)
-            looper.idle()
+            awaitComposition { abs(pageDensity - baseDensity * 0.9f) < 0.001f }
 
-            assertEquals(AppearanceUiStyle.COUI, observedStyle)
             assertEquals(1, mountCount)
             assertEquals("edited-draft-1", latestDraft)
             assertEquals(baseDensity * 0.9f, pageDensity, 0.001f)
             assertEquals(baseDensity * 0.9f, activity.resources.displayMetrics.density, 0.001f)
+            showDialog = true
+            awaitComposition { abs(dialogDensity - baseDensity * 0.9f) < 0.001f }
+            assertEquals(baseDensity * 0.9f, dialogDensity, 0.001f)
+            showDialog = false
 
-            // 再切回 COUI：状态依然保持不变
-            appearance = appearance.copy(uiStyle = AppearanceUiStyle.COUI)
+            // Back to the light theme: the state is still kept.
+            appearance = appearance.copy(themeMode = AppearanceThemeMode.LIGHT)
             looper.idle()
             measureAndLayoutActivity(activity)
             looper.idle()
 
-            assertEquals(AppearanceUiStyle.COUI, observedStyle)
             assertEquals(1, mountCount)
             assertEquals("edited-draft-1", latestDraft)
         } finally {
@@ -168,12 +179,12 @@ class UiStyleThemeAndScreensTest {
     }
 
     @Test
-    fun primaryAndSecondaryScreensComposeAndInteractAcrossCouiAndMiuix() {
+    fun primaryAndSecondaryScreensComposeAndInteractInLightAndDarkThemes() {
         val controller = Robolectric.buildActivity(ComponentActivity::class.java).setup().visible()
         val activity = controller.get()
         val looper = shadowOf(Looper.getMainLooper())
 
-        var uiStyle by mutableStateOf(AppearanceUiStyle.COUI)
+        var themeMode by mutableStateOf(AppearanceThemeMode.LIGHT)
         var screenIndex by mutableIntStateOf(0)
         var backPressedCount = 0
 
@@ -227,7 +238,7 @@ class UiStyleThemeAndScreensTest {
         try {
             activity.setContent {
                 AgentAppTheme(
-                    appearance = AppearanceSettings(uiStyle = uiStyle),
+                    appearance = AppearanceSettings(themeMode = themeMode),
                     applyInterfaceScale = true,
                 ) {
                     when (screenIndex) {
@@ -283,22 +294,22 @@ class UiStyleThemeAndScreensTest {
 
             for (index in 0..29) {
                 screenIndex = index
-                for (style in listOf(AppearanceUiStyle.COUI, AppearanceUiStyle.MIUIX)) {
-                    uiStyle = style
+                for (mode in listOf(AppearanceThemeMode.LIGHT, AppearanceThemeMode.DARK)) {
+                    themeMode = mode
                     looper.idle()
                     measureAndLayoutActivity(activity)
                     looper.idle()
                     val nodes = collectSemanticsNodes(activity.window.decorView)
                     assertTrue(
-                        "Expected non-empty semantics tree for screenIndex=$index, style=$style",
+                        "Expected non-empty semantics tree for screenIndex=$index, theme=$mode",
                         nodes.isNotEmpty(),
                     )
                 }
             }
 
-            // 验证 AppearanceSettingsScreen 在 COUI 模式下的返回按钮语义点击可触发 onBack
+            // The back button of AppearanceSettingsScreen triggers onBack through its click semantics.
             screenIndex = 0
-            uiStyle = AppearanceUiStyle.COUI
+            themeMode = AppearanceThemeMode.LIGHT
             looper.idle()
             measureAndLayoutActivity(activity)
             looper.idle()
@@ -311,6 +322,8 @@ class UiStyleThemeAndScreensTest {
             assertEquals(true, clicked)
             assertEquals(1, backPressedCount)
         } finally {
+            storeScope.cancel()
+            BrowserSessionRegistry.requestRemove("test-session")
             controller.pause().stop().destroy()
         }
     }

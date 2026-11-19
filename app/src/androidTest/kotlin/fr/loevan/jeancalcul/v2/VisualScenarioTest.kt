@@ -75,15 +75,27 @@ class VisualScenarioTest {
                         assertTrue(device.wait(Until.hasObject(By.text(context.getString(R.string.ui_model_provider_e8c7f5))), 10000))
                         if (scenario == "notifications") {
                             val target = By.text("Notifications intelligentes")
-                            var attempts = 0
-                            while (!device.hasObject(target) && attempts++ < 15) {
-                                device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
-                                    device.displayWidth / 2, device.displayHeight / 3, 26)
-                                device.waitForIdle(750)
+                            val safeTop = device.displayHeight / 4
+                            val safeBottom = device.displayHeight * 3 / 4
+                            fun visibleTarget() = device.findObject(target)?.takeIf { row ->
+                                row.visibleBounds.height() > 0 &&
+                                    row.visibleBounds.centerY() in safeTop..safeBottom
                             }
-                            val item = device.wait(Until.findObject(target), 10000)
+                            var item = visibleTarget()
+                            for (reverse in listOf(false, true)) {
+                                if (item != null) break
+                                for (step in 0 until 24) {
+                                    val startY = if (reverse) device.displayHeight / 4 else device.displayHeight * 3 / 4
+                                    device.swipe(device.displayWidth / 2, startY,
+                                        device.displayWidth / 2, device.displayHeight / 2, 30)
+                                    device.waitForIdle(750)
+                                    item = visibleTarget()
+                                    if (item != null) break
+                                }
+                            }
+                            val notificationRow = item
                                 ?: throw AssertionError("Notification preferences are not reachable")
-                            item.click()
+                            notificationRow.click()
                             assertTrue("Offline model install entry should appear",
                                 device.wait(Until.hasObject(By.text("Installer le modèle")), 10000))
                             assertTrue("Manual input should be visible",
@@ -93,12 +105,12 @@ class VisualScenarioTest {
                             var modeScrolls = 0
                             var prudentSeen = false
                             var personalSeen = false
-                            while (modeScrolls++ < 12) {
+                            while (modeScrolls++ < 24) {
                                 prudentSeen = prudentSeen || device.hasObject(safeMode)
                                 personalSeen = personalSeen || device.hasObject(personalMode)
                                 if (prudentSeen && personalSeen) break
                                 device.swipe(device.displayWidth / 2, device.displayHeight * 3 / 4,
-                                    device.displayWidth / 2, device.displayHeight / 3, 26)
+                                    device.displayWidth / 2, device.displayHeight / 2, 30)
                                 device.waitForIdle(750)
                             }
                             assertTrue("Prudent mode must be reachable", prudentSeen)
@@ -208,23 +220,22 @@ class VisualScenarioTest {
                         }
                         assertTrue("Expanded group exposes the actual notification title",
                             device.wait(Until.hasObject(By.text("Test de sécurité")), 5000))
-                        var remove = device.wait(Until.findObject(By.desc("Retirer du briefing")), 8000)
-                            ?: throw AssertionError("Explicit dismissal control missing")
-                        attempts = 0
-                        while (remove.visibleBounds.centerY() !in
-                                device.displayHeight / 4..device.displayHeight * 3 / 4 &&
-                            attempts++ < 6
-                        ) {
-                            device.swipe(
-                                device.displayWidth / 2, device.displayHeight * 3 / 4,
-                                device.displayWidth / 2, device.displayHeight / 3, 26,
-                            )
-                            remove = device.wait(Until.findObject(By.desc("Retirer du briefing")), 5000)
-                                ?: throw AssertionError("Dismiss button disappeared")
-                        }
+                        val firstEntry = device.findObject(By.text("Test de sécurité"))
+                        val firstBounds = firstEntry.visibleBounds
+                        device.swipe(firstBounds.right - 16, firstBounds.centerY(),
+                            firstBounds.right - device.displayWidth / 4, firstBounds.centerY(), 24)
+                        val remove = device.wait(Until.findObject(By.desc(context.getString(R.string.brief_remove_action))), 8000)
+                            ?: throw AssertionError("COUI removal action did not appear after swipe")
                         remove.click()
                         assertTrue("Only one entry should be removed",
                             device.wait(Until.hasObject(By.textContains("2 affichées")), 8000))
+                        val secondEntry = device.wait(Until.findObject(By.text("Mise à jour")), 5000)
+                            ?: throw AssertionError("Remaining entry disappeared")
+                        val secondBounds = secondEntry.visibleBounds
+                        device.swipe(device.displayWidth - 56, secondBounds.centerY(),
+                            56, secondBounds.centerY(), 12)
+                        assertTrue("COUI overswipe should remove the second entry",
+                            device.wait(Until.hasObject(By.textContains("1 affichée")), 8000))
                     }
                     "menu" -> {
                         assertTrue("New conversation is a direct toolbar action",

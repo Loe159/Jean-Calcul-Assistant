@@ -16,7 +16,7 @@ class AppRouteSerializationTest {
     }
 
     @Test
-    fun allRoutesRoundTripWithMiuixNavJsonConfiguration() {
+    fun allRoutesRoundTripWithCouiNavJsonConfiguration() {
         val routes = listOf<AppRoute>(
             AppRoute.Home,
             AppRoute.Browser(),

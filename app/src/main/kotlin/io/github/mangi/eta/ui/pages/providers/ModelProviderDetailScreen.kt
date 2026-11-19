@@ -33,15 +33,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.itos.coui.layout.CouiPageDefaults
-import com.itos.coui.layout.Divider
-import com.itos.coui.layout.Group
-import com.itos.coui.text.CouiTextKind
-import com.itos.coui.text.Text as CouiText
 import io.github.mangi.eta.EtaApp
 import io.github.mangi.eta.R
 import io.github.mangi.eta.data.model.AnthropicProviderSetting
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.data.model.CustomProviderSetting
 import io.github.mangi.eta.data.model.GeminiProviderSetting
 import io.github.mangi.eta.data.model.OpenAiEndpointMode
@@ -50,11 +44,6 @@ import io.github.mangi.eta.data.model.withId
 import io.github.mangi.eta.data.repository.ProviderRepository
 import io.github.mangi.eta.data.repository.RemoteModelFetcher
 import io.github.mangi.eta.data.repository.RuntimeConfigRepository
-import io.github.mangi.eta.ui.app.LocalUiStyle
-import io.github.mangi.eta.ui.components.MiuixDialogActions
-import io.github.mangi.eta.ui.components.MiuixPageBottomSpacer
-import io.github.mangi.eta.ui.components.MiuixScaffold
-import io.github.mangi.eta.ui.components.MiuixScaffoldPage
 import io.github.mangi.eta.ui.components.StatusError
 import io.github.mangi.eta.ui.components.StatusSuccess
 import io.github.mangi.eta.ui.components.coui.CouiButton
@@ -62,29 +51,25 @@ import io.github.mangi.eta.ui.components.coui.CouiButtonRole
 import io.github.mangi.eta.ui.components.coui.CouiChipTabs
 import io.github.mangi.eta.ui.components.coui.CouiConfirmDialog
 import io.github.mangi.eta.ui.components.coui.CouiPageBottomSpacer
-import io.github.mangi.eta.ui.components.coui.CouiPreference
 import io.github.mangi.eta.ui.components.coui.CouiScaffold
 import io.github.mangi.eta.ui.components.coui.CouiScaffoldPage
-import io.github.mangi.eta.ui.components.coui.CouiSwitchPreference
 import io.github.mangi.eta.ui.components.coui.CouiTextField
 import io.github.mangi.eta.ui.layout.horizontalCutoutPadding
 import io.github.mangi.eta.ui.navigation.NewProviderType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.BasicComponent
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
-import top.yukonga.miuix.kmp.basic.ScrollBehavior
-import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.TabRow
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.TextField
-import top.yukonga.miuix.kmp.overlay.OverlayDialog
-import top.yukonga.miuix.kmp.preference.SwitchPreference
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.utils.overScrollVertical
-import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import io.github.suqi8.coui.kmp.basic.ScrollBehavior
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.preference.SwitchPreference
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import io.github.suqi8.coui.kmp.utils.overScrollVertical
+import io.github.suqi8.coui.kmp.utils.scrollEndHaptic
+import io.github.suqi8.coui.kmp.basic.Card
+import io.github.suqi8.coui.kmp.basic.CardListGroup
+import io.github.suqi8.coui.kmp.basic.HorizontalDivider
+import io.github.suqi8.coui.kmp.preference.ArrowPreference
+import io.github.suqi8.coui.kmp.preference.PreferenceCategory
 
 @Composable
 internal fun ModelProviderDetailScreen(
@@ -126,46 +111,24 @@ internal fun ModelProviderDetailScreen(
     }
 
     if (provider == null && draft == null) {
-        when (LocalUiStyle.current) {
-            AppearanceUiStyle.COUI -> {
-                CouiScaffoldPage(
-                    title = stringResource(R.string.route_provider_details),
-                    onBack = onBack,
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text(stringResource(R.string.ui_provider_does_not_exist_83cee6))
-                        Spacer(modifier = Modifier.height(12.dp))
-                        CouiButton(
-                            text = stringResource(R.string.ui_return_11d024),
-                            onClick = onBack,
-                            role = CouiButtonRole.Primary,
-                        )
-                    }
-                }
-            }
-            AppearanceUiStyle.MIUIX -> {
-                MiuixScaffoldPage(
-                    title = stringResource(R.string.route_provider_details),
-                    onBack = onBack,
-                ) {
-                    item(key = "missing_provider") {
-                        Column(
-                            modifier = Modifier.fillParentMaxSize().padding(24.dp),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Text(stringResource(R.string.ui_provider_does_not_exist_83cee6))
-                            Spacer(modifier = Modifier.height(12.dp))
-                            TextButton(text = stringResource(R.string.ui_return_11d024), onClick = onBack)
-                        }
-                    }
-                }
+        CouiScaffoldPage(
+            title = stringResource(R.string.route_provider_details),
+            onBack = onBack,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(stringResource(R.string.ui_provider_does_not_exist_83cee6))
+                Spacer(modifier = Modifier.height(12.dp))
+                CouiButton(
+                    text = stringResource(R.string.ui_return_11d024),
+                    onClick = onBack,
+                    role = CouiButtonRole.Primary,
+                )
             }
         }
         return
@@ -186,90 +149,41 @@ internal fun ModelProviderDetailScreen(
         context.getString(R.string.page_model_98fd0c),
     )
 
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            CouiScaffold(title = title, onBack = onBack, compactTitle = true) { contentPadding, _, nestedScrollConnection, sidePadding ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .horizontalCutoutPadding()
-                        .padding(top = contentPadding.calculateTopPadding()),
-                ) {
-                    if (!isNew) {
-                        CouiChipTabs(
-                            items = tabs.mapIndexed { index, label -> index to label },
-                            selectedKey = currentTab,
-                            onSelectedKeyChange = { currentTab = it },
-                            modifier = Modifier.padding(horizontal = sidePadding),
-                        )
-                    }
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                        when (currentTab) {
-                            0 -> ProviderConfigTab(
-                                provider = initial,
-                                draft = configDraft,
-                                onDraftChange = { configDraft = it },
-                                scope = scope,
-                                isNew = isNew,
-                                nestedScrollConnection = nestedScrollConnection,
-                                contentSidePadding = sidePadding,
-                                onCreated = { id -> createdId = id },
-                                onDeleted = onBack,
-                            )
-                            1 -> if (!isNew) {
-                                ProviderModelsTab(
-                                    provider = initial,
-                                    scope = scope,
-                                    nestedScrollConnection = nestedScrollConnection,
-                                    contentSidePadding = sidePadding,
-                                )
-                            }
-                        }
-                    }
-                }
+    CouiScaffold(title = title, onBack = onBack, compactTitle = true) { contentPadding, _, nestedScrollConnection, sidePadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .horizontalCutoutPadding()
+                .padding(top = contentPadding.calculateTopPadding()),
+        ) {
+            if (!isNew) {
+                CouiChipTabs(
+                    items = tabs.mapIndexed { index, label -> index to label },
+                    selectedKey = currentTab,
+                    onSelectedKeyChange = { currentTab = it },
+                    modifier = Modifier.padding(horizontal = sidePadding),
+                )
             }
-        }
-        AppearanceUiStyle.MIUIX -> {
-            MiuixScaffold(title = title, onBack = onBack) { paddingValues, scrollBehavior, sidePadding ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .horizontalCutoutPadding()
-                        .padding(top = paddingValues.calculateTopPadding()),
-                ) {
-                    if (!isNew) {
-                        TabRow(
-                            tabs = tabs,
-                            selectedTabIndex = currentTab,
-                            onTabSelected = { currentTab = it },
-                            modifier = Modifier.padding(
-                                horizontal = sidePadding + 12.dp,
-                                vertical = 8.dp,
-                            ),
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                when (currentTab) {
+                    0 -> ProviderConfigTab(
+                        provider = initial,
+                        draft = configDraft,
+                        onDraftChange = { configDraft = it },
+                        scope = scope,
+                        isNew = isNew,
+                        nestedScrollConnection = nestedScrollConnection,
+                        contentSidePadding = sidePadding,
+                        onCreated = { id -> createdId = id },
+                        onDeleted = onBack,
+                    )
+                    1 -> if (!isNew) {
+                        ProviderModelsTab(
+                            provider = initial,
+                            scope = scope,
+                            nestedScrollConnection = nestedScrollConnection,
+                            contentSidePadding = sidePadding,
                         )
-                    }
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                        when (currentTab) {
-                            0 -> ProviderConfigTab(
-                                provider = initial,
-                                draft = configDraft,
-                                onDraftChange = { configDraft = it },
-                                scope = scope,
-                                isNew = isNew,
-                                scrollBehavior = scrollBehavior,
-                                contentSidePadding = sidePadding,
-                                onCreated = { id -> createdId = id },
-                                onDeleted = onBack,
-                            )
-                            1 -> if (!isNew) {
-                                ProviderModelsTab(
-                                    provider = initial,
-                                    scope = scope,
-                                    scrollBehavior = scrollBehavior,
-                                    contentSidePadding = sidePadding,
-                                )
-                            }
-                        }
                     }
                 }
             }
@@ -291,7 +205,6 @@ private fun ProviderConfigTab(
     onDeleted: () -> Unit,
 ) {
     val context = LocalContext.current
-    val uiStyle = LocalUiStyle.current
     var headersExpanded by rememberSaveable { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     var testStatus by remember { mutableStateOf<String?>(null) }
@@ -424,22 +337,13 @@ private fun ProviderConfigTab(
                     onDisconnect = loginStore::disconnect,
                     onCancel = loginStore::cancel,
                 )
-                if (uiStyle == AppearanceUiStyle.COUI) {
-                    Divider()
-                    CouiPreference(
-                        title = stringResource(R.string.ui_test_connection_10b7d8),
-                        summary = testStatus,
-                        enabled = !isWorking && !loginState.isBusy,
-                        onClick = onTestConnection,
-                    )
-                } else {
-                    BasicComponent(
-                        title = stringResource(R.string.ui_test_connection_10b7d8),
-                        summary = testStatus,
-                        enabled = !isWorking && !loginState.isBusy,
-                        onClick = onTestConnection,
-                    )
-                }
+                HorizontalDivider(modifier = Modifier.padding(start = 16.dp, end = 16.dp))
+                ArrowPreference(
+                    title = stringResource(R.string.ui_test_connection_10b7d8),
+                    summary = testStatus,
+                    onClick = onTestConnection,
+                    enabled = !isWorking && !loginState.isBusy,
+                )
             }
         }
 
@@ -452,50 +356,31 @@ private fun ProviderConfigTab(
 
         item(key = "preferences_and_prompt") {
             ProviderSection(title = stringResource(R.string.ui_preferences_and_strategies_2abd3c)) {
-                if (uiStyle == AppearanceUiStyle.COUI) {
-                    CouiSwitchPreference(
-                        title = stringResource(R.string.ui_enable_this_provider_683a76),
-                        checked = draft.isEnabled,
-                        onCheckedChange = { onDraftChange(draft.copy(isEnabled = it)) },
-                    )
-                } else {
-                    SwitchPreference(
-                        title = stringResource(R.string.ui_enable_this_provider_683a76),
-                        checked = draft.isEnabled,
-                        onCheckedChange = { onDraftChange(draft.copy(isEnabled = it)) },
-                    )
-                }
+                SwitchPreference(
+                    title = stringResource(R.string.ui_enable_this_provider_683a76),
+                    checked = draft.isEnabled,
+                    onCheckedChange = { onDraftChange(draft.copy(isEnabled = it)) },
+                )
             }
-            if (uiStyle == AppearanceUiStyle.COUI) {
-                Group(title = stringResource(R.string.ui_system_prompt_word_193981)) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = CouiPageDefaults.rowPadding, vertical = 12.dp),
-                    ) {
-                        CouiTextField(
-                            value = draft.systemPrompt,
-                            onValueChange = { onDraftChange(draft.copy(systemPrompt = it)) },
-                            placeholder = stringResource(R.string.ui_leave_blank_to_use_the_default_mobile_agent_prompt_w_21e7c8),
-                            singleLine = false,
-                            minLines = 4,
-                        )
+            PreferenceCategory(title = stringResource(R.string.ui_system_prompt_word_193981))
+            Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+                CardListGroup {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                        ) {
+                            CouiTextField(
+                                value = draft.systemPrompt,
+                                onValueChange = { onDraftChange(draft.copy(systemPrompt = it)) },
+                                placeholder = stringResource(R.string.ui_leave_blank_to_use_the_default_mobile_agent_prompt_w_21e7c8),
+                                singleLine = false,
+                                minLines = 4,
+                            )
+                        }
                     }
                 }
-            } else {
-                SmallTitle(text = stringResource(R.string.ui_system_prompt_word_193981))
-                TextField(
-                    value = draft.systemPrompt,
-                    onValueChange = { onDraftChange(draft.copy(systemPrompt = it)) },
-                    label = stringResource(R.string.ui_leave_blank_to_use_the_default_mobile_agent_prompt_w_21e7c8),
-                    useLabelAsPlaceholder = true,
-                    singleLine = false,
-                    minLines = 4,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
-                        .padding(bottom = 12.dp),
-                )
             }
         }
 
@@ -514,57 +399,33 @@ private fun ProviderConfigTab(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = if (uiStyle == AppearanceUiStyle.COUI) CouiPageDefaults.horizontalMargin else 12.dp)
+                    .padding(horizontal = 16.dp)
                     .padding(top = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                if (uiStyle == AppearanceUiStyle.COUI) {
+                CouiButton(
+                    text = saveText,
+                    enabled = !isWorking && !loginState.isBusy && !creationCommitted,
+                    role = CouiButtonRole.Primary,
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onSaveOrCreate,
+                )
+                if (!isNew) {
+                    Spacer(modifier = Modifier.height(12.dp))
                     CouiButton(
-                        text = saveText,
-                        enabled = !isWorking && !loginState.isBusy && !creationCommitted,
-                        role = CouiButtonRole.Primary,
+                        text = removeText,
+                        enabled = !isWorking && !loginState.isBusy,
+                        role = CouiButtonRole.Destructive,
                         modifier = Modifier.fillMaxWidth(),
-                        onClick = onSaveOrCreate,
+                        onClick = {
+                            if (provider.isBuiltIn) showResetDialog = true else showDeleteDialog = true
+                        },
                     )
-                    if (!isNew) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        CouiButton(
-                            text = removeText,
-                            enabled = !isWorking && !loginState.isBusy,
-                            role = CouiButtonRole.Destructive,
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = {
-                                if (provider.isBuiltIn) showResetDialog = true else showDeleteDialog = true
-                            },
-                        )
-                    }
-                } else {
-                    TextButton(
-                        text = saveText,
-                        enabled = !isWorking && !loginState.isBusy && !creationCommitted,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.textButtonColorsPrimary(),
-                        onClick = onSaveOrCreate,
-                    )
-                    if (!isNew) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        TextButton(
-                            text = removeText,
-                            enabled = !isWorking && !loginState.isBusy,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.textButtonColors(
-                                textColor = MiuixTheme.colorScheme.error,
-                            ),
-                            onClick = {
-                                if (provider.isBuiltIn) showResetDialog = true else showDeleteDialog = true
-                            },
-                        )
-                    }
                 }
                 status?.let { message ->
                     Text(
                         text = message,
-                        style = MiuixTheme.textStyles.footnote2,
+                        style = COUITheme.textStyles.bodyXS,
                         color = if (message.startsWith(context.getString(R.string.page_fail_3e3c80))) StatusError else StatusSuccess,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 8.dp),
@@ -574,11 +435,7 @@ private fun ProviderConfigTab(
         }
 
         item(key = "bottom_spacer") {
-            if (uiStyle == AppearanceUiStyle.COUI) {
-                CouiPageBottomSpacer()
-            } else {
-                MiuixPageBottomSpacer()
-            }
+            CouiPageBottomSpacer()
         }
     }
 
@@ -605,38 +462,17 @@ private fun ProviderConfigTab(
                 }
             }
         }
-        when (uiStyle) {
-            AppearanceUiStyle.COUI -> {
-                CouiConfirmDialog(
-                    visible = true,
-                    title = stringResource(R.string.ui_remove_provider_9f848f),
-                    message = stringResource(R.string.provider_delete_summary, provider.name),
-                    confirmText = deleteConfirmText,
-                    confirmEnabled = !isWorking,
-                    cancelEnabled = !isWorking,
-                    destructive = true,
-                    onConfirm = onConfirmDelete,
-                    onDismissRequest = { if (!isWorking) showDeleteDialog = false },
-                )
-            }
-            AppearanceUiStyle.MIUIX -> {
-                OverlayDialog(
-                    show = true,
-                    title = stringResource(R.string.ui_remove_provider_9f848f),
-                    summary = stringResource(R.string.provider_delete_summary, provider.name),
-                    onDismissRequest = { if (!isWorking) showDeleteDialog = false },
-                ) {
-                    MiuixDialogActions(
-                        confirmText = deleteConfirmText,
-                        cancelEnabled = !isWorking,
-                        confirmEnabled = !isWorking,
-                        destructive = true,
-                        onCancel = { showDeleteDialog = false },
-                        onConfirm = onConfirmDelete,
-                    )
-                }
-            }
-        }
+        CouiConfirmDialog(
+            visible = true,
+            title = stringResource(R.string.ui_remove_provider_9f848f),
+            message = stringResource(R.string.provider_delete_summary, provider.name),
+            confirmText = deleteConfirmText,
+            confirmEnabled = !isWorking,
+            cancelEnabled = !isWorking,
+            destructive = true,
+            onConfirm = onConfirmDelete,
+            onDismissRequest = { if (!isWorking) showDeleteDialog = false },
+        )
     }
 
     if (showResetDialog) {
@@ -662,38 +498,17 @@ private fun ProviderConfigTab(
                 }
             }
         }
-        when (uiStyle) {
-            AppearanceUiStyle.COUI -> {
-                CouiConfirmDialog(
-                    visible = true,
-                    title = stringResource(R.string.ui_reset_built_in_configuration_35b6ec),
-                    message = stringResource(R.string.provider_reset_summary, provider.name),
-                    confirmText = resetConfirmText,
-                    confirmEnabled = !isWorking,
-                    cancelEnabled = !isWorking,
-                    destructive = true,
-                    onConfirm = onConfirmReset,
-                    onDismissRequest = { if (!isWorking) showResetDialog = false },
-                )
-            }
-            AppearanceUiStyle.MIUIX -> {
-                OverlayDialog(
-                    show = true,
-                    title = stringResource(R.string.ui_reset_built_in_configuration_35b6ec),
-                    summary = stringResource(R.string.provider_reset_summary, provider.name),
-                    onDismissRequest = { if (!isWorking) showResetDialog = false },
-                ) {
-                    MiuixDialogActions(
-                        confirmText = resetConfirmText,
-                        cancelEnabled = !isWorking,
-                        confirmEnabled = !isWorking,
-                        destructive = true,
-                        onCancel = { showResetDialog = false },
-                        onConfirm = onConfirmReset,
-                    )
-                }
-            }
-        }
+        CouiConfirmDialog(
+            visible = true,
+            title = stringResource(R.string.ui_reset_built_in_configuration_35b6ec),
+            message = stringResource(R.string.provider_reset_summary, provider.name),
+            confirmText = resetConfirmText,
+            confirmEnabled = !isWorking,
+            cancelEnabled = !isWorking,
+            destructive = true,
+            onConfirm = onConfirmReset,
+            onDismissRequest = { if (!isWorking) showResetDialog = false },
+        )
     }
 }
 

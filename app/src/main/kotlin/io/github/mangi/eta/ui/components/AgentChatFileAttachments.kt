@@ -53,31 +53,22 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import com.itos.coui.menu.CouiMenuItem
-import com.itos.coui.menu.Menu
-import com.itos.coui.menu.couiMenuAnchor
-import com.itos.coui.menu.rememberCouiMenuAnchor
 import io.github.mangi.eta.R
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.Image
+import io.github.suqi8.coui.kmp.basic.DropdownEntry
+import io.github.suqi8.coui.kmp.basic.DropdownItem
+import io.github.suqi8.coui.kmp.menu.OverlayIconDropdownMenu
 import io.github.mangi.eta.agent.model.AgentFileReference
 import io.github.mangi.eta.agent.model.AgentFileReferenceKind
-import io.github.mangi.eta.data.model.AppearanceUiStyle
-import io.github.mangi.eta.ui.app.LocalUiStyle
 import io.github.mangi.eta.ui.components.coui.CouiInputDialog
 import io.github.mangi.eta.ui.model.PendingFileReferenceUi
-import top.yukonga.miuix.kmp.basic.DropdownImpl
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.ListPopupColumn
-import top.yukonga.miuix.kmp.basic.PopupPositionProvider
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextField
-import top.yukonga.miuix.kmp.squircle.squircleBorder
-import top.yukonga.miuix.kmp.squircle.squircleSurface
-import top.yukonga.miuix.kmp.theme.LocalDismissState
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.layout.DialogDefaults
-import top.yukonga.miuix.kmp.window.WindowDialog
-import top.yukonga.miuix.kmp.window.WindowListPopup
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.squircle.squircleBorder
+import io.github.suqi8.coui.kmp.squircle.squircleSurface
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 internal val ChatInputPopupMargin = 8.dp
 internal val ChatInputActionSize = 40.dp
@@ -85,7 +76,6 @@ internal val ChatInputActionIconSize = 24.dp
 
 @Composable
 internal fun AgentAttachmentPickerButton(
-    popupAnchorTopPx: Int,
     popupMaxHeight: Dp,
     onAttachImage: (String) -> Unit,
     onAttachFiles: (List<String>) -> Unit,
@@ -94,7 +84,6 @@ internal fun AgentAttachmentPickerButton(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    var showPopup by remember { mutableStateOf(false) }
     var showPathDialog by remember { mutableStateOf(false) }
     var pathInput by remember { mutableStateOf("") }
     val photoPicker = rememberLauncherForActivityResult(
@@ -121,12 +110,11 @@ internal fun AgentAttachmentPickerButton(
         if (uri != null) onAttachFolder(uri.toString())
     }
 
-    val anchor = rememberCouiMenuAnchor()
     val options = listOf(
-        stringResource(R.string.attachment_image),
-        stringResource(R.string.attachment_file),
-        stringResource(R.string.attachment_folder),
-        stringResource(R.string.attachment_enter_path),
+        Icons.Rounded.Image to stringResource(R.string.attachment_image),
+        Icons.Rounded.Description to stringResource(R.string.attachment_file),
+        Icons.Rounded.Folder to stringResource(R.string.attachment_folder),
+        Icons.Rounded.Edit to stringResource(R.string.attachment_enter_path),
     )
     val onSelectOption: (Int) -> Unit = { index ->
         when (index) {
@@ -142,118 +130,46 @@ internal fun AgentAttachmentPickerButton(
         }
     }
 
-    Box(modifier = modifier) {
-        IconButton(
-            onClick = { anchor.open { showPopup = true } },
-            minWidth = 34.dp,
-            minHeight = 34.dp,
-            modifier = Modifier.couiMenuAnchor(anchor),
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Add,
-                contentDescription = stringResource(R.string.ui_add_attachment_dba9e8),
-                modifier = Modifier.size(21.dp),
-                tint = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.72f),
+    val entry = DropdownEntry(
+        items = options.mapIndexed { index, (icon, label) ->
+            DropdownItem(
+                text = label,
+                icon = { iconModifier -> Icon(icon, contentDescription = null, modifier = iconModifier) },
+                onClick = { onSelectOption(index) },
             )
-        }
-        when (LocalUiStyle.current) {
-            AppearanceUiStyle.COUI -> {
-                val menuItems = remember(options) {
-                    options.mapIndexed { index, label -> CouiMenuItem(value = index, text = label) }
-                }
-                Menu(
-                    expanded = showPopup,
-                    onDismissRequest = { showPopup = false },
-                    items = menuItems,
-                    onItemClick = { item ->
-                        showPopup = false
-                        onSelectOption(item.value)
-                    },
-                    anchor = anchor,
-                )
-            }
-            AppearanceUiStyle.MIUIX -> {
-                WindowListPopup(
-                    show = showPopup && popupAnchorTopPx > 0,
-                    popupPositionProvider = remember(popupAnchorTopPx) {
-                        InputPopupPositionProvider(popupAnchorTopPx)
-                    },
-                    alignment = PopupPositionProvider.Align.TopStart,
-                    onDismissRequest = { showPopup = false },
-                    maxHeight = popupMaxHeight,
-                ) {
-                    val dismiss = LocalDismissState.current
-                    ListPopupColumn {
-                        options.forEachIndexed { index, option ->
-                            DropdownImpl(
-                                text = option,
-                                optionSize = options.size,
-                                isSelected = false,
-                                index = index,
-                                onSelectedIndexChange = {
-                                    dismiss?.invoke()
-                                    onSelectOption(index)
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        },
+    )
+    OverlayIconDropdownMenu(
+        entry = entry,
+        modifier = modifier,
+        maxHeight = popupMaxHeight,
+        minWidth = 34.dp,
+        minHeight = 34.dp,
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Add,
+            contentDescription = stringResource(R.string.ui_add_attachment_dba9e8),
+            modifier = Modifier.size(21.dp),
+            tint = COUITheme.colorScheme.labelPrimary.copy(alpha = 0.72f),
+        )
     }
 
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            CouiInputDialog(
-                visible = showPathDialog,
-                title = stringResource(R.string.ui_input_file_path_36d474),
-                message = stringResource(R.string.ui_supports_files_and_folders_under_internal_storage_or_520786),
-                value = pathInput,
-                onValueChange = { pathInput = it },
-                placeholder = stringResource(R.string.ui_absolute_path_9ac6fc),
-                confirmText = stringResource(R.string.attachment_add),
-                confirmEnabled = pathInput.trim().startsWith('/'),
-                onConfirm = {
-                    val path = pathInput.trim()
-                    showPathDialog = false
-                    onAttachFilePath(path)
-                },
-                onDismissRequest = { showPathDialog = false },
-            )
-        }
-        AppearanceUiStyle.MIUIX -> {
-            WindowDialog(
-                show = showPathDialog,
-                cornerRadius = DialogDefaults.CornerRadius,
-                title = stringResource(R.string.ui_input_file_path_36d474),
-                summary = stringResource(R.string.ui_supports_files_and_folders_under_internal_storage_or_520786),
-                onDismissRequest = { showPathDialog = false },
-            ) {
-                Column {
-                    TextField(
-                        value = pathInput,
-                        onValueChange = { pathInput = it },
-                        label = stringResource(R.string.ui_absolute_path_9ac6fc),
-                        useLabelAsPlaceholder = true,
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    MiuixDialogActions(
-                        confirmText = stringResource(R.string.attachment_add),
-                        confirmEnabled = pathInput.trim().startsWith('/'),
-                        onCancel = { showPathDialog = false },
-                        onConfirm = {
-                            val path = pathInput.trim()
-                            showPathDialog = false
-                            onAttachFilePath(path)
-                        },
-                        modifier = Modifier.padding(top = 16.dp),
-                    )
-                }
-            }
-        }
-    }
+    CouiInputDialog(
+        visible = showPathDialog,
+        title = stringResource(R.string.ui_input_file_path_36d474),
+        message = stringResource(R.string.ui_supports_files_and_folders_under_internal_storage_or_520786),
+        value = pathInput,
+        onValueChange = { pathInput = it },
+        placeholder = stringResource(R.string.ui_absolute_path_9ac6fc),
+        confirmText = stringResource(R.string.attachment_add),
+        confirmEnabled = pathInput.trim().startsWith('/'),
+        onConfirm = {
+            val path = pathInput.trim()
+            showPathDialog = false
+            onAttachFilePath(path)
+        },
+        onDismissRequest = { showPathDialog = false },
+    )
 }
 
 @Composable
@@ -295,12 +211,12 @@ internal fun PendingFileReferenceStrip(
                     .height(42.dp)
                     .widthIn(max = 250.dp)
                     .squircleSurface(
-                        color = MiuixTheme.colorScheme.surfaceContainerHigh,
+                        color = COUITheme.colorScheme.cardPressed,
                         cornerRadius = 12.dp,
                     )
                     .squircleBorder(
                         width = 0.5.dp,
-                        color = MiuixTheme.colorScheme.outline.copy(alpha = 0.5f),
+                        color = COUITheme.colorScheme.outline.copy(alpha = 0.5f),
                         cornerRadius = 12.dp,
                     )
                     .padding(start = 12.dp, end = 4.dp),
@@ -315,13 +231,13 @@ internal fun PendingFileReferenceStrip(
                     },
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
-                    tint = MiuixTheme.colorScheme.primary,
+                    tint = COUITheme.colorScheme.primary,
                 )
                 Text(
                     text = reference.displayName +
                         if (reference.kind == AgentFileReferenceKind.Directory) "/" else "",
-                    style = MiuixTheme.textStyles.body2,
-                    color = MiuixTheme.colorScheme.onSurface,
+                    style = COUITheme.textStyles.bodyM,
+                    color = COUITheme.colorScheme.labelPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
@@ -337,7 +253,7 @@ internal fun PendingFileReferenceStrip(
                         imageVector = Icons.Rounded.Close,
                         contentDescription = stringResource(R.string.ui_remove_file_reference_04bbfc),
                         modifier = Modifier.size(15.dp),
-                        tint = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                        tint = COUITheme.colorScheme.labelSecondary,
                     )
                 }
             }
@@ -386,12 +302,12 @@ internal fun SentFileReferenceFlow(
                     .height(38.dp)
                     .widthIn(max = 280.dp)
                     .squircleSurface(
-                        color = MiuixTheme.colorScheme.surface,
+                        color = COUITheme.colorScheme.background,
                         cornerRadius = 12.dp,
                     )
                     .squircleBorder(
                         width = 0.5.dp,
-                        color = MiuixTheme.colorScheme.outline.copy(alpha = 0.45f),
+                        color = COUITheme.colorScheme.outline.copy(alpha = 0.45f),
                         cornerRadius = 12.dp,
                     )
                     .padding(horizontal = 11.dp),
@@ -406,62 +322,17 @@ internal fun SentFileReferenceFlow(
                     },
                     contentDescription = null,
                     modifier = Modifier.size(17.dp),
-                    tint = MiuixTheme.colorScheme.primary,
+                    tint = COUITheme.colorScheme.primary,
                 )
                 Text(
                     text = reference.displayName +
                         if (reference.kind == AgentFileReferenceKind.Directory) "/" else "",
-                    style = MiuixTheme.textStyles.body2,
-                    color = MiuixTheme.colorScheme.onSurface,
+                    style = COUITheme.textStyles.bodyM,
+                    color = COUITheme.colorScheme.labelPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
     }
-}
-
-internal class InputPopupPositionProvider(
-    private val inputContainerTopPx: Int,
-    private val windowHorizontalInsetPx: Int? = null,
-) : PopupPositionProvider {
-    override fun calculatePosition(
-        anchorBounds: IntRect,
-        windowBounds: IntRect,
-        layoutDirection: LayoutDirection,
-        popupContentSize: IntSize,
-        popupMargin: IntRect,
-        alignment: PopupPositionProvider.Align,
-    ): IntOffset {
-        val alignToEnd = when (alignment) {
-            PopupPositionProvider.Align.End,
-            PopupPositionProvider.Align.TopEnd,
-            PopupPositionProvider.Align.BottomEnd,
-            -> true
-
-            else -> false
-        }
-        val physicalEnd = if (layoutDirection == LayoutDirection.Ltr) alignToEnd else !alignToEnd
-        val requestedX = when {
-            windowHorizontalInsetPx != null && physicalEnd ->
-                windowBounds.right - popupContentSize.width - popupMargin.right - windowHorizontalInsetPx
-
-            windowHorizontalInsetPx != null ->
-                windowBounds.left + popupMargin.left + windowHorizontalInsetPx
-
-            physicalEnd -> anchorBounds.right - popupContentSize.width - popupMargin.right
-            else -> anchorBounds.left + popupMargin.left
-        }
-        val maxX = (windowBounds.right - popupContentSize.width - popupMargin.right)
-            .coerceAtLeast(windowBounds.left)
-        val requestedY = inputContainerTopPx - popupContentSize.height - popupMargin.bottom
-        val maxY = windowBounds.bottom - popupContentSize.height - popupMargin.bottom
-        val minY = (windowBounds.top + popupMargin.top).coerceAtMost(maxY)
-        return IntOffset(
-            x = requestedX.coerceIn(windowBounds.left, maxX),
-            y = requestedY.coerceIn(minY, maxY),
-        )
-    }
-
-    override fun getMargins(): PaddingValues = PaddingValues(vertical = ChatInputPopupMargin)
 }

@@ -7,29 +7,19 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.itos.coui.layout.CouiPageDefaults
-import com.itos.coui.layout.Divider
-import com.itos.coui.layout.Group
-import com.itos.coui.switch.CouiSwitchDefaults
-import com.itos.coui.switch.Switch as CouiSwitch
-import com.itos.coui.theme.CouiTheme
 import io.github.mangi.eta.agent.roleplay.CharacterBookEntryDraft
 import io.github.mangi.eta.agent.roleplay.CharacterWorldbook
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.ui.app.CharacterLibraryStore
-import io.github.mangi.eta.ui.app.LocalUiStyle
 import io.github.mangi.eta.ui.components.coui.CouiButton
 import io.github.mangi.eta.ui.components.coui.CouiButtonRole
-import io.github.mangi.eta.ui.components.coui.CouiPreference
-import io.github.mangi.eta.ui.components.coui.CouiSwitchPreference
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.Switch
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.preference.ArrowPreference
-import top.yukonga.miuix.kmp.preference.SwitchPreference
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Card
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.preference.ArrowPreference
+import io.github.suqi8.coui.kmp.preference.SwitchPreference
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import io.github.suqi8.coui.kmp.basic.CardListGroup
+import io.github.suqi8.coui.kmp.basic.HorizontalDivider
+import io.github.suqi8.coui.kmp.basic.Switch
 
 internal fun LazyListScope.characterWorldbookEditor(
     store: CharacterLibraryStore,
@@ -44,25 +34,15 @@ internal fun LazyListScope.characterWorldbookEditor(
     item(key = "worldbook-title") { CharacterSectionHeader("Worldbook") }
     item(key = "worldbook-header") {
         val summary = "${book.entries.size} entries · ${if (expanded) "Collapse" else "Expand editor"}"
-        if (LocalUiStyle.current == AppearanceUiStyle.COUI) {
-            Group {
-                CouiPreference(
-                    title = "Embedded worldbook",
-                    summary = summary,
-                    onClick = onToggleExpanded,
-                )
-            }
-        } else {
-            Card(
-                modifier = Modifier
-                    .padding(horizontal = CharacterCardPadding)
-                    .padding(bottom = 12.dp),
-            ) {
-                ArrowPreference(
-                    title = "Embedded worldbook",
-                    summary = summary,
-                    onClick = onToggleExpanded,
-                )
+        Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+            CardListGroup {
+                item {
+                    ArrowPreference(
+                        title = "Embedded worldbook",
+                        summary = summary,
+                        onClick = onToggleExpanded,
+                    )
+                }
             }
         }
     }
@@ -81,28 +61,17 @@ internal fun LazyListScope.characterWorldbookEditor(
         }, enabled, singleLine = true)
     }
     item(key = "worldbook-recursive") {
-        if (LocalUiStyle.current == AppearanceUiStyle.COUI) {
-            Group {
-                CouiSwitchPreference(
-                    title = "Recursive matching",
-                    summary = "Use matched content to find related entries",
-                    checked = book.recursiveScanning == true,
-                    enabled = enabled,
-                    onCheckedChange = { value -> store.updateWorldbook { it.copy(recursiveScanning = value) } },
-                )
-            }
-        } else {
-            Card(
-                modifier = Modifier
-                    .padding(horizontal = CharacterCardPadding, vertical = 6.dp),
-            ) {
-                SwitchPreference(
-                    title = "Recursive matching",
-                    summary = "Use matched content to find related entries",
-                    checked = book.recursiveScanning == true,
-                    enabled = enabled,
-                    onCheckedChange = { value -> store.updateWorldbook { it.copy(recursiveScanning = value) } },
-                )
+        Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+            CardListGroup {
+                item {
+                    SwitchPreference(
+                        title = "Recursive matching",
+                        summary = "Use matched content to find related entries",
+                        checked = book.recursiveScanning == true,
+                        enabled = enabled,
+                        onCheckedChange = { value -> store.updateWorldbook { it.copy(recursiveScanning = value) } },
+                    )
+                }
             }
         }
     }
@@ -121,70 +90,38 @@ internal fun LazyListScope.characterWorldbookEditor(
                 current.copy(entries = current.entries.toMutableList().apply { this[index] = entry.copy(enabled = value) })
             }
         }
-        if (LocalUiStyle.current == AppearanceUiStyle.COUI) {
-            val dark = CouiTheme.isDark
-            val colors = CouiPageDefaults.themeColors(dark)
-            Group {
-                CouiPreference(
-                    title = entryTitle,
-                    summary = entrySummary,
-                    onClick = { onExpandEntry(if (expandedEntry == index) null else index) },
-                    trailing = {
-                        CouiSwitch(
-                            checked = entry.enabled,
-                            enabled = enabled,
-                            dark = dark,
-                            colors = CouiSwitchDefaults.colors(colors.accent, dark),
-                            onCheckedChange = onToggleEntry,
-                        )
-                    },
-                )
-                if (expandedEntry == index) {
-                    Divider()
-                    CharacterWorldbookEntryEditor(
-                        entry = entry,
-                        enabled = enabled,
-                        unsupported = unsupported[index].orEmpty(),
-                        onChange = { replacement ->
-                            store.updateWorldbook { current -> current.copy(entries = current.entries.toMutableList().apply { this[index] = replacement }) }
+        val dark = COUITheme.isDark
+        Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
+            CardListGroup {
+                item {
+                    ArrowPreference(
+                        title = entryTitle,
+                        summary = entrySummary,
+                        endActions = {
+                            Switch(
+                                checked = entry.enabled,
+                                onCheckedChange = onToggleEntry,
+                                enabled = enabled,
+                            )
                         },
-                        onDelete = {
-                            onExpandEntry(null)
-                            store.updateWorldbook { current -> current.copy(entries = current.entries.filterIndexed { i, _ -> i != index }) }
-                        },
+                        onClick = { onExpandEntry(if (expandedEntry == index) null else index) },
                     )
                 }
-            }
-        } else {
-            Card(
-                modifier = Modifier
-                    .padding(horizontal = CharacterCardPadding, vertical = 6.dp),
-            ) {
-                ArrowPreference(
-                    title = entryTitle,
-                    summary = entrySummary,
-                    onClick = { onExpandEntry(if (expandedEntry == index) null else index) },
-                    endActions = {
-                        Switch(
-                            checked = entry.enabled,
-                            enabled = enabled,
-                            onCheckedChange = onToggleEntry,
-                        )
-                    },
-                )
                 if (expandedEntry == index) {
-                    CharacterWorldbookEntryEditor(
-                        entry = entry,
-                        enabled = enabled,
-                        unsupported = unsupported[index].orEmpty(),
-                        onChange = { replacement ->
-                            store.updateWorldbook { current -> current.copy(entries = current.entries.toMutableList().apply { this[index] = replacement }) }
-                        },
-                        onDelete = {
-                            onExpandEntry(null)
-                            store.updateWorldbook { current -> current.copy(entries = current.entries.filterIndexed { i, _ -> i != index }) }
-                        },
-                    )
+                    item {
+                        CharacterWorldbookEntryEditor(
+                            entry = entry,
+                            enabled = enabled,
+                            unsupported = unsupported[index].orEmpty(),
+                            onChange = { replacement ->
+                                store.updateWorldbook { current -> current.copy(entries = current.entries.toMutableList().apply { this[index] = replacement }) }
+                            },
+                            onDelete = {
+                                onExpandEntry(null)
+                                store.updateWorldbook { current -> current.copy(entries = current.entries.filterIndexed { i, _ -> i != index }) }
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -194,25 +131,14 @@ internal fun LazyListScope.characterWorldbookEditor(
             onExpandEntry(book.entries.size)
             store.updateWorldbook { it.copy(entries = it.entries + CharacterBookEntryDraft(insertionOrder = it.entries.size)) }
         }
-        if (LocalUiStyle.current == AppearanceUiStyle.COUI) {
-            CouiButton(
-                text = "Add entry",
-                enabled = enabled,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = CouiPageDefaults.horizontalMargin, vertical = 6.dp),
-                onClick = onAddEntry,
-            )
-        } else {
-            TextButton(
-                text = "Add entry",
-                enabled = enabled,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = CharacterCardPadding, vertical = 6.dp),
-                onClick = onAddEntry,
-            )
-        }
+        CouiButton(
+            text = "Add entry",
+            enabled = enabled,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            onClick = onAddEntry,
+        )
     }
 }
 
@@ -224,13 +150,12 @@ private fun CharacterWorldbookEntryEditor(
     onChange: (CharacterBookEntryDraft) -> Unit,
     onDelete: () -> Unit,
 ) {
-    val uiStyle = LocalUiStyle.current
     if (unsupported.isNotEmpty()) {
         Text(
             "This entry is excluded from matching: ${unsupported.joinToString("；")}",
-            style = MiuixTheme.textStyles.body2,
+            style = COUITheme.textStyles.bodyM,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            color = COUITheme.colorScheme.labelSecondary,
         )
     }
     CharacterFieldGroupLabel("Content")
@@ -239,75 +164,39 @@ private fun CharacterWorldbookEntryEditor(
     CharacterFieldGroupLabel("Trigger")
     CharacterTextField("Primary keywords (one per line)", entry.keys.joinToString("\n"), { onChange(entry.copy(keys = it.lines())) }, enabled, inGroup = true)
     CharacterTextField("Secondary keywords (one per line)", entry.secondaryKeys.joinToString("\n"), { onChange(entry.copy(secondaryKeys = it.lines())) }, enabled, inGroup = true)
-    if (uiStyle == AppearanceUiStyle.COUI) {
-        CouiSwitchPreference(
-            title = "Also match secondary keywords",
-            checked = entry.selective,
-            enabled = enabled,
-            onCheckedChange = { onChange(entry.copy(selective = it)) },
-        )
-    } else {
-        SwitchPreference(
-            title = "Also match secondary keywords",
-            checked = entry.selective,
-            enabled = enabled,
-            onCheckedChange = { onChange(entry.copy(selective = it)) },
-        )
-    }
+    SwitchPreference(
+        title = "Also match secondary keywords",
+        checked = entry.selective,
+        enabled = enabled,
+        onCheckedChange = { onChange(entry.copy(selective = it)) },
+    )
     CharacterFieldGroupLabel("Insertion")
-    if (uiStyle == AppearanceUiStyle.COUI) {
-        CouiSwitchPreference(
-            title = "Permanent context",
-            checked = entry.constant,
-            enabled = enabled,
-            onCheckedChange = { onChange(entry.copy(constant = it)) },
-        )
-        Divider()
-        CouiSwitchPreference(
-            title = "Insert before character settings",
-            summary = "When off, insert after character settings",
-            checked = entry.position == "before_char",
-            enabled = enabled,
-            onCheckedChange = { onChange(entry.copy(position = if (it) "before_char" else "after_char")) },
-        )
-    } else {
-        SwitchPreference(
-            title = "Permanent context",
-            checked = entry.constant,
-            enabled = enabled,
-            onCheckedChange = { onChange(entry.copy(constant = it)) },
-        )
-        SwitchPreference(
-            title = "Insert before character settings",
-            summary = "When off, insert after character settings",
-            checked = entry.position == "before_char",
-            enabled = enabled,
-            onCheckedChange = { onChange(entry.copy(position = if (it) "before_char" else "after_char")) },
-        )
-    }
+    SwitchPreference(
+        title = "Permanent context",
+        checked = entry.constant,
+        enabled = enabled,
+        onCheckedChange = { onChange(entry.copy(constant = it)) },
+    )
+    HorizontalDivider(modifier = Modifier.padding(start = 16.dp, end = 16.dp))
+    SwitchPreference(
+        title = "Insert before character settings",
+        summary = "When off, insert after character settings",
+        checked = entry.position == "before_char",
+        enabled = enabled,
+        onCheckedChange = { onChange(entry.copy(position = if (it) "before_char" else "after_char")) },
+    )
     CharacterTextField("Insertion order", entry.insertionOrder.toString(), { value ->
         value.toIntOrNull()?.takeIf { it >= 0 }?.let { onChange(entry.copy(insertionOrder = it)) }
     }, enabled, singleLine = true, inGroup = true)
-    if (uiStyle == AppearanceUiStyle.COUI) {
-        CouiButton(
-            text = "Remove entry",
-            enabled = enabled,
-            role = CouiButtonRole.Destructive,
-            onClick = onDelete,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-        )
-    } else {
-        TextButton(
-            text = "Remove entry",
-            enabled = enabled,
-            onClick = onDelete,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-        )
-    }
+    CouiButton(
+        text = "Remove entry",
+        enabled = enabled,
+        role = CouiButtonRole.Destructive,
+        onClick = onDelete,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    )
 }
 
 private fun optionalNonNegativeInt(value: String, onValue: (Int?) -> Unit) {

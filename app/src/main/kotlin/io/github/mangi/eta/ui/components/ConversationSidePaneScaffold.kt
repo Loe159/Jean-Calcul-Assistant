@@ -62,7 +62,7 @@ import io.github.mangi.eta.ui.model.ConversationSummaryUi
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 private object ConversationPaneMetrics {
     val PaneMaxWidth = 340.dp
@@ -313,7 +313,7 @@ fun ConversationSidePaneScaffold(
                                 } else conversationPaneMotion(offset, paneWidthPx).progress
                                 drawRect(Color.Black, alpha = ConversationPaneMetrics.ChatScrimAlpha * progress)
                             }
-                            .background(MiuixTheme.colorScheme.background),
+                            .background(COUITheme.colorScheme.backgroundWithCard),
                     ) {
                         Box(
                             modifier = Modifier
@@ -372,11 +372,11 @@ fun ConversationSidePaneScaffold(
                 ) {
                     Box(Modifier.padding(horizontal = 3.dp)
                         .width((18f - 10f * progress).dp).height(4.dp)
-                        .clip(CircleShape).background(MiuixTheme.colorScheme.onBackground
+                        .clip(CircleShape).background(COUITheme.colorScheme.labelPrimary
                             .copy(alpha = 0.62f - progress * 0.35f)))
                     Box(Modifier.padding(horizontal = 3.dp)
                         .width((8f + 10f * progress).dp).height(4.dp)
-                        .clip(CircleShape).background(MiuixTheme.colorScheme.onBackground
+                        .clip(CircleShape).background(COUITheme.colorScheme.labelPrimary
                             .copy(alpha = 0.25f + progress * 0.42f)))
                 }
             }

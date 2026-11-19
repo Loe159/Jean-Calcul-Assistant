@@ -99,7 +99,7 @@ def main():
               'regression_detection': {'status': 'NOT_RUN'}}
     def save():
         (out / 'report.json').write_text(json.dumps(report, indent=2, ensure_ascii=False) + '\n')
-    def run(cmd, name=None, timeout=180, check=True, input=None):
+    def run(cmd, name=None, timeout=180, check=True, input=None, command_env=None):
         def log_output(stdout, stderr):
             if not name:
                 return
@@ -109,7 +109,7 @@ def main():
                 stderr = stderr.decode(errors='replace')
             (out / 'logs' / f'{name}.txt').write_text(redact((stdout or '') + (stderr or '')))
         command = [str(c) for c in cmd]
-        with subprocess.Popen(command, cwd=ROOT, env=env, stdin=subprocess.PIPE,
+        with subprocess.Popen(command, cwd=ROOT, env=command_env or env, stdin=subprocess.PIPE,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as process:
             deadline = time.monotonic() + timeout
             pending_input = input
@@ -202,12 +202,27 @@ def main():
         gradle_base = [ROOT / 'gradlew', '-Pjeancalcul.emulator=true', '--no-daemon',
             '--no-configuration-cache', '--max-workers=1',
             '-Dorg.gradle.jvmargs=-Xmx2500m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8']
+        gradle_env = env.copy()
+        if not os.access(sdk, os.W_OK):
+            writable_sdk = Path.home() / 'Android' / 'Sdk'
+            if not writable_sdk.is_dir() or not os.access(writable_sdk, os.W_OK):
+                raise RuntimeError('Gradle requires a writable Android SDK; see e2e/README.md')
+            gradle_env['ANDROID_HOME'] = str(writable_sdk)
+            gradle_env['ANDROID_SDK_ROOT'] = str(writable_sdk)
+            report['gradle_sdk'] = 'writable local SDK'
+        else:
+            report['gradle_sdk'] = 'ANDROID_HOME'
         build_tasks = ('assembleDebug', 'assembleDebugAndroidTest', 'testDebugUnitTest', 'lintDebug')
         report['technical'].update(status='FAIL', build='RUNNING', jvm_tests='NOT_RUN', lint='NOT_RUN')
         save()
         build = run(gradle_base + [':app:' + task for task in build_tasks],
-                    'gradle-build', timeout=1500, check=False)
-        require_gradle_tasks(build, build_tasks)
+                    'gradle-build', timeout=1500, check=False, command_env=gradle_env)
+        try:
+            require_gradle_tasks(build, build_tasks)
+        except RuntimeError:
+            report['technical']['build'] = 'FAIL'
+            save()
+            raise
         for apk in (ROOT / 'app/build/outputs/apk/debug/app-debug.apk',
                     ROOT / 'app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk'):
             shutil.copy2(apk, out / apk.name)
@@ -300,6 +315,10 @@ def main():
         instrumentation_started = time.time()
         instrumented = run(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
             APP + '.SmokeTest', RUNNER], 'instrumentation-smoke', timeout=180, check=False)
+        # The UID-scoped logcat cannot show why Android killed the process (ANR and
+        # crash reasons come from system_server). Exit info is limited to this app.
+        run(adb + ['shell', 'dumpsys', 'activity', 'exit-info', APP],
+            'smoke-exit-info', timeout=30, check=False)
         (out / 'test-results').mkdir()
         technical_error = None
         try:

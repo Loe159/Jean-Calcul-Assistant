@@ -57,8 +57,8 @@ import io.github.mangi.eta.R
 import io.github.mangi.eta.agent.virtualdisplay.VirtualDisplaySnapshot
 import io.github.mangi.eta.agent.virtualdisplay.VirtualTouchEffect
 import kotlin.math.hypot
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 /**
  * 镶嵌在收起态顶部胶囊右侧的 18×32.dp 实时微缩取景器（Micro-Lens）。
@@ -80,7 +80,7 @@ internal fun VirtualDisplayMicroLens(
     }
 
     val borderColor = androidx.compose.ui.graphics.lerp(
-        MiuixTheme.colorScheme.onSurface.copy(alpha = 0.14f),
+        COUITheme.colorScheme.labelPrimary.copy(alpha = 0.14f),
         accent.copy(alpha = 0.78f),
         pulse.value,
     )
@@ -95,7 +95,7 @@ internal fun VirtualDisplayMicroLens(
                 scaleY = scale
             }
             .clip(lensShape)
-            .background(MiuixTheme.colorScheme.surfaceContainerHigh)
+            .background(COUITheme.colorScheme.cardPressed)
             .border(width = 0.85.dp, color = borderColor, shape = lensShape),
         contentAlignment = Alignment.Center,
     ) {
@@ -155,7 +155,7 @@ internal fun VirtualDisplayStageSection(
     val borderColor = if (snapshot.userControlling || isPaused) {
         accent.copy(alpha = 0.42f)
     } else {
-        MiuixTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+        COUITheme.colorScheme.labelPrimary.copy(alpha = 0.08f)
     }
 
     Column(
@@ -170,7 +170,7 @@ internal fun VirtualDisplayStageSection(
                 .height(StageCanvasHeight)
                 .aspectRatio(snapshot.aspectRatio, matchHeightConstraintsFirst = true)
                 .clip(frameShape)
-                .background(MiuixTheme.colorScheme.surfaceContainerHigh)
+                .background(COUITheme.colorScheme.cardPressed)
                 .border(width = 0.75.dp, color = borderColor, shape = frameShape)
                 .pointerInput(snapshot.displayId, snapshot.userControlling, isPaused) {
                     val touchSlopPx = viewConfiguration.touchSlop
@@ -235,7 +235,7 @@ internal fun VirtualDisplayStageSection(
                     text = snapshot.appName.ifBlank {
                         stringResource(R.string.overlay_virtual_canvas_auto)
                     },
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary.copy(alpha = 0.6f),
+                    color = COUITheme.colorScheme.labelSecondary.copy(alpha = 0.6f),
                     fontSize = 12.sp,
                 )
             }
@@ -269,7 +269,7 @@ internal fun VirtualDisplayStageSection(
             }
             Text(
                 text = footerTitle,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                color = COUITheme.colorScheme.labelSecondary,
                 fontSize = 11.5.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
@@ -312,12 +312,12 @@ private fun StagePillButton(
     val bg = if (highlighted) {
         accent.copy(alpha = 0.16f)
     } else {
-        MiuixTheme.colorScheme.surfaceContainerHigh
+        COUITheme.colorScheme.cardPressed
     }
     val textColor = if (highlighted) {
         accent
     } else {
-        MiuixTheme.colorScheme.onSurface
+        COUITheme.colorScheme.labelPrimary
     }
     Box(
         modifier = Modifier

@@ -47,15 +47,12 @@ import io.github.mangi.eta.agent.device.DeviceLocationProvider
 import io.github.mangi.eta.agent.device.RootAccess
 import io.github.mangi.eta.agent.runtime.AgentRuntimeService
 import io.github.mangi.eta.core.AndroidAgentLogger
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.data.repository.RuntimeConfigRepository
 import io.github.mangi.eta.ui.AppearanceSettingsScreen
 import io.github.mangi.eta.ui.IncomingShareRequest
 import io.github.mangi.eta.ui.SettingsScreen
-import io.github.mangi.eta.ui.components.MiuixDialogActions
 import io.github.mangi.eta.ui.components.coui.CouiConfirmDialog
 import io.github.mangi.eta.ui.components.coui.CouiInputDialog
-import io.github.mangi.eta.ui.components.coui.CouiNoticeDialog
 import io.github.mangi.eta.ui.markdown.MarkdownTone
 import io.github.mangi.eta.ui.markdown.rememberMarkdownStyle
 import io.github.mangi.eta.ui.markdown.staticMarkdownDocumentCache
@@ -109,14 +106,11 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import top.yukonga.miuix.kmp.basic.TextField
-import top.yukonga.miuix.kmp.layout.DialogDefaults
-import top.yukonga.miuix.kmp.nav.core.NavDisplay
-import top.yukonga.miuix.kmp.nav.core.NavDisplayEffects
-import top.yukonga.miuix.kmp.nav.core.rememberNavBackStack
-import top.yukonga.miuix.kmp.nav.core.rememberNavSystemCornerRadius
-import top.yukonga.miuix.kmp.nav.transition.NavSwipeDirection
-import top.yukonga.miuix.kmp.window.WindowDialog
+import io.github.suqi8.coui.kmp.nav.core.NavDisplay
+import io.github.suqi8.coui.kmp.nav.core.NavDisplayEffects
+import io.github.suqi8.coui.kmp.nav.core.rememberNavBackStack
+import io.github.suqi8.coui.kmp.nav.core.rememberNavSystemCornerRadius
+import io.github.suqi8.coui.kmp.nav.transition.NavSwipeDirection
 
 /**
  * Agent App 根组件：持有本地导航栈，并把 Screen actions 交给 [AgentAppState]。
@@ -789,52 +783,20 @@ fun AgentAppRoot(
 
     conversationRenameTarget?.let { conversation ->
         var renameInput by remember(conversation.id) { mutableStateOf(conversation.title) }
-        when (LocalUiStyle.current) {
-            AppearanceUiStyle.COUI -> {
-                CouiInputDialog(
-                    visible = true,
-                    title = stringResource(R.string.conversation_rename_title),
-                    value = renameInput,
-                    onValueChange = { renameInput = it },
-                    placeholder = stringResource(R.string.conversation_rename_hint),
-                    confirmText = stringResource(R.string.action_save),
-                    confirmEnabled = renameInput.isNotBlank(),
-                    onConfirm = {
-                        agentState.renameConversation(conversation.id, renameInput)
-                        conversationRenameTarget = null
-                    },
-                    onDismissRequest = { conversationRenameTarget = null },
-                )
-            }
-            AppearanceUiStyle.MIUIX -> {
-                WindowDialog(
-                    show = true,
-                    cornerRadius = DialogDefaults.CornerRadius,
-                    title = stringResource(R.string.conversation_rename_title),
-                    onDismissRequest = { conversationRenameTarget = null },
-                ) {
-                    Column {
-                        TextField(
-                            value = renameInput,
-                            onValueChange = { renameInput = it },
-                            label = stringResource(R.string.conversation_rename_hint),
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        MiuixDialogActions(
-                            confirmText = stringResource(R.string.action_save),
-                            confirmEnabled = renameInput.isNotBlank(),
-                            onCancel = { conversationRenameTarget = null },
-                            onConfirm = {
-                                agentState.renameConversation(conversation.id, renameInput)
-                                conversationRenameTarget = null
-                            },
-                            modifier = Modifier.padding(top = 16.dp),
-                        )
-                    }
-                }
-            }
-        }
+        CouiInputDialog(
+            visible = true,
+            title = stringResource(R.string.conversation_rename_title),
+            value = renameInput,
+            onValueChange = { renameInput = it },
+            placeholder = stringResource(R.string.conversation_rename_hint),
+            confirmText = stringResource(R.string.action_save),
+            confirmEnabled = renameInput.isNotBlank(),
+            onConfirm = {
+                agentState.renameConversation(conversation.id, renameInput)
+                conversationRenameTarget = null
+            },
+            onDismissRequest = { conversationRenameTarget = null },
+        )
     }
 
     conversationDeleteTarget?.let { conversation ->
@@ -851,35 +813,15 @@ fun AgentAppRoot(
             agentState.deleteConversation(conversation.id)
             conversationDeleteTarget = null
         }
-        when (LocalUiStyle.current) {
-            AppearanceUiStyle.COUI -> {
-                CouiConfirmDialog(
-                    visible = true,
-                    title = stringResource(R.string.conversation_delete_title),
-                    message = message,
-                    confirmText = confirmText,
-                    destructive = true,
-                    onConfirm = onConfirmDelete,
-                    onDismissRequest = { conversationDeleteTarget = null },
-                )
-            }
-            AppearanceUiStyle.MIUIX -> {
-                WindowDialog(
-                    show = true,
-                    cornerRadius = DialogDefaults.CornerRadius,
-                    title = stringResource(R.string.conversation_delete_title),
-                    summary = message,
-                    onDismissRequest = { conversationDeleteTarget = null },
-                ) {
-                    MiuixDialogActions(
-                        confirmText = confirmText,
-                        destructive = true,
-                        onCancel = { conversationDeleteTarget = null },
-                        onConfirm = onConfirmDelete,
-                    )
-                }
-            }
-        }
+        CouiConfirmDialog(
+            visible = true,
+            title = stringResource(R.string.conversation_delete_title),
+            message = message,
+            confirmText = confirmText,
+            destructive = true,
+            onConfirm = onConfirmDelete,
+            onDismissRequest = { conversationDeleteTarget = null },
+        )
     }
 
     messageDeleteTarget?.let { target ->
@@ -896,35 +838,15 @@ fun AgentAppRoot(
             agentState.deleteMessageTurn(target.messageId)
             messageDeleteTarget = null
         }
-        when (LocalUiStyle.current) {
-            AppearanceUiStyle.COUI -> {
-                CouiConfirmDialog(
-                    visible = true,
-                    title = stringResource(R.string.conversation_delete_message_title),
-                    message = summary,
-                    confirmText = stringResource(R.string.action_delete),
-                    destructive = true,
-                    onConfirm = onConfirmDeleteMessage,
-                    onDismissRequest = { messageDeleteTarget = null },
-                )
-            }
-            AppearanceUiStyle.MIUIX -> {
-                WindowDialog(
-                    show = true,
-                    cornerRadius = DialogDefaults.CornerRadius,
-                    title = stringResource(R.string.conversation_delete_message_title),
-                    summary = summary,
-                    onDismissRequest = { messageDeleteTarget = null },
-                ) {
-                    MiuixDialogActions(
-                        confirmText = stringResource(R.string.action_delete),
-                        destructive = true,
-                        onCancel = { messageDeleteTarget = null },
-                        onConfirm = onConfirmDeleteMessage,
-                    )
-                }
-            }
-        }
+        CouiConfirmDialog(
+            visible = true,
+            title = stringResource(R.string.conversation_delete_message_title),
+            message = summary,
+            confirmText = stringResource(R.string.action_delete),
+            destructive = true,
+            onConfirm = onConfirmDeleteMessage,
+            onDismissRequest = { messageDeleteTarget = null },
+        )
     }
 
     messageRegenerateTarget?.let { target ->
@@ -941,35 +863,15 @@ fun AgentAppRoot(
             agentState.regenerateMessage(target.messageId)
             messageRegenerateTarget = null
         }
-        when (LocalUiStyle.current) {
-            AppearanceUiStyle.COUI -> {
-                CouiConfirmDialog(
-                    visible = true,
-                    title = stringResource(R.string.conversation_regenerate_title),
-                    message = summary,
-                    confirmText = stringResource(R.string.action_regenerate),
-                    destructive = true,
-                    onConfirm = onConfirmRegenerate,
-                    onDismissRequest = { messageRegenerateTarget = null },
-                )
-            }
-            AppearanceUiStyle.MIUIX -> {
-                WindowDialog(
-                    show = true,
-                    cornerRadius = DialogDefaults.CornerRadius,
-                    title = stringResource(R.string.conversation_regenerate_title),
-                    summary = summary,
-                    onDismissRequest = { messageRegenerateTarget = null },
-                ) {
-                    MiuixDialogActions(
-                        confirmText = stringResource(R.string.action_regenerate),
-                        destructive = true,
-                        onCancel = { messageRegenerateTarget = null },
-                        onConfirm = onConfirmRegenerate,
-                    )
-                }
-            }
-        }
+        CouiConfirmDialog(
+            visible = true,
+            title = stringResource(R.string.conversation_regenerate_title),
+            message = summary,
+            confirmText = stringResource(R.string.action_regenerate),
+            destructive = true,
+            onConfirm = onConfirmRegenerate,
+            onDismissRequest = { messageRegenerateTarget = null },
+        )
     }
 }
 

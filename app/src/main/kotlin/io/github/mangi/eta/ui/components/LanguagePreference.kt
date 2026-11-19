@@ -1,5 +1,6 @@
 package io.github.mangi.eta.ui.components
 
+import androidx.compose.ui.Modifier
 import android.os.LocaleList
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Language
@@ -17,17 +18,16 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.mangi.eta.R
-import io.github.mangi.eta.data.model.AppearanceUiStyle
 import io.github.mangi.eta.data.repository.LanguageSettingsRepository
-import io.github.mangi.eta.ui.app.LocalUiStyle
-import io.github.mangi.eta.ui.components.coui.CouiDropdownPreference
-import io.github.mangi.eta.ui.components.coui.CouiSettingsIcon
-import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.preference.OverlayDropdownPreference
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
+import io.github.suqi8.coui.kmp.basic.Icon
 
 @Composable
 internal fun LanguagePreference(
-    iconTint: Color = MiuixTheme.colorScheme.onBackground,
+    iconTint: Color = COUITheme.colorScheme.labelPrimary,
     startAction: (@Composable () -> Unit)? = null,
 ) {
     val context = LocalContext.current
@@ -62,28 +62,15 @@ internal fun LanguagePreference(
         }
     }
 
-    when (LocalUiStyle.current) {
-        AppearanceUiStyle.COUI -> {
-            CouiDropdownPreference(
-                title = stringResource(R.string.settings_language),
-                items = labels,
-                selectedIndex = selectedIndex,
-                icon = if (startAction != null) {
-                    { CouiSettingsIcon(icon = Icons.Rounded.Language, tint = iconTint) }
-                } else {
-                    null
-                },
-                onSelectedIndexChange = onSelect,
-            )
-        }
-        AppearanceUiStyle.MIUIX -> {
-            OverlayDropdownPreference(
-                title = stringResource(R.string.settings_language),
-                items = labels,
-                selectedIndex = selectedIndex,
-                startAction = startAction,
-                onSelectedIndexChange = onSelect,
-            )
-        }
-    }
+    OverlayDropdownPreference(
+        title = stringResource(R.string.settings_language),
+        items = labels,
+        selectedIndex = selectedIndex,
+        startAction = if (startAction != null) {
+            { Icon(imageVector = Icons.Rounded.Language, contentDescription = null, modifier = Modifier.size(24.dp), tint = iconTint) }
+        } else {
+            null
+        },
+        onSelectedIndexChange = onSelect,
+    )
 }

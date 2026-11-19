@@ -2,64 +2,52 @@ package io.github.mangi.eta.ui.screens.home
 
 import android.widget.ImageView
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.NotificationsNone
-import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.itos.coui.effect.couiButtonFeedback
-import com.itos.coui.layout.CouiPageDefaults
-import com.itos.coui.shape.CouiShape
-import com.itos.coui.text.CouiTextKind
-import com.itos.coui.text.Text as CouiText
-import com.itos.coui.theme.CouiTheme
+import io.github.suqi8.coui.kmp.basic.Card
+import io.github.suqi8.coui.kmp.basic.CardDefaults
+import io.github.suqi8.coui.kmp.basic.SwipeActionItem
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
-import io.github.mangi.eta.ui.components.coui.CouiIcon
+import io.github.mangi.eta.R
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlin.math.abs
-import kotlin.math.sign
-import kotlinx.coroutines.launch
+import io.github.suqi8.coui.kmp.basic.Icon
+import androidx.compose.foundation.LocalIndication
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.squircle.SquircleShape
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 /** Group by package, retaining descending post time within each group. */
 internal data class BriefNotificationGroup(
@@ -80,8 +68,7 @@ internal fun BriefNotificationAppCard(
     group: BriefNotificationGroup,
     onDismiss: (List<String>) -> Unit,
 ) {
-    val dark = CouiTheme.isDark
-    val colors = CouiPageDefaults.themeColors(dark)
+    val dark = COUITheme.isDark
     val context = LocalContext.current
     val appName = remember(group.packageName) {
         runCatching {
@@ -91,24 +78,27 @@ internal fun BriefNotificationAppCard(
     }
     var expanded by remember(group.packageName) { mutableStateOf(false) }
     val source = remember { MutableInteractionSource() }
-    BriefDismissStretch(
-        identity = group.packageName,
-        onDismiss = { onDismiss(group.entries.map { it.key }) },
+    SwipeActionItem(
+        actions = emptyList(),
+        onActionClick = {},
+        onDelete = { onDismiss(group.entries.map { it.key }) },
+        fastDeleteEnabled = true,
+        deleteContentDescription = stringResource(R.string.brief_remove_action),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 5.dp),
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
-                .clip(CouiShape(27.dp, 2f))
-                .background(
-                    if (dark) Color(0xFF17191C).copy(alpha = 0.86f)
-                    else Color(0xFFF9F9FA).copy(alpha = 0.90f),
-                ),
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            insideMargin = PaddingValues(0.dp),
+            colors = CardDefaults.defaultColors(
+                color = COUITheme.colorScheme.card,
+                contentColor = COUITheme.colorScheme.labelPrimary,
+                pressedColor = if (dark) Color(0xFF2A2C30) else Color(0xFFECEEF1),
+            ),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth()
-                    .couiButtonFeedback(dark, source, enabled = true, list = true)
                     .clickable(
-                        interactionSource = source, indication = null,
+                        interactionSource = source, indication = LocalIndication.current,
                         role = Role.Button,
                         onClickLabel = if (expanded) "Replier $appName" else "Déplier $appName",
                     ) { expanded = !expanded }
@@ -118,48 +108,49 @@ internal fun BriefNotificationAppCard(
             ) {
                 BriefApplicationIcon(group.packageName)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    CouiText(text = appName, kind = CouiTextKind.ItemTitle, color = colors.title, maxLines = 1)
-                    CouiText(
+                    Text(text = appName, style = COUITheme.textStyles.headlineXS, color = COUITheme.colorScheme.labelPrimary, maxLines = 1)
+                    Text(
                         text = "${group.entries.size} notification${if (group.entries.size > 1) "s" else ""} · " +
                             group.entries.first().title.ifBlank { "Activité récente" },
-                        kind = CouiTextKind.ItemSummary, color = colors.summary,
+                        style = COUITheme.textStyles.bodyS, color = COUITheme.colorScheme.labelSecondary,
                         maxLines = 2, overflow = TextOverflow.Ellipsis,
                     )
                 }
-                CouiIcon(
+                Icon(
                     imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
-                    contentDescription = null, tint = colors.summary,
+                    contentDescription = null, tint = COUITheme.colorScheme.labelSecondary,
                     modifier = Modifier.size(22.dp),
                 )
             }
             AnimatedVisibility(expanded) {
                 Column(modifier = Modifier.padding(start = 13.dp, end = 13.dp, bottom = 12.dp)) {
                     group.entries.forEach { entry ->
-                        BriefDismissStretch(
-                            identity = entry.key,
-                            onDismiss = { onDismiss(listOf(entry.key)) },
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
-                        ) {
+                        key(entry.key) {
+                            SwipeActionItem(
+                                actions = emptyList(),
+                                onActionClick = {},
+                                onDelete = { onDismiss(listOf(entry.key)) },
+                                fastDeleteEnabled = true,
+                                deleteContentDescription = stringResource(R.string.brief_remove_action),
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                            ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth()
                                     .clip(RoundedCornerShape(17.dp))
-                                    .background(
-                                        if (dark) Color.White.copy(alpha = 0.075f)
-                                        else Color.Black.copy(alpha = 0.045f),
-                                    )
+                                    .background(if (dark) Color(0xFF2A2C30) else Color(0xFFF1F2F3))
                                     .padding(start = 12.dp, end = 6.dp, top = 11.dp, bottom = 11.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    CouiText(
+                                    Text(
                                         text = entry.title.ifBlank { appName },
-                                        kind = CouiTextKind.ItemTitle, color = colors.title,
+                                        style = COUITheme.textStyles.headlineXS, color = COUITheme.colorScheme.labelPrimary,
                                         maxLines = 2, overflow = TextOverflow.Ellipsis,
                                     )
                                     if (entry.text.isNotBlank()) {
-                                        CouiText(
-                                            text = entry.text, kind = CouiTextKind.ItemSummary,
-                                            color = colors.summary, maxLines = 3,
+                                        Text(
+                                            text = entry.text, style = COUITheme.textStyles.bodyS,
+                                            color = COUITheme.colorScheme.labelSecondary, maxLines = 3,
                                             overflow = TextOverflow.Ellipsis,
                                         )
                                     }
@@ -168,20 +159,9 @@ internal fun BriefNotificationAppCard(
                                             .format(Instant.ofEpochMilli(entry.postedAt)
                                                 .atZone(ZoneId.systemDefault()))
                                     }
-                                    CouiText(text = whenText, kind = CouiTextKind.GroupFooter, color = colors.summary)
+                                    Text(text = whenText, style = COUITheme.textStyles.bodyS, color = COUITheme.colorScheme.labelSecondary)
                                 }
-                                Spacer(Modifier.width(6.dp))
-                                Box(
-                                    modifier = Modifier.size(36.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .clickable(role = Role.Button, onClickLabel = "Retirer du briefing") {
-                                            onDismiss(listOf(entry.key))
-                                        },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    CouiIcon(Icons.Rounded.Close, "Retirer du briefing",
-                                        tint = colors.summary, modifier = Modifier.size(18.dp))
-                                }
+                            }
                             }
                         }
                     }
@@ -198,7 +178,7 @@ private fun BriefApplicationIcon(packageName: String) {
         runCatching { context.packageManager.getApplicationIcon(packageName) }.getOrNull()
     }
     Box(
-        modifier = Modifier.size(42.dp).clip(CouiShape(14.dp, 2f))
+        modifier = Modifier.size(42.dp).clip(SquircleShape(14.dp))
             .background(Color.White.copy(alpha = 0.08f)),
         contentAlignment = Alignment.Center,
     ) {
@@ -211,90 +191,9 @@ private fun BriefApplicationIcon(packageName: String) {
                 modifier = Modifier.size(34.dp),
             )
         } else {
-            CouiIcon(Icons.Rounded.NotificationsNone, contentDescription = null,
-                tint = CouiPageDefaults.themeColors(CouiTheme.isDark).summary,
+            Icon(Icons.Rounded.NotificationsNone, contentDescription = null,
+                tint = COUITheme.colorScheme.labelSecondary,
                 modifier = Modifier.size(22.dp))
         }
-    }
-}
-
-/**
- * Native-notification-like swipe in both directions with ETA-style elastic
- * horizontal stretching. Dismissal occurs only after the threshold and spring,
- * never on incidental short drags. It removes the dashboard record only.
- */
-@Composable
-private fun BriefDismissStretch(
-    identity: String,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    val scope = rememberCoroutineScope()
-    val offset = remember(identity) { Animatable(0f) }
-    var widthPx by remember(identity) { mutableFloatStateOf(1f) }
-    var active by remember(identity) { mutableStateOf(true) }
-    if (!active) return
-    Box(
-        modifier = modifier.onSizeChanged { widthPx = it.width.toFloat().coerceAtLeast(1f) },
-    ) {
-        // Same restrained destructive feedback in either swipe direction.
-        val shade = Color(0xFFC65A53)
-        Box(
-            modifier = Modifier.matchParentSize()
-                .graphicsLayer { alpha = (abs(offset.value) / (widthPx * 0.5f)).coerceIn(0f, 1f) }
-                .clip(CouiShape(22.dp, 2f))
-                .background(shade.copy(alpha = 0.24f)),
-        ) {
-            CouiIcon(Icons.Rounded.DeleteOutline, null, tint = shade,
-                modifier = Modifier.align(Alignment.CenterStart).padding(start = 17.dp)
-                    .size(23.dp).graphicsLayer { alpha = if (offset.value > 0f) 1f else 0f })
-            CouiIcon(Icons.Rounded.DeleteOutline, null, tint = shade,
-                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 17.dp)
-                    .size(23.dp).graphicsLayer { alpha = if (offset.value < 0f) 1f else 0f })
-        }
-        Box(
-            modifier = Modifier.fillMaxWidth()
-            .pointerInput(identity, widthPx) {
-                detectHorizontalDragGestures(
-                    onDragEnd = {
-                        scope.launch {
-                            if (abs(offset.value) >= widthPx * 0.33f) {
-                                offset.animateTo(
-                                    targetValue = sign(offset.value) * widthPx * 1.2f,
-                                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                                )
-                                active = false
-                                onDismiss()
-                            } else {
-                                offset.animateTo(0f, spring(
-                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessMedium,
-                                ))
-                            }
-                        }
-                    },
-                    onDragCancel = {
-                        scope.launch { offset.animateTo(0f, spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMedium,
-                        )) }
-                    },
-                    onHorizontalDrag = { change, drag ->
-                        change.consume()
-                        scope.launch {
-                            offset.snapTo((offset.value + drag).coerceIn(-widthPx * 1.3f, widthPx * 1.3f))
-                        }
-                    },
-                )
-            }
-            .graphicsLayer {
-                translationX = offset.value
-                val fraction = (abs(offset.value) / widthPx).coerceIn(0f, 1f)
-                scaleX = 1f + fraction * 0.06f
-                scaleY = 1f - fraction * 0.025f
-                transformOrigin = TransformOrigin(if (offset.value >= 0f) 0f else 1f, 0.5f)
-            },
-        ) { content() }
     }
 }

@@ -39,7 +39,6 @@ class JeanCalculProfileTest {
             AppRoute.CommunityCatalog, AppRoute.ModelProviderNew(NewProviderType.Anthropic)).forEach { assertFalse(it.isAvailableInJeanCalcul()) }
         listOf(AppRoute.Home, AppRoute.Terminal, AppRoute.Tools, AppRoute.Memory, AppRoute.SystemEnhance,
             AppRoute.ModelProviderNew(NewProviderType.OpenAiCompatible)).forEach { assertTrue(it.isAvailableInJeanCalcul()) }
-        assertEquals(AppearanceUiStyle.COUI, AppearanceSettings(uiStyle = AppearanceUiStyle.MIUIX).normalized().uiStyle)
     }
     @Test fun localServerNeedsNoApiKeyAndRunsTheOrdinaryAgentLoop() {
         val config = AgentModelClient.ModelConfig(baseUrl = "http://127.0.0.1:8000/v1", apiKey = "", model = "fixture", systemPrompt = "test")

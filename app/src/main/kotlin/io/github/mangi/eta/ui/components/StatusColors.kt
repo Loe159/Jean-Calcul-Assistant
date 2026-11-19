@@ -6,14 +6,14 @@ import androidx.compose.ui.res.stringResource
 import io.github.mangi.eta.R
 import io.github.mangi.eta.ui.model.PermissionStatusUi
 import io.github.mangi.eta.ui.model.RunStatusUi
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 // 语义状态色（对齐 Google 标准色系，饱和度克制柔和）
 val StatusSuccess = Color(0xFF34A853)
 val StatusWarning = Color(0xFFF9AB00)
-val StatusError: Color @Composable get() = MiuixTheme.colorScheme.error
-val StatusRunning: Color @Composable get() = MiuixTheme.colorScheme.primary
-val StatusIdle: Color @Composable get() = MiuixTheme.colorScheme.onSurfaceVariantSummary
+val StatusError: Color @Composable get() = COUITheme.colorScheme.error
+val StatusRunning: Color @Composable get() = COUITheme.colorScheme.primary
+val StatusIdle: Color @Composable get() = COUITheme.colorScheme.labelSecondary
 
 // ── RunStatusUi 映射 ──────────────────────────────────────────────────
 
