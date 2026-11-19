@@ -19,7 +19,17 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = 'fr.loevan.jeancalcul.v2'
 RUNNER = APP + '.test/androidx.test.runner.AndroidJUnitRunner'
 SCENARIOS = ('empty', 'message', 'reset', 'settings', 'dark', 'small_screen',
-             'large_text', 'keyboard', 'reduced_motion', 'menu', 'providers', 'tools', 'appearance', 'improvements', 'notifications', 'brief', 'brief_notifications', 'regression_fixture')
+             'large_text', 'keyboard', 'reduced_motion', 'menu', 'providers', 'tools', 'appearance', 'improvements',
+             'improvements_notifications', 'improvements_notifications_dark',
+             'improvements_notifications_small_screen', 'improvements_notifications_large_text',
+             'improvement_question_notice', 'improvement_finished_notice',
+             'notifications_modes', 'notifications_large_text', 'notifications',
+             'notifications_no_confirmation', 'brief', 'brief_dark',
+             'brief_large_text', 'brief_notifications', 'brief_archive', 'brief_archive_dark',
+             'brief_archive_large_text', 'brief_archive_restore',
+             'brief_decisions',
+             'brief_swipe_isolation',
+             'regression_fixture')
 
 
 def redact(text):
@@ -327,6 +337,8 @@ def main():
                 (APP + '.SmokeTest', 'localVllmWithoutKeyStreamsAndPersistsARealConversation'),
                 (APP + '.SmokeTest', 'settingsShowOnlyTheSelectedConversationProviders'),
                 (APP + '.SmokeTest', 'ownAppPowerContextCapturesTheScreenAndProtectsCredentialPages'),
+                (APP + '.SmokeTest', 'improvementAuthorizationSurvivesStoreRecreationOnlyForItsConversation'),
+                (APP + '.SmokeTest', 'improvementCaptureRemainsAvailableWhileOverlayClosesBeforeSnapshot'),
             })
             check_instrumentation_results(out / 'test-results', report['serial'], since=instrumentation_started)
         except RuntimeError as error:
@@ -344,13 +356,16 @@ def main():
             baseline()
             shell('am', 'force-stop', APP)
             # Each scenario owns fresh synthetic Room/DataStore state.
-            if scenario == 'dark':
+            if scenario in ('dark', 'improvements_notifications_dark', 'brief_dark', 'brief_archive_dark'):
                 shell('cmd', 'uimode', 'night', 'yes')
-            if scenario == 'small_screen':
+            if scenario in ('small_screen', 'improvements_notifications_small_screen'):
                 shell('wm', 'size', '720x1280')  # 360 x 640 dp
                 shell('wm', 'density', '320')
-            if scenario == 'large_text':
+            if scenario in ('large_text', 'improvements_notifications_large_text',
+                            'brief_large_text', 'notifications_large_text', 'brief_archive_large_text'):
                 shell('settings', 'put', 'system', 'font_scale', '2.0')
+            if scenario.startswith('improvements_notifications'):
+                shell('pm', 'revoke', APP, 'android.permission.POST_NOTIFICATIONS')
             remote = f'files/e2e/{scenario}.png'
             result = run(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
                 APP + '.VisualScenarioTest#capture', '-e', 'scenario', scenario, RUNNER],

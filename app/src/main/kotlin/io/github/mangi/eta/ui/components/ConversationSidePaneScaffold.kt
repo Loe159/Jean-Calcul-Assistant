@@ -27,6 +27,8 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -62,6 +64,7 @@ import io.github.mangi.eta.ui.model.ConversationSummaryUi
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import io.github.suqi8.coui.kmp.basic.PageIndicator
 import io.github.suqi8.coui.kmp.theme.COUITheme
 
 private object ConversationPaneMetrics {
@@ -100,7 +103,7 @@ fun ConversationSidePaneScaffold(
     modifier: Modifier = Modifier,
     activeModelLabel: String? = null,
     hasPermissionAttention: Boolean = false,
-    briefContent: @Composable (revealProgress: () -> Float) -> Unit = {},
+    briefContent: @Composable (revealProgress: () -> Float, onItemTouchChange: (Boolean) -> Unit) -> Unit = { _, _ -> },
     content: @Composable () -> Unit,
 ) {
     val sceneLifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
@@ -156,6 +159,9 @@ fun ConversationSidePaneScaffold(
         val hapticFeedback = LocalHapticFeedback.current
         val currentHapticFeedback by rememberUpdatedState(hapticFeedback)
         val dragInteractions = remember { MutableInteractionSource() }
+        // A touch on an activity card belongs to that card until pointer-up.
+        // Never let the full-page anchoredDraggable steal a rightward dismissal.
+        var notificationTouchActive by remember { mutableStateOf(false) }
         val isDragging by dragInteractions.collectIsDraggedAsState()
         val isHistoryRevealed by remember(paneDragState) {
             derivedStateOf { paneDragState.offset > 0.5f }
@@ -251,7 +257,8 @@ fun ConversationSidePaneScaffold(
                     state = paneDragState,
                     reverseDirection = false,
                     orientation = Orientation.Horizontal,
-                    enabled = backHandlerEnabled && sceneLifecycleState == Lifecycle.State.RESUMED,
+                    enabled = backHandlerEnabled && sceneLifecycleState == Lifecycle.State.RESUMED &&
+                        !notificationTouchActive,
                     flingBehavior = flingBehavior,
                     interactionSource = dragInteractions,
                 ),
@@ -300,7 +307,7 @@ fun ConversationSidePaneScaffold(
                             // D1: content lags behind the horizontal spring by at most 18dp.
                             translationX = -(1f - briefRevealProgress()) * 18.dp.toPx()
                         }) {
-                            briefContent(briefRevealProgress)
+                            briefContent(briefRevealProgress) { notificationTouchActive = it }
                         }
                     }
                     Box(
@@ -361,24 +368,20 @@ fun ConversationSidePaneScaffold(
             // Only the unobtrusive lower pager remains visible on the chat.
             val progress = briefPaneMotion(paneDragState.offset, fullWidthPx).progress
             if (!currentVisible && progress < 0.98f) {
-                Row(
+                // Native COUI page indicator: the trace follows the drag between both pages.
+                PageIndicator(
+                    pageCount = 2,
+                    currentPage = 0,
+                    currentPageOffsetFraction = progress.coerceIn(0f, 1f),
+                    animated = false,
                     modifier = Modifier.align(Alignment.BottomCenter)
                         .padding(bottom = 140.dp)
                         .graphicsLayer { alpha = (1f - progress).coerceIn(0f, 1f) }
-                        .semantics {
+                        .clearAndSetSemantics {
                             contentDescription = if (progress < 0.5f) "Chat, page 1 sur 2"
                                 else "Briefing, page 2 sur 2"
                         },
-                ) {
-                    Box(Modifier.padding(horizontal = 3.dp)
-                        .width((18f - 10f * progress).dp).height(4.dp)
-                        .clip(CircleShape).background(COUITheme.colorScheme.labelPrimary
-                            .copy(alpha = 0.62f - progress * 0.35f)))
-                    Box(Modifier.padding(horizontal = 3.dp)
-                        .width((8f + 10f * progress).dp).height(4.dp)
-                        .clip(CircleShape).background(COUITheme.colorScheme.labelPrimary
-                            .copy(alpha = 0.25f + progress * 0.42f)))
-                }
+                )
             }
         }
     }

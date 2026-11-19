@@ -196,10 +196,12 @@ internal fun AgentAppShell(
                 onOpenPermissions = onOpenPermissions,
                 activeModelLabel = homeModelPickerState?.selectedModel?.displayName,
                 hasPermissionAttention = hasPermissionAttention,
-                briefContent = { revealProgress ->
+                briefContent = { revealProgress, onItemTouchChange ->
                     NowBriefScreen(
                         visible = briefOpen,
                         revealProgress = revealProgress,
+                        onNotificationTouchChange = onItemTouchChange,
+                        onManageFiltering = onOpenNotifications,
                         onClose = { briefOpen = false },
                     )
                 },

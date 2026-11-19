@@ -5,25 +5,44 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.PowerManager
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.service.notification.StatusBarNotification
 import io.github.mangi.eta.agent.device.AgentNotificationHistoryService
+import io.github.mangi.eta.data.repository.NotificationHistoryRepository
 import java.time.LocalTime
 import java.util.ArrayDeque
 import java.util.Locale
 import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/** Monotonic throttle, pure so it can be tested without Android lifecycle. */
+internal fun notificationInferenceDelayMs(nowElapsed: Long, lastElapsed: Long): Long =
+    if (lastElapsed == 0L) 0L
+    else (12_000L - (nowElapsed - lastElapsed).coerceAtLeast(0L)).coerceAtLeast(0L)
+
 /**
- * Event-driven filter: at most one classification/minute and 100/day.
- * Raw texts exist only during that invocation, never in history or network calls.
- * No service, wake lock, timer, or inference model kept active between events.
+ * Event-driven local classifier: up to five classifications/minute and 500/day.
+ * Notification texts remain on the device: retained for 7 days in the
+ * existing private Now Brief history, with no cloud transmission.
+ * Queued Android objects live only in memory. One delayed main-thread callback
+ * is used for a bounded queue; no wake lock or permanent inference model.
  */
 internal object NotificationObservation : NotificationBriefSource {
-    private val executing = AtomicBoolean(false)
+    // The notification listener is invoked on Android's main thread. The main
+    // handler schedules only the next eligible inference, never background
+    // polling. Raw pending StatusBarNotification objects live in RAM only.
+    private val handler = Handler(Looper.getMainLooper())
+    private val pending = LinkedHashMap<String, StatusBarNotification>()
+    private var executing = false
+    private var scheduled = false
+    private val drainRunnable = Runnable {
+        synchronized(this) { scheduled = false }
+        drainNext()
+    }
     private val executor by lazy {
         Executors.newSingleThreadExecutor { work ->
             Thread(work, "notification-local-inference").apply { isDaemon = true }
@@ -32,6 +51,8 @@ internal object NotificationObservation : NotificationBriefSource {
     private var lastExecution = 0L
     private var dailyCount = 0
     private var dayBucket = -1L
+    private const val MAX_QUEUE = 64
+    private const val MAX_PENDING_MS = 60 * 60_000L
     private val history = ArrayDeque<String>()
     private val recent = ArrayDeque<NotificationBriefEvent>()
     private val packages = LinkedHashSet<String>()
@@ -44,6 +65,7 @@ internal object NotificationObservation : NotificationBriefSource {
     private var snoozed = 0
     private var dismissed = 0
     private var errors = 0
+    private var lastErrorType: String? = null
     private var filteredAds = 0
     private var filteredSpam = 0
     private val _summary = MutableStateFlow(NotificationBriefSnapshot())
@@ -53,7 +75,8 @@ internal object NotificationObservation : NotificationBriefSource {
         NotificationFilterSettings.load(context).mode != NotificationFilterMode.OFF
 
     fun setEnabled(context: Context, enabled: Boolean) =
-        NotificationFilterSettings.setMode(context, if (enabled) NotificationFilterMode.OBSERVE else NotificationFilterMode.OFF)
+        NotificationFilterSettings.setMode(context,
+            if (enabled) NotificationFilterMode.PERSONALIZED else NotificationFilterMode.OFF)
 
     @Synchronized
     fun snapshot(): List<String> = history.toList()
@@ -63,7 +86,22 @@ internal object NotificationObservation : NotificationBriefSource {
 
     @Synchronized
     fun statistics(): String =
-        "À examiner : $reviewed · Conservées : $kept · Masquages demandés : $requested · Confirmés : $confirmed · Ignorées : $skipped · Erreurs : $errors"
+        "Analysées : ${reviewed + kept} · Conservées : $kept · Masquages demandés : $requested · " +
+            "Confirmés : $confirmed · Ignorées : $skipped · Erreurs : $errors · En attente : ${pending.size}"
+
+    @Synchronized
+    fun diagnostics(context: Context): String {
+        val config = NotificationFilterSettings.load(context)
+        val ready = LocalNotificationModel.installed(context)
+        val battery = isBatteryRestricted(context)
+        return "Mode : ${config.mode} · Action : ${config.action} · " +
+            "Catégories à filtrer : ${config.labelRules.count { it.enabled }}/${config.labelRules.size} · " +
+            "Modèle : ${if (ready) "installé" else "absent"} · " +
+            "Accès notifications : ${if (AgentNotificationHistoryService.isEnabled(context)) "accordé" else "manquant"} · " +
+            "Batterie : ${if (battery) "analyse suspendue" else "OK"} · " +
+            "File : ${pending.size} · Aujourd'hui : $dailyCount/500 · " +
+            "Dernière erreur : ${lastErrorType ?: "aucune"}"
+    }
 
     /** Publish only after classification or an action; ignored events do not wake the dashboard. */
     @Synchronized
@@ -99,7 +137,7 @@ internal object NotificationObservation : NotificationBriefSource {
             outcome = outcome, timestampMs = System.currentTimeMillis(),
         ))
         while (recent.size > 50) recent.removeLast()
-        if (NotificationFilterSettings.isValidPackageName(packageName)) {
+        if (packageName.length in 3..200 && packageName.contains('.')) {
             packages.add(packageName)
             while (packages.size > 60) packages.remove(packages.first())
         }
@@ -127,77 +165,338 @@ internal object NotificationObservation : NotificationBriefSource {
         })
     }
 
+    /** Called after the listener has persisted the received notification. */
     fun observe(context: Context, sbn: StatusBarNotification) {
         val config = NotificationFilterSettings.load(context)
-        if (config.mode == NotificationFilterMode.OFF ||
-            !LocalNotificationModel.installed(context) ||
-            !NotificationProtection.safe(context, sbn)) return
-
-        val power = context.getSystemService(PowerManager::class.java)
-        if (power?.isPowerSaveMode == true) return
-        val battery = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        val level = battery?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
-        val scale = battery?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
-        if (level >= 0 && scale > 0 && level * 100 / scale < 20) return
-
-        val now = SystemClock.elapsedRealtime()
-        synchronized(this) {
-            val today = System.currentTimeMillis() / 86_400_000L
-            if (today != dayBucket) { dayBucket = today; dailyCount = 0 }
-            if (dailyCount >= 100 || now - lastExecution < 60_000 || executing.get()) {
-                skipped++
-                return
-            }
-            dailyCount++
-            lastExecution = now
-            executing.set(true)
+        if (config.mode == NotificationFilterMode.OFF) return
+        val app = context.applicationContext
+        if (!LocalNotificationModel.installed(app)) {
+            updateState(app, sbn, NotificationHistoryRepository.DecisionState.MODEL_MISSING)
+            return
+        }
+        if (isBatteryRestricted(app)) {
+            updateState(app, sbn, NotificationHistoryRepository.DecisionState.BATTERY_PAUSED)
+            return
         }
 
-        val app = context.applicationContext
-        val packageName = sbn.packageName
-        val fingerprint = NotificationProtection.fingerprint(sbn)
-        val text = NotificationProtection.text(sbn)
+        var overflow: StatusBarNotification? = null
+        val accepted = synchronized(this) {
+            refreshDay()
+            if (dailyCount >= 500) false
+            else {
+                if (!pending.containsKey(sbn.key) && pending.size >= MAX_QUEUE) {
+                    val oldestKey = pending.keys.first()
+                    overflow = pending.remove(oldestKey)
+                }
+                pending[sbn.key] = sbn
+                true
+            }
+        }
+        overflow?.let { updateState(app, it, NotificationHistoryRepository.DecisionState.LIMIT_REACHED) }
+        if (!accepted) {
+            updateState(app, sbn, NotificationHistoryRepository.DecisionState.LIMIT_REACHED)
+            synchronized(this) { skipped++; publish() }
+            return
+        }
+        updateState(app, sbn, NotificationHistoryRepository.DecisionState.QUEUED)
+        // The oldest eligible notification is analyzed immediately. Others
+        // remain queued for their turn, at most one model load per minute.
+        handler.post { drainNext() }
+    }
+
+    /** Do not leave queued rows stuck when Android/app removes their alert. */
+    fun notificationGone(context: Context, sbn: StatusBarNotification) {
+        // Do not dequeue it: its already-received local snapshot is still
+        // eligible for classification, even though it can no longer be deleted.
+        // The pending queue is bounded and has a fixed age limit.
+    }
+
+    private fun isBatteryRestricted(app: Context): Boolean {
+        val power = app.getSystemService(PowerManager::class.java)
+        if (power?.isPowerSaveMode == true) return true
+        val battery = app.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val level = battery?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = battery?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+        return level >= 0 && scale > 0 && level * 100 / scale < 20
+    }
+
+    private fun updateState(
+        app: Context, sbn: StatusBarNotification,
+        state: NotificationHistoryRepository.DecisionState,
+    ) {
+        runCatching {
+            if (NotificationHistoryRepository(app).updateDecision(sbn.key, sbn.postTime, state))
+                NotificationActivityFeed.notifyChanged()
+        }
+    }
+
+    /** A bounded, lifecycle-tied scheduler; never wakes the process on its own. */
+    private fun drainNext() {
+        val next: StatusBarNotification
+        synchronized(this) {
+            refreshDay()
+            if (executing || pending.isEmpty()) return
+            if (dailyCount >= 500) {
+                val limited = pending.values.toList()
+                pending.clear()
+                serviceApp?.let { app ->
+                    limited.forEach {
+                        updateState(app, it, NotificationHistoryRepository.DecisionState.LIMIT_REACHED)
+                    }
+                }
+                return
+            }
+            val waitMs = notificationInferenceDelayMs(SystemClock.elapsedRealtime(), lastExecution)
+            if (waitMs > 0L) {
+                if (!scheduled) {
+                    scheduled = true
+                    handler.postDelayed(drainRunnable, waitMs)
+                }
+                return
+            }
+            next = pending.remove(pending.keys.first())!!
+            executing = true
+        }
+
+        val app = serviceApp
+        if (app == null) {
+            synchronized(this) { executing = false }
+            return
+        }
+        // Analyze the received snapshot even if Android has since removed it.
+        // Only a still-active, unchanged notification may be acted upon later.
+        val live = AgentNotificationHistoryService.currentNotifications()
+            ?.firstOrNull { it.key == next.key && it.postTime == next.postTime }
+            ?.takeIf { NotificationProtection.fingerprint(it) == NotificationProtection.fingerprint(next) }
+        val snapshot = live ?: next
+        if (System.currentTimeMillis() - next.postTime > MAX_PENDING_MS) {
+            updateState(app, next, NotificationHistoryRepository.DecisionState.EXPIRED)
+            finishAnalysis()
+            return
+        }
+        if (!LocalNotificationModel.installed(app)) {
+            updateState(app, next, NotificationHistoryRepository.DecisionState.MODEL_MISSING)
+            finishAnalysis()
+            return
+        }
+        if (isBatteryRestricted(app)) {
+            updateState(app, next, NotificationHistoryRepository.DecisionState.BATTERY_PAUSED)
+            finishAnalysis()
+            return
+        }
+        synchronized(this) {
+            dailyCount++
+            lastExecution = SystemClock.elapsedRealtime()
+        }
+        val fingerprint = NotificationProtection.fingerprint(next)
+        val body = NotificationProtection.text(snapshot)
         executor.execute {
             try {
-                val liveConfig = NotificationFilterSettings.load(app)
-                if (liveConfig.mode == NotificationFilterMode.OFF || !NotificationProtection.safe(app, sbn)) return@execute
-                val results = LocalNotificationModel.classify(app, text)
-                val decision = NotificationFilterPolicy.decide(liveConfig, NotificationFilterCandidate(
-                    app = packageName, safe = true, scores = results, localHour = LocalTime.now().hour,
-                ))
+                val config = NotificationFilterSettings.load(app)
+                if (config.mode == NotificationFilterMode.OFF) {
+                    updateState(app, next, NotificationHistoryRepository.DecisionState.EXPIRED)
+                    return@execute
+                }
+                if (body.isBlank() || body == ".") {
+                    updateState(app, next, NotificationHistoryRepository.DecisionState.NO_CONTENT)
+                    return@execute
+                }
+                val result = LocalNotificationModel.classify(app, body, config.inferenceLabels())
+                // Classification is independent of deletion safety. A protected
+                // message can still be identified as advertising/spam.
+                val evaluation = NotificationFilterPolicy.evaluate(
+                    config, NotificationFilterCandidate(
+                        app = next.packageName, safe = true, scores = result,
+                        localHour = LocalTime.now().hour,
+                    ),
+                )
+                val label = result.first().first
+                val store = NotificationHistoryRepository(app)
+                val preference = if (NotificationAdaptiveSettings.enabled(app))
+                    store.interest(next.packageName, snapshot.notification.channelId, label,
+                        snapshot.notification.extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString().orEmpty(),
+                        snapshot.notification.extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString().orEmpty(),
+                        NotificationAdaptiveSettings.minExamples(app))
+                else NotificationPersonalization.Interest.NEUTRAL
+                val title = snapshot.notification.extras
+                    .getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString().orEmpty()
+                val content = snapshot.notification.extras
+                    .getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString().orEmpty()
+                val topic = store.learnedTopic(next.packageName, snapshot.notification.channelId, label,
+                    title, content)
+                    ?: NotificationTopics.classify(next.packageName, snapshot.notification.channelId,
+                        snapshot.notification.category, title, content, label)
+                val priority = NotificationPriorityInput(next.packageName, title, content,
+                    snapshot.notification.channelId, snapshot.notification.category, topic, label,
+                    personalInterest = preference,
+                    repeatedNewsHeadline = if (topic == "news" ||
+                        NotificationNewsPolicy.isNewsApp(next.packageName))
+                        store.isRepeatedNewsHeadline(next.key, next.packageName,
+                            title, content, next.postTime) else false)
+                val adapted = NotificationPriorityPolicy.automaticAction(priority, config,
+                    NotificationPersonalization.safeDecision(evaluation, preference, label, config),
+                    LocalTime.now().hour)
+                val decision = adapted.decision
+                val canRemove = live != null && NotificationProtection.safeForBrief(app, live, priority)
+                val state = when {
+                    decision == NotificationFilterDecision.KEEP ->
+                        NotificationHistoryRepository.DecisionState.KEPT
+                    decision == NotificationFilterDecision.OBSERVE ->
+                        NotificationHistoryRepository.DecisionState.OBSERVED
+                    !canRemove -> NotificationHistoryRepository.DecisionState.ANALYZED_PROTECTED
+                    else -> NotificationHistoryRepository.DecisionState.PROPOSED
+                }
+                if (NotificationHistoryRepository(app).updateDecision(
+                    next.key, next.postTime, state,
+                    result.firstOrNull()?.first, result.firstOrNull()?.second,
+                    reason = if (!canRemove && decision != NotificationFilterDecision.KEEP)
+                        "Conservée : limite Android ou protection d'une alerte" else adapted.reason,
+                    topic = topic, personalInterest = preference.name,
+                )) NotificationActivityFeed.notifyChanged()
                 synchronized(this) {
-                    if (decision == NotificationFilterDecision.KEEP) kept++ else reviewed++
-                    if (decision in setOf(NotificationFilterDecision.SNOOZE_1H,
-                            NotificationFilterDecision.SNOOZE_24H, NotificationFilterDecision.DISMISS)) proposed++
-                    append(packageName, results.first().first, results.first().second,
-                        when (decision) {
-                            NotificationFilterDecision.KEEP -> "Conservée"
-                            NotificationFilterDecision.OBSERVE -> "Observation"
+                    if (decision == NotificationFilterDecision.KEEP || !canRemove) kept++ else reviewed++
+                    if (canRemove && decision in setOf(
+                            NotificationFilterDecision.SNOOZE_1H,
+                            NotificationFilterDecision.SNOOZE_24H,
+                            NotificationFilterDecision.DISMISS,
+                        )) proposed++
+                    append(next.packageName, result.first().first, result.first().second,
+                        when {
+                            !canRemove -> "Conservée · protégée ou absente d'Android"
+                            decision == NotificationFilterDecision.KEEP -> "Conservée · ${adapted.reason}"
+                            decision == NotificationFilterDecision.OBSERVE -> "Observation"
                             else -> "À filtrer : $decision"
                         },
-                        when (decision) {
-                            NotificationFilterDecision.KEEP -> NotificationBriefOutcome.KEPT
-                            NotificationFilterDecision.OBSERVE -> NotificationBriefOutcome.OBSERVED
+                        when {
+                            !canRemove -> NotificationBriefOutcome.KEPT
+                            decision == NotificationFilterDecision.KEEP -> NotificationBriefOutcome.KEPT
+                            decision == NotificationFilterDecision.OBSERVE -> NotificationBriefOutcome.OBSERVED
                             else -> NotificationBriefOutcome.PROPOSED
                         },
                     )
                 }
-                if (decision in setOf(NotificationFilterDecision.SNOOZE_1H,
-                        NotificationFilterDecision.SNOOZE_24H, NotificationFilterDecision.DISMISS)) {
+                if (canRemove && decision in setOf(
+                        NotificationFilterDecision.SNOOZE_1H,
+                        NotificationFilterDecision.SNOOZE_24H,
+                        NotificationFilterDecision.DISMISS,
+                    )) {
                     AgentNotificationHistoryService.requestSafeFilter(
-                        sbn, fingerprint, results, decision,
+                        next, fingerprint, result, decision,
                     ) { applied ->
+                        if (!applied) {
+                            if (NotificationHistoryRepository(app).updateDecision(
+                                next.key, next.postTime,
+                                NotificationHistoryRepository.DecisionState.KEPT,
+                                reason = "Action refusée par les protections Android ou notification modifiée",
+                            )) NotificationActivityFeed.notifyChanged()
+                            synchronized(this) {
+                                append(next.packageName, result.first().first, result.first().second,
+                                    "Conservée · action refusée (protection Android, priorité ou notification modifiée)",
+                                    NotificationBriefOutcome.KEPT)
+                            }
+                        }
                         synchronized(this) {
                             if (applied) requested++ else skipped++
                             publish()
                         }
                     }
                 }
-            } catch (_: Exception) {
-                synchronized(this) { errors++; publish() }
+            } catch (error: Exception) {
+                updateState(app, next, NotificationHistoryRepository.DecisionState.ANALYSIS_ERROR)
+                synchronized(this) {
+                    errors++
+                    // Never log model inputs or notification text.
+                    lastErrorType = error.javaClass.simpleName.take(60)
+                    publish()
+                }
             } finally {
-                executing.set(false)
+                handler.post { finishAnalysis() }
             }
+        }
+    }
+
+    @Volatile private var serviceApp: Context? = null
+
+    private fun refreshDay() {
+        val today = System.currentTimeMillis() / 86_400_000L
+        if (today != dayBucket) {
+            dayBucket = today
+            dailyCount = 0
+        }
+    }
+
+    private fun finishAnalysis() {
+        synchronized(this) { executing = false }
+        handler.post { drainNext() }
+    }
+
+    fun attachService(context: Context) {
+        serviceApp = context.applicationContext
+        handler.post { drainNext() }
+    }
+
+    /** Retry only active, recently received, not-yet-classified notifications. */
+    fun recoverActive(
+        context: Context,
+        active: Array<out StatusBarNotification>,
+        includeClassified: Boolean = false,
+    ): Int {
+        if (active.isEmpty()) return 0
+        if (NotificationFilterSettings.load(context).mode == NotificationFilterMode.OFF) return 0
+        val latest = runCatching {
+            NotificationHistoryRepository(context).recent(limit = 300)
+                .associateBy { it.key }
+        }.getOrDefault(emptyMap())
+        val retryStates = setOf(
+            NotificationHistoryRepository.DecisionState.RECEIVED,
+            NotificationHistoryRepository.DecisionState.QUEUED,
+            NotificationHistoryRepository.DecisionState.BATTERY_PAUSED,
+            NotificationHistoryRepository.DecisionState.MODEL_MISSING,
+            NotificationHistoryRepository.DecisionState.ANALYSIS_ERROR,
+            NotificationHistoryRepository.DecisionState.PROTECTED,
+        )
+        val selected = active.asSequence()
+            // Games have their own cheap, explicit policy; never load ONNX for them.
+            .filterNot { NotificationGameIdentity.isGame(context, it.packageName) }
+            .filter {
+                System.currentTimeMillis() - it.postTime in 0L..MAX_PENDING_MS
+            }
+            .filter { sbn ->
+                latest[sbn.key]?.let { entry ->
+                    entry.postedAt == sbn.postTime &&
+                        (entry.state in retryStates ||
+                            (includeClassified && entry.state in setOf(
+                                NotificationHistoryRepository.DecisionState.KEPT,
+                                NotificationHistoryRepository.DecisionState.OBSERVED,
+                                NotificationHistoryRepository.DecisionState.ANALYZED_PROTECTED,
+                            )))
+                } == true
+            }
+            .take(MAX_QUEUE)
+            .toList()
+        selected.forEach { observe(context, it) }
+        return selected.size
+    }
+
+    fun retryActive(context: Context): Int =
+        recoverActive(
+            context,
+            AgentNotificationHistoryService.currentNotifications().orEmpty(),
+            includeClassified = true,
+        )
+
+    fun detachService() {
+        val app = serviceApp
+        serviceApp = null
+        handler.removeCallbacks(drainRunnable)
+        val outstanding = synchronized(this) {
+            scheduled = false
+            pending.values.toList().also { pending.clear() }
+        }
+        // The listener is going away. Pending entries must not display
+        // "in progress" forever after a process/service restart.
+        if (app != null) outstanding.forEach { sbn ->
+            updateState(app, sbn, NotificationHistoryRepository.DecisionState.EXPIRED)
         }
     }
 }

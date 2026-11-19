@@ -84,3 +84,12 @@ Other pages keep their existing defaults. At horizontal progress 0,
 the ambient halo layer is transparent, revealing an **exact theme-color
 match** with the chat; at progress 1, the existing animated halo is fully
 visible. This works in light and dark mode without hard-coded RGB values.
+
+## PR #71 UX refinement
+
+Session statistics appear only after classification activity. On an empty
+session, filtering setup and recent notifications follow the Brief heading.
+The placeholder "À venir" card is removed. Large font settings stack the
+three session metrics vertically. Local notification removal uses a neutral
+cue and offers an on-screen Undo. Archived copies stay available in notification
+settings for seven days, without changing the Android notification.

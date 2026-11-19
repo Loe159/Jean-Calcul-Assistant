@@ -488,7 +488,7 @@ private fun SettingsPageContent(
                 item {
                     ArrowPreference(
                         title = "Notifications intelligentes",
-                        summary = "Classification locale · mode observation sans suppression",
+                        summary = "Classification locale · modes et règles",
                         startAction = { Icon(imageVector = Icons.Rounded.FilterAlt, contentDescription = null, modifier = Modifier.size(24.dp), tint = SettingsIconColors.Blue) },
                         onClick = { onNavigate(AppRoute.IntelligentNotifications) },
                     )

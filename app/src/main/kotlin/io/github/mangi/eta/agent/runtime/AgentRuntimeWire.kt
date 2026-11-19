@@ -176,6 +176,8 @@ internal object AgentRuntimeWire {
         val rewriteTargetMessageId: String? = null,
         val assistantScreenContext: String = "",
         val appDevelopmentScreen: String = "",
+        /** Set by the Runtime service after checking the Binder caller; never accepted from the wire. */
+        val appDevelopmentTrusted: Boolean = false,
     ) {
         // 旧入口沿用会话 handoff；无持久会话的入口以首个 run 为会话起点。
         val effectiveModelSessionId: String
