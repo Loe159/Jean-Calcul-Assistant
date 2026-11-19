@@ -1,7 +1,7 @@
 name: Jean-Calcul V2 - FAST APK preview (build and publish)
 on:
   push:
-    branches: [feat/v2-notification-onnx-poc, feat/v2-notification-filtering, feat/v2-now-brief-pr69, feat/v2-nowbrief-ux, feat/adaptive-local-notifications-20261118]
+    branches: [feat/v2-notification-onnx-poc, feat/v2-notification-filtering, feat/v2-now-brief-pr69, feat/v2-nowbrief-ux, feat/adaptive-local-notifications-20261118, feat/v2-mastra-notifications]
     paths:
       - '.github/workflows/notification-user-preview.yml'
       - 'app/src/**'
@@ -77,7 +77,7 @@ jobs:
   publish:
     name: Publish APK immediately after successful build/signature
     needs: [build]
-    if: github.repository == 'Loe159/Jean-Calcul-Assistant' && (github.ref == 'refs/heads/feat/v2-notification-filtering' || github.ref == 'refs/heads/feat/v2-nowbrief-ux' || github.ref == 'refs/heads/feat/v2-now-brief-pr69' || github.ref == 'refs/heads/feat/adaptive-local-notifications-20261118')
+    if: github.repository == 'Loe159/Jean-Calcul-Assistant' && (github.ref == 'refs/heads/feat/v2-notification-filtering' || github.ref == 'refs/heads/feat/v2-nowbrief-ux' || github.ref == 'refs/heads/feat/v2-now-brief-pr69' || github.ref == 'refs/heads/feat/adaptive-local-notifications-20261118' || github.ref == 'refs/heads/feat/v2-mastra-notifications')
     runs-on: ubuntu-latest
     permissions:
       contents: write
