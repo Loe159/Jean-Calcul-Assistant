@@ -43,7 +43,7 @@ internal class DevelopmentGitHubClient(
             .header("Authorization", "Bearer $credential").header("Accept", "application/vnd.github+json").build()
         val text = downloadLog(request)
             .replace(Regex("github_pat_[A-Za-z0-9_]+|gh[pousr]_[A-Za-z0-9_]+|sk-[A-Za-z0-9_-]{12,}"), "[redacted]")
-            .replace(Regex("(?i)authorization[:=] *bearer +\\S+"), "Authorization: Bearer [redacted]")
+            .replace(Regex("(?i)authorization[=:] *bearer +\\S+"), "Authorization: Bearer [redacted]")
         return JSONObject().put("ok", true).put("revision", proposal.getString("head")).put("run_url", run.getString("html_url"))
             .put("job", job.getString("name")).put("log_tail", text)
     }
