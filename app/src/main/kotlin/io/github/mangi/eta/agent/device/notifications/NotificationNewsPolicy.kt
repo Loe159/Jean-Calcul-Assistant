@@ -30,7 +30,7 @@ internal object NotificationNewsPolicy {
     private val urgentLead = Regex(
         "(?iu)(alerte info|alerte actualit[ée]|flash sp[ée]cial|" +
             "(?:flash|info) (?:urgent|sp[ée]cial)|derni[èe]re minute|breaking news|" +
-            "urgent\s*[:!]|en direct\s*[:]|breaking\s*[:!])"
+            "urgent\\s*[:!]|en direct\\s*[:]|breaking\\s*[:!])"
     )
     private val majorEvent = Regex(
         "(?iu)(catastrophe|s[ée]isme|tremblement de terre|tsunami|" +
