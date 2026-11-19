@@ -109,6 +109,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import io.github.suqi8.coui.kmp.basic.Card
 import io.github.suqi8.coui.kmp.basic.Icon
 import io.github.suqi8.coui.kmp.basic.IconButton
 import io.github.suqi8.coui.kmp.basic.Scaffold
@@ -1240,51 +1241,37 @@ private fun SuggestionCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isDark = COUITheme.isDark
-    val ink = COUITheme.colorScheme.labelPrimary.copy(alpha = 1f)
-    val fill = ink.copy(alpha = if (isDark) 0.055f else 0.028f)
-    val border = ink.copy(alpha = if (isDark) 0.10f else 0.065f)
-    val interactionSource = remember { MutableInteractionSource() }
-    val shapeModifier = run {
-        val shape = SquircleShape(15.dp)
-        Modifier
-            .clip(shape)
-            .background(fill, shape)
-            .border(0.5.dp, border, shape)
-            .clickable(interactionSource = interactionSource, indication = LocalIndication.current, onClick = onClick)
-    }
-    Row(
-        modifier = modifier
-            .then(shapeModifier)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    // A native COUI card: card surface, Normal.XL smooth corners and the COUI press tint.
+    Card(
+        modifier = modifier,
+        insideMargin = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+        onClick = onClick,
     ) {
-        Box(
-            modifier = Modifier
-                .size(28.dp)
-                .clip(CircleShape)
-                .background(COUITheme.colorScheme.primary.copy(alpha = if (isDark) 0.16f else 0.10f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = item.icon,
-                contentDescription = null,
-                modifier = Modifier.size(15.dp),
-                tint = COUITheme.colorScheme.primary,
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(COUITheme.colorScheme.primary.copy(alpha = if (COUITheme.isDark) 0.16f else 0.10f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = item.icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(15.dp),
+                    tint = COUITheme.colorScheme.primary,
+                )
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = item.title,
+                modifier = Modifier.weight(1f),
+                style = COUITheme.textStyles.bodyS,
+                color = COUITheme.colorScheme.labelPrimary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
-        Spacer(modifier = Modifier.width(10.dp))
-        Text(
-            text = item.title,
-            modifier = Modifier.weight(1f),
-            style = COUITheme.textStyles.bodyM.copy(
-                fontSize = 13.5.sp,
-                fontWeight = FontWeight.Medium,
-            ),
-            color = COUITheme.colorScheme.labelPrimary.copy(alpha = 0.88f),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
 
