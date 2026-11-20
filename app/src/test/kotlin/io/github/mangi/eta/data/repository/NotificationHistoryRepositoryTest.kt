@@ -1,10 +1,19 @@
 package io.github.mangi.eta.data.repository
 
+import android.app.Notification
 import android.content.Context
+import io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback
+import io.github.mangi.eta.agent.device.notifications.remote.AndroidAction
+import io.github.mangi.eta.agent.device.notifications.remote.DecisionSource
+import io.github.mangi.eta.agent.device.notifications.remote.Interest
+import io.github.mangi.eta.agent.device.notifications.remote.Priority
+import io.github.mangi.eta.agent.device.notifications.remote.RemoteDecision
+import io.github.mangi.eta.agent.device.notifications.remote.Uncertainty
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -64,6 +73,46 @@ class NotificationHistoryRepositoryTest {
         assertEquals(true, repository.record("same", "fr.leboncoin", "Promo", "-30%", null, time,
             fingerprint = "xyz"))
         assertEquals(NotificationHistoryRepository.DecisionState.RECEIVED, repository.recent().single().state)
+    }
+
+    @Test
+    fun `the effective priority controls dismissal of an active classified notification`() {
+        val time = System.currentTimeMillis()
+        val app = "org.example.preinstalled.mail"
+        repository.record("mail", app, "Bulletin fictif", "Dernier numéro disponible", null, time,
+            androidCategory = Notification.CATEGORY_EMAIL, fingerprint = "snapshot", queueForRemote = true)
+        val pending = repository.pendingRemote(1).single()
+        assertNull(repository.androidDismissalTarget("mail", time))
+        val hash = "a".repeat(64)
+        val target = repository.applyRemoteDecision(RemoteDecision(
+            id = pending.eventId,
+            revision = pending.revision,
+            contentHash = hash,
+            topic = "learning",
+            subtype = "newsletter",
+            priority = Priority.TODAY,
+            interest = Interest.NEUTRAL,
+            recommendedAndroidAction = AndroidAction.KEEP,
+            protected = true,
+            reason = "Bulletin périodique",
+            uncertainty = Uncertainty.MEDIUM,
+            source = DecisionSource.MODEL,
+            policyVersion = "test",
+            decidedAt = "2026-11-19T19:00:00Z",
+        )) { hash }
+
+        repository.setAndroidActionState("mail", time, NotificationHistoryRepository.AndroidActionState.SKIPPED_PROTECTED)
+        assertEquals(NotificationHistoryRepository.RemoteTarget("mail", time, "snapshot", app), target)
+        assertEquals(target, repository.androidDismissalTarget("mail", time))
+        assertNull(repository.androidDismissalTarget("mail", time + 1))
+
+        repository.feedback("mail", time, NotificationUserFeedback.PRIORITY_CORRECTED, correctedPriority = "NOW")
+        assertNull(repository.androidDismissalTarget("mail", time))
+        repository.feedback("mail", time, NotificationUserFeedback.PRIORITY_CORRECTED, correctedPriority = "LOW")
+        assertEquals(target, repository.androidDismissalTarget("mail", time))
+        repository.setAndroidActionState("mail", time, NotificationHistoryRepository.AndroidActionState.CONFIRMED)
+        assertNull(repository.androidDismissalTarget("mail", time))
+        assertFalse(repository.setAndroidActionState("mail", time, NotificationHistoryRepository.AndroidActionState.REQUESTED))
     }
 
     @Test

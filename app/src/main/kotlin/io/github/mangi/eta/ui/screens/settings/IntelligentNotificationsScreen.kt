@@ -263,14 +263,16 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                     item {
                         ArrowPreference(
                             title = "Tester la connexion",
-                            summary = "Vérifie l'authentification et le modèle local",
+                            summary = "Vérifie l'authentification et le modèle configuré",
                             enabled = !busy,
                             onClick = { action {
                                 val pairing = MastraConnection.load(context) ?: error("Homelab non configuré")
                                 val health = withContext(Dispatchers.IO) { MastraNotificationClient(pairing).health() }
+                                val modelLabel = health.model.version?.takeIf { it.startsWith("openai/") }
+                                    ?.let { "OpenAI (${it.substringAfter('/')})" } ?: "modèle local"
                                 status = "Connecté · ${health.policyVersion}" + when (health.model.available) {
-                                    true -> " · modèle local disponible"
-                                    false -> " · modèle local indisponible : règles seules, inconnus conservés"
+                                    true -> " · $modelLabel disponible"
+                                    false -> " · $modelLabel indisponible · règles seules, inconnus conservés"
                                     null -> " · règles seules"
                                 }
                             } },
@@ -307,14 +309,15 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                 }
             }
         }
-        PreferenceFooter(text = "Les notifications sont analysées par votre homelab privé, sans service cloud. " +
-            "Les codes numériques sont masqués avant l'envoi ; les icônes restent sur le téléphone.")
+        PreferenceFooter(text = "Le homelab applique d'abord ses règles. S'il est configuré pour OpenAI, " +
+            "il transmet le contenu filtré des notifications sans règle applicable. " +
+            "Les codes numériques sont masqués avant l'envoi et les icônes restent sur le téléphone.")
         PreferenceSection(title = "Android") {
             CardListGroup {
                 item {
                     SwitchPreference(
                         title = "Retrait automatique",
-                        summary = "Retirer du panneau Android ce que le homelab juge différable ou sans importance",
+                        summary = "Garder dans Android les notifications « À traiter maintenant »",
                         checked = config.mode == NotificationFilterMode.PERSONALIZED,
                         onCheckedChange = { enabled ->
                             if (enabled && !listenerGranted) status = "Autorisez d'abord l'accès aux notifications Android."
@@ -322,6 +325,7 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                                 val next = config.copy(mode = if (enabled) NotificationFilterMode.PERSONALIZED else NotificationFilterMode.OFF)
                                 NotificationFilterSettings.save(context, next)
                                 config = next
+                                if (enabled) AgentNotificationHistoryService.reconsiderAndroidDismissals(context)
                             }
                         },
                     )
@@ -335,8 +339,8 @@ internal fun IntelligentNotificationsScreen(onBack: () -> Unit) {
                 }
             }
         }
-        PreferenceFooter(text = "Toujours conservés : appels, alarmes, vraies conversations, codes, sécurité, paiements, " +
-            "notifications non effaçables et applications système. Une décision tardive ou périmée n'efface rien.")
+        PreferenceFooter(text = "« Aujourd’hui » et « Sans importance » restent dans Now Brief. " +
+            "Certaines notifications restent dans le panneau tant qu’Android bloque leur retrait ou que leur groupe contient d’autres notifications.")
         if (status.isNotBlank()) PreferenceFooter(text = status)
         if (paired) PreferenceSection(title = "Préférences du homelab") {
             CardListGroup {

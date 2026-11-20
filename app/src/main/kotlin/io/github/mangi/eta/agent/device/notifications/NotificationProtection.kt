@@ -196,40 +196,12 @@ internal object NotificationProtection {
         return true
     }
 
-    // Minimal, non-negotiable content guard for remote decisions: OTP, account security
-    // and payments are never removed, whatever the homelab recommends.
-    private val nonNegotiable = Regex(
-        "(?iu)(\\b(?:otp|2fa|mfa|code de (?:v[ée]rification|connexion|s[ée]curit[ée])|verification code|" +
-            "authentification|authentication|mot de passe|password|s[ée]curit[ée] du compte|security alert|" +
-            "virement|paiement|payment|carte bancaire|transaction)\\b|\\b[0-9]{5,8}\\b)"
-    )
-    private val neverRemovedCategories = setOf(
-        Notification.CATEGORY_CALL, Notification.CATEGORY_MISSED_CALL, Notification.CATEGORY_ALARM,
-        Notification.CATEGORY_TRANSPORT, Notification.CATEGORY_NAVIGATION, Notification.CATEGORY_LOCATION_SHARING,
-        Notification.CATEGORY_PROGRESS, Notification.CATEGORY_ERROR, Notification.CATEGORY_STOPWATCH,
-    )
-
-    /**
-     * Native guard applied to every Mastra DISMISS recommendation, independently of the server.
-     * Platform and safety checks only, no business classification: every eligible third-party
-     * app may be filtered (no package allowlist), but calls, alarms, real conversations with
-     * messages or inline reply, persistent services, system apps and sensitive content stay.
-     */
-    fun remoteDismissAllowed(context: Context, sbn: StatusBarNotification): Boolean {
+    /** Cancelling a populated summary could also remove notifications from its group. */
+    fun remoteDismissAllowed(sbn: StatusBarNotification, active: Array<StatusBarNotification>): Boolean {
         val n = sbn.notification
-        if (!sbn.isClearable || sbn.packageName == context.packageName ||
-            n.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE or
-                Notification.FLAG_GROUP_SUMMARY or Notification.FLAG_NO_CLEAR) != 0 ||
-            n.category in neverRemovedCategories ||
-            n.extras.getParcelableArray(Notification.EXTRA_MESSAGES)?.isNotEmpty() == true ||
-            n.actions?.any { it.remoteInputs?.isNotEmpty() == true } == true) return false
-        val appInfo = runCatching { context.packageManager.getApplicationInfo(sbn.packageName, 0) }
-            .getOrNull() ?: return false
-        if (appInfo.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0) return false
-        val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
-        val text = n.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
-        val big = n.extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString().orEmpty()
-        return !nonNegotiable.containsMatchIn("$title $text $big")
+        if (!sbn.isClearable || n.flags and Notification.FLAG_FOREGROUND_SERVICE != 0) return false
+        return n.flags and Notification.FLAG_GROUP_SUMMARY == 0 ||
+            active.none { it.key != sbn.key && it.groupKey == sbn.groupKey }
     }
 
     fun text(sbn: StatusBarNotification): String {

@@ -30,8 +30,7 @@ internal object MastraContract {
         isOpaque(d.id) && d.revision >= 1 && isHash(d.contentHash) && d.topic in TOPICS &&
             subtype.matches(d.subtype) && d.reason.isNotBlank() && d.reason.length <= 160 &&
             d.actions.size <= 4 && d.actions.all { it.status == "PROPOSED" && it.actionId.startsWith("act_") } &&
-            // A NOW or protected notification is never removed, whatever the server says.
-            !(d.recommendedAndroidAction == AndroidAction.DISMISS && (d.priority == Priority.NOW || d.protected))
+            !(d.recommendedAndroidAction == AndroidAction.DISMISS && d.priority == Priority.NOW)
 }
 
 @Serializable internal enum class Priority { NOW, TODAY, LOW }

@@ -235,6 +235,18 @@ internal class NotificationHistoryRepository(context: Context) {
 
     data class RemoteTarget(val key: String, val postedAt: Long, val fingerprint: String?, val packageName: String)
 
+    /** A classified notification can leave Android when its current Now Brief priority is deferred. */
+    fun androidDismissalTarget(key: String, postedAt: Long): RemoteTarget? =
+        database.readableDatabase.query(
+            TABLE, arrayOf("notification_key", "posted_at", "content_fingerprint", "package_name"),
+            "notification_key=? AND posted_at=? AND archived_at IS NULL AND sync_state='DECIDED' " +
+                "AND android_action_state!='CONFIRMED' AND COALESCE(user_priority, remote_priority) IN ('TODAY','LOW')",
+            arrayOf(key.take(MAX_KEY_CHARS), postedAt.toString()), null, null, null, "1",
+        ).use { cursor ->
+            if (cursor.moveToFirst()) RemoteTarget(cursor.getString(0), cursor.getLong(1), cursor.getString(2), cursor.getString(3))
+            else null
+        }
+
     /**
      * Stores a validated Mastra decision for the exact event, revision and content hash.
      * Returns the Android target only when this decision concerns the current local content.
@@ -244,15 +256,15 @@ internal class NotificationHistoryRepository(context: Context) {
                             expectedContentHash: (PendingRemote) -> String): RemoteTarget? {
         var target: RemoteTarget? = null
         database.writableDatabase.transaction {
-            val row = query(TABLE, arrayOf("notification_key", "event_id", "revision", "package_name", "title", "text",
-                "sub_text", "posted_at", "channel_id", "android_category", "content_fingerprint", "meta_json", "user_topic"),
+            val (row, userPriority) = query(TABLE, arrayOf("notification_key", "event_id", "revision", "package_name", "title", "text",
+                "sub_text", "posted_at", "channel_id", "android_category", "content_fingerprint", "meta_json", "user_priority"),
                 "event_id=? AND revision=?", arrayOf(d.id, d.revision.toString()), null, null, null, "1").use { c ->
                 if (!c.moveToFirst()) null else PendingRemote(c.getString(0), c.getString(1), c.getInt(2), c.getString(3),
                     c.getString(4), c.getString(5), c.getString(6), c.getLong(7), c.getString(8), c.getString(9),
-                    c.getString(10), StructuralMeta.fromJson(c.getString(11)))
+                    c.getString(10), StructuralMeta.fromJson(c.getString(11))) to c.getString(12)
             } ?: return@transaction
             if (expectedContentHash(row) != d.contentHash) return@transaction
-            val keep = d.recommendedAndroidAction == io.github.mangi.eta.agent.device.notifications.remote.AndroidAction.KEEP
+            val keep = (userPriority ?: d.priority.name) == "NOW"
             update(TABLE, ContentValues().apply {
                 put("sync_state", SyncState.DECIDED.name)
                 put("remote_topic", d.topic); put("remote_subtype", d.subtype)
@@ -287,7 +299,7 @@ internal class NotificationHistoryRepository(context: Context) {
             }
             if (reason != null) put("filter_reason", reason.take(180))
         }
-        return database.writableDatabase.update(TABLE, values, "notification_key=? AND posted_at=?",
+        return database.writableDatabase.update(TABLE, values, "notification_key=? AND posted_at=? AND android_action_state!='CONFIRMED'",
             arrayOf(key.take(MAX_KEY_CHARS), postedAt.toString())) == 1
     }
 

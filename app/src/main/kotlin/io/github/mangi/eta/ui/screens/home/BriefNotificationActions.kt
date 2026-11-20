@@ -118,6 +118,10 @@ internal class BriefNotificationActions(
             withContext(Dispatchers.IO) {
                 repository.feedback(entry.key, entry.postedAt, feedback, category, priority)
                 NotificationActivityFeed.notifyChanged()
+                // Une priorité corrigée peut rendre la notification éligible au retrait automatique.
+                if (feedback == NotificationUserFeedback.PRIORITY_CORRECTED) {
+                    AgentNotificationHistoryService.requestRemoteDismiss(context, entry.key, entry.postedAt)
+                }
                 MastraNotificationSync.request(context)
             }
         }
