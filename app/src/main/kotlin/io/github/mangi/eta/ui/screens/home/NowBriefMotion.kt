@@ -1,154 +1,122 @@
 package io.github.mangi.eta.ui.screens.home
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.database.ContentObserver
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import io.github.mangi.eta.ui.screens.home.effect.BgEffectConfig
-import io.github.mangi.eta.ui.screens.home.effect.BgEffectPainter
-import io.github.mangi.eta.ui.screens.home.effect.DeviceType
-import io.github.mangi.eta.ui.screens.home.effect.bgEffectDraw
-import io.github.suqi8.coui.kmp.blur.isRuntimeShaderSupported
 import kotlinx.coroutines.delay
 
-/** Respects the system animation setting and battery saver. */
-internal fun briefMotionAllowed(context: Context): Boolean =
-    runCatching {
-        Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
-    }.getOrDefault(1f) > 0f
-
-internal fun briefAmbientAllowed(context: Context): Boolean {
+private fun briefAmbientAllowed(context: Context): Boolean {
     val power = context.getSystemService(PowerManager::class.java)
-    return briefMotionAllowed(context) && power?.isPowerSaveMode != true
+    val scale = runCatching {
+        Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
+    }.getOrDefault(1f)
+    return scale > 0f && power?.isPowerSaveMode != true
 }
 
-/** Process memory for the briefing entrance. */
+@Composable
+internal fun rememberBriefMotionAllowed(active: Boolean): Boolean {
+    val context = LocalContext.current
+    var allowed by remember(context) { mutableStateOf(briefAmbientAllowed(context)) }
+    DisposableEffect(context, active) {
+        if (!active) return@DisposableEffect onDispose {}
+        fun refresh() {
+            allowed = briefAmbientAllowed(context)
+        }
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) = refresh()
+        }
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) = refresh()
+        }
+        context.contentResolver.registerContentObserver(
+            Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, observer,
+        )
+        context.registerReceiver(
+            receiver, IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED), Context.RECEIVER_NOT_EXPORTED,
+        )
+        refresh()
+        onDispose {
+            context.contentResolver.unregisterContentObserver(observer)
+            context.unregisterReceiver(receiver)
+        }
+    }
+    return allowed
+}
+
 internal object BriefMotionSession {
     var hasOpened by mutableStateOf(false)
     var hasClosedAfterOpening by mutableStateOf(false)
-    val revealedCards = androidx.compose.runtime.mutableStateMapOf<String, Boolean>()
+    val revealedCards = mutableSetOf<String>()
 }
 
-internal fun shouldAnimateBriefEntrance(hasOpened: Boolean): Boolean = !hasOpened
+internal fun shouldAnimateBriefEntrance(hasClosedAfterOpening: Boolean, alreadySeen: Boolean): Boolean =
+    !hasClosedAfterOpening && !alreadySeen
 
 internal object BriefMotionTiming {
-    const val TITLE_MS = 230
-    const val CARD_MS = 190
-    const val CARD_STAGGER_MS = 20
-    const val CARD_MAX_DELAY_MS = 80
-    const val COUNTER_MS = 300
-    const val BAR_MS = 280
-    const val NOTIFICATION_MS = 210
-
-    /** The ambient halo drifts while the briefing opens, then holds still: no idle redraws. */
-    const val AMBIENT_PLAY_MS = 8_000L
+    const val CARD_MS = 600
+    const val CARD_STAGGER_MS = 55L
+    const val DENSITY_MS = 500
+    const val WORD_MS = 700
+    const val WORD_STAGGER_MS = 28
+    const val WORD_START_MS = 120
+    val EaseMove = CubicBezierEasing(.3f, 0f, .1f, 1f)
 }
 
-internal fun briefHaloAlpha(revealProgress: Float): Float =
+internal fun briefSceneAlpha(revealProgress: Float): Float =
     revealProgress.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: 0f
 
-/** The COUI Labs OS2 shader, using its phone/tablet and light/dark presets. */
-@Composable
-internal fun BriefAmbientBackground(
-    visible: Boolean,
-    dark: Boolean,
-    scrollOffsetPx: () -> Float,
-    revealProgress: () -> Float = { if (visible) 1f else 0f },
-    modifier: Modifier = Modifier,
-) {
-    val context = LocalContext.current
-    val configuration = LocalConfiguration.current
-    val deviceType = if (configuration.screenWidthDp >= 600) DeviceType.PAD else DeviceType.PHONE
-    val preset = remember(deviceType, dark) { BgEffectConfig.get(deviceType, dark) }
-    val shaderSupported = remember { isRuntimeShaderSupported() }
-    val painter = if (shaderSupported) remember { BgEffectPainter() } else null
-    // Each halo frame redraws the whole briefing above it. Let it drift while the page opens,
-    // then hold the last frame: an idle briefing renders nothing instead of ~60 frames/s.
-    var drifting by remember { mutableStateOf(false) }
-    LaunchedEffect(visible) {
-        drifting = visible
-        if (visible) {
-            delay(BriefMotionTiming.AMBIENT_PLAY_MS)
-            drifting = false
-        }
-    }
-    val playing = drifting && remember(context, visible) { briefAmbientAllowed(context) }
-    val baseColor = if (dark) Color.Black else Color(0xFFF0F1F2)
-    if (painter == null) {
-        Spacer(modifier.fillMaxSize().background(baseColor))
-        return
-    }
-    Spacer(
-        modifier = modifier
-            .fillMaxSize()
-            .graphicsLayer {
-                alpha = briefHaloAlpha(revealProgress())
-                translationY = -(scrollOffsetPx() * 0.026f).coerceIn(0f, 12f)
-            }
-            .bgEffectDraw(
-                painter = painter,
-                preset = preset,
-                deviceType = deviceType,
-                isDarkTheme = dark,
-                surface = baseColor,
-                effectBackground = true,
-                isFullSize = true,
-                playing = playing,
-                alpha = { 1f },
-            ),
-    )
-}
+internal fun briefSkyParallax(scrollOffsetPx: Float): Float = scrollOffsetPx.coerceAtLeast(0f) * .35f
 
-/** A4 + D6: stagger on opening and on first visibility while scrolling a lazy list. */
 @Composable
 internal fun BriefReveal(
     id: String,
     visible: Boolean,
+    motionAllowed: Boolean,
     order: Int,
-    alreadySeen: MutableMap<String, Boolean>,
     content: @Composable () -> Unit,
 ) {
-    val context = LocalContext.current
-    val enabled = remember(context) { briefMotionAllowed(context) }
-    var revealed by remember(id) {
-        mutableStateOf(alreadySeen.containsKey(id) || BriefMotionSession.hasClosedAfterOpening)
+    val progress = remember(id) {
+        val animate = shouldAnimateBriefEntrance(
+            BriefMotionSession.hasClosedAfterOpening,
+            id in BriefMotionSession.revealedCards,
+        )
+        Animatable(if (animate) 0f else 1f)
     }
-    LaunchedEffect(id, visible, enabled) {
-        if (!visible || revealed) return@LaunchedEffect
-        if (enabled && !BriefMotionSession.hasClosedAfterOpening &&
-            !alreadySeen.containsKey(id)) {
-            delay((order * BriefMotionTiming.CARD_STAGGER_MS)
-                .coerceAtMost(BriefMotionTiming.CARD_MAX_DELAY_MS).toLong())
+    LaunchedEffect(id, visible, motionAllowed) {
+        if (!visible) return@LaunchedEffect
+        if (motionAllowed && progress.value < 1f && id !in BriefMotionSession.revealedCards) {
+            delay(order * BriefMotionTiming.CARD_STAGGER_MS)
+            progress.animateTo(1f, tween(BriefMotionTiming.CARD_MS, easing = BriefMotionTiming.EaseMove))
+        } else {
+            progress.snapTo(1f)
         }
-        alreadySeen[id] = true
-        revealed = true
+        BriefMotionSession.revealedCards.add(id)
     }
-    val progress by animateFloatAsState(
-        targetValue = if (revealed || !enabled) 1f else 0f,
-        animationSpec = tween(BriefMotionTiming.CARD_MS, easing = FastOutSlowInEasing),
-        label = "brief-card-entrance-$id",
-    )
     Box(Modifier.fillMaxWidth().graphicsLayer {
-        alpha = progress
-        translationY = (1f - progress) * 8.dp.toPx()
+        val fraction = if (motionAllowed && visible) progress.value else 1f
+        alpha = fraction
+        translationY = (1f - fraction) * 16.dp.toPx()
     }) { content() }
 }

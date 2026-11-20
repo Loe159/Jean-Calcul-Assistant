@@ -55,6 +55,12 @@ class VisualScenarioTest {
         (item ?: throw AssertionError("Notification preferences are not reachable")).click()
     }
 
+    private fun jumpToBriefNotifications(device: UiDevice) {
+        val shortcut = device.wait(Until.findObject(By.text("Voir les notifications")), 10000)
+            ?: throw AssertionError("Missing shortcut to the Notifications card")
+        shortcut.click()
+    }
+
     @Before fun prepareSyntheticPermissions() {
         if (!InstrumentationRegistry.getArguments().getString("scenario").orEmpty().startsWith("improvements_notifications")) {
             grantSyntheticNotificationPermission()
@@ -210,23 +216,25 @@ class VisualScenarioTest {
                         device.swipe(device.displayWidth * 4 / 5, midY,
                             device.displayWidth / 6, midY, 30)
                         assertTrue("Left swipe must reveal Now Brief",
-                            device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
+                            device.wait(Until.hasObject(By.desc("Personnaliser le brief")), 12000))
                         assertTrue("Settings card must not appear in briefing",
                             !device.hasObject(By.text("Notifications intelligentes")))
                         assertFalse("Filtering settings are not part of the briefing",
                             device.hasObject(By.text("Filtrage des notifications")))
-                        assertTrue("Single halo ambient, no cycle labels",
-                            !device.hasObject(By.textContains("Ambiance ")))
+                        assertFalse("The sky has no cycle labels",
+                            device.hasObject(By.textContains("Ambiance ")))
+                        assertFalse("The introductory assistant badge is absent",
+                            device.hasObject(By.text("Assistant à l’écoute")))
                         // Return to the conversation with the same spring gesture.
                         device.swipe(device.displayWidth / 6, midY,
                             device.displayWidth * 4 / 5, midY, 30)
                         assertTrue("Right swipe must return to conversation",
-                            device.wait(Until.gone(By.text("Mon briefing")), 12000))
+                            device.wait(Until.gone(By.desc("Personnaliser le brief")), 12000))
                         // Re-open using the accessible button; screenshot shows the briefing.
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
-                        assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
+                        assertTrue(device.wait(Until.hasObject(By.desc("Personnaliser le brief")), 12000))
                         assertTrue("Brief stays accessible on second opening",
-                            device.hasObject(By.text("Mon briefing")))
+                            device.hasObject(By.desc("Personnaliser le brief")))
                     }
                     "brief_notifications" -> {
                         val repo = NotificationHistoryRepository(context)
@@ -239,6 +247,7 @@ class VisualScenarioTest {
                             "Information", "Alerte synthétique", null, now - 200)
                         NotificationActivityFeed.notifyChanged()
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
+                        jumpToBriefNotifications(device)
                         val total = By.textContains("3 notifications")
                         var countScrolls = 0
                         while (!device.hasObject(total) && countScrolls++ < 6) {
@@ -386,7 +395,8 @@ class VisualScenarioTest {
                         ))
                         NotificationActivityFeed.notifyChanged()
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
-                        assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
+                        assertTrue(device.wait(Until.hasObject(By.desc("Personnaliser le brief")), 12000))
+                        jumpToBriefNotifications(device)
                         val marker = By.textContains("1 notification")
                         var attempts = 0
                         while (!device.hasObject(marker) && attempts++ < 12) {
@@ -439,10 +449,17 @@ class VisualScenarioTest {
                             null, now - 1, fingerprint = "fp-pending", queueForRemote = true)
                         NotificationActivityFeed.notifyChanged()
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
-                        assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
+                        assertTrue(device.wait(Until.hasObject(By.desc("Personnaliser le brief")), 12000))
+                        jumpToBriefNotifications(device)
                         assertTrue("Mastra NOW tier is shown", device.wait(Until.hasObject(By.text("À traiter maintenant")), 8000))
+                        val pending = By.textContains("Analyse en attente")
+                        var attempts = 0
+                        while (!device.hasObject(pending) && attempts++ < 8) {
+                            device.swipe(device.displayWidth / 2, device.displayHeight * 2 / 3,
+                                device.displayWidth / 2, device.displayHeight / 2, 26)
+                        }
                         assertTrue("Pending analysis is explicit",
-                            device.wait(Until.hasObject(By.textContains("Analyse en attente")), 8000))
+                            device.wait(Until.hasObject(pending), 8000))
                     }
                     "brief_swipe_isolation" -> {
                         val repo = NotificationHistoryRepository(context)
@@ -451,10 +468,11 @@ class VisualScenarioTest {
                             "Test de glissement", "Test local", null, now)
                         NotificationActivityFeed.notifyChanged()
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
-                        assertTrue(device.wait(Until.hasObject(By.text("Mon briefing")), 12000))
-                        val selector = By.textContains("1 notification")
+                        assertTrue(device.wait(Until.hasObject(By.desc("Personnaliser le brief")), 12000))
+                        jumpToBriefNotifications(device)
+                        val selector = By.text("Test de glissement")
                         var group = device.wait(Until.findObject(selector), 10000)
-                            ?: throw AssertionError("Synthetic notification group missing")
+                            ?: throw AssertionError("Synthetic notification row missing")
                         var attempts = 0
                         while (group.visibleBounds.centerY() !in
                                 device.displayHeight / 4..device.displayHeight * 3 / 4 &&
@@ -476,7 +494,7 @@ class VisualScenarioTest {
                             device.displayWidth * 5 / 6, y, 30,
                         )
                         assertTrue("Swiping a notification right must not close the briefing",
-                            device.wait(Until.hasObject(By.text("Mon briefing")), 10000))
+                            device.wait(Until.hasObject(By.desc("Personnaliser le brief")), 10000))
                     }
                     "menu" -> {
                         assertTrue("New conversation is a direct toolbar action",
