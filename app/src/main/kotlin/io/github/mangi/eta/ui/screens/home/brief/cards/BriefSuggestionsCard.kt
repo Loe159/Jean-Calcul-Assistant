@@ -36,7 +36,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.ui.screens.home.brief.BriefCard
 import io.github.mangi.eta.ui.screens.home.brief.BriefCardId
-import io.github.mangi.eta.ui.screens.home.brief.BriefDemoData
 import io.github.mangi.eta.ui.screens.home.brief.BriefDemoSuggestion
 import io.github.mangi.eta.ui.screens.home.brief.briefTintedLabel
 import io.github.suqi8.coui.kmp.basic.Icon
@@ -114,8 +113,8 @@ internal fun BriefSuggestionsCard(
     onCheck: (String, Boolean) -> Unit,
     onLater: (String) -> Unit,
     onDemoAction: () -> Unit,
+    suggestions: List<BriefDemoSuggestion>,
 ) {
-    val suggestions = BriefDemoData.suggestions
     val pending = suggestions.filter { it.id !in checked && it.id !in deferred }
     val current = pending.firstOrNull()
     val colors = COUITheme.colorScheme

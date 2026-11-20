@@ -10,13 +10,6 @@ internal data class BriefBarSuggestion(
     val progress: Float,
 )
 
-internal fun briefBarSuggestion(moment: BriefMoment): BriefBarSuggestion = when (moment) {
-    BriefMoment.MORNING -> BriefBarSuggestion(BriefCardId.CAR, "Départ à 08:45", "Atelier de démonstration · 38 min", .08f)
-    BriefMoment.DAY -> BriefBarSuggestion(BriefCardId.AGENDA, "Déjeuner à 12:30", "9 min à pied", .50f)
-    BriefMoment.EVENING -> BriefBarSuggestion(BriefCardId.CAR, "Départ demain à 08:45", "Atelier de démonstration · 38 min", .30f)
-    BriefMoment.NIGHT -> BriefBarSuggestion(BriefCardId.HEALTH, "Coucher conseillé à 00:45", "Réveil à 08:15 · 7 h 30 de sommeil", .70f)
-}
-
 internal enum class BriefDemoTone { Blue, Azure, Orange, Violet, Purple, Green, Red, Yellow }
 
 internal data class BriefDemoSuggestion(
@@ -33,6 +26,7 @@ internal data class BriefDemoEvent(
     val title: String,
     val place: String,
     val tone: BriefDemoTone,
+    val arrivalLeadMinutes: Int? = null,
 )
 
 internal data class BriefDemoTask(
@@ -72,25 +66,19 @@ internal enum class BriefHomeControl(val label: String, val onLabel: String, val
 }
 
 internal object BriefDemoData {
-    val suggestions = listOf(
-        BriefDemoSuggestion("fuel", "Fais le plein ce soir", "Il te reste 168 km. Station à 1,4 km, à 1,72 €/L, ouverte jusqu’à 22:00.", "Lancer l’itinéraire", BriefDemoTone.Orange),
-        BriefDemoSuggestion("reply", "Camille attend une réponse", "Un rappel est demandé avant 09:00.", "Répondre", BriefDemoTone.Blue),
-        BriefDemoSuggestion("sport", "Vingt minutes pour bouger", "Un créneau se libère en fin de journée.", "Planifier", BriefDemoTone.Green),
-        BriefDemoSuggestion("merge", "Regroupe deux tâches", "Un seul appel au garage pour la révision et les pneus.", "Regrouper", BriefDemoTone.Violet),
-    )
-
-    const val agendaDate = "Vendredi 20 novembre"
-    const val agendaMonth = "NOV"
-    const val agendaDay = "20"
-    const val agendaDemoNow = 8 * 60 + 42
-    const val departure = "08:45"
     const val destination = "Atelier de démonstration"
+    const val tripKm = 18
+    const val tripMinutes = 38
+    const val tripArrivalLeadMinutes = tripMinutes + 7
+    const val lunchWalkMinutes = 9
+    val project = BriefDemoEvent(570, 630, "Point projet", destination, BriefDemoTone.Blue, tripArrivalLeadMinutes)
+    val lunch = BriefDemoEvent(750, 810, "Déjeuner avec Clara", "Café du quartier", BriefDemoTone.Orange, lunchWalkMinutes)
     val agenda = listOf(
-        BriefDemoEvent(570, 630, "Point projet", destination, BriefDemoTone.Blue),
-        BriefDemoEvent(750, 810, "Déjeuner avec Clara", "Café du quartier", BriefDemoTone.Orange),
+        project,
+        lunch,
         BriefDemoEvent(870, 930, "Revue de design", "Visio", BriefDemoTone.Violet),
         BriefDemoEvent(1020, 1050, "Appel fournisseur", "Téléphone", BriefDemoTone.Azure),
-        BriefDemoEvent(1110, 1155, "Course fractionnée", "Parc du quartier", BriefDemoTone.Green),
+        BriefDemoEvent(1110, 1155, "Course fractionnée", "Parc du quartier", BriefDemoTone.Green, arrivalLeadMinutes = 12),
     )
     val attendees = listOf("Inès" to BriefDemoTone.Violet, "Karim" to BriefDemoTone.Green, "Sophie" to BriefDemoTone.Orange)
 
@@ -102,8 +90,6 @@ internal object BriefDemoData {
     const val serviceIntervalKm = 10_000
     const val lastService = "12 mai"
     const val nextService = "7 janv."
-    const val tripKm = 18
-    const val tripMinutes = 38
     const val tripTraffic = "Trafic dense"
     const val station = "Station à 1,4 km · 1,72 €/L · ouverte jusqu’à 22:00"
     const val tyreAlert = "Pneu arrière gauche à 1,9 bar"

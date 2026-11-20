@@ -1,5 +1,6 @@
 package io.github.mangi.eta.data.repository
 
+import android.app.Notification
 import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
@@ -32,10 +33,11 @@ internal class NotificationHistoryRepository(context: Context) {
         val systemApp: Boolean = false,
         val appCategory: String? = null,
         val appLabel: String? = null,
+        val hasProgress: Boolean = false,
     ) {
         fun toJson(): String = JSONObject().put("clearable", clearable).put("ongoing", ongoing)
             .put("groupSummary", groupSummary).put("hasRemoteInput", hasRemoteInput)
-            .put("conversation", conversation).put("systemApp", systemApp)
+            .put("conversation", conversation).put("systemApp", systemApp).put("hasProgress", hasProgress)
             .put("appCategory", appCategory ?: JSONObject.NULL).put("appLabel", appLabel ?: JSONObject.NULL).toString()
 
         companion object {
@@ -44,7 +46,8 @@ internal class NotificationHistoryRepository(context: Context) {
                 StructuralMeta(o.optBoolean("clearable", true), o.optBoolean("ongoing"), o.optBoolean("groupSummary"),
                     o.optBoolean("hasRemoteInput"), o.optBoolean("conversation"), o.optBoolean("systemApp"),
                     o.optString("appCategory").takeIf { !o.isNull("appCategory") && it.isNotBlank() },
-                    o.optString("appLabel").takeIf { !o.isNull("appLabel") && it.isNotBlank() })
+                    o.optString("appLabel").takeIf { !o.isNull("appLabel") && it.isNotBlank() },
+                    o.optBoolean("hasProgress"))
             }.getOrDefault(StructuralMeta())
         }
     }
@@ -67,6 +70,7 @@ internal class NotificationHistoryRepository(context: Context) {
         meta: StructuralMeta = StructuralMeta(),
         queueForRemote: Boolean = false,
         conversationTitle: String? = null,
+        notificationTemplate: String? = null,
     ): Boolean {
         // A silent notification still belongs in the received history.
         if (key.isBlank() || packageName.isBlank()) return false
@@ -81,6 +85,7 @@ internal class NotificationHistoryRepository(context: Context) {
             put("posted_at", postedAt)
             put("channel_id", channelId?.take(150))
             put("android_category", androidCategory?.take(100))
+            put("notification_template", notificationTemplate?.take(150))
             put("content_fingerprint", fingerprint)
             put("meta_json", meta.toJson())
         }
@@ -407,7 +412,7 @@ internal class NotificationHistoryRepository(context: Context) {
     /** Exact priority totals when the brief does not need the notification preview. */
     fun briefCounts(): BriefCounts {
         val counts = IntArray(NotificationPriority.entries.size)
-        val sql = "SELECT $EFFECTIVE_TIER AS tier, COUNT(*) FROM $TABLE WHERE $ACTIVE_BRIEF GROUP BY tier"
+        val sql = "SELECT $EFFECTIVE_TIER AS tier, COUNT(*) FROM $TABLE WHERE $ACTIVE_BRIEF AND $BRIEF_RELEVANT GROUP BY tier"
         database.readableDatabase.rawQuery(sql, arrayOf(briefCutoff())).use { cursor ->
             while (cursor.moveToNext()) counts[cursor.getInt(0)] = cursor.getInt(1)
         }
@@ -424,7 +429,7 @@ internal class NotificationHistoryRepository(context: Context) {
             WITH active AS (
                 SELECT package_name, $THREAD_TITLE AS thread_title, posted_at,
                        $EFFECTIVE_TIER AS tier
-                FROM $TABLE WHERE $ACTIVE_BRIEF
+                FROM $TABLE WHERE $ACTIVE_BRIEF AND $BRIEF_RELEVANT
             ), priority_counts AS (
                 SELECT tier, COUNT(*) AS total FROM active GROUP BY tier
             ), thread_counts AS (
@@ -436,7 +441,7 @@ internal class NotificationHistoryRepository(context: Context) {
                 SELECT t.*, (
                     SELECT notification_key FROM $TABLE
                     WHERE archived_at IS NULL AND package_name = t.package_name AND $THREAD_TITLE = t.thread_title
-                        AND posted_at = t.posted_at
+                        AND posted_at = t.posted_at AND $BRIEF_RELEVANT
                     ORDER BY notification_key DESC LIMIT 1
                 ) AS latest_key
                 FROM thread_counts AS t
@@ -586,7 +591,7 @@ internal class NotificationHistoryRepository(context: Context) {
             database.writableDatabase.transaction {
                 query(
                     TABLE, arrayOf("notification_key", "posted_at"),
-                    "$ACTIVE_BRIEF AND package_name=? AND $THREAD_TITLE=?",
+                    "$ACTIVE_BRIEF AND $BRIEF_RELEVANT AND package_name=? AND $THREAD_TITLE=?",
                     arrayOf(briefCutoff(), thread.packageName, thread.title), null, null, null,
                 ).use { cursor ->
                     while (cursor.moveToNext()) add(ArchiveEntry(cursor.getString(0), cursor.getLong(1)))
@@ -812,7 +817,7 @@ internal class NotificationHistoryRepository(context: Context) {
     private fun String.escapeLike(): String =
         replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
-    private class Database(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, 8) {
+    private class Database(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, 9) {
         override fun onCreate(db: SQLiteDatabase) {
             createHiddenTable(db)
             db.execSQL(
@@ -828,6 +833,7 @@ internal class NotificationHistoryRepository(context: Context) {
             createLearningTables(db)
             addRemoteColumns(db)
             addBriefColumns(db)
+            addNotificationTemplate(db)
         }
 
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -850,6 +856,11 @@ internal class NotificationHistoryRepository(context: Context) {
             }
             if (oldVersion < 7) addRemoteColumns(db)
             if (oldVersion < 8) addBriefColumns(db)
+            if (oldVersion < 9) addNotificationTemplate(db)
+        }
+
+        private fun addNotificationTemplate(db: SQLiteDatabase) {
+            db.execSQL("ALTER TABLE $TABLE ADD COLUMN notification_template TEXT")
         }
 
         private fun addBriefColumns(db: SQLiteDatabase) {
@@ -905,6 +916,24 @@ internal class NotificationHistoryRepository(context: Context) {
         private const val OUTBOX_TABLE = "notification_remote_feedback_outbox"
         internal const val BRIEF_THREAD_LIMIT = 12
         private const val ACTIVE_BRIEF = "archived_at IS NULL AND posted_at>=?"
+        // Existing rows already hold category, ongoing and clearable. The template
+        // and progress extras are refreshed on the next notification or listener replay.
+        private val BRIEF_RELEVANT = """
+            COALESCE(android_category, '') NOT IN ('${Notification.CATEGORY_TRANSPORT}', '${Notification.CATEGORY_PROGRESS}')
+            AND COALESCE(notification_template, '') NOT IN (
+                '${Notification.MediaStyle::class.java.name}', '${Notification.DecoratedMediaCustomViewStyle::class.java.name}',
+                'android.app.Notification${'$'}ProgressStyle'
+            )
+            AND CASE WHEN json_valid(meta_json) THEN
+                COALESCE(json_extract(meta_json, '$.hasProgress'), 0) = 0
+                AND (
+                    COALESCE(json_extract(meta_json, '$.ongoing'), 0) = 0
+                    OR COALESCE(json_extract(meta_json, '$.clearable'), 1) = 1
+                    OR android_category IN ('${Notification.CATEGORY_CALL}', '${Notification.CATEGORY_ALARM}',
+                        '${Notification.CATEGORY_NAVIGATION}', '${Notification.CATEGORY_LOCATION_SHARING}')
+                )
+            ELSE 1 END
+        """.trimIndent()
         private const val THREAD_TITLE = "COALESCE(NULLIF(TRIM(conversation_title), ''), TRIM(COALESCE(title, '')))"
         private val EFFECTIVE_TIER = NotificationPriority.entries.joinToString(
             separator = " ",

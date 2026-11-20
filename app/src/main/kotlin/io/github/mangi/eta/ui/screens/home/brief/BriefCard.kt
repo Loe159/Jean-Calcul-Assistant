@@ -4,6 +4,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -29,8 +31,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
-import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
 import io.github.mangi.eta.ui.screens.home.BriefMotionTiming
 import io.github.mangi.eta.ui.screens.home.brief.cards.BriefSuggestionOrb
 import io.github.mangi.eta.ui.screens.home.brief.cards.briefSuggestionBorder
@@ -41,7 +44,6 @@ import io.github.suqi8.coui.kmp.icon.COUIIcons
 import io.github.suqi8.coui.kmp.icon.extended.Alarm
 import io.github.suqi8.coui.kmp.icon.extended.BankCards
 import io.github.suqi8.coui.kmp.icon.extended.CloudFill
-import io.github.suqi8.coui.kmp.icon.extended.ExpandMore
 import io.github.suqi8.coui.kmp.icon.extended.Home
 import io.github.suqi8.coui.kmp.icon.extended.Months
 import io.github.suqi8.coui.kmp.icon.extended.Notes
@@ -82,7 +84,7 @@ internal fun BriefCardId.tint(): Color = with(COUITheme.colorScheme) {
 
 @Composable
 internal fun briefTintedLabel(tint: Color): Color =
-    lerp(COUITheme.colorScheme.labelPrimary.copy(alpha = 1f), tint, if (COUITheme.isDark) .60f else .38f)
+    lerp(COUITheme.colorScheme.labelPrimary.copy(alpha = 1f), tint, if (COUITheme.isDark) .60f else .30f)
 
 @Composable
 internal fun BriefCard(
@@ -171,29 +173,38 @@ internal fun BriefCard(
                     }
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(card.title, style = COUITheme.textStyles.headlineXS, color = COUITheme.colorScheme.labelPrimary)
-                    if (meta != null) {
-                        Text(meta, style = COUITheme.textStyles.bodyXS, color = COUITheme.colorScheme.labelSecondary)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(card.title, Modifier.weight(1f, fill = false), style = COUITheme.textStyles.headlineXS,
+                            color = colors.labelPrimary)
+                        if (preview) {
+                            Text(
+                                "Aperçu",
+                                style = COUITheme.textStyles.bodyXS.copy(fontSize = 10.sp, lineHeight = 12.sp),
+                                color = tintLabel,
+                                maxLines = 1,
+                                modifier = Modifier.squircleSurface(tint.copy(alpha = .12f), cornerRadius = 6.dp)
+                                    .padding(horizontal = 5.dp, vertical = 1.dp),
+                            )
+                        }
                     }
-                    if (preview) {
-                        Text(
-                            "Aperçu",
-                            style = COUITheme.textStyles.bodyXS,
-                            color = tintLabel,
-                            modifier = Modifier.padding(top = 2.dp)
-                                .squircleSurface(tint.copy(alpha = .12f), cornerRadius = 6.dp)
-                                .padding(horizontal = 6.dp, vertical = 1.dp),
-                        )
+                    if (meta != null) {
+                        Text(meta, style = COUITheme.textStyles.bodyXS, color = colors.labelSecondary)
                     }
                 }
-                CouiTopAppBarIconButton(
-                    icon = COUIIcons.ExpandMore,
-                    contentDescription = if (expanded) "Réduire la carte ${card.title}" else "Agrandir la carte ${card.title}",
-                    onClick = onToggleDensity,
-                    tint = COUITheme.colorScheme.labelSecondary,
-                    modifier = Modifier.size(48.dp).graphicsLayer { rotationZ = rotation },
-                    iconSize = 20.dp,
-                )
+                Box(
+                    Modifier.size(30.dp).clickable(role = Role.Button, onClick = onToggleDensity),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = if (expanded) "Réduire la carte ${card.title}" else "Agrandir la carte ${card.title}",
+                        tint = colors.labelSecondary,
+                        modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = rotation },
+                    )
+                }
             }
             content()
         }

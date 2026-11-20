@@ -48,8 +48,8 @@ private fun BriefSkyPalette.forTheme(dark: Boolean): BriefSkyPalette = if (dark)
     copy(top = mixRgb(0, top, .78f), middle = mixRgb(0, middle, .62f), bottom = mixRgb(0, bottom, .5f))
 } else {
     copy(
-        top = mixRgb(top, 0xffffff, .62f),
-        middle = mixRgb(middle, 0xffffff, .70f),
+        top = mixRgb(top, 0xffffff, .72f),
+        middle = mixRgb(middle, 0xffffff, .75f),
         bottom = mixRgb(bottom, 0xffffff, .75f),
         stars = 0f,
     )

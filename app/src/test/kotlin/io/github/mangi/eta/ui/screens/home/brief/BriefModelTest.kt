@@ -81,7 +81,7 @@ class BriefModelTest {
         val dawn = briefSkyPalette(LocalTime.of(7, 42), dark = true)
         assertEquals(BriefSkyPalette(0x222D6C, 0x904F56, 0x80613D, 4f, 2f), dawn)
         val day = briefSkyPalette(LocalTime.of(12, 10), dark = false)
-        assertEquals(BriefSkyPalette(0xB0CEF4, 0xD6EBFD, 0xF5FBFF, 0f, 4f), day)
+        assertEquals(BriefSkyPalette(0xC5DBF7, 0xDDEFFD, 0xF5FBFF, 0f, 4f), day)
         val dusk = briefSkyPalette(LocalTime.of(19, 12), dark = true)
         assertEquals(14f, dusk.stars, 0f)
         assertEquals(2f, dusk.clouds, 0f)

@@ -28,11 +28,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -64,7 +68,6 @@ internal fun BriefHeader(
     summary: BriefSummary,
     summaryElapsed: () -> Float,
     shortcuts: List<BriefCardId>,
-    active: Boolean,
     animateSky: Boolean,
     motionAllowed: Boolean,
     scrollOffsetPx: () -> Float,
@@ -74,19 +77,24 @@ internal fun BriefHeader(
     onShortcut: (BriefCardId) -> Unit,
 ) {
     val colors = COUITheme.colorScheme
-    Box(Modifier.fillMaxWidth().heightIn(min = 340.dp).clipToBounds()) {
+    val secondary = lerp(colors.labelPrimary.copy(alpha = 1f), colors.labelSecondary.copy(alpha = 1f), .38f)
+    Box(Modifier.fillMaxWidth()) {
         BriefSky(
             time = now.toLocalTime(),
             dark = COUITheme.isDark,
             animated = animateSky && motionAllowed,
             scrollOffsetPx = { if (motionAllowed) scrollOffsetPx() else 0f },
             revealProgress = revealProgress,
-            modifier = Modifier.matchParentSize(),
+            modifier = Modifier.matchParentSize().layout { measurable, constraints ->
+                val height = constraints.maxHeight + 30.dp.roundToPx()
+                val sky = measurable.measure(constraints.copy(minHeight = height, maxHeight = height))
+                layout(constraints.maxWidth, constraints.maxHeight) { sky.place(0, 0) }
+            },
         )
         Column(
             Modifier.fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-                .padding(top = 4.dp, bottom = 22.dp),
+                .padding(top = 4.dp, bottom = 10.dp),
         ) {
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -101,7 +109,7 @@ internal fun BriefHeader(
                 Text(
                     "$date · ${now.format(timeFormat)}",
                     style = COUITheme.textStyles.bodyS,
-                    color = colors.labelSecondary,
+                    color = secondary,
                 )
                 Text(
                     moment.greeting,
@@ -117,13 +125,13 @@ internal fun BriefHeader(
                     BriefMoment.EVENING -> colors.blue
                     BriefMoment.NIGHT -> colors.violet
                 }
-                BriefSummaryText(summary, highlight, summaryElapsed)
+                BriefSummaryText(summary, highlight, secondary, summaryElapsed)
                 if (summary.remote != null) {
                     Text(
                         "Résumé par Jean-Calcul",
                         modifier = Modifier.padding(top = 6.dp),
                         style = COUITheme.textStyles.bodyXS,
-                        color = colors.labelSecondary,
+                        color = secondary,
                     )
                 }
             }
@@ -223,47 +231,70 @@ internal fun rememberBriefSummaryReveal(text: String, active: Boolean, motionAll
 }
 
 @Composable
-private fun BriefSummaryText(summary: BriefSummary, tint: Color, elapsed: () -> Float) {
+private fun BriefSummaryText(summary: BriefSummary, tint: Color, regularColor: Color, elapsed: () -> Float) {
     val words = remember(summary.text) { summaryWord.findAll(summary.text).map { it.range }.toList() }
     val highlights = remember(summary.parts) {
         buildList {
             var offset = 0
             for (part in summary.parts) {
                 val end = offset + part.text.length
-                if (part.highlighted) add(offset until end)
+                if (part.highlighted && end > offset) add(offset until end)
                 offset = end
             }
         }
     }
-    val colors = COUITheme.colorScheme
-    val regularColor = colors.labelPrimaryVariant
-    val emphasizedColor = colors.labelPrimary
+    val emphasizedColor = COUITheme.colorScheme.labelPrimary
     val progress = elapsed()
+    val alphas = words.indices.map { index ->
+        val start = BriefMotionTiming.WORD_START_MS + index * BriefMotionTiming.WORD_STAGGER_MS
+        BriefMotionTiming.EaseMove.transform(((progress - start) / BriefMotionTiming.WORD_MS).coerceIn(0f, 1f))
+    }
     val styled = buildAnnotatedString {
         append(summary.text)
+        highlights.forEach { range ->
+            addStyle(SpanStyle(fontWeight = FontWeight.Bold), range.first, range.last + 1)
+        }
         words.forEachIndexed { index, word ->
-            val start = BriefMotionTiming.WORD_START_MS + index * BriefMotionTiming.WORD_STAGGER_MS
-            val alpha = BriefMotionTiming.EaseMove.transform(
-                ((progress - start) / BriefMotionTiming.WORD_MS).coerceIn(0f, 1f),
-            )
-            val end = words.getOrNull(index + 1)?.first ?: length
-            addStyle(SpanStyle(color = regularColor.copy(alpha = regularColor.alpha * alpha)), word.first, end)
-            for (highlight in highlights) {
-                val highlightStart = maxOf(word.first, highlight.first)
-                val highlightEnd = minOf(end, highlight.last + 1)
-                if (highlightStart < highlightEnd) {
-                    addStyle(
-                        SpanStyle(
-                            color = emphasizedColor.copy(alpha = emphasizedColor.alpha * alpha),
-                            background = tint.copy(alpha = .32f * alpha),
-                            fontWeight = FontWeight.Bold,
-                        ),
-                        highlightStart,
-                        highlightEnd,
-                    )
+            val alpha = alphas[index]
+            addStyle(SpanStyle(color = regularColor.copy(alpha = regularColor.alpha * alpha)), word.first, word.last + 1)
+            highlights.forEach { highlight ->
+                val start = maxOf(word.first, highlight.first)
+                val end = minOf(word.last, highlight.last) + 1
+                if (start < end) {
+                    addStyle(SpanStyle(color = emphasizedColor.copy(alpha = emphasizedColor.alpha * alpha)), start, end)
                 }
             }
         }
     }
-    Text(styled, style = COUITheme.textStyles.bodyM.copy(fontSize = 16.5.sp, lineHeight = 23.5.sp))
+    val lastVisibleWord = alphas.indexOfLast { it > .5f }
+    val revealEnd = when (lastVisibleWord) {
+        -1 -> 0
+        words.lastIndex -> summary.text.length
+        else -> words[lastVisibleWord + 1].first
+    }
+    var textLayout by remember(summary.text) { mutableStateOf<TextLayoutResult?>(null) }
+    Text(
+        styled,
+        style = COUITheme.textStyles.bodyM.copy(fontSize = 16.5.sp, lineHeight = 23.5.sp),
+        onTextLayout = { textLayout = it },
+        modifier = Modifier.drawBehind {
+            val layout = textLayout ?: return@drawBehind
+            for (highlight in highlights) {
+                val end = minOf(highlight.last + 1, revealEnd)
+                if (end <= highlight.first) continue
+                val firstLine = layout.getLineForOffset(highlight.first)
+                val lastLine = layout.getLineForOffset(end - 1)
+                for (line in firstLine..lastLine) {
+                    val lineStart = maxOf(highlight.first, layout.getLineStart(line))
+                    val lineEnd = minOf(end, layout.getLineEnd(line, visibleEnd = true))
+                    if (lineStart >= lineEnd) continue
+                    val band = layout.getPathForRange(lineStart, lineEnd)
+                    val baseline = layout.getLineBaseline(line)
+                    val bottom = layout.getLineBottom(line)
+                    val top = baseline - (baseline - layout.getLineTop(line)) * .32f
+                    clipRect(top = top, bottom = bottom) { drawPath(band, tint.copy(alpha = .30f)) }
+                }
+            }
+        },
+    )
 }

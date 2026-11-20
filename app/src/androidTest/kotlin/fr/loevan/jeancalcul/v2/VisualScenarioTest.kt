@@ -301,7 +301,7 @@ class VisualScenarioTest {
 
                         device.pressBack()
                         assertTrue("System back returns to the card with refreshed counters",
-                            device.wait(Until.hasObject(By.text("Tout voir (2)")), 8000))
+                            device.wait(Until.hasObject(By.text("2 Aujourd’hui")), 8000))
                     }
                     "brief_archive", "brief_archive_dark", "brief_archive_large_text" -> {
                         val repo = NotificationHistoryRepository(context)
@@ -345,10 +345,12 @@ class VisualScenarioTest {
                         NotificationActivityFeed.notifyChanged()
                         device.findObject(By.desc("Ouvrir mon briefing")).click()
                         jumpToBriefNotifications(device)
-                        findBriefControl(device, By.desc("Archiver le fil")).click()
+                        val thread = By.textContains("Archive à restaurer")
+                        val y = findBriefControl(device, thread).visibleBounds.centerY()
+                        device.swipe(device.displayWidth / 6, y, device.displayWidth * 5 / 6, y, 30)
                         device.wait(Until.findObject(By.text("Annuler")), 5000).click()
                         assertTrue("The snackbar restores the archived thread",
-                            device.wait(Until.hasObject(By.desc("Archiver le fil")), 8000))
+                            device.wait(Until.hasObject(thread), 8000))
                         openBriefNotificationList(device)
                         findBriefControl(device, By.desc("Actions pour cette notification")).click()
                         device.wait(Until.findObject(By.text("Archiver la copie")), 5000).click()
@@ -489,7 +491,7 @@ class VisualScenarioTest {
                             device.hasObject(By.text("Regrouper par application")))
                         device.pressBack()
                         assertTrue("Back returns to the briefing",
-                            device.wait(Until.hasObject(By.text("Tout voir (0)")), 8000))
+                            device.wait(Until.hasObject(By.text("0 Aujourd’hui")), 8000))
                     }
                     "menu" -> {
                         assertTrue("New conversation is a direct toolbar action",

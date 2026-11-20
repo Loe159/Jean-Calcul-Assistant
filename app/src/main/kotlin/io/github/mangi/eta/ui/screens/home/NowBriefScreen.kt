@@ -55,6 +55,9 @@ import io.github.mangi.eta.ui.screens.home.brief.BriefSummarySource
 import io.github.mangi.eta.ui.screens.home.brief.BriefVisibilityPreferences
 import io.github.mangi.eta.ui.screens.home.brief.MastraBriefSummarySource
 import io.github.mangi.eta.ui.screens.home.brief.briefBarSuggestion
+import io.github.mangi.eta.ui.screens.home.brief.briefDemoAgenda
+import io.github.mangi.eta.ui.screens.home.brief.briefDemoSuggestions
+import io.github.mangi.eta.ui.screens.home.brief.briefDemoTrip
 import io.github.mangi.eta.ui.screens.home.brief.briefFeedOrder
 import io.github.mangi.eta.ui.screens.home.brief.briefMoment
 import io.github.mangi.eta.ui.screens.home.brief.rememberBriefSummary
@@ -196,7 +199,11 @@ internal fun NowBriefScreen(
         return
     }
 
-    val nowMillis = remember(now) { System.currentTimeMillis() }
+    val nowMillis = deviceTime.toInstant().toEpochMilli()
+    val agenda = remember(deviceTime) { briefDemoAgenda(deviceTime) }
+    val trip = remember(deviceTime, agenda) { briefDemoTrip(deviceTime, agenda) }
+    val suggestions = remember(deviceTime, agenda) { briefDemoSuggestions(deviceTime, agenda) }
+    val barSuggestion = remember(deviceTime, agenda, trip) { briefBarSuggestion(deviceTime, agenda, trip) }
     val extensionsInOrder = remember(extensions) {
         val reserved = BriefCardId.entries.map { it.key } + "header"
         extensions.filter { it.id !in reserved }
@@ -221,6 +228,7 @@ internal fun NowBriefScreen(
                             onToggleDensity = toggleDensity,
                             onOpenNotifications = onOpenNotifications,
                             actions = notificationActions,
+                            onNotificationTouchChange = onNotificationTouchChange,
                             modifier = cardModifier,
                         )
                         BriefCardId.SUGGESTIONS -> BriefSuggestionsCard(
@@ -232,9 +240,10 @@ internal fun NowBriefScreen(
                             },
                             onLater = { id -> deferredSuggestions += id },
                             onDemoAction = showDemoAction,
+                            suggestions = suggestions,
                         )
-                        BriefCardId.AGENDA -> BriefAgendaCard(expanded, animateCard, toggleDensity, cardModifier, showDemoAction)
-                        BriefCardId.CAR -> BriefCarCard(expanded, animateCard, toggleDensity, cardModifier, showDemoAction)
+                        BriefCardId.AGENDA -> BriefAgendaCard(expanded, animateCard, toggleDensity, cardModifier, showDemoAction, agenda)
+                        BriefCardId.CAR -> BriefCarCard(expanded, animateCard, toggleDensity, cardModifier, showDemoAction, trip)
                         BriefCardId.TASKS -> BriefTasksCard(
                             expanded, animateCard, toggleDensity, cardModifier,
                             checked = checkedTasks,
@@ -337,7 +346,6 @@ internal fun NowBriefScreen(
                             summary = summary,
                             summaryElapsed = summaryElapsed,
                             shortcuts = shortcuts,
-                            active = active,
                             animateSky = active && allowSkyMotion,
                             motionAllowed = motionAllowed,
                             scrollOffsetPx = { listState.firstVisibleItemScrollOffset.toFloat() },
@@ -353,10 +361,11 @@ internal fun NowBriefScreen(
             if (showMinibar) {
                 BriefMinibar(now, moment, onClose, onCustomize, Modifier.onSizeChanged { minibarHeight = it.height })
             }
-            val suggestionCard = briefBarSuggestion(moment).card
+            val suggestionCard = barSuggestion.card
             CompositionLocalProvider(LocalMaterialBackdrop provides materialBackdrop) {
                 BriefNowBar(
                     moment = moment,
+                    suggestion = barSuggestion,
                     onOpenCard = if (suggestionCard in cards) ({ onScrollToCard(suggestionCard) }) else null,
                     modifier = Modifier.align(Alignment.BottomCenter).onSizeChanged { nowBarHeight = it.height },
                 )

@@ -448,13 +448,14 @@ internal fun briefStickySwipeOffset(rawPx: Float, widthPx: Float): Float {
  * takes the shape of the card segment underneath, so a swiped row never shows square corners.
  */
 @Composable
-private fun BriefDismissStretch(
+internal fun BriefDismissStretch(
     identity: String,
     onDismiss: () -> Job,
     position: CardListPosition,
     modifier: Modifier = Modifier,
     onTouchChange: (Boolean) -> Unit = {},
     swipeEnabled: Boolean = true,
+    dismissIcon: ImageVector = Icons.Rounded.Close,
     content: @Composable () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -493,10 +494,10 @@ private fun BriefDismissStretch(
                 .graphicsLayer { alpha = (abs(visualOffset()) / (widthPx * 0.5f)).coerceIn(0f, 1f) }
                 .briefCardSegment(position),
         ) {
-            Icon(Icons.Rounded.Close, null, tint = swipeColor,
+            Icon(dismissIcon, null, tint = swipeColor,
                 modifier = Modifier.align(Alignment.CenterStart).padding(start = 17.dp)
                     .size(23.dp).graphicsLayer { alpha = if (visualOffset() > 0f) 1f else 0f })
-            Icon(Icons.Rounded.Close, null, tint = swipeColor,
+            Icon(dismissIcon, null, tint = swipeColor,
                 modifier = Modifier.align(Alignment.CenterEnd).padding(end = 17.dp)
                     .size(23.dp).graphicsLayer { alpha = if (visualOffset() < 0f) 1f else 0f })
         }

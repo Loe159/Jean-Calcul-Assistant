@@ -35,10 +35,8 @@ import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.ui.screens.home.brief.BriefCard
 import io.github.mangi.eta.ui.screens.home.brief.BriefCardId
 import io.github.mangi.eta.ui.screens.home.brief.BriefDemoData
-import io.github.mangi.eta.ui.screens.home.brief.BriefDemoEvent
+import io.github.mangi.eta.ui.screens.home.brief.BriefDemoAgenda
 import io.github.mangi.eta.ui.screens.home.brief.BriefRibbonTicks
-import io.github.mangi.eta.ui.screens.home.brief.briefAgendaCountdown
-import io.github.mangi.eta.ui.screens.home.brief.briefAgendaGaps
 import io.github.mangi.eta.ui.screens.home.brief.briefAgendaRibbon
 import io.github.mangi.eta.ui.screens.home.brief.briefDuration
 import io.github.mangi.eta.ui.screens.home.brief.briefHour
@@ -49,7 +47,12 @@ import io.github.suqi8.coui.kmp.icon.COUIIcons
 import io.github.suqi8.coui.kmp.icon.extended.Pin
 import io.github.suqi8.coui.kmp.squircle.squircleSurface
 import io.github.suqi8.coui.kmp.theme.COUITheme
-import kotlin.math.roundToInt
+import io.github.mangi.eta.ui.screens.home.brief.briefRibbonLabelPositions
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+private val agendaDateFormat = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH)
+private val agendaMonthFormat = DateTimeFormatter.ofPattern("MMM", Locale.FRENCH)
 
 @Composable
 internal fun BriefAgendaCard(
@@ -58,13 +61,16 @@ internal fun BriefAgendaCard(
     onToggleDensity: () -> Unit,
     modifier: Modifier,
     onDemoAction: () -> Unit,
+    agenda: BriefDemoAgenda,
 ) {
     val demo = BriefDemoData
-    val countdown = remember { checkNotNull(briefAgendaCountdown(demo.agenda, demo.agendaDemoNow)) }
+    val countdown = agenda.countdown
+    val date = agenda.date.format(agendaDateFormat).replaceFirstChar { it.uppercase(Locale.FRENCH) }
+    val day = if (agenda.tomorrow) "Demain" else "Aujourd’hui"
     val next = countdown.event
     val colors = COUITheme.colorScheme
     val styles = COUITheme.textStyles
-    BriefCard(BriefCardId.AGENDA, expanded, onToggleDensity, motionAllowed, modifier, demo.agendaDate, preview = true) {
+    BriefCard(BriefCardId.AGENDA, expanded, onToggleDensity, motionAllowed, modifier, date, preview = true) {
         Row(
             Modifier.fillMaxWidth().padding(top = 9.dp, bottom = 3.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -75,13 +81,16 @@ internal fun BriefAgendaCard(
                 84.dp, 7.dp, motionAllowed,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(countdown.minutes.toString(), color = colors.labelPrimary, style = styles.headlineS)
-                    Text("min", color = colors.labelSecondary, style = styles.bodyXS)
+                    val hours = countdown.minutes / 60
+                    Text(if (hours == 0) countdown.minutes.toString() else "$hours h",
+                        color = colors.labelPrimary, style = styles.headlineS)
+                    Text(if (hours == 0) "min" else "${countdown.minutes % 60} min",
+                        color = colors.labelSecondary, style = styles.bodyXS)
                 }
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
-                    if (countdown.inProgress) "En cours" else "Aujourd’hui · dans ${briefDuration(countdown.minutes)}",
+                    if (countdown.inProgress) "En cours" else "$day · dans ${briefDuration(countdown.minutes)}",
                     color = briefTintedLabel(colors.blue),
                     style = styles.bodyXS,
                     modifier = Modifier.squircleSurface(colors.blue.copy(alpha = .17f), cornerRadius = 12.dp)
@@ -100,12 +109,21 @@ internal fun BriefAgendaCard(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            BriefDateTile(demo.agendaMonth, demo.agendaDay, colors.blue)
+            BriefDateTile(agenda.date.format(agendaMonthFormat).trimEnd('.').uppercase(Locale.FRENCH),
+                agenda.date.dayOfMonth.toString(), colors.blue)
             Column(Modifier.weight(1f)) {
-                Text("Départ conseillé", color = colors.labelSecondary, style = styles.bodyXS)
-                Text(demo.departure, color = colors.labelPrimary, style = styles.headlineS)
+                val departure = agenda.departure
+                if (departure != null) {
+                    Text("Départ conseillé", color = colors.labelSecondary, style = styles.bodyXS)
+                    Text(
+                        if (departure.toLocalDate() == agenda.date &&
+                            departure.hour * 60 + departure.minute == agenda.nowMinute) "Maintenant"
+                        else briefHour(departure),
+                        color = colors.labelPrimary, style = styles.headlineS,
+                    )
+                }
             }
-            Row(
+            if (next == demo.project) Row(
                 horizontalArrangement = Arrangement.spacedBy(3.dp),
                 modifier = Modifier.semantics { contentDescription = "Participants : " + demo.attendees.joinToString { it.first } },
             ) {
@@ -117,15 +135,17 @@ internal fun BriefAgendaCard(
                 }
             }
         }
-        AgendaRibbon(next)
+        AgendaRibbon(agenda)
         Row(
             Modifier.fillMaxWidth().padding(top = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            BriefDemoButton("Itinéraire", onDemoAction, Modifier.weight(1f), primary = true, icon = Icons.Rounded.NearMe)
+            if (agenda.departure != null) {
+                BriefDemoButton("Itinéraire", onDemoAction, Modifier.weight(1f), primary = true, icon = Icons.Rounded.NearMe)
+            }
             BriefDemoButton("Détails", onDemoAction, Modifier.weight(1f))
         }
-        if (expanded) AgendaTimeline(next)
+        if (expanded) AgendaTimeline(agenda, date)
     }
 }
 
@@ -149,13 +169,13 @@ internal fun BriefDateTile(month: String, day: String, tint: Color) {
 }
 
 @Composable
-private fun AgendaRibbon(next: BriefDemoEvent) {
-    val demo = BriefDemoData
+private fun AgendaRibbon(agenda: BriefDemoAgenda) {
+    val next = agenda.countdown.event
     val colors = COUITheme.colorScheme
     val styles = COUITheme.textStyles
-    val ribbon = remember { briefAgendaRibbon(demo.agenda, demo.agendaDemoNow) }
+    val ribbon = remember(agenda) { briefAgendaRibbon(agenda.events, agenda.nowMinute) }
     val segmentColors = ribbon.segments.map { it.event.tone.color() }
-    val ribbonDescription = demo.agenda.joinToString(prefix = "Programme : ") {
+    val ribbonDescription = agenda.events.joinToString(prefix = "Programme : ") {
         "${briefHour(it.start)} ${it.title}"
     }
     Canvas(
@@ -183,7 +203,8 @@ private fun AgendaRibbon(next: BriefDemoEvent) {
             )
         }
         ribbon.now?.let { current ->
-            val x = (size.width * current).coerceIn(1.dp.toPx(), size.width - 1.dp.toPx())
+            val inset = minOf(1.dp.toPx(), size.width / 2)
+            val x = (size.width * current).coerceIn(inset, size.width - inset)
             drawLine(colors.red.copy(alpha = .22f), Offset(x, 2.dp.toPx()), Offset(x, size.height - 2.dp.toPx()), 6.dp.toPx(), StrokeCap.Round)
             drawLine(colors.red, Offset(x, 1.dp.toPx()), Offset(x, size.height - 1.dp.toPx()), 2.dp.toPx(), StrokeCap.Round)
         }
@@ -191,39 +212,36 @@ private fun AgendaRibbon(next: BriefDemoEvent) {
     Layout(
         modifier = Modifier.fillMaxWidth().padding(top = 3.dp),
         content = {
-            BriefRibbonTicks.forEach { Text(briefHour(it), color = colors.labelSecondary, style = styles.bodyXS) }
+            BriefRibbonTicks.forEach { Text(briefHour(it), color = colors.labelSecondary, style = styles.bodyXS, maxLines = 1, softWrap = false) }
         },
     ) { measurables, constraints ->
         val width = constraints.maxWidth
-        val labels = measurables.map { it.measure(Constraints(maxWidth = width / 5)) }
-        val start = BriefRibbonTicks.first()
-        val duration = BriefRibbonTicks.last() - start
-        layout(width, labels.maxOf { it.height }) {
-            labels.forEachIndexed { index, label ->
-                val center = width * (BriefRibbonTicks[index] - start).toFloat() / duration
-                label.placeRelative((center - label.width / 2f).roundToInt().coerceIn(0, width - label.width), 0)
-            }
+        val labels = measurables.map { it.measure(Constraints()) }
+        val positions = briefRibbonLabelPositions(width, BriefRibbonTicks, labels.map { it.width }, 8.dp.roundToPx())
+        layout(width, labels.indices.filter { positions[it] != null }.maxOfOrNull { labels[it].height } ?: 0) {
+            positions.forEachIndexed { index, left -> if (left != null) labels[index].place(left, 0) }
         }
     }
+    val minute = agenda.nowMinute ?: return
     Row(
         Modifier.padding(top = 5.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(6.dp).background(colors.red, CircleShape))
-        Text("Maintenant · ${briefHour(demo.agendaDemoNow)}", color = colors.labelSecondary, style = styles.bodyXS)
+        Text("Maintenant · ${briefHour(minute)}", color = colors.labelSecondary, style = styles.bodyXS)
     }
 }
 
 @Composable
-private fun AgendaTimeline(next: BriefDemoEvent) {
-    val demo = BriefDemoData
+private fun AgendaTimeline(agenda: BriefDemoAgenda, date: String) {
+    val next = agenda.countdown.event
     val colors = COUITheme.colorScheme
     val styles = COUITheme.textStyles
-    val gaps = remember { briefAgendaGaps(demo.agenda).associateBy { it.end } }
+    val gaps = remember(agenda) { agenda.gaps.associateBy { it.end } }
     val line = colors.labelPrimary.copy(alpha = .17f)
-    BriefSection(demo.agendaDate, "${demo.agenda.size} événements")
-    demo.agenda.forEachIndexed { index, event ->
+    BriefSection(date, "${agenda.events.size} événements")
+    agenda.events.forEachIndexed { index, event ->
         val tint = event.tone.color()
         gaps[event.start]?.let { gap ->
             Box(Modifier.fillMaxWidth().drawBehind {
@@ -255,7 +273,7 @@ private fun AgendaTimeline(next: BriefDemoEvent) {
                 val x = 56.dp.toPx()
                 val dot = Offset(x, 9.dp.toPx())
                 if (index != 0) drawLine(line, Offset(x, 0f), dot, 1.dp.toPx())
-                if (index != demo.agenda.lastIndex) drawLine(line, dot, Offset(x, size.height), 1.dp.toPx())
+                if (index != agenda.events.lastIndex) drawLine(line, dot, Offset(x, size.height), 1.dp.toPx())
                 drawCircle(tint.copy(alpha = .23f), 8.dp.toPx(), dot)
                 drawCircle(tint, 5.dp.toPx(), dot)
             }.padding(bottom = 12.dp),

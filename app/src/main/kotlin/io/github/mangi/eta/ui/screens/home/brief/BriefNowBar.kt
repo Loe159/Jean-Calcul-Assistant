@@ -26,17 +26,16 @@ import io.github.suqi8.coui.kmp.basic.Icon
 import io.github.suqi8.coui.kmp.basic.Text
 import io.github.suqi8.coui.kmp.icon.COUIIcons
 import io.github.suqi8.coui.kmp.icon.extended.ChevronForward
-import io.github.suqi8.coui.kmp.icon.extended.Location
 import io.github.suqi8.coui.kmp.squircle.squircleSurface
 import io.github.suqi8.coui.kmp.theme.COUITheme
 
 @Composable
 internal fun BriefNowBar(
     moment: BriefMoment,
+    suggestion: BriefBarSuggestion,
     onOpenCard: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    val suggestion = briefBarSuggestion(moment)
     val colors = COUITheme.colorScheme
     val tint = when (moment) {
         BriefMoment.MORNING, BriefMoment.EVENING -> colors.blue
@@ -44,7 +43,6 @@ internal fun BriefNowBar(
         BriefMoment.NIGHT -> colors.violet
     }
     val icon = when (moment) {
-        BriefMoment.DAY -> COUIIcons.Location
         BriefMoment.NIGHT -> Icons.Rounded.Bedtime
         else -> suggestion.card.icon
     }
@@ -75,7 +73,7 @@ internal fun BriefNowBar(
             Column(Modifier.weight(1f)) {
                 Text(suggestion.title, style = COUITheme.textStyles.headlineXS, color = colors.labelPrimary)
                 Text(
-                    "Aperçu · ${suggestion.detail}",
+                    suggestion.detail,
                     style = COUITheme.textStyles.bodyXS,
                     color = colors.labelSecondary,
                 )

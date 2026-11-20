@@ -105,7 +105,7 @@ class AgentNotificationHistoryService : NotificationListenerService() {
             key = s.key, packageName = s.packageName, title = s.title, text = s.text, subText = s.subText,
             postedAt = s.postTime, channelId = s.channelId, androidCategory = s.category, fingerprint = s.fingerprint,
             meta = s.meta, queueForRemote = MastraConnection.enabled(this),
-            conversationTitle = s.conversationTitle,
+            conversationTitle = s.conversationTitle, notificationTemplate = s.notificationTemplate,
         )
         if (changed) NotificationActivityFeed.notifyChanged()
         return changed
@@ -117,6 +117,7 @@ class AgentNotificationHistoryService : NotificationListenerService() {
         val postTime: Long, val channelId: String?, val category: String?, val fingerprint: String,
         val meta: NotificationHistoryRepository.StructuralMeta,
         val conversationTitle: String?,
+        val notificationTemplate: String?,
     ) {
         companion object {
             fun of(context: Context, sbn: StatusBarNotification): Snapshot {
@@ -125,6 +126,8 @@ class AgentNotificationHistoryService : NotificationListenerService() {
                 val app = runCatching { context.packageManager.getApplicationInfo(sbn.packageName, 0) }.getOrNull()
                 val meta = NotificationHistoryRepository.StructuralMeta(
                     clearable = sbn.isClearable,
+                    hasProgress = extras.getInt(Notification.EXTRA_PROGRESS_MAX) > 0 ||
+                        extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE),
                     ongoing = n.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE) != 0,
                     groupSummary = n.flags and Notification.FLAG_GROUP_SUMMARY != 0,
                     hasRemoteInput = n.actions?.any { it.remoteInputs?.isNotEmpty() == true } == true,
@@ -144,7 +147,8 @@ class AgentNotificationHistoryService : NotificationListenerService() {
                     extras.getCharSequence(Notification.EXTRA_TEXT)?.toString(),
                     extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString(), sbn.postTime, n.channelId, n.category,
                     NotificationProtection.fingerprint(sbn), meta,
-                    extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString())
+                    extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString(),
+                    extras.getString(Notification.EXTRA_TEMPLATE))
             }
         }
     }

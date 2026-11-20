@@ -1,5 +1,6 @@
 package io.github.mangi.eta.data.repository
 
+import android.app.Notification
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import io.github.mangi.eta.agent.device.notifications.NotificationPriority
@@ -7,6 +8,7 @@ import io.github.mangi.eta.agent.device.notifications.NotificationPriority.LOW
 import io.github.mangi.eta.agent.device.notifications.NotificationPriority.NOW
 import io.github.mangi.eta.agent.device.notifications.NotificationPriority.TODAY
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository.BriefCounts
+import io.github.mangi.eta.data.repository.NotificationHistoryRepository.StructuralMeta
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository.ThreadKey
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -164,6 +166,7 @@ class NotificationBriefOverviewTest {
             db.execSQL("DROP INDEX notification_history_brief_thread")
             db.execSQL("ALTER TABLE notification_history DROP COLUMN conversation_title")
             db.execSQL("ALTER TABLE notification_history DROP COLUMN archive_token")
+            db.execSQL("ALTER TABLE notification_history DROP COLUMN notification_template")
             db.version = 7
         }
 
@@ -172,6 +175,53 @@ class NotificationBriefOverviewTest {
         assertEquals(BriefCounts(1, 0, 0), overview.counts)
         assertEquals(ThreadKey("org.synthetic", "Titre historique"), overview.threads.single().id)
         assertEquals("archived", repository.archived().single().key)
+    }
+
+    @Config(sdk = [33, 34])
+    @Test fun persistentUpdatesStayInFullListAndCannotWinOrBeArchivedWithAPreviewThread() {
+        val now = System.currentTimeMillis()
+        fun record(key: String, category: String? = null, template: String? = null, meta: StructuralMeta = StructuralMeta()) {
+            repository.record(key, "org.synthetic", "Fil", key, null, now,
+                androidCategory = category, meta = meta, notificationTemplate = template)
+        }
+        record("message")
+        record("zz-transport", category = Notification.CATEGORY_TRANSPORT)
+        record("zz-media-style", template = Notification.MediaStyle::class.java.name)
+        record("zz-progress-category", category = Notification.CATEGORY_PROGRESS)
+        record("zz-progress-extra", meta = StructuralMeta(hasProgress = true))
+        record("zz-service", meta = StructuralMeta(ongoing = true, clearable = false))
+        record("call", category = Notification.CATEGORY_CALL, meta = StructuralMeta(ongoing = true, clearable = false))
+
+        val overview = repository.briefOverview()
+        assertEquals(BriefCounts(0, 2, 0), overview.counts)
+        assertEquals(overview.counts, repository.briefCounts())
+        assertEquals("message", overview.threads.single().latest.key)
+        assertEquals(2, overview.threads.single().count)
+        assertEquals(7, repository.recentPage(priority = TODAY).size)
+        assertEquals(mapOf("org.synthetic" to 7), repository.briefAppCounts(TODAY))
+        assertEquals(setOf("message", "call"), repository.archiveBriefThread(overview.threads.single().id)
+            .entries.map { it.key }.toSet())
+        assertEquals(5, repository.recentPage().size)
+    }
+
+    @Test fun versionEightUpgradeFiltersLegacyMetadataAndLearnsTemplateOnReplay() {
+        val now = System.currentTimeMillis()
+        repository.record("legacy-service", "org.synthetic", "Service", "En cours", null, now,
+            meta = StructuralMeta(ongoing = true, clearable = false))
+        repository.record("legacy-media", "org.synthetic", "Média", "Lecture", null, now, fingerprint = "same")
+        openDatabase().use { db ->
+            db.execSQL("UPDATE notification_history SET user_priority='NOW' WHERE notification_key='legacy-media'")
+            db.execSQL("ALTER TABLE notification_history DROP COLUMN notification_template")
+            db.version = 8
+        }
+
+        repository = NotificationHistoryRepository(context)
+        assertEquals(BriefCounts(1, 0, 0), repository.briefCounts())
+        repository.record("legacy-media", "org.synthetic", "Média", "Lecture", null, now,
+            fingerprint = "same", notificationTemplate = Notification.MediaStyle::class.java.name)
+        assertEquals(BriefCounts(0, 0, 0), repository.briefOverview().counts)
+        assertEquals("legacy-media", repository.recentPage(priority = NOW).single().key)
+        assertEquals(2, repository.recentPage().size)
     }
 
     private fun openDatabase(): SQLiteDatabase =

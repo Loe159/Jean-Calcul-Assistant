@@ -84,22 +84,20 @@ internal class BriefNotificationActions(
         }
     }
 
-    fun archiveThread(thread: ThreadKey) {
-        launchAction {
-            val archive = withContext(Dispatchers.IO) { repository.archiveBriefThread(thread) }
-            if (archive.entries.isEmpty()) return@launchAction
-            var undone = false
-            try {
-                if (snackbars.showSnackbar("Fil archivé", "Annuler", duration = SnackbarDuration.Long) ==
-                    SnackbarResult.ActionPerformed
-                ) {
-                    withContext(Dispatchers.IO) { repository.undoBriefThreadArchive(archive) }
-                    undone = true
-                }
-            } finally {
-                if (!undone) {
-                    withContext(NonCancellable + Dispatchers.IO) { syncArchiveFeedback(archive.entries) }
-                }
+    fun archiveThread(thread: ThreadKey): Job = launchAction {
+        val archive = withContext(Dispatchers.IO) { repository.archiveBriefThread(thread) }
+        if (archive.entries.isEmpty()) return@launchAction
+        var undone = false
+        try {
+            if (snackbars.showSnackbar("Fil archivé", "Annuler", duration = SnackbarDuration.Long) ==
+                SnackbarResult.ActionPerformed
+            ) {
+                withContext(Dispatchers.IO) { repository.undoBriefThreadArchive(archive) }
+                undone = true
+            }
+        } finally {
+            if (!undone) {
+                withContext(NonCancellable + Dispatchers.IO) { syncArchiveFeedback(archive.entries) }
             }
         }
     }

@@ -1,5 +1,6 @@
 package io.github.mangi.eta.ui.screens.home.brief
 
+import java.time.ZonedDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -90,6 +91,83 @@ class BriefDemoMetricsTest {
         assertEquals(listOf(BriefAgendaGap(540, 615)), briefAgendaGaps(listOf(event(480, 540), event(615, 640))))
         assertTrue(briefAgendaGaps(listOf(event(480, 540), event(540, 600))).isEmpty())
         assertTrue(briefAgendaGaps(emptyList()).isEmpty())
+    }
+
+    @Test
+    fun demoUsesTheBriefMinuteAndKeepsTheCarAndAgendaDepartureInSync() {
+        val now = ZonedDateTime.parse("2026-11-20T08:57:00+01:00[Europe/Paris]")
+        val agenda = briefDemoAgenda(now)
+        val trip = briefDemoTrip(now, agenda)
+        assertEquals(now.toLocalDate(), agenda.date)
+        assertEquals(8 * 60 + 57, agenda.nowMinute)
+        assertEquals(33, agenda.countdown.minutes)
+        assertEquals(now, agenda.departure)
+        assertEquals(agenda.departure, trip.departure)
+        assertEquals("C’est l’heure de partir", briefBarSuggestion(now, agenda, trip).title)
+    }
+
+    @Test
+    fun agendaAndNowBarRollForwardAfterLunchAndInTheEvening() {
+        val noon = ZonedDateTime.parse("2026-11-20T12:15:00+01:00[Europe/Paris]")
+        fun barAt(now: ZonedDateTime): BriefBarSuggestion {
+            val agenda = briefDemoAgenda(now)
+            return briefBarSuggestion(now, agenda, briefDemoTrip(now, agenda))
+        }
+        assertEquals("Déjeuner à 12:30", barAt(noon).title)
+        val lunch = noon.withHour(13).withMinute(0)
+        assertEquals("Déjeuner avec Clara", barAt(lunch).title)
+        assertEquals("En cours · encore 30 min", barAt(lunch).detail)
+        val afterLunch = lunch.plusMinutes(30)
+        val agenda = briefDemoAgenda(afterLunch)
+        assertEquals("Revue de design à 14:30", barAt(afterLunch).title)
+        assertNull(agenda.departure)
+        assertTrue(agenda.gaps.none { it.start < 13 * 60 + 30 })
+
+        val evening = noon.withHour(18)
+        val tomorrow = briefDemoAgenda(evening)
+        assertEquals(evening.toLocalDate().plusDays(1), tomorrow.date)
+        assertEquals(15 * 60 + 15, tomorrow.countdown.minutes)
+        assertNull(briefAgendaRibbon(tomorrow.events, tomorrow.nowMinute).now)
+        assertEquals("Départ demain à 08:45", barAt(evening).title)
+        val night = noon.withHour(23).withMinute(55)
+        assertEquals("Coucher conseillé à 00:10", barAt(night).title)
+        assertEquals("Réveil à 07:40 · 7 h 30 de sommeil", barAt(night).detail)
+        assertEquals(night.toLocalDate().plusDays(2), briefDemoAgenda(night.plusHours(1)).date)
+    }
+
+    @Test
+    fun tomorrowCountdownAccountsForTheSpringClockChange() {
+        val evening = ZonedDateTime.parse("2026-03-28T20:00:00+01:00[Europe/Paris]")
+        val agenda = briefDemoAgenda(evening)
+        assertEquals(12 * 60 + 30, agenda.countdown.minutes)
+        assertEquals(2 * 3600, agenda.departure?.offset?.totalSeconds)
+    }
+
+    @Test
+    fun suggestionsReflectStationHoursAndFutureFreeSlots() {
+        val now = ZonedDateTime.parse("2026-11-20T13:30:00+01:00[Europe/Paris]")
+        val daytime = briefDemoSuggestions(now, briefDemoAgenda(now))
+        assertEquals("Fais le plein avant 22 h", daytime.first().title)
+        assertEquals("Créneau libre de 15:30 à 17:00.", daytime.single { it.id == "sport" }.detail)
+        val night = now.withHour(22)
+        val nighttime = briefDemoSuggestions(night, briefDemoAgenda(night))
+        assertEquals("merge", nighttime.first().id)
+        assertTrue(nighttime.single { it.id == "sport" }.detail.contains("demain"))
+        assertTrue(nighttime.single { it.id == "fuel" }.detail.contains("07:00"))
+    }
+
+    @Test
+    fun ribbonTicksUseMeasuredWidthsAndStaySeparatedEvenAtLargeFontSizes() {
+        for (width in listOf(48, 120, 280, 600)) {
+            val widths = BriefRibbonTicks.indices.map { 44 + it % 2 * 12 }
+            val margin = 8
+            val ticks = briefRibbonLabelPositions(width, BriefRibbonTicks, widths, margin)
+            val visible = ticks.mapIndexedNotNull { i, left -> left?.let { it to it + widths[i] } }
+            assertTrue(visible.all { (left, right) -> left >= 0 && right <= width })
+            assertTrue(visible.zipWithNext().all { (first, second) -> first.second + margin <= second.first })
+            assertEquals(0, ticks.first())
+            if (width >= 120) assertEquals(width - widths.last(), ticks.last())
+        }
     }
 
     @Test

@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.ui.screens.home.brief.BriefCard
 import io.github.mangi.eta.ui.screens.home.brief.BriefCardId
 import io.github.mangi.eta.ui.screens.home.brief.BriefDemoData
+import io.github.mangi.eta.ui.screens.home.brief.BriefDemoTrip
+import io.github.mangi.eta.ui.screens.home.brief.briefHour
 import io.github.mangi.eta.ui.screens.home.brief.briefNumber
 import io.github.mangi.eta.ui.screens.home.brief.briefProgress
 import io.github.mangi.eta.ui.screens.home.brief.briefTintedLabel
@@ -42,6 +44,7 @@ internal fun BriefCarCard(
     onToggleDensity: () -> Unit,
     modifier: Modifier,
     onDemoAction: () -> Unit,
+    trip: BriefDemoTrip,
 ) {
     val demo = BriefDemoData
     val colors = COUITheme.colorScheme
@@ -62,8 +65,8 @@ internal fun BriefCarCard(
                 Text(it, color = colors.labelSecondary, style = styles.bodyXS)
             }
         }
-        CarTrip()
-        CarAlert(Icons.Rounded.LocalGasStation, colors.orange, "Plein conseillé avant demain", demo.station, onDemoAction)
+        CarTrip(trip)
+        CarAlert(Icons.Rounded.LocalGasStation, colors.orange, "Plein conseillé bientôt", demo.station, onDemoAction)
         if (expanded) {
             CarAlert(COUIIcons.Report, colors.red, demo.tyreAlert, demo.tyreDetail)
             BriefSection("Prochain entretien", "Dans ${briefNumber(demo.serviceRemainingKm)} km")
@@ -95,7 +98,7 @@ internal fun BriefCarCard(
 }
 
 @Composable
-private fun CarTrip() {
+private fun CarTrip(trip: BriefDemoTrip) {
     val demo = BriefDemoData
     val colors = COUITheme.colorScheme
     val styles = COUITheme.textStyles
@@ -124,8 +127,8 @@ private fun CarTrip() {
             Text(demo.tripTraffic, color = briefTintedLabel(colors.orange), style = styles.bodyXS)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text("Partir à", color = colors.labelSecondary, style = styles.bodyXS)
-            Text(demo.departure, color = colors.labelPrimary, style = styles.headlineS)
+            Text(if (trip.tomorrow) "Demain · partir à" else "Partir à", color = colors.labelSecondary, style = styles.bodyXS)
+            Text(briefHour(trip.departure), color = colors.labelPrimary, style = styles.headlineS)
         }
     }
 }

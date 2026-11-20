@@ -16,6 +16,7 @@ import androidx.compose.material.icons.rounded.Blinds
 import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material.icons.rounded.LocalLaundryService
 import androidx.compose.material.icons.rounded.SmartToy
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.Thermostat
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -46,7 +47,6 @@ import io.github.suqi8.coui.kmp.icon.COUIIcons
 import io.github.suqi8.coui.kmp.icon.extended.Add
 import io.github.suqi8.coui.kmp.icon.extended.Info
 import io.github.suqi8.coui.kmp.icon.extended.Lock
-import io.github.suqi8.coui.kmp.icon.extended.Remove
 import io.github.suqi8.coui.kmp.squircle.squircleSurface
 import io.github.suqi8.coui.kmp.theme.COUITheme
 import kotlin.math.cos
@@ -93,18 +93,26 @@ private fun HomeOverview(target: Float, onTargetChange: (Float) -> Unit, motionA
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ThermostatDial(target, motionAllowed, Modifier.weight(.8f))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Row {
+        Column(
+            Modifier.weight(.8f),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            ThermostatDial(target, motionAllowed, Modifier.fillMaxWidth())
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 CouiTopAppBarIconButton(
-                    COUIIcons.Remove, "Baisser la température cible", { onTargetChange(target - .5f) },
+                    Icons.Rounded.Remove, "Baisser la température cible", { onTargetChange(target - .5f) },
                     enabled = target > demo.thermostatMin, tint = briefTintedLabel(colors.yellow),
+                    modifier = Modifier.size(36.dp), iconSize = 20.dp,
                 )
                 CouiTopAppBarIconButton(
                     COUIIcons.Add, "Augmenter la température cible", { onTargetChange(target + .5f) },
                     enabled = target < demo.thermostatMax, tint = briefTintedLabel(colors.yellow),
+                    modifier = Modifier.size(36.dp), iconSize = 20.dp,
                 )
             }
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("Humidité ${demo.humidityPercent} %", color = colors.labelSecondary, style = styles.bodyXS)
             Text("${briefDecimal(demo.homeEnergyToday)} kWh aujourd’hui", color = colors.labelPrimary, style = styles.headlineXS)
             Text(

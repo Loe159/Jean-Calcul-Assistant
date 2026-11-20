@@ -3,6 +3,7 @@ package io.github.mangi.eta.ui.screens.home.brief.cards
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,11 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
@@ -27,31 +26,32 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.agent.device.notifications.NotificationPriority
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository.BriefOverview
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository.BriefThread
-import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
 import io.github.mangi.eta.ui.screens.home.BriefApplicationIcon
+import io.github.mangi.eta.ui.screens.home.BriefDismissStretch
 import io.github.mangi.eta.ui.screens.home.BriefMotionTiming
 import io.github.mangi.eta.ui.screens.home.BriefNotificationActions
-import io.github.mangi.eta.ui.screens.home.BriefNotificationMenu
 import io.github.mangi.eta.ui.screens.home.NotificationFilter
 import io.github.mangi.eta.ui.screens.home.brief.BriefCard
 import io.github.mangi.eta.ui.screens.home.brief.BriefCardId
 import io.github.mangi.eta.ui.screens.home.brief.briefTintedLabel
 import io.github.mangi.eta.ui.screens.home.briefApplicationName
 import io.github.mangi.eta.ui.screens.home.priorityTitle
-import io.github.mangi.eta.ui.screens.home.rememberBriefNotificationProposals
+import io.github.suqi8.coui.kmp.basic.CardListPosition
 import io.github.suqi8.coui.kmp.basic.ChipDefaults
 import io.github.suqi8.coui.kmp.basic.HorizontalDivider
 import io.github.suqi8.coui.kmp.basic.Icon
 import io.github.suqi8.coui.kmp.basic.SuggestionChip
 import io.github.suqi8.coui.kmp.basic.Text
 import io.github.suqi8.coui.kmp.basic.TextButton
-import io.github.suqi8.coui.kmp.effect.LocalCOUIMaterialEffectEnabled
 import io.github.suqi8.coui.kmp.icon.COUIIcons
 import io.github.suqi8.coui.kmp.icon.extended.Ok
 import io.github.suqi8.coui.kmp.squircle.squircleSurface
@@ -76,6 +76,7 @@ internal fun BriefNotificationsCard(
     onToggleDensity: () -> Unit,
     onOpenNotifications: (NotificationFilter) -> Unit,
     actions: BriefNotificationActions,
+    onNotificationTouchChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BriefCard(
@@ -85,7 +86,7 @@ internal fun BriefNotificationsCard(
         motionAllowed = motionAllowed,
         modifier = modifier,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (hasError || overview == null) {
                 Text(
                     if (hasError) "Historique indisponible" else "Chargement…",
@@ -106,7 +107,7 @@ internal fun BriefNotificationsCard(
                 val threads = remember(overview.threads, expanded) {
                     selectBriefThreads(overview.threads, expanded)
                 }
-                if (threads.isEmpty()) NotificationEmpty(counts.total == 0, motionAllowed)
+                if (threads.isEmpty()) NotificationEmpty(motionAllowed)
                 else Column {
                     threads.forEachIndexed { index, thread ->
                         key(thread.id) {
@@ -115,14 +116,14 @@ internal fun BriefNotificationsCard(
                             } else if (index > 0) {
                                 HorizontalDivider(Modifier.padding(start = 42.dp))
                             }
-                            NotificationThreadRow(thread, nowMillis, actions)
+                            NotificationThreadRow(thread, nowMillis, actions, onNotificationTouchChange)
                         }
                     }
                 }
                 if (counts.low > 0) NotificationShield(counts.low)
             }
             TextButton(
-                text = overview?.let { "Tout voir (${it.counts.total})" } ?: "Tout voir",
+                text = "Tout voir",
                 onClick = { onOpenNotifications(NotificationFilter.ALL) },
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -168,55 +169,55 @@ private fun ThreadSectionTitle(priority: NotificationPriority) {
 }
 
 @Composable
-private fun NotificationThreadRow(thread: BriefThread, nowMillis: Long, actions: BriefNotificationActions) {
+private fun NotificationThreadRow(
+    thread: BriefThread,
+    nowMillis: Long,
+    actions: BriefNotificationActions,
+    onTouchChange: (Boolean) -> Unit,
+) {
     val context = LocalContext.current
     val entry = thread.latest
     val label = thread.id.title.ifBlank {
         remember(entry.packageName) { briefApplicationName(context, entry.packageName) }
     }
     val ago = remember(entry.postedAt, nowMillis) { briefRelativeTime(entry.postedAt, nowMillis) }
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    BriefDismissStretch(
+        identity = entry.key,
+        position = CardListPosition.Middle,
+        onDismiss = { actions.archiveThread(thread.id) },
+        onTouchChange = onTouchChange,
+        dismissIcon = Icons.Outlined.Archive,
     ) {
-        BriefApplicationIcon(entry.packageName, 32.dp)
-        Column(Modifier.weight(1f)) {
-            Text(
-                label, style = COUITheme.textStyles.headlineXS, color = COUITheme.colorScheme.labelPrimary,
-                maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
-            if (entry.text.isNotBlank()) {
+        Row(
+            modifier = Modifier.fillMaxWidth()
+                    .clickable(onClickLabel = "Ouvrir la notification") { actions.open(entry) }
+                    .semantics {
+                        customActions = listOf(CustomAccessibilityAction("Archiver le fil") {
+                            actions.archiveThread(thread.id)
+                            true
+                        })
+                    }
+                    .padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            BriefApplicationIcon(entry.packageName, 32.dp)
+            Column(Modifier.weight(1f)) {
                 Text(
-                    entry.text, style = COUITheme.textStyles.bodyS, color = COUITheme.colorScheme.labelSecondary,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    label, style = COUITheme.textStyles.headlineXS, color = COUITheme.colorScheme.labelPrimary,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
-            }
-            val extra = briefThreadExtraLabel(thread.count)
-            Text(
-                if (extra == null) ago else "$ago · $extra",
-                style = COUITheme.textStyles.bodyXS, color = COUITheme.colorScheme.labelSecondary,
-            )
-        }
-        CompositionLocalProvider(LocalCOUIMaterialEffectEnabled provides false) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CouiTopAppBarIconButton(
-                    icon = Icons.AutoMirrored.Outlined.OpenInNew,
-                    contentDescription = "Ouvrir la notification",
-                    onClick = { actions.open(entry) },
-                    iconSize = 19.dp,
-                    tint = COUITheme.colorScheme.labelSecondary,
-                )
-                CouiTopAppBarIconButton(
-                    icon = Icons.Outlined.Archive,
-                    contentDescription = "Archiver le fil",
-                    onClick = { actions.archiveThread(thread.id) },
-                    iconSize = 19.dp,
-                    tint = COUITheme.colorScheme.labelSecondary,
-                )
-                BriefNotificationMenu(entry, actions, rememberBriefNotificationProposals(entry)) {
-                    actions.archiveEntries(listOf(entry))
+                if (entry.text.isNotBlank()) {
+                    Text(
+                        entry.text, style = COUITheme.textStyles.bodyS, color = COUITheme.colorScheme.labelSecondary,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    )
                 }
+                val extra = briefThreadExtraLabel(thread.count)
+                Text(
+                    if (extra == null) ago else "$ago · $extra",
+                    style = COUITheme.textStyles.bodyXS, color = COUITheme.colorScheme.labelSecondary,
+                )
             }
         }
     }
@@ -251,7 +252,7 @@ private fun NotificationShield(count: Int) {
 }
 
 @Composable
-private fun NotificationEmpty(emptyInbox: Boolean, motionAllowed: Boolean) {
+private fun NotificationEmpty(motionAllowed: Boolean) {
     val scale = remember { Animatable(if (motionAllowed) .65f else 1f) }
     LaunchedEffect(motionAllowed) {
         if (motionAllowed) scale.animateTo(1f, tween(400, easing = BriefMotionTiming.EaseMove))
@@ -274,7 +275,7 @@ private fun NotificationEmpty(emptyInbox: Boolean, motionAllowed: Boolean) {
             Icon(COUIIcons.Ok, contentDescription = null, tint = briefTintedLabel(green), modifier = Modifier.size(24.dp))
         }
         Text(
-            if (emptyInbox) "Boîte vide" else "Rien à traiter",
+            "Rien à traiter",
             style = COUITheme.textStyles.headlineXS,
             color = COUITheme.colorScheme.labelPrimary,
         )
