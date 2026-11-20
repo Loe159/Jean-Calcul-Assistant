@@ -1,6 +1,7 @@
 package io.github.mangi.eta.ui.screens.home.brief
 
 import android.content.Context
+import androidx.core.content.edit
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,6 +18,7 @@ import io.github.suqi8.coui.kmp.icon.basic.Close
 import io.github.suqi8.coui.kmp.icon.extended.Filter
 import io.github.suqi8.coui.kmp.overlay.OverlayBottomSheet
 import io.github.suqi8.coui.kmp.preference.ArrowPreference
+import io.github.suqi8.coui.kmp.preference.PreferenceCategory
 import io.github.suqi8.coui.kmp.preference.SwitchPreference
 
 internal class BriefVisibilityPreferences(context: Context) {
@@ -26,7 +28,17 @@ internal class BriefVisibilityPreferences(context: Context) {
         BriefCardId.entries.filterTo(mutableSetOf()) { preferences.getBoolean(it.key, false) }
 
     fun setVisible(card: BriefCardId, visible: Boolean) {
-        preferences.edit().putBoolean(card.key, !visible).apply()
+        preferences.edit { putBoolean(card.key, !visible) }
+    }
+
+    fun previewsExpanded(): Boolean = preferences.getBoolean(PREVIEWS_EXPANDED, false)
+
+    fun setPreviewsExpanded(expanded: Boolean) {
+        preferences.edit { putBoolean(PREVIEWS_EXPANDED, expanded) }
+    }
+
+    private companion object {
+        const val PREVIEWS_EXPANDED = "previews_expanded"
     }
 }
 
@@ -53,9 +65,25 @@ internal fun BriefCustomization(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(bottom = 16.dp),
         ) {
+            val (previewCards, realCards) = BriefCardId.entries.partition { it.isPreview }
             item {
                 CardListGroup {
-                    BriefCardId.entries.forEach { card ->
+                    realCards.forEach { card ->
+                        item {
+                            SwitchPreference(
+                                title = card.title,
+                                checked = card !in hiddenCards,
+                                onCheckedChange = { onVisibilityChange(card, it) },
+                                startAction = { Icon(card.icon, null, tint = briefTintedLabel(card.tint())) },
+                            )
+                        }
+                    }
+                }
+            }
+            item { PreferenceCategory(title = "Aperçus · données fictives") }
+            item {
+                CardListGroup {
+                    previewCards.forEach { card ->
                         item {
                             SwitchPreference(
                                 title = card.title,

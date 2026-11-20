@@ -40,7 +40,8 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Dashboard
 import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
 import io.github.mangi.eta.ui.screens.home.BriefMotionTiming
 import io.github.suqi8.coui.kmp.basic.ChipDefaults
@@ -68,6 +69,8 @@ internal fun BriefHeader(
     summary: BriefSummary,
     summaryElapsed: () -> Float,
     shortcuts: List<BriefCardId>,
+    previewCount: Int,
+    onShowPreviews: () -> Unit,
     animateSky: Boolean,
     motionAllowed: Boolean,
     scrollOffsetPx: () -> Float,
@@ -113,9 +116,7 @@ internal fun BriefHeader(
                 )
                 Text(
                     moment.greeting,
-                    style = COUITheme.textStyles.headlineL.copy(
-                        fontSize = 35.sp, lineHeight = 39.sp, fontWeight = FontWeight.SemiBold,
-                    ),
+                    style = COUITheme.textStyles.displayM,
                     color = colors.labelPrimary,
                     modifier = Modifier.padding(top = 8.dp, bottom = 12.dp).semantics { heading() },
                 )
@@ -135,25 +136,36 @@ internal fun BriefHeader(
                     )
                 }
             }
-            if (shortcuts.isNotEmpty()) {
+            if (shortcuts.isNotEmpty() || previewCount > 0) {
+                // Neutral chips over the sky: colour is reserved for priorities and data below.
+                val chipColors = ChipDefaults.chipColors(
+                    containerColor = colors.labelPrimary.copy(alpha = .12f),
+                    contentColor = colors.labelPrimary,
+                )
                 Row(
                     Modifier.fillMaxWidth().padding(top = 16.dp)
                         .horizontalScroll(rememberScrollState()).padding(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     shortcuts.forEach { card ->
-                        val tint = card.tint()
-                        val foreground = briefTintedLabel(tint)
                         SuggestionChip(
-                            label = if (card == BriefCardId.NOTIFICATIONS) "Voir les notifications" else card.title,
+                            label = card.title,
                             onClick = { onShortcut(card) },
-                            minHeight = 36.dp,
-                            cornerRadius = 18.dp,
-                            colors = ChipDefaults.chipColors(
-                                containerColor = tint.copy(alpha = .22f),
-                                contentColor = foreground,
-                            ),
-                            icon = { Icon(card.icon, null, tint = foreground, modifier = Modifier.size(16.dp)) },
+                            minHeight = 48.dp,
+                            cornerRadius = 24.dp,
+                            colors = chipColors,
+                            icon = { Icon(card.icon, null, tint = colors.labelPrimary, modifier = Modifier.size(16.dp)) },
+                        )
+                    }
+                    if (previewCount > 0) {
+                        SuggestionChip(
+                            label = "Aperçus",
+                            onClick = onShowPreviews,
+                            count = previewCount.toString(),
+                            minHeight = 48.dp,
+                            cornerRadius = 24.dp,
+                            colors = chipColors,
+                            icon = { Icon(Icons.Rounded.Dashboard, null, tint = colors.labelPrimary, modifier = Modifier.size(16.dp)) },
                         )
                     }
                 }
@@ -275,7 +287,7 @@ private fun BriefSummaryText(summary: BriefSummary, tint: Color, regularColor: C
     var textLayout by remember(summary.text) { mutableStateOf<TextLayoutResult?>(null) }
     Text(
         styled,
-        style = COUITheme.textStyles.bodyM.copy(fontSize = 16.5.sp, lineHeight = 23.5.sp),
+        style = COUITheme.textStyles.bodyXL,
         onTextLayout = { textLayout = it },
         modifier = Modifier.drawBehind {
             val layout = textLayout ?: return@drawBehind

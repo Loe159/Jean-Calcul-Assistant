@@ -29,7 +29,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.github.mangi.eta.ui.screens.home.brief.BriefCard
 import io.github.mangi.eta.ui.screens.home.brief.BriefCardId
 import io.github.mangi.eta.ui.screens.home.brief.BriefDemoData
@@ -60,7 +59,7 @@ internal fun BriefWeatherCard(
     val styles = COUITheme.textStyles
     BriefCard(
         BriefCardId.WEATHER, expanded, onToggleDensity, motionAllowed, modifier,
-        BriefDemoData.weatherLocation, preview = true,
+        BriefDemoData.weatherLocation,
         backgroundDecoration = Modifier.weatherBackground(current.condition, motionAllowed && inViewport()),
     ) {
         Row(
@@ -68,7 +67,7 @@ internal fun BriefWeatherCard(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("${current.temperature}°", style = styles.headlineL.copy(fontSize = 48.sp), color = colors.labelPrimary)
+            Text("${current.temperature}°", style = styles.display, color = colors.labelPrimary)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(current.condition.label, style = styles.headlineXS, color = colors.labelPrimary)
                 Text(

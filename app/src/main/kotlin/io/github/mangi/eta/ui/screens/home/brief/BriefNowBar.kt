@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.suqi8.coui.kmp.basic.FloatingToolbar
 import io.github.suqi8.coui.kmp.basic.Icon
@@ -71,11 +72,16 @@ internal fun BriefNowBar(
                 Icon(icon, null, tint = briefTintedLabel(tint), modifier = Modifier.size(21.dp))
             }
             Column(Modifier.weight(1f)) {
-                Text(suggestion.title, style = COUITheme.textStyles.headlineXS, color = colors.labelPrimary)
+                // One line each: at large font scales the floating bar must not grow over the feed.
                 Text(
-                    suggestion.detail,
+                    suggestion.title, style = COUITheme.textStyles.headlineXS, color = colors.labelPrimary,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "Aperçu · ${suggestion.detail}",
                     style = COUITheme.textStyles.bodyXS,
                     color = colors.labelSecondary,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
             if (onOpenCard != null) {

@@ -32,7 +32,6 @@ import io.github.mangi.eta.ui.screens.home.brief.BriefDemoHabit
 import io.github.mangi.eta.ui.screens.home.brief.BriefDemoOccasion
 import io.github.mangi.eta.ui.screens.home.brief.briefProgress
 import io.github.mangi.eta.ui.screens.home.brief.briefTintedLabel
-import io.github.suqi8.coui.kmp.basic.ChipDefaults
 import io.github.suqi8.coui.kmp.basic.Icon
 import io.github.suqi8.coui.kmp.basic.SuggestionChip
 import io.github.suqi8.coui.kmp.basic.Text
@@ -58,7 +57,7 @@ internal fun BriefHabitsCard(
     val colors = COUITheme.colorScheme
     val styles = COUITheme.textStyles
     val completeToday = demo.habits.count { (counts[it.title] ?: it.completed) >= it.target }
-    BriefCard(BriefCardId.HABITS, expanded, onToggleDensity, motionAllowed, modifier, "${demo.habitStreak} jours de suite", preview = true) {
+    BriefCard(BriefCardId.HABITS, expanded, onToggleDensity, motionAllowed, modifier, "${demo.habitStreak} jours de suite") {
         HabitWeek(completeToday)
         Row(Modifier.fillMaxWidth().padding(top = 9.dp, bottom = 5.dp), horizontalArrangement = Arrangement.End) {
             Text("Aujourd’hui · $completeToday / ${demo.habits.size}", color = colors.labelSecondary, style = styles.bodyXS)
@@ -203,31 +202,29 @@ private fun HabitRow(habit: BriefDemoHabit, index: Int, count: Int, motionAllowe
 private fun OccasionRow(occasion: BriefDemoOccasion, birthday: Boolean = false, onAction: (() -> Unit)? = null) {
     val colors = COUITheme.colorScheme
     val styles = COUITheme.textStyles
-    Row(
+    BriefInlineAction(
         Modifier.fillMaxWidth().padding(top = 8.dp).then(
-            if (birthday) Modifier.squircleSurface(colors.red.copy(alpha = .14f), cornerRadius = 18.dp)
+            if (birthday) Modifier.briefInset(18.dp)
                 .padding(horizontal = 9.dp, vertical = 8.dp)
             else Modifier.padding(vertical = 2.dp),
         ),
-        horizontalArrangement = Arrangement.spacedBy(9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        BriefDateTile(occasion.month, occasion.day, if (birthday) colors.red else colors.purple)
-        Column(Modifier.weight(1f)) {
-            Text(occasion.title, color = colors.labelPrimary, style = styles.headlineXS)
-            Text(occasion.detail, color = colors.labelSecondary, style = styles.bodyXS)
-        }
-        if (onAction != null) {
-            SuggestionChip(
-                label = "Écrire",
-                onClick = onAction,
-                minHeight = 48.dp,
-                colors = ChipDefaults.chipColors(
-                    containerColor = colors.red.copy(alpha = .15f),
-                    contentColor = briefTintedLabel(colors.red),
-                ),
-                icon = { Icon(COUIIcons.Send, null, Modifier.size(15.dp)) },
-            )
-        }
-    }
+        leading = { BriefDateTile(occasion.month, occasion.day, if (birthday) colors.red else colors.purple) },
+        text = {
+            Column {
+                Text(occasion.title, color = colors.labelPrimary, style = styles.headlineXS)
+                Text(occasion.detail, color = colors.labelSecondary, style = styles.bodyXS)
+            }
+        },
+        action = onAction?.let { action ->
+            {
+                SuggestionChip(
+                    label = "Écrire",
+                    onClick = action,
+                    minHeight = 48.dp,
+                    icon = { Icon(COUIIcons.Send, null, Modifier.size(15.dp)) },
+                )
+            }
+        },
+        spacing = 9.dp,
+    )
 }

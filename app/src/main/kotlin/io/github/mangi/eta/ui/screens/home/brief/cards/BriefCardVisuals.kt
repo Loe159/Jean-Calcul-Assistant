@@ -11,6 +11,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,6 +41,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.ui.screens.home.BriefMotionTiming
@@ -217,15 +220,24 @@ internal fun BriefSection(title: String, detail: String? = null) {
 }
 
 @Composable
-internal fun BriefMetric(label: String, value: String, modifier: Modifier = Modifier) {
+@OptIn(ExperimentalLayoutApi::class)
+internal fun BriefMetric(label: String, value: String, modifier: Modifier = Modifier, unit: String? = null) {
     val theme = COUITheme
     Column(
-        modifier.squircleSurface(theme.colorScheme.labelPrimary.copy(alpha = .045f), cornerRadius = 16.dp)
-            .padding(horizontal = 9.dp, vertical = 9.dp),
+        modifier.briefInset(16.dp).padding(horizontal = 9.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(label, color = theme.colorScheme.labelSecondary, style = theme.textStyles.bodyXS)
-        Text(value, color = theme.colorScheme.labelPrimary, style = theme.textStyles.headlineS)
+        // The unit is a smaller, separate word: when space runs out it wraps whole, never letter by letter.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(3.dp), itemVerticalAlignment = Alignment.Bottom) {
+            Text(value, color = theme.colorScheme.labelPrimary, style = theme.textStyles.headlineS, softWrap = false)
+            if (unit != null) {
+                Text(
+                    unit, Modifier.padding(bottom = 1.dp),
+                    color = theme.colorScheme.labelSecondary, style = theme.textStyles.bodyS, softWrap = false,
+                )
+            }
+        }
     }
 }
 
@@ -282,5 +294,57 @@ internal fun BriefCheckRow(
         if (checkFirst) Checkbox(ToggleableState(checked), onClick = null)
         Box(Modifier.weight(1f)) { content() }
         if (!checkFirst) Checkbox(ToggleableState(checked), onClick = null)
+    }
+}
+
+/** Neutral inset panel inside a card; colour stays on the icon and label, not the surface. */
+@Composable
+internal fun Modifier.briefInset(cornerRadius: Dp = 16.dp): Modifier =
+    squircleSurface(COUITheme.colorScheme.labelPrimary.copy(alpha = .045f), cornerRadius = cornerRadius)
+
+/**
+ * Leading icon, text and a trailing action. From a 150 % font scale the action drops below the text,
+ * so a narrow text column never breaks words letter by letter.
+ */
+@Composable
+internal fun BriefInlineAction(
+    modifier: Modifier,
+    leading: @Composable () -> Unit,
+    text: @Composable () -> Unit,
+    action: (@Composable () -> Unit)?,
+    spacing: Dp = 8.dp,
+) {
+    val stacked = action != null && LocalDensity.current.fontScale >= 1.5f
+    if (stacked) {
+        Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing), verticalAlignment = Alignment.CenterVertically) {
+                leading()
+                Box(Modifier.weight(1f)) { text() }
+            }
+            Box(Modifier.align(Alignment.End)) { action() }
+        }
+    } else {
+        Row(modifier, horizontalArrangement = Arrangement.spacedBy(spacing), verticalAlignment = Alignment.CenterVertically) {
+            leading()
+            Box(Modifier.weight(1f)) { text() }
+            action?.invoke()
+        }
+    }
+}
+
+/**
+ * Metrics side by side; from a 150 % font scale they stack full width so labels never break mid-word.
+ * [content] receives the per-item modifier for a given row weight.
+ */
+@Composable
+internal fun BriefMetricRow(modifier: Modifier = Modifier, content: @Composable (item: (Float) -> Modifier) -> Unit) {
+    if (LocalDensity.current.fontScale >= 1.5f) {
+        Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            content { Modifier.fillMaxWidth() }
+        }
+    } else {
+        Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            content { Modifier.weight(it) }
+        }
     }
 }

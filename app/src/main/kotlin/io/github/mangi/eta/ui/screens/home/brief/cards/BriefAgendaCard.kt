@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -52,7 +54,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val agendaDateFormat = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRENCH)
-private val agendaMonthFormat = DateTimeFormatter.ofPattern("MMM", Locale.FRENCH)
 
 @Composable
 internal fun BriefAgendaCard(
@@ -70,7 +71,7 @@ internal fun BriefAgendaCard(
     val next = countdown.event
     val colors = COUITheme.colorScheme
     val styles = COUITheme.textStyles
-    BriefCard(BriefCardId.AGENDA, expanded, onToggleDensity, motionAllowed, modifier, date, preview = true) {
+    BriefCard(BriefCardId.AGENDA, expanded, onToggleDensity, motionAllowed, modifier, date) {
         Row(
             Modifier.fillMaxWidth().padding(top = 9.dp, bottom = 3.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -109,8 +110,6 @@ internal fun BriefAgendaCard(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            BriefDateTile(agenda.date.format(agendaMonthFormat).trimEnd('.').uppercase(Locale.FRENCH),
-                agenda.date.dayOfMonth.toString(), colors.blue)
             Column(Modifier.weight(1f)) {
                 val departure = agenda.departure
                 if (departure != null) {
@@ -154,7 +153,7 @@ internal fun BriefDateTile(month: String, day: String, tint: Color) {
     val colors = COUITheme.colorScheme
     val styles = COUITheme.textStyles
     Column(
-        Modifier.width(45.dp).squircleSurface(tint.copy(alpha = .13f), cornerRadius = 12.dp),
+        Modifier.widthIn(min = 45.dp).width(IntrinsicSize.Max).squircleSurface(tint.copy(alpha = .13f), cornerRadius = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
@@ -249,7 +248,7 @@ private fun AgendaTimeline(agenda: BriefDemoAgenda, date: String) {
                 drawLine(line, Offset(x, 0f), Offset(x, size.height), 1.dp.toPx())
             }.padding(start = 70.dp, bottom = 9.dp)) {
                 Row(
-                    Modifier.fillMaxWidth().squircleSurface(colors.green.copy(alpha = .14f), cornerRadius = 12.dp)
+                    Modifier.fillMaxWidth().briefInset(12.dp)
                         .padding(horizontal = 9.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,

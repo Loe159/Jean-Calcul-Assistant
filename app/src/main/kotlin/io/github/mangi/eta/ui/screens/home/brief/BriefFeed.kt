@@ -15,7 +15,13 @@ internal enum class BriefCardId(val key: String, val title: String) {
     NEWS("news", "Actualités"),
     WEATHER("weather", "Météo"),
     HOME("home", "Maison"),
+    ;
+
+    /** Drawn from fictional demo data: grouped under the folded "Aperçus" section, never mixed with real data. */
+    val isPreview: Boolean get() = this != NOTIFICATIONS
 }
+
+internal const val BriefPreviewsKey = "previews"
 
 internal fun briefFeedOrder(moment: BriefMoment, hidden: Set<BriefCardId> = emptySet()): List<BriefCardId> {
     val ordered = when (moment) {

@@ -62,38 +62,6 @@ internal fun BriefSuggestionOrb(motionAllowed: Boolean) {
     }) {}
 }
 
-@Composable
-internal fun Modifier.briefSuggestionBorder(motionAllowed: Boolean): Modifier {
-    val colors = COUITheme.colorScheme
-    val rotation = briefAmbientCycle(motionAllowed, 6000, "brief-suggestion-border")
-    val stops = arrayOf(
-        0f to Color.Transparent,
-        .18f to colors.azure,
-        .36f to colors.green.copy(alpha = .55f),
-        .54f to colors.purple,
-        .74f to Color.Transparent,
-    )
-    return drawWithCache {
-        val inset = 1.25.dp.toPx()
-        val outer = Path().apply { addOutline(SquircleShape(24.dp).createOutline(size, layoutDirection, this@drawWithCache)) }
-        val inner = Path().apply {
-            val inside = Size((size.width - 2 * inset).coerceAtLeast(0f), (size.height - 2 * inset).coerceAtLeast(0f))
-            addOutline(SquircleShape(22.75.dp).createOutline(inside, layoutDirection, this@drawWithCache))
-            translate(Offset(inset, inset))
-        }
-        val brush = Brush.sweepGradient(*stops, center = Offset(size.width / 2f, size.height / 2f))
-        val radius = size.width + size.height
-        onDrawWithContent {
-            drawContent()
-            clipPath(outer) {
-                clipPath(inner, ClipOp.Difference) {
-                    rotate(rotation.value * 360f) { drawCircle(brush, radius = radius) }
-                }
-            }
-        }
-    }
-}
-
 private val BriefDemoSuggestion.icon: ImageVector
     get() = when (id) {
         "fuel" -> Icons.Rounded.LocalGasStation
@@ -130,7 +98,6 @@ internal fun BriefSuggestionsCard(
             1 -> "1 suggestion pour maintenant"
             else -> "${pending.size} suggestions pour maintenant"
         },
-        preview = true,
     ) {
         if (current == null) {
             Column(
