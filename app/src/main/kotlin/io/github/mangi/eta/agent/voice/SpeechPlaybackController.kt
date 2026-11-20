@@ -4,6 +4,7 @@ import android.content.Context
 import io.github.mangi.eta.core.AndroidAgentLogger
 import io.github.mangi.eta.data.model.SpeechCredentials
 import io.github.mangi.eta.data.model.SpeechSettings
+import io.github.mangi.eta.data.model.TtsProvider
 import io.github.mangi.eta.data.repository.SpeechSettingsRepository
 import java.io.Closeable
 import kotlinx.coroutines.CancellationException
@@ -30,8 +31,9 @@ internal class SpeechPlaybackController(
     private val interruptOnScreenOff: Boolean = true,
     private val afterPlayback: () -> Unit = {},
     private val synthesize: suspend (SpeechSettings, SpeechCredentials, String, (ByteArray) -> Unit) -> Unit = ::synthesizeSpeech,
-    /** 整篇单会话流式合成；为 null 时只用逐段请求。 */
-    private val streamSynthesize: (suspend (SpeechSettings, SpeechCredentials, List<String>, (ByteArray) -> Unit) -> Unit)? = ::streamSpeech,
+    private val speakLocally: suspend (Context, String, List<String>, () -> Unit) -> Unit = ::speakOnDevice,
+    private val resolveSettings: suspend (SpeechSettings, SpeechCredentials) -> Pair<SpeechSettings, SpeechCredentials> =
+        { settings, credentials -> SpeechSettingsRepository.resolveVllmFallback(settings, credentials) },
     private val createOutput: () -> SpeechAudioOutput = ::SpeechPcmOutput,
 ) {
     private val mutableState = MutableStateFlow(SpeechPlaybackState())
@@ -50,13 +52,26 @@ internal class SpeechPlaybackController(
             try {
                 lease = SpeechAudioLease(context, interruptOnScreenOff) { stop() }.also { it.acquire(playback = false) }
                 val rawConfig = settings ?: SpeechSettingsRepository.settings()
-                val rawSecrets = credentials ?: SpeechSettingsRepository.credentials(context)
-                val (config, secrets) = SpeechSettingsRepository.resolveDeepSeekFallback(rawConfig, rawSecrets)
+                val rawSecrets = credentials ?: if (rawConfig.tts == TtsProvider.ANDROID) {
+                    SpeechCredentials()
+                } else {
+                    SpeechSettingsRepository.credentials(context)
+                }
+                val (config, secrets) = resolveSettings(rawConfig, rawSecrets)
                 validateSpeechSettings(config, secrets, synthesis = true)
                 val readable = withContext(Dispatchers.Default) { SpeechText.readable(text) }
                 if (readable.isBlank()) throw SpeechFailure(SpeechErrorCode.NO_SPEECH, "This message has no text to read aloud")
                 if (readable.length > 30_000) throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Text is too long. Select a shorter reply to read aloud.")
                 lease?.requestPlaybackFocus { beforePlayback(); playbackActive = true }
+                if (config.tts == TtsProvider.ANDROID) {
+                    speakLocally(context, config.language, SpeechText.chunks(readable)) {
+                        scope.launch(Dispatchers.Main.immediate) {
+                            if (session == generation) mutableState.value = SpeechPlaybackState(messageId)
+                        }
+                    }
+                    if (session == generation) stop()
+                    return@launch
+                }
                 val player = createOutput()
                 output = player
                 playChunks(config, secrets, SpeechText.chunks(readable), player) {
@@ -82,13 +97,8 @@ internal class SpeechPlaybackController(
     }
 
     /**
-     * 合成按网络速度下载，播放按实时速度写入音轨，两者经队列解耦。若在合成回调里直接写音轨，
-     * 读流会被播放节奏拖住，服务端也会长时间等待客户端读取。
-     *
-     * 优先把整篇放进一个流式合成会话，音频是一条连续的流，整体只在首尾淡入淡出。
-     * 流式会话在出声前失败（例如账号未开通实时模型、自定义地址不支持 WebSocket）时，
-     * 回落到逐段请求：最多领先播放 [PREFETCH_CHUNKS] 段，接缝处由 [SpeechSegmentFade] 淡入淡出。
-     * 已经出声后再失败则直接报错，不从头重读。
+     * La synthèse télécharge au rythme du réseau, la lecture écrit au rythme réel ; une file les découple.
+     * On garde au plus [PREFETCH_CHUNKS] segments d’avance, les jointures sont adoucies par [SpeechSegmentFade].
      */
     private suspend fun playChunks(
         config: SpeechSettings,
@@ -101,25 +111,7 @@ internal class SpeechPlaybackController(
         val ahead = Semaphore(PREFETCH_CHUNKS)
         launch {
             try {
-                var streamed = false
-                val stream = streamSynthesize
-                if (stream != null && supportsSpeechSession(config.tts)) {
-                    try {
-                        ahead.acquire()
-                        stream(config, secrets, chunks) { bytes ->
-                            streamed = true
-                            queue.trySend(SpeechQueueItem.Audio(bytes))
-                        }
-                        queue.send(SpeechQueueItem.ChunkEnd)
-                        streamed = true
-                    } catch (error: Exception) {
-                        if (error is CancellationException && error !is kotlinx.coroutines.TimeoutCancellationException) throw error
-                        if (streamed) throw error
-                        AndroidAgentLogger.warn("Jean-Calcul speech stream unavailable, using segments: code=${error.speechFailure().code}")
-                        ahead.release()
-                    }
-                }
-                if (!streamed) for (chunk in chunks) {
+                for (chunk in chunks) {
                     ahead.acquire()
                     synthesize(config, secrets, chunk) { bytes -> queue.trySend(SpeechQueueItem.Audio(bytes)) }
                     queue.send(SpeechQueueItem.ChunkEnd)

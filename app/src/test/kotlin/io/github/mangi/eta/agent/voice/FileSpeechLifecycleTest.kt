@@ -3,9 +3,6 @@ package io.github.mangi.eta.agent.voice
 import android.app.Application
 import android.os.Looper
 import io.github.mangi.eta.data.model.AsrProvider
-import io.github.mangi.eta.data.model.MimoAsrConfig
-import io.github.mangi.eta.data.model.MimoAsrLanguage
-import io.github.mangi.eta.data.model.QwenSpeechConfig
 import io.github.mangi.eta.data.model.SpeechCredentials
 import io.github.mangi.eta.data.model.SpeechSettings
 import kotlinx.coroutines.CancellationException
@@ -32,12 +29,8 @@ class FileSpeechLifecycleTest {
     private val captures = mutableListOf<FakeCapture>()
     private val requests = mutableListOf<FileRequest>()
     private val results = mutableListOf<String>()
-    private val settings = SpeechSettings(
-        asr = AsrProvider.MIMO,
-        qwenAsr = QwenSpeechConfig(baseUrl = "invalid-unused-provider"),
-        mimoAsr = MimoAsrConfig(language = MimoAsrLanguage.CHINESE),
-    )
-    private val credentials = SpeechCredentials(mimoAsr = "fixture-mimo-key")
+    private val settings = SpeechSettings(asr = AsrProvider.OPENAI, language = "fr")
+    private val credentials = SpeechCredentials(openAi = "fixture-openai-key")
     private lateinit var controller: SpeechInputController
 
     @Before fun setup() {
@@ -46,9 +39,9 @@ class FileSpeechLifecycleTest {
             scope = scope,
             automaticEndpoint = true,
             createRecorder = { FakeCapture().also(captures::add) },
-            recognizeStream = { _, _, _, _, _, _, _ -> error("File recognition must not open a stream") },
-            recognizeFile = { _, config, secrets, wav, progress ->
-                val request = FileRequest(config, secrets, wav, progress)
+            createDeviceRecognizer = { error("Server recognition must not use the phone recognizer") },
+            recognizeFile = { config, secrets, wav ->
+                val request = FileRequest(config, secrets, wav)
                 requests += request
                 try {
                     request.result.await()
@@ -67,7 +60,7 @@ class FileSpeechLifecycleTest {
         idle()
     }
 
-    @Test fun mimoWaitsForFinishThenTranscribesRecordedWavWithItsOwnConfiguration() {
+    @Test fun serverEngineWaitsForFinishThenTranscribesRecordedWavWithItsOwnConfiguration() {
         start()
         assertEquals(EtaSpeechPhase.LISTENING, controller.state.value.phase)
         assertTrue(requests.isEmpty())
@@ -126,20 +119,15 @@ class FileSpeechLifecycleTest {
         assertTrue(old.canceled)
 
         start()
-        old.progress("旧会话进度")
         old.result.complete("旧会话结果")
         idle()
         assertEquals(EtaSpeechPhase.LISTENING, controller.state.value.phase)
-        assertNotEquals("旧会话进度", controller.state.value.progress)
         assertTrue(results.isEmpty())
 
         controller.finish()
         idle()
         val current = requests.last()
         assertEquals(2, requests.size)
-        current.progress("新会话进度")
-        idle()
-        assertEquals("新会话进度", controller.state.value.progress)
         current.result.complete("新会话结果")
         idle()
         assertEquals(listOf("新会话结果"), results)
@@ -157,7 +145,6 @@ class FileSpeechLifecycleTest {
         val settings: SpeechSettings,
         val credentials: SpeechCredentials,
         val wav: ByteArray,
-        val progress: (String) -> Unit,
     ) {
         val result = CompletableDeferred<String>()
         var canceled = false

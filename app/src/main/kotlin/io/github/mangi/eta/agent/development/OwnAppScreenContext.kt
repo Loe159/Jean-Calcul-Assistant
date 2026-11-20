@@ -24,7 +24,7 @@ internal object OwnAppScreenContext {
         screen = route.javaClass.simpleName.take(100)
         sensitive = route is AppRoute.AppImprovements || route is AppRoute.ModelProviderDetail ||
             route is AppRoute.ModelProviderNew || route is AppRoute.McpServerDetail ||
-            route is AppRoute.SpeechRecognition || route is AppRoute.SpeechSynthesis || route is AppRoute.SpeechOss
+            route is AppRoute.SpeechRecognition || route is AppRoute.SpeechSynthesis
     }
     data class Capture(
         val screen: String,
