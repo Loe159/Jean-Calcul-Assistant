@@ -64,7 +64,6 @@ import io.github.mangi.eta.ui.screens.terminal.SharedFoldersScreen
 import io.github.mangi.eta.ui.screens.terminal.WorkspaceScreen
 import io.github.mangi.eta.ui.screens.tools.AgentToolsScreen
 import io.github.mangi.eta.ui.screens.tools.WebToolsSettingsScreen
-import io.github.mangi.eta.ui.voice.SpeechOssScreen
 import io.github.mangi.eta.ui.voice.SpeechRecognitionScreen
 import io.github.mangi.eta.ui.voice.SpeechSettingsScreen
 import io.github.mangi.eta.ui.voice.SpeechSynthesisScreen
@@ -264,9 +263,9 @@ class AppThemeAndScreensTest {
                         )
                         12 -> AgentMemoryScreen(state = memoryState, onAction = {})
                         13 -> SpeechSettingsScreen(onBack = { backPressedCount++ }, onNavigate = {})
-                        14 -> SpeechRecognitionScreen(onBack = { backPressedCount++ }, onOpenOss = {})
+                        14 -> SpeechRecognitionScreen(onBack = { backPressedCount++ })
                         15 -> SpeechSynthesisScreen(onBack = { backPressedCount++ })
-                        16 -> SpeechOssScreen(onBack = { backPressedCount++ })
+                        16 -> SpeechSettingsScreen(onBack = { backPressedCount++ }, onNavigate = {})
                         17 -> CommunityCatalogScreen(store = catalogStore, onNavigate = {}, onBack = { backPressedCount++ })
                         18 -> CharacterLibraryScreen(store = characterStore, onNavigate = {}, onBack = { backPressedCount++ })
                         19 -> CharacterPersonaScreen(store = characterStore, onBack = { backPressedCount++ })

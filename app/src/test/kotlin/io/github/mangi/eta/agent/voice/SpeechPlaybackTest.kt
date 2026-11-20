@@ -7,6 +7,7 @@ import android.os.Looper
 import io.github.mangi.eta.data.model.SpeechCredentials
 import io.github.mangi.eta.data.model.SpeechSettings
 import io.github.mangi.eta.data.model.TtsProvider
+import io.github.mangi.eta.data.model.VllmSpeechConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -29,7 +30,6 @@ class SpeechPlaybackTest {
     private val outputs = mutableListOf<FakeOutput>()
     private var canceled = 0
     private val playback = SpeechPlaybackController(context, scope,
-        streamSynthesize = null,
         synthesize = { _, _, _, audio ->
             try { audio(byteArrayOf(1, 2)); awaitCancellation() }
             finally { canceled++ }
@@ -39,7 +39,7 @@ class SpeechPlaybackTest {
     @After fun close() { playback.stop(); scope.cancel() }
 
     private fun start(id: String) {
-        playback.speak(id, "回答正文", SpeechSettings(tts = TtsProvider.QWEN), SpeechCredentials(qwenTts = "test-key"))
+        playback.speak(id, "回答正文", SpeechSettings(tts = TtsProvider.OPENAI), SpeechCredentials(openAi = "test-key"))
         val deadline = System.nanoTime() + 3_000_000_000
         while (playback.state.value.loading && System.nanoTime() < deadline) {
             shadowOf(Looper.getMainLooper()).idle()
@@ -74,7 +74,7 @@ class SpeechPlaybackTest {
     }
 
     @Test fun microphoneWinsWhileOldPlaybackIsStillPreparing() {
-        playback.speak("preparing", "尚未合成的回答", SpeechSettings(tts = TtsProvider.QWEN), SpeechCredentials(qwenTts = "test-key"))
+        playback.speak("preparing", "尚未合成的回答", SpeechSettings(tts = TtsProvider.OPENAI), SpeechCredentials(openAi = "test-key"))
         val microphone = SpeechAudioLease(context) {}
         try {
             microphone.acquire(playback = false)
@@ -108,12 +108,11 @@ class SpeechPlaybackTest {
     @Test fun successfulSynthesisFinishesInputBeforeWaitingForPlayback() {
         val output = FakeOutput()
         val controller = SpeechPlaybackController(context, scope,
-            streamSynthesize = null,
             synthesize = { _, _, _, audio -> audio(byteArrayOf(1, 2)) },
             createOutput = { output },
         )
         try {
-            controller.speak("short", "简短回答", SpeechSettings(tts = TtsProvider.QWEN), SpeechCredentials(qwenTts = "test-key"))
+            controller.speak("short", "简短回答", SpeechSettings(tts = TtsProvider.OPENAI), SpeechCredentials(openAi = "test-key"))
             val deadline = System.nanoTime() + 3_000_000_000
             while (!output.closed && System.nanoTime() < deadline) {
                 shadowOf(Looper.getMainLooper()).idle()
@@ -138,7 +137,6 @@ class SpeechPlaybackTest {
             override fun close() { closed = true }
         }
         val controller = SpeechPlaybackController(context, scope,
-            streamSynthesize = null,
             synthesize = { _, _, _, audio -> synthesized.incrementAndGet(); audio(byteArrayOf(1, 2)) },
             createOutput = { output },
         )
@@ -146,7 +144,7 @@ class SpeechPlaybackTest {
             val text = "很长的回答。".repeat(250)
             val chunkCount = SpeechText.chunks(SpeechText.readable(text)).size
             assertTrue(chunkCount > 2)
-            controller.speak("long", text, SpeechSettings(tts = TtsProvider.QWEN), SpeechCredentials(qwenTts = "test-key"))
+            controller.speak("long", text, SpeechSettings(tts = TtsProvider.OPENAI), SpeechCredentials(openAi = "test-key"))
             fun idleUntil(condition: () -> Boolean) {
                 val deadline = System.nanoTime() + 3_000_000_000
                 while (!condition() && System.nanoTime() < deadline) {
@@ -168,10 +166,9 @@ class SpeechPlaybackTest {
         controller: SpeechPlaybackController,
         output: FakeOutput,
         text: String,
-        provider: TtsProvider = TtsProvider.QWEN,
+        provider: TtsProvider = TtsProvider.OPENAI,
     ) {
-        controller.speak("stream", text, SpeechSettings(tts = provider),
-            SpeechCredentials(qwenTts = "test-key", geminiTts = "test-key", minimaxTts = "test-key", mimoTts = "test-key"))
+        controller.speak("stream", text, settingsFor(provider), SpeechCredentials(openAi = "test-key"))
         val deadline = System.nanoTime() + 3_000_000_000
         while (!output.closed && System.nanoTime() < deadline) {
             shadowOf(Looper.getMainLooper()).idle()
@@ -179,66 +176,40 @@ class SpeechPlaybackTest {
         }
     }
 
-    @Test fun streamingSessionReceivesWholeAnswerOnce() {
-        val output = FakeOutput()
-        val sessions = java.util.concurrent.CopyOnWriteArrayList<List<String>>()
-        val segments = java.util.concurrent.atomic.AtomicInteger()
+    private fun settingsFor(provider: TtsProvider) = SpeechSettings(
+        tts = provider,
+        vllm = VllmSpeechConfig(baseUrl = "http://tts.lan:8000/v1", speechModel = "fixture-tts"),
+    )
+
+    @Test fun androidEngineSpeaksReadableChunksWithoutCloudAudio() {
+        val spoken = java.util.concurrent.CopyOnWriteArrayList<String>()
+        var created = false
         val controller = SpeechPlaybackController(context, scope,
-            streamSynthesize = { _, _, chunks, audio -> sessions += chunks; audio(byteArrayOf(1, 2)) },
-            synthesize = { _, _, _, _ -> segments.incrementAndGet() },
-            createOutput = { output },
+            synthesize = { _, _, _, _ -> fail("Android playback must not call a server") },
+            speakLocally = { _, _, chunks, started -> spoken += chunks; started() },
+            createOutput = { created = true; FakeOutput() },
         )
         try {
-            val text = "很长的回答。".repeat(250)
-            speakUntilClosed(controller, output, text)
-            assertEquals(1, sessions.size)
-            assertEquals(SpeechText.chunks(SpeechText.readable(text)), sessions.single())
-            assertEquals(0, segments.get())
-            assertTrue(output.finished)
+            controller.speak("local", "# Titre\n\nBonjour **toi**.", SpeechSettings(tts = TtsProvider.ANDROID))
+            val deadline = System.nanoTime() + 3_000_000_000
+            while (spoken.isEmpty() && System.nanoTime() < deadline) {
+                shadowOf(Looper.getMainLooper()).idle()
+                Thread.sleep(1)
+            }
+            shadowOf(Looper.getMainLooper()).idle()
+            assertFalse(created)
+            assertTrue(spoken.joinToString(" ").contains("Bonjour toi"))
+            assertFalse(spoken.joinToString(" ").contains("**"))
             assertNull(controller.state.value.error)
+            assertNull(controller.state.value.messageId)
         } finally { controller.stop() }
     }
 
-    @Test fun streamingFailureBeforeAudioFallsBackToSegments() {
-        val output = FakeOutput()
-        val segments = java.util.concurrent.atomic.AtomicInteger()
-        val controller = SpeechPlaybackController(context, scope,
-            streamSynthesize = { _, _, _, _ -> throw SpeechFailure(SpeechErrorCode.NETWORK, "unavailable") },
-            synthesize = { _, _, _, audio -> segments.incrementAndGet(); audio(byteArrayOf(1, 2)) },
-            createOutput = { output },
-        )
-        try {
-            speakUntilClosed(controller, output, "第一句。第二句。")
-            assertEquals(1, segments.get())
-            assertTrue(output.finished)
-            assertNull(controller.state.value.error)
-        } finally { controller.stop() }
-    }
-
-    @Test fun streamingFailureAfterAudioReportsErrorWithoutRestarting() {
-        val output = FakeOutput()
-        val segments = java.util.concurrent.atomic.AtomicInteger()
-        val controller = SpeechPlaybackController(context, scope,
-            streamSynthesize = { _, _, _, audio ->
-                audio(byteArrayOf(1, 2))
-                throw SpeechFailure(SpeechErrorCode.NETWORK, "dropped")
-            },
-            synthesize = { _, _, _, audio -> segments.incrementAndGet(); audio(byteArrayOf(1, 2)) },
-            createOutput = { output },
-        )
-        try {
-            speakUntilClosed(controller, output, "第一句。第二句。")
-            assertEquals(0, segments.get())
-            assertEquals("dropped", controller.state.value.error)
-        } finally { controller.stop() }
-    }
-
-    @Test fun httpProvidersUseOrderedSegmentsWithoutAttemptingWebSocketSessions() {
-        for (provider in listOf(TtsProvider.GEMINI, TtsProvider.MINIMAX, TtsProvider.MIMO)) {
+    @Test fun serverProvidersUseOrderedSegmentsWithoutAttemptingWebSocketSessions() {
+        for (provider in listOf(TtsProvider.OPENAI, TtsProvider.VLLM)) {
             val output = FakeOutput()
             val segments = java.util.concurrent.CopyOnWriteArrayList<String>()
             val controller = SpeechPlaybackController(context, scope,
-                streamSynthesize = { _, _, _, _ -> fail("HTTP providers must not start a WebSocket session") },
                 synthesize = { settings, _, text, audio ->
                     assertEquals(provider, settings.tts)
                     segments += text
@@ -256,7 +227,7 @@ class SpeechPlaybackTest {
         }
     }
 
-    @Test fun sessionAndSegmentSynthesisReceiveTheSameReadableBody() {
+    @Test fun segmentSynthesisReceivesOnlyReadableBody() {
         val markdown = """
             # 操作说明
 
@@ -277,20 +248,11 @@ class SpeechPlaybackTest {
 
             完成后返回聊天。
         """.trimIndent()
-        var previousText: String? = null
-        for (provider in listOf(TtsProvider.QWEN, TtsProvider.MIMO)) {
+        for (provider in listOf(TtsProvider.OPENAI, TtsProvider.VLLM)) {
             val output = FakeOutput()
             val submitted = java.util.concurrent.CopyOnWriteArrayList<String>()
-            var sessions = 0
-            var segments = 0
             val controller = SpeechPlaybackController(context, scope,
-                streamSynthesize = { _, _, chunks, audio ->
-                    sessions++
-                    submitted.addAll(chunks)
-                    audio(byteArrayOf(1, 2))
-                },
                 synthesize = { _, _, text, audio ->
-                    segments++
                     submitted += text
                     audio(byteArrayOf(1, 2))
                 },
@@ -298,8 +260,6 @@ class SpeechPlaybackTest {
             )
             try {
                 speakUntilClosed(controller, output, markdown, provider)
-                assertEquals(if (provider == TtsProvider.QWEN) 1 else 0, sessions)
-                assertEquals(if (provider == TtsProvider.MIMO) 1 else 0, segments)
                 val spoken = submitted.joinToString("\n")
                 for (text in listOf(
                     "操作说明", "开始前请确认权限", "帮助说明", "完成后返回聊天",
@@ -313,8 +273,6 @@ class SpeechPlaybackTest {
                 )) {
                     assertFalse(spoken.contains(text))
                 }
-                previousText?.let { assertEquals(it, spoken) }
-                previousText = spoken
                 assertTrue(output.finished)
                 assertNull(controller.state.value.error)
             } finally { controller.stop() }
@@ -322,7 +280,7 @@ class SpeechPlaybackTest {
     }
 
     @Test fun httpProviderFailureIsNotRetriedOrSentToAnotherProvider() {
-        for (provider in listOf(TtsProvider.GEMINI, TtsProvider.MINIMAX, TtsProvider.MIMO)) {
+        for (provider in listOf(TtsProvider.OPENAI, TtsProvider.VLLM)) {
             val output = FakeOutput()
             var attempts = 0
             val controller = SpeechPlaybackController(context, scope,

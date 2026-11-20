@@ -1,6 +1,5 @@
 package io.github.mangi.eta
 
-import io.github.mangi.eta.agent.voice.SpeechOssUpload
 import android.app.Application
 import android.content.ComponentCallbacks2
 import android.os.Handler
@@ -62,13 +61,9 @@ class EtaApp : Application(), XposedServiceHelper.OnServiceListener {
         ProviderRepository.init(this)
         McpServerRepository.init(this)
         XposedServiceHelper.registerListener(this)
-        applicationScope.launch {
-            try {
-                SpeechOssUpload(this@EtaApp).retryPending(this@EtaApp)
-            } catch (error: Exception) {
-                if (error is kotlinx.coroutines.CancellationException) throw error
-                AndroidAgentLogger.warn("Jean-Calcul speech cleanup unavailable: type=${error.javaClass.simpleName}")
-            }
+        applicationScope.launch(Dispatchers.IO) {
+            // Restes des fournisseurs vocaux ETA retirés (clés Qwen/Doubao/MiMo, file de nettoyage OSS).
+            LEGACY_SPEECH_PREFERENCES.forEach(::deleteSharedPreferences)
         }
         applicationScope.launch {
             runCatching {
@@ -146,3 +141,5 @@ class EtaApp : Application(), XposedServiceHelper.OnServiceListener {
         }
     }
 }
+
+private val LEGACY_SPEECH_PREFERENCES = listOf("eta_speech_secrets", "eta_speech_oss_cleanup")

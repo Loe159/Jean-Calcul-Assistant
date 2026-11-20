@@ -27,8 +27,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.R
 import io.github.mangi.eta.ui.components.coui.PreferenceSection
-import io.github.mangi.eta.data.model.AsrProvider
-import io.github.mangi.eta.data.model.TtsProvider
 import io.github.mangi.eta.ui.components.ListEmptyState
 import io.github.mangi.eta.ui.components.StatusError
 import io.github.mangi.eta.ui.components.StatusSuccess
@@ -40,31 +38,6 @@ import io.github.suqi8.coui.kmp.basic.InfiniteProgressIndicator
 import io.github.suqi8.coui.kmp.basic.Text
 import io.github.suqi8.coui.kmp.theme.COUITheme
 import io.github.mangi.eta.ui.components.coui.PreferenceFooter
-
-@Composable
-internal fun AsrProvider.label(): String = stringResource(
-    when (this) {
-        AsrProvider.QWEN_REALTIME -> R.string.speech_asr_qwen_realtime
-        AsrProvider.QWEN_FLASH -> R.string.speech_asr_qwen_flash
-        AsrProvider.QWEN_FILE -> R.string.speech_asr_qwen_file
-        AsrProvider.DOUBAO -> R.string.speech_asr_doubao
-        AsrProvider.MIMO -> R.string.speech_asr_mimo
-        AsrProvider.DEEPSEEK -> R.string.speech_asr_deepseek
-    },
-)
-
-@Composable
-internal fun TtsProvider.label(): String = stringResource(
-    when (this) {
-        TtsProvider.NONE -> R.string.speech_tts_none
-        TtsProvider.QWEN -> R.string.speech_tts_qwen
-        TtsProvider.DOUBAO -> R.string.speech_tts_doubao
-        TtsProvider.GEMINI -> R.string.speech_tts_gemini
-        TtsProvider.MINIMAX -> R.string.speech_tts_minimax
-        TtsProvider.MIMO -> R.string.speech_tts_mimo
-        TtsProvider.DEEPSEEK -> R.string.speech_tts_deepseek
-    },
-)
 
 @Composable
 internal fun SpeechGroupCard(
