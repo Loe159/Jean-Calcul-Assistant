@@ -105,6 +105,7 @@ class AgentNotificationHistoryService : NotificationListenerService() {
             key = s.key, packageName = s.packageName, title = s.title, text = s.text, subText = s.subText,
             postedAt = s.postTime, channelId = s.channelId, androidCategory = s.category, fingerprint = s.fingerprint,
             meta = s.meta, queueForRemote = MastraConnection.enabled(this),
+            conversationTitle = s.conversationTitle,
         )
         if (changed) NotificationActivityFeed.notifyChanged()
         return changed
@@ -115,6 +116,7 @@ class AgentNotificationHistoryService : NotificationListenerService() {
         val key: String, val packageName: String, val title: String?, val text: String?, val subText: String?,
         val postTime: Long, val channelId: String?, val category: String?, val fingerprint: String,
         val meta: NotificationHistoryRepository.StructuralMeta,
+        val conversationTitle: String?,
     ) {
         companion object {
             fun of(context: Context, sbn: StatusBarNotification): Snapshot {
@@ -141,7 +143,8 @@ class AgentNotificationHistoryService : NotificationListenerService() {
                 return Snapshot(sbn.key, sbn.packageName, extras.getCharSequence(Notification.EXTRA_TITLE)?.toString(),
                     extras.getCharSequence(Notification.EXTRA_TEXT)?.toString(),
                     extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString(), sbn.postTime, n.channelId, n.category,
-                    NotificationProtection.fingerprint(sbn), meta)
+                    NotificationProtection.fingerprint(sbn), meta,
+                    extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString())
             }
         }
     }

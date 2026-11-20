@@ -91,6 +91,7 @@ import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sign
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -100,20 +101,14 @@ internal data class BriefNotificationGroup(
     val category: String,
     val priority: NotificationPriority,
     val entries: List<NotificationHistoryRepository.RecentEntry>,
-)
-
-/**
- * The priority comes from Mastra (or the user's own correction). Now Brief never
- * recomputes a business decision: a notification awaiting analysis sits in "Aujourd'hui".
- */
-internal fun priorityForBrief(entry: NotificationHistoryRepository.RecentEntry): NotificationPriority =
-    (entry.userPriority ?: entry.remotePriority)
-        ?.let { runCatching { NotificationPriority.valueOf(it) }.getOrNull() }
-        ?: NotificationPriority.TODAY
+    val applicationCount: Int? = null,
+) {
+    val id: String get() = if (applicationCount == null) "${priority.name}:$category" else "app:$packageName"
+}
 
 internal fun groupBriefNotifications(entries: List<NotificationHistoryRepository.RecentEntry>): List<BriefNotificationGroup> =
     entries.sortedWith(compareByDescending<NotificationHistoryRepository.RecentEntry> { it.postedAt }.thenByDescending { it.key })
-        .groupBy { priorityForBrief(it) to (it.userTopic ?: it.topic) }
+        .groupBy { it.effectivePriority to (it.userTopic ?: it.topic) }
         .map { (key, list) -> BriefNotificationGroup(list.first().packageName, key.second, key.first, list) }
         .sortedWith(compareBy<BriefNotificationGroup> { it.priority.ordinal }
             .thenByDescending { it.entries.first().postedAt })
@@ -177,17 +172,20 @@ internal fun BriefNotificationAppCard(
     group: BriefNotificationGroup,
     expanded: Boolean,
     onToggle: () -> Unit,
-    onDismiss: (List<String>) -> Unit,
+    onDismiss: (List<NotificationHistoryRepository.RecentEntry>) -> Job,
     onTouchChange: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
-    val title = NotificationAdaptiveSettings.title(context, group.category)
+    val byApp = group.applicationCount != null
+    val title = if (byApp) briefApplicationName(context, group.packageName)
+        else NotificationAdaptiveSettings.title(context, group.category)
+    val count = group.applicationCount ?: group.entries.size
     val unread = group.entries.count { it.state == NotificationHistoryRepository.DecisionState.PROPOSED }
     val position = if (expanded) CardListPosition.Head else CardListPosition.Full
     BriefDismissStretch(
-        identity = "group:${group.priority.name}:${group.category}",
-        onDismiss = { onDismiss(group.entries.map { it.key }) },
-        swipeEnabled = !expanded,
+        identity = "group:${group.id}",
+        onDismiss = { onDismiss(group.entries) },
+        swipeEnabled = !expanded && !byApp,
         onTouchChange = onTouchChange,
         modifier = Modifier.fillMaxWidth().padding(horizontal = BriefCardInset)
             .padding(top = 8.dp),
@@ -196,9 +194,11 @@ internal fun BriefNotificationAppCard(
         BasicComponent(
             modifier = Modifier.briefCardSegment(position),
             title = title,
-            summary = "${group.entries.size} notification${if (group.entries.size > 1) "s" else ""}" +
+            summary = "$count notification${if (count > 1) "s" else ""}" +
                 if (unread > 0) " · $unread à vérifier" else "",
-            startAction = { BriefTopicIcon(group.category) },
+            startAction = {
+                if (byApp) BriefApplicationIcon(group.packageName, 32.dp) else BriefTopicIcon(group.category)
+            },
             endActions = { ExpandableGroupArrow(expanded = expanded) },
             cardListPosition = position,
             onClick = onToggle,
@@ -214,16 +214,11 @@ private val dateFormat = DateTimeFormatter.ofPattern("dd/MM · HH:mm", Locale.FR
 internal fun BriefNotificationRow(
     entry: NotificationHistoryRepository.RecentEntry,
     last: Boolean,
-    onDismiss: (List<String>) -> Unit,
-    onFeedback: (NotificationHistoryRepository.RecentEntry, NotificationUserFeedback) -> Unit,
-    onCategoryChange: (NotificationHistoryRepository.RecentEntry, String) -> Unit,
-    onOpen: (NotificationHistoryRepository.RecentEntry) -> Unit,
+    actions: BriefNotificationActions,
     onTouchChange: (Boolean) -> Unit = {},
-    onPriorityChange: (NotificationHistoryRepository.RecentEntry, NotificationPriority) -> Unit = { _, _ -> },
-    onAction: (NotificationHistoryRepository.RecentEntry, ActionProposal) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
-    val appName = remember(entry.packageName) { applicationName(context, entry.packageName) }
+    val appName = remember(entry.packageName) { briefApplicationName(context, entry.packageName) }
     var details by remember(entry.key) { mutableStateOf(false) }
     val status = when {
         entry.androidActionState == NotificationHistoryRepository.AndroidActionState.CONFIRMED ->
@@ -236,9 +231,7 @@ internal fun BriefNotificationRow(
         entry.remoteProtected -> "Protégée"
         else -> legacyStatus(entry.state)
     }
-    val actions = remember(entry.actionsJson) {
-        MastraNotificationSync.decodeActions(entry.actionsJson).filter { it.type != ActionType.OPEN_SOURCE_APP }
-    }
+    val proposals = rememberBriefNotificationProposals(entry)
     val meta = remember(entry.postedAt, appName, status) {
         buildString {
             append(appName)
@@ -247,48 +240,10 @@ internal fun BriefNotificationRow(
             if (status.isNotBlank()) { append(" · "); append(status) }
         }
     }
-    val removable = entry.state in setOf(
-        NotificationHistoryRepository.DecisionState.DISMISSED,
-        NotificationHistoryRepository.DecisionState.SNOOZED_1H,
-        NotificationHistoryRepository.DecisionState.SNOOZED_24H,
-    ) || entry.androidActionState == NotificationHistoryRepository.AndroidActionState.CONFIRMED
-    val topics = NotificationTopics.titles.keys.toList()
-    val currentPriority = priorityForBrief(entry)
-    val menu = remember(entry.key, removable, topics, actions, currentPriority) {
-        listOf(
-            DropdownEntry(items = buildList {
-                actions.forEach { action -> add(DropdownItem(text = action.label, onClick = { onAction(entry, action) })) }
-                add(DropdownItem(text = "Ouvrir l'application", onClick = { onOpen(entry) }))
-            }),
-            DropdownEntry(items = buildList {
-                add(DropdownItem(text = "Intéressante",
-                    onClick = { onFeedback(entry, NotificationUserFeedback.INTERESTING) }))
-                add(DropdownItem(text = "Indésirable",
-                    onClick = { onFeedback(entry, NotificationUserFeedback.UNWANTED) }))
-                add(DropdownItem(text = "Corriger la priorité", children = NotificationPriority.entries.map { p ->
-                    DropdownItem(text = priorityTitle(p), selected = p == currentPriority,
-                        onClick = { onPriorityChange(entry, p) })
-                }))
-                add(DropdownItem(text = "Changer la catégorie", children = topics.map { topic ->
-                    DropdownItem(
-                        text = NotificationAdaptiveSettings.title(context, topic),
-                        selected = topic == (entry.userTopic ?: entry.topic),
-                        onClick = { onCategoryChange(entry, topic) },
-                    )
-                }))
-                if (removable) add(DropdownItem(text = "Suppression incorrecte",
-                    onClick = { onFeedback(entry, NotificationUserFeedback.WRONG_REMOVAL) }))
-            }),
-            DropdownEntry(items = listOf(
-                DropdownItem(text = "Archiver la copie", alert = true,
-                    onClick = { onDismiss(listOf(entry.key)) }),
-            )),
-        )
-    }
     val position = if (last) CardListPosition.Tail else CardListPosition.Middle
     BriefDismissStretch(
         identity = entry.key,
-        onDismiss = { onDismiss(listOf(entry.key)) },
+        onDismiss = { actions.archiveEntries(listOf(entry)) },
         onTouchChange = onTouchChange,
         modifier = Modifier.fillMaxWidth().padding(horizontal = BriefCardInset),
         position = position,
@@ -298,19 +253,7 @@ internal fun BriefNotificationRow(
             BasicComponent(
                 startAction = { BriefApplicationIcon(entry.packageName, 32.dp) },
                 endActions = {
-                    // A list row's "more" action is a bare icon in COUI; without this the
-                    // icon button draws a frosted material disc on every notification.
-                    CompositionLocalProvider(LocalCOUIMaterialEffectEnabled provides false) {
-                        OverlayIconDropdownMenu(entries = menu, minWidth = 36.dp, minHeight = 36.dp,
-                            backgroundColor = Color.Transparent) {
-                            Icon(
-                                imageVector = COUIIcons.Basic.More,
-                                contentDescription = "Actions pour cette notification",
-                                tint = COUITheme.colorScheme.labelSecondary,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                    }
+                    BriefNotificationMenu(entry, actions, proposals) { actions.archiveEntries(listOf(entry)) }
                 },
                 cardListPosition = position,
                 onClick = { details = !details },
@@ -343,9 +286,9 @@ internal fun BriefNotificationRow(
                     // Decision explanation from Mastra; nothing is recomputed on the phone.
                     val explanation = buildList {
                         add(NotificationAdaptiveSettings.title(context, entry.userTopic ?: entry.topic) + " · " +
-                            priorityTitle(priorityForBrief(entry)))
+                            priorityTitle(entry.effectivePriority))
                         entry.reason?.takeIf { it.isNotBlank() }?.let(::add)
-                        if (actions.isNotEmpty()) add("Suggestions : " + actions.joinToString(" · ") { it.label })
+                        if (proposals.isNotEmpty()) add("Suggestions : " + proposals.joinToString(" · ") { it.label })
                         if (entry.remoteUncertainty == "HIGH") add("Décision incertaine : conservée par prudence")
                     }.joinToString("\n")
                     Text(
@@ -356,6 +299,73 @@ internal fun BriefNotificationRow(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+internal fun rememberBriefNotificationProposals(entry: NotificationHistoryRepository.RecentEntry): List<ActionProposal> =
+    remember(entry.actionsJson) {
+        MastraNotificationSync.decodeActions(entry.actionsJson).filter { it.type != ActionType.OPEN_SOURCE_APP }
+    }
+
+@Composable
+internal fun BriefNotificationMenu(
+    entry: NotificationHistoryRepository.RecentEntry,
+    callbacks: BriefNotificationActions,
+    proposals: List<ActionProposal>,
+    onArchive: () -> Unit,
+) {
+    val context = LocalContext.current
+    val removable = entry.state in setOf(
+        NotificationHistoryRepository.DecisionState.DISMISSED,
+        NotificationHistoryRepository.DecisionState.SNOOZED_1H,
+        NotificationHistoryRepository.DecisionState.SNOOZED_24H,
+    ) || entry.androidActionState == NotificationHistoryRepository.AndroidActionState.CONFIRMED
+    val topics = NotificationTopics.titles.keys
+    val currentPriority = entry.effectivePriority
+    val menu = remember(entry, callbacks, proposals, onArchive) {
+        listOf(
+            DropdownEntry(items = buildList {
+                proposals.forEach { action -> add(DropdownItem(text = action.label, onClick = { callbacks.onAction(entry, action) })) }
+                add(DropdownItem(text = "Ouvrir l'application", onClick = { callbacks.open(entry) }))
+            }),
+            DropdownEntry(items = buildList {
+                add(DropdownItem(text = "Intéressante",
+                    onClick = { callbacks.markFeedback(entry, NotificationUserFeedback.INTERESTING) }))
+                add(DropdownItem(text = "Indésirable",
+                    onClick = { callbacks.markFeedback(entry, NotificationUserFeedback.UNWANTED) }))
+                add(DropdownItem(text = "Corriger la priorité", children = NotificationPriority.entries.map { p ->
+                    DropdownItem(text = priorityTitle(p), selected = p == currentPriority,
+                        onClick = { callbacks.correctPriority(entry, p) })
+                }))
+                add(DropdownItem(text = "Changer la catégorie", children = topics.map { topic ->
+                    DropdownItem(
+                        text = NotificationAdaptiveSettings.title(context, topic),
+                        selected = topic == (entry.userTopic ?: entry.topic),
+                        onClick = { callbacks.correctCategory(entry, topic) },
+                    )
+                }))
+                if (removable) add(DropdownItem(text = "Suppression incorrecte",
+                    onClick = { callbacks.markFeedback(entry, NotificationUserFeedback.WRONG_REMOVAL) }))
+            }),
+            DropdownEntry(items = listOf(
+                DropdownItem(text = "Archiver la copie", alert = true,
+                    onClick = onArchive),
+            )),
+        )
+    }
+    // A list row's "more" action is a bare icon in COUI; without this the
+    // icon button draws a frosted material disc on every notification.
+    CompositionLocalProvider(LocalCOUIMaterialEffectEnabled provides false) {
+        OverlayIconDropdownMenu(entries = menu, minWidth = 36.dp, minHeight = 36.dp,
+            backgroundColor = Color.Transparent) {
+            Icon(
+                imageVector = COUIIcons.Basic.More,
+                contentDescription = "Actions pour cette notification",
+                tint = COUITheme.colorScheme.labelSecondary,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
@@ -375,7 +385,7 @@ private fun legacyStatus(state: NotificationHistoryRepository.DecisionState): St
     else -> ""
 }
 
-private fun applicationName(context: android.content.Context, packageName: String): String =
+internal fun briefApplicationName(context: android.content.Context, packageName: String): String =
     appNameCache.get(packageName) ?: runCatching {
         val pm = context.packageManager
         pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
@@ -386,7 +396,7 @@ private fun applicationName(context: android.content.Context, packageName: Strin
  * draws plain bitmaps instead of inflating an Android ImageView per row.
  */
 @Composable
-private fun BriefApplicationIcon(packageName: String, size: Dp) {
+internal fun BriefApplicationIcon(packageName: String, size: Dp) {
     val context = LocalContext.current
     val px = with(LocalDensity.current) { size.roundToPx() }
     val cacheKey = "$packageName@$px"
@@ -440,7 +450,7 @@ internal fun briefStickySwipeOffset(rawPx: Float, widthPx: Float): Float {
 @Composable
 private fun BriefDismissStretch(
     identity: String,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Job,
     position: CardListPosition,
     modifier: Modifier = Modifier,
     onTouchChange: (Boolean) -> Unit = {},
@@ -452,13 +462,11 @@ private fun BriefDismissStretch(
     var fingerDeltaX by remember(identity) { mutableFloatStateOf(0f) }
     var horizontalDrag by remember(identity) { mutableStateOf(false) }
     var widthPx by remember(identity) { mutableFloatStateOf(1f) }
-    var active by remember(identity) { mutableStateOf(true) }
     // If the card disappears during its release animation, the page must
     // never remain permanently locked against navigation gestures.
     DisposableEffect(identity) {
         onDispose { onTouchChange(false) }
     }
-    if (!active) return
 
     fun visualOffset(): Float = if (horizontalDrag) briefStickySwipeOffset(fingerDeltaX, widthPx) else settle.value
     Box(
@@ -511,8 +519,9 @@ private fun BriefDismissStretch(
                                         targetValue = sign(drag) * widthPx * 1.35f,
                                         animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMedium),
                                     )
-                                    active = false
-                                    onDismiss()
+                                    onDismiss().join()
+                                    // A failed or stale archive leaves this row in the history.
+                                    settle.animateTo(0f)
                                 } else {
                                     settle.animateTo(0f, spring(
                                         dampingRatio = Spring.DampingRatioMediumBouncy,

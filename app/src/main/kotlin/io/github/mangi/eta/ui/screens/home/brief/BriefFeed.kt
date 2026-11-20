@@ -1,5 +1,6 @@
 package io.github.mangi.eta.ui.screens.home.brief
 
+import androidx.compose.runtime.Composable
 import io.github.mangi.eta.ui.screens.home.brief.BriefCardId.*
 
 internal enum class BriefCardId(val key: String, val title: String) {
@@ -25,3 +26,10 @@ internal fun briefFeedOrder(moment: BriefMoment, hidden: Set<BriefCardId> = empt
     }
     return (ordered + listOf(WEATHER, HOME)).filterNot(hidden::contains)
 }
+
+
+internal data class BriefFeedItem(
+    val key: String,
+    val contentType: String,
+    val content: @Composable () -> Unit,
+)

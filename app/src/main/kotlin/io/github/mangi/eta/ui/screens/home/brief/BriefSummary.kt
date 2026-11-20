@@ -6,7 +6,6 @@ internal data class BriefSummaryInput(
     val now: LocalDateTime,
     // Null while loading or when the Notifications card is hidden.
     val urgentNotifications: Int? = null,
-    val hasMoreNotifications: Boolean = false,
 )
 
 internal data class BriefSummaryPart(val text: String, val highlighted: Boolean = false)
@@ -23,16 +22,11 @@ internal object LocalBriefSummary : BriefSummarySource {
 internal fun localBriefSummary(input: BriefSummaryInput): List<BriefSummaryPart> = buildList {
     when (val count = input.urgentNotifications) {
         null -> Unit
-        0 -> if (!input.hasMoreNotifications) {
-            add(BriefSummaryPart("Aucune notification urgente.", highlighted = true))
-        } else {
-            add(BriefSummaryPart("Aucune urgence dans les notifications affichées.", highlighted = true))
-        }
+        0 -> add(BriefSummaryPart("Aucune notification urgente.", highlighted = true))
         else -> {
             add(BriefSummaryPart("Tu as"))
             val label = if (count == 1) "notification urgente" else "notifications urgentes"
-            val minimum = if (input.hasMoreNotifications) "au moins " else ""
-            add(BriefSummaryPart("$minimum$count $label.", highlighted = true))
+            add(BriefSummaryPart("$count $label.", highlighted = true))
         }
     }
     val (start, highlight) = when (briefMoment(input.now.toLocalTime())) {

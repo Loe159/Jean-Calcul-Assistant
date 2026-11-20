@@ -2,8 +2,11 @@ package io.github.mangi.eta.data.repository
 
 import android.content.ContentValues
 import android.content.Context
+import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
+import io.github.mangi.eta.agent.device.notifications.NotificationPriority
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterDecision
 import io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback
 import io.github.mangi.eta.agent.device.notifications.NotificationPersonalization
@@ -63,6 +66,7 @@ internal class NotificationHistoryRepository(context: Context) {
         fingerprint: String? = null,
         meta: StructuralMeta = StructuralMeta(),
         queueForRemote: Boolean = false,
+        conversationTitle: String? = null,
     ): Boolean {
         // A silent notification still belongs in the received history.
         if (key.isBlank() || packageName.isBlank()) return false
@@ -71,6 +75,7 @@ internal class NotificationHistoryRepository(context: Context) {
             put("notification_key", key.take(MAX_KEY_CHARS))
             put("package_name", packageName.take(MAX_PACKAGE_CHARS))
             put("title", title.bounded())
+            put("conversation_title", conversationTitle.bounded())
             put("text", text.bounded())
             put("sub_text", subText.bounded())
             put("posted_at", postedAt)
@@ -379,104 +384,254 @@ internal class NotificationHistoryRepository(context: Context) {
         val androidActionState: AndroidActionState = AndroidActionState.NONE,
         val actionsJson: String? = null,
         val userPriority: String? = null,
+    ) {
+        val effectivePriority: NotificationPriority
+            get() = NotificationPriority.effective(userPriority, remotePriority)
+    }
+
+    data class ThreadKey(val packageName: String, val title: String)
+
+    data class BriefThread(
+        val id: ThreadKey,
+        val latest: RecentEntry,
+        val count: Int,
+        val priority: NotificationPriority,
     )
+
+    data class BriefCounts(val now: Int, val today: Int, val low: Int) {
+        val total get() = now + today + low
+    }
+
+    data class BriefOverview(val counts: BriefCounts, val threads: List<BriefThread>)
+
+    /** One snapshot for the exact counters and the bounded preview. Only the winning rows carry message content. */
+    fun briefOverview(): BriefOverview {
+        val sql = """
+            WITH active AS (
+                SELECT package_name, $THREAD_TITLE AS thread_title, posted_at,
+                       $EFFECTIVE_TIER AS tier
+                FROM $TABLE WHERE $ACTIVE_BRIEF
+            ), priority_counts AS (
+                SELECT tier, COUNT(*) AS total FROM active GROUP BY tier
+            ), thread_counts AS (
+                SELECT package_name, thread_title, COUNT(*) AS thread_count,
+                       MIN(tier) AS thread_tier, MAX(posted_at) AS posted_at
+                FROM active GROUP BY package_name, thread_title
+                HAVING MIN(tier) < ${NotificationPriority.LOW.ordinal}
+            ), latest_keys AS (
+                SELECT t.*, (
+                    SELECT notification_key FROM $TABLE
+                    WHERE archived_at IS NULL AND package_name = t.package_name AND $THREAD_TITLE = t.thread_title
+                        AND posted_at = t.posted_at
+                    ORDER BY notification_key DESC LIMIT 1
+                ) AS latest_key
+                FROM thread_counts AS t
+            ), ranked_threads AS (
+                SELECT *, ROW_NUMBER() OVER (
+                    PARTITION BY thread_tier ORDER BY posted_at DESC, latest_key DESC
+                ) AS tier_rank
+                FROM latest_keys
+            )
+            SELECT $RECENT_COLUMNS, preview.thread_title, preview.thread_count, preview.thread_tier,
+                   (SELECT total FROM priority_counts WHERE tier = ${NotificationPriority.NOW.ordinal}) AS now_count,
+                   (SELECT total FROM priority_counts WHERE tier = ${NotificationPriority.TODAY.ordinal}) AS today_count,
+                   (SELECT total FROM priority_counts WHERE tier = ${NotificationPriority.LOW.ordinal}) AS low_count
+            FROM (SELECT 1) AS snapshot
+            LEFT JOIN ranked_threads AS preview ON tier_rank <= $BRIEF_THREAD_LIMIT
+            LEFT JOIN $TABLE AS n ON n.notification_key = preview.latest_key
+            ORDER BY thread_tier, preview.posted_at DESC, preview.latest_key DESC
+        """.trimIndent()
+        return database.readableDatabase.rawQuery(sql, arrayOf(briefCutoff())).use { cursor ->
+            cursor.moveToFirst()
+            val counts = BriefCounts(cursor.getInt(28), cursor.getInt(29), cursor.getInt(30))
+            val threads = buildList {
+                do {
+                    if (!cursor.isNull(0)) {
+                        val latest = cursor.recentEntry()
+                        add(BriefThread(
+                            ThreadKey(latest.packageName, cursor.getString(25)),
+                            latest,
+                            cursor.getInt(26),
+                            NotificationPriority.entries[cursor.getInt(27)],
+                        ))
+                    }
+                } while (cursor.moveToNext())
+            }
+            BriefOverview(counts, threads)
+        }
+    }
 
     fun recent(limit: Int = 200): List<RecentEntry> = entries(archived = false, limit = limit)
 
-    /** Stable keyset pagination; no OFFSET drift when new notifications arrive. */
-    fun recentPage(limit: Int = 40, before: RecentEntry? = null): List<RecentEntry> =
-        entries(archived = false, limit = limit.coerceIn(1, 80), before = before)
+    /** Stable keyset pagination; filter before LIMIT so sparse priorities still return a full page. */
+    fun recentPage(
+        limit: Int = 40,
+        before: RecentEntry? = null,
+        priority: NotificationPriority? = null,
+    ): List<RecentEntry> = entries(archived = false, limit = limit.coerceIn(1, 80), before, priority)
+
+    /** Counts for the app headers, including copies outside the currently loaded page. */
+    fun briefAppCounts(priority: NotificationPriority?): Map<String, Int> {
+        val selection = ACTIVE_BRIEF + priorityClause(priority)
+        return database.readableDatabase.query(
+            TABLE, arrayOf("package_name", "COUNT(*)"), selection, arrayOf(briefCutoff()),
+            "package_name", null, null,
+        ).use { cursor ->
+            buildMap { while (cursor.moveToNext()) put(cursor.getString(0), cursor.getInt(1)) }
+        }
+    }
 
     /** Copies hidden from Now Brief but still available locally for seven days. */
     fun archived(limit: Int = 200): List<RecentEntry> = entries(archived = true, limit = limit)
 
-    /** Reads stored values only: the phone no longer recomputes a business classification. */
-    private fun entries(archived: Boolean, limit: Int, before: RecentEntry? = null): List<RecentEntry> {
-        val cutoff = System.currentTimeMillis() - RETENTION_MS
-        val selection = "posted_at>=? AND archived_at IS ${if (archived) "NOT " else ""}NULL" +
-            if (before == null) "" else " AND (posted_at<? OR (posted_at=? AND notification_key<?))"
-        val arguments = arrayOf(cutoff.toString()) + if (before == null) emptyArray<String>()
-            else arrayOf(before.postedAt.toString(), before.postedAt.toString(), before.key)
-        return database.readableDatabase.query(
-            TABLE,
-            arrayOf("notification_key", "package_name", "title", "text", "sub_text",
-                "posted_at", "filter_state", "filter_label", "filter_score", "filter_reason",
-                "channel_id", "android_category", "topic", "user_topic", "personal_interest",
-                "sync_state", "remote_priority", "remote_subtype", "remote_source", "remote_uncertainty",
-                "remote_protected", "android_action_state", "actions_json", "remote_topic", "user_priority"),
-            selection, arguments,
-            null, null, "posted_at DESC, notification_key DESC", limit.coerceIn(1, MAX_RECORDS).toString(),
+    private fun entries(
+        archived: Boolean,
+        limit: Int,
+        before: RecentEntry? = null,
+        priority: NotificationPriority? = null,
+    ): List<RecentEntry> {
+        val selection = (if (archived) "posted_at>=? AND archived_at IS NOT NULL" else ACTIVE_BRIEF) +
+            priorityClause(priority) +
+            if (before == null) "" else " AND (posted_at, notification_key) < (?, ?)"
+        val arguments = arrayOf(briefCutoff()) + if (before == null) emptyArray<String>()
+            else arrayOf(before.postedAt.toString(), before.key)
+        return database.readableDatabase.rawQuery(
+            "SELECT $RECENT_COLUMNS FROM $TABLE AS n WHERE $selection " +
+                "ORDER BY posted_at DESC, notification_key DESC LIMIT ${limit.coerceIn(1, MAX_RECORDS)}",
+            arguments,
         ).use { cursor ->
-            buildList {
-                while (cursor.moveToNext()) {
-                    add(RecentEntry(
-                        key = cursor.getString(0),
-                        packageName = cursor.getString(1),
-                        title = cursor.getString(2).orEmpty(),
-                        text = cursor.getString(3).orEmpty().ifBlank { cursor.getString(4).orEmpty() },
-                        postedAt = cursor.getLong(5),
-                        state = runCatching {
-                            DecisionState.valueOf(cursor.getString(6))
-                        }.getOrDefault(DecisionState.RECEIVED),
-                        category = cursor.getString(7),
-                        score = if (cursor.isNull(8)) null else cursor.getDouble(8),
-                        reason = cursor.getString(9),
-                        channelId = cursor.getString(10),
-                        androidCategory = cursor.getString(11),
-                        // Mastra's topic first; rows recorded before the migration keep their old topic.
-                        topic = cursor.getString(23) ?: cursor.getString(12) ?: "other",
-                        userTopic = cursor.getString(13),
-                        personalInterest = cursor.getString(14),
-                        syncState = runCatching { SyncState.valueOf(cursor.getString(15)) }.getOrDefault(SyncState.LOCAL),
-                        remotePriority = cursor.getString(16),
-                        remoteSubtype = cursor.getString(17),
-                        remoteSource = cursor.getString(18),
-                        remoteUncertainty = cursor.getString(19),
-                        remoteProtected = !cursor.isNull(20) && cursor.getInt(20) == 1,
-                        androidActionState = runCatching { AndroidActionState.valueOf(cursor.getString(21)) }
-                            .getOrDefault(AndroidActionState.NONE),
-                        actionsJson = cursor.getString(22),
-                        userPriority = cursor.getString(24),
-                    ))
-                }
-            }
+            buildList { while (cursor.moveToNext()) add(cursor.recentEntry()) }
         }
     }
+
+    private fun Cursor.recentEntry() = RecentEntry(
+        key = getString(0),
+        packageName = getString(1),
+        title = getString(2).orEmpty(),
+        text = getString(3).orEmpty().ifBlank { getString(4).orEmpty() },
+        postedAt = getLong(5),
+        state = runCatching {
+            DecisionState.valueOf(getString(6))
+        }.getOrDefault(DecisionState.RECEIVED),
+        category = getString(7),
+        score = if (isNull(8)) null else getDouble(8),
+        reason = getString(9),
+        channelId = getString(10),
+        androidCategory = getString(11),
+        // Mastra's topic first; rows recorded before the migration keep their old topic.
+        topic = getString(23) ?: getString(12) ?: "other",
+        userTopic = getString(13),
+        personalInterest = getString(14),
+        syncState = runCatching { SyncState.valueOf(getString(15)) }.getOrDefault(SyncState.LOCAL),
+        remotePriority = getString(16),
+        remoteSubtype = getString(17),
+        remoteSource = getString(18),
+        remoteUncertainty = getString(19),
+        remoteProtected = !isNull(20) && getInt(20) == 1,
+        androidActionState = runCatching { AndroidActionState.valueOf(getString(21)) }
+            .getOrDefault(AndroidActionState.NONE),
+        actionsJson = getString(22),
+        userPriority = getString(24),
+    )
+
+    internal data class ArchiveEntry(val key: String, val postedAt: Long)
+    internal data class ThreadArchive(val token: String, val entries: List<ArchiveEntry>)
 
     /** Archive local copies without changing their Android notification. */
     fun archiveFromBrief(keys: Collection<String>) {
         if (keys.isEmpty()) return
+        val archivedAt = System.currentTimeMillis()
         database.writableDatabase.transaction {
-            keys.forEach { key ->
-                val boundedKey = key.take(MAX_KEY_CHARS)
-                val archivedAt = System.currentTimeMillis()
-                val changed = update(TABLE, ContentValues().apply { put("archived_at", archivedAt) },
-                    "notification_key=? AND archived_at IS NULL", arrayOf(boundedKey))
-                if (changed == 1) {
-                    insertWithOnConflict(HIDDEN_TABLE, null, ContentValues().apply {
-                        put("notification_key", boundedKey)
-                        put("dismissed_at", archivedAt)
-                    }, SQLiteDatabase.CONFLICT_REPLACE)
-                }
-            }
-            delete(HIDDEN_TABLE, "dismissed_at<?",
-                arrayOf((System.currentTimeMillis() - RETENTION_MS).toString()))
+            keys.forEach { key -> archiveCopy(key.take(MAX_KEY_CHARS), archivedAt) }
+            pruneArchiveMarkers(archivedAt)
         }
+        NotificationActivityFeed.notifyChanged()
     }
 
-    /** Restore archived copies to Now Brief without touching Android alerts. */
-    fun restoreToBrief(entries: Collection<RecentEntry>) {
-        if (entries.isEmpty()) return
-        database.writableDatabase.transaction {
-            entries.forEach { entry ->
-                val key = entry.key.take(MAX_KEY_CHARS)
-                if (entry.postedAt < System.currentTimeMillis() - RETENTION_MS) return@forEach
-                val changed = update(TABLE, ContentValues().apply { putNull("archived_at") },
-                    "notification_key=? AND posted_at=? AND archived_at IS NOT NULL",
-                    arrayOf(key, entry.postedAt.toString()))
-                if (changed == 1) delete(HIDDEN_TABLE, "notification_key=?", arrayOf(key))
+    fun archiveBriefEntries(entries: Collection<RecentEntry>): List<ArchiveEntry> {
+        if (entries.isEmpty()) return emptyList()
+        val archivedAt = System.currentTimeMillis()
+        val archived = buildList {
+            database.writableDatabase.transaction {
+                entries.forEach { entry ->
+                    if (archiveCopy(entry.key, archivedAt, postedAt = entry.postedAt)) {
+                        add(ArchiveEntry(entry.key, entry.postedAt))
+                    }
+                }
+                pruneArchiveMarkers(archivedAt)
             }
         }
+        if (archived.isNotEmpty()) NotificationActivityFeed.notifyChanged()
+        return archived
+    }
+
+    fun archiveBriefThread(thread: ThreadKey): ThreadArchive {
+        val token = java.util.UUID.randomUUID().toString()
+        val archivedAt = System.currentTimeMillis()
+        val members = buildList {
+            database.writableDatabase.transaction {
+                query(
+                    TABLE, arrayOf("notification_key", "posted_at"),
+                    "$ACTIVE_BRIEF AND package_name=? AND $THREAD_TITLE=?",
+                    arrayOf(briefCutoff(), thread.packageName, thread.title), null, null, null,
+                ).use { cursor ->
+                    while (cursor.moveToNext()) add(ArchiveEntry(cursor.getString(0), cursor.getLong(1)))
+                }
+                forEach { archiveCopy(it.key, archivedAt, token) }
+                pruneArchiveMarkers(archivedAt)
+            }
+        }
+        if (members.isNotEmpty()) NotificationActivityFeed.notifyChanged()
+        return ThreadArchive(token, members)
+    }
+
+    private fun SQLiteDatabase.archiveCopy(key: String, time: Long, token: String? = null, postedAt: Long? = null): Boolean {
+        val selection = "notification_key=? AND archived_at IS NULL" + if (postedAt == null) "" else " AND posted_at=?"
+        val args = if (postedAt == null) arrayOf(key) else arrayOf(key, postedAt.toString())
+        val changed = update(TABLE, ContentValues().apply {
+            put("archived_at", time)
+            put("archive_token", token)
+        }, selection, args)
+        if (changed == 1) {
+            insertWithOnConflict(HIDDEN_TABLE, null, ContentValues().apply {
+                put("notification_key", key)
+                put("dismissed_at", time)
+            }, SQLiteDatabase.CONFLICT_REPLACE)
+        }
+        return changed == 1
+    }
+
+    private fun SQLiteDatabase.pruneArchiveMarkers(now: Long) {
+        delete(HIDDEN_TABLE, "dismissed_at<?", arrayOf((now - RETENTION_MS).toString()))
+    }
+
+    fun undoBriefThreadArchive(archive: ThreadArchive) =
+        restoreCopies(archive.entries, archive.token)
+
+    /** Restore archived copies to Now Brief without touching Android alerts. */
+    fun restoreToBrief(entries: Collection<RecentEntry>) =
+        restoreCopies(entries.map { ArchiveEntry(it.key.take(MAX_KEY_CHARS), it.postedAt) })
+
+    private fun restoreCopies(entries: Collection<ArchiveEntry>, token: String? = null) {
+        if (entries.isEmpty()) return
+        var restored = false
+        val cutoff = briefCutoff()
+        val batchCondition = if (token == null) "" else " AND archive_token=?"
+        database.writableDatabase.transaction {
+            entries.forEach { entry ->
+                val args = arrayOf(entry.key, entry.postedAt.toString(), cutoff) +
+                    if (token == null) emptyArray() else arrayOf(token)
+                val changed = update(TABLE, ContentValues().apply {
+                    putNull("archived_at")
+                    putNull("archive_token")
+                }, "notification_key=? AND posted_at=? AND posted_at>=? AND archived_at IS NOT NULL$batchCondition", args)
+                if (changed == 1) {
+                    delete(HIDDEN_TABLE, "notification_key=?", arrayOf(entry.key))
+                    restored = true
+                }
+            }
+        }
+        if (restored) NotificationActivityFeed.notifyChanged()
     }
 
     /** Explicit and implicit human events only; duplicate delivery cannot train twice. */
@@ -484,7 +639,7 @@ internal class NotificationHistoryRepository(context: Context) {
                  correctedTopic: String? = null, correctedPriority: String? = null,
                  actionType: String? = null): Boolean {
         if (correctedTopic != null && correctedTopic !in NotificationTopics.titles) return false
-        if (correctedPriority != null && correctedPriority !in setOf("NOW", "TODAY", "LOW")) return false
+        if (correctedPriority != null && NotificationPriority.entries.none { it.name == correctedPriority }) return false
         var recorded = false
         database.writableDatabase.transaction {
             val row = query(TABLE, arrayOf("package_name", "channel_id", "filter_label", "title", "text"),
@@ -499,6 +654,15 @@ internal class NotificationHistoryRepository(context: Context) {
                 put("event_id", id.take(1200)); put("event_type", kind.name)
                 put("created_at", System.currentTimeMillis()); put("model_version", NotificationPersonalization.VERSION)
             }, SQLiteDatabase.CONFLICT_IGNORE)
+            // Revisiting a prior correction still changes the current preference.
+            if (correctedPriority != null) {
+                update(TABLE, ContentValues().apply { put("user_priority", correctedPriority) },
+                    "notification_key=? AND posted_at=?", arrayOf(key, postedAt.toString()))
+            }
+            if (correctedTopic != null) {
+                update(TABLE, ContentValues().apply { put("user_topic", correctedTopic) },
+                    "notification_key=? AND posted_at=?", arrayOf(key, postedAt.toString()))
+            }
             if (added == -1L) return@transaction
             recorded = true
             if (kind in setOf(NotificationUserFeedback.INTERESTING, NotificationUserFeedback.UNWANTED,
@@ -508,14 +672,6 @@ internal class NotificationHistoryRepository(context: Context) {
             }
             // The homelab learns from the same events, when it saw this notification.
             enqueueRemoteFeedback(key, postedAt, kind.remoteType, correctedTopic, correctedPriority, actionType)
-            if (correctedPriority != null) {
-                update(TABLE, ContentValues().apply { put("user_priority", correctedPriority) },
-                    "notification_key=? AND posted_at=?", arrayOf(key, postedAt.toString()))
-            }
-            if (correctedTopic != null) {
-                update(TABLE, ContentValues().apply { put("user_topic", correctedTopic) },
-                    "notification_key=? AND posted_at=?", arrayOf(key, postedAt.toString()))
-            }
             for (feature in featureList.distinct()) {
                 if (kind.wanted != null) {
                     execSQL("INSERT INTO $LEARNING_TABLE(feature,wanted,unwanted,examples) VALUES(?,?,?,1) " +
@@ -642,7 +798,7 @@ internal class NotificationHistoryRepository(context: Context) {
     private fun String.escapeLike(): String =
         replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
-    private class Database(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, 7) {
+    private class Database(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, 8) {
         override fun onCreate(db: SQLiteDatabase) {
             createHiddenTable(db)
             db.execSQL(
@@ -657,6 +813,7 @@ internal class NotificationHistoryRepository(context: Context) {
             db.execSQL("CREATE INDEX notification_history_posted_at ON $TABLE(posted_at DESC)")
             createLearningTables(db)
             addRemoteColumns(db)
+            addBriefColumns(db)
         }
 
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -678,6 +835,16 @@ internal class NotificationHistoryRepository(context: Context) {
                 createLearningTables(db)
             }
             if (oldVersion < 7) addRemoteColumns(db)
+            if (oldVersion < 8) addBriefColumns(db)
+        }
+
+        private fun addBriefColumns(db: SQLiteDatabase) {
+            db.execSQL("ALTER TABLE $TABLE ADD COLUMN conversation_title TEXT")
+            db.execSQL("ALTER TABLE $TABLE ADD COLUMN archive_token TEXT")
+            db.execSQL("CREATE INDEX notification_history_brief_time ON $TABLE" +
+                "(posted_at DESC, notification_key DESC) WHERE archived_at IS NULL")
+            db.execSQL("CREATE INDEX notification_history_brief_thread ON $TABLE" +
+                "(package_name, $THREAD_TITLE, posted_at DESC, notification_key DESC) WHERE archived_at IS NULL")
         }
 
         /** v7: Mastra decisions and Android action states. Existing history and preferences are kept. */
@@ -722,6 +889,27 @@ internal class NotificationHistoryRepository(context: Context) {
         private const val LEARNING_TABLE = "notification_learning"
         private const val TOPIC_TABLE = "notification_topic_learning"
         private const val OUTBOX_TABLE = "notification_remote_feedback_outbox"
+        internal const val BRIEF_THREAD_LIMIT = 12
+        private const val ACTIVE_BRIEF = "archived_at IS NULL AND posted_at>=?"
+        private const val THREAD_TITLE = "COALESCE(NULLIF(TRIM(conversation_title), ''), TRIM(COALESCE(title, '')))"
+        private val EFFECTIVE_TIER = NotificationPriority.entries.joinToString(
+            separator = " ",
+            prefix = "CASE COALESCE(user_priority, remote_priority) ",
+            postfix = " ELSE ${NotificationPriority.default.ordinal} END",
+        ) { "WHEN '${it.name}' THEN ${it.ordinal}" }
+
+        private val RECENT_COLUMNS = listOf(
+            "notification_key", "package_name", "title", "text", "sub_text",
+            "posted_at", "filter_state", "filter_label", "filter_score", "filter_reason",
+            "channel_id", "android_category", "topic", "user_topic", "personal_interest",
+            "sync_state", "remote_priority", "remote_subtype", "remote_source", "remote_uncertainty",
+            "remote_protected", "android_action_state", "actions_json", "remote_topic", "user_priority",
+        ).joinToString { "n.$it" }
+
+        private fun briefCutoff() = (System.currentTimeMillis() - RETENTION_MS).toString()
+        private fun priorityClause(priority: NotificationPriority?) =
+            if (priority == null) "" else " AND ($EFFECTIVE_TIER)=${priority.ordinal}"
+
         private const val MAX_RECORDS = 1_000
         private const val RETENTION_DAYS = 7
         private const val HOUR_MS = 60L * 60 * 1_000

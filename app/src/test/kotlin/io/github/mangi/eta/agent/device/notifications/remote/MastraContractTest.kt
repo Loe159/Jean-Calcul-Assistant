@@ -2,7 +2,6 @@ package io.github.mangi.eta.agent.device.notifications.remote
 
 import io.github.mangi.eta.agent.device.notifications.NotificationPriority
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
-import io.github.mangi.eta.ui.screens.home.priorityForBrief
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -95,8 +94,8 @@ class MastraContractTest {
     fun `Now Brief priority comes from Mastra or the user, never from local rules`() {
         val base = NotificationHistoryRepository.RecentEntry("k", "com.snapchat.android", "Léa", "Léa vous a envoyé un message", 1L)
         // Without a decision the entry waits in "Aujourd'hui", even if local regexes would say NOW.
-        assertEquals(NotificationPriority.TODAY, priorityForBrief(base))
-        assertEquals(NotificationPriority.LOW, priorityForBrief(base.copy(remotePriority = "LOW")))
-        assertEquals(NotificationPriority.NOW, priorityForBrief(base.copy(remotePriority = "LOW", userPriority = "NOW")))
+        assertEquals(NotificationPriority.TODAY, base.effectivePriority)
+        assertEquals(NotificationPriority.LOW, base.copy(remotePriority = "LOW").effectivePriority)
+        assertEquals(NotificationPriority.NOW, base.copy(remotePriority = "LOW", userPriority = "NOW").effectivePriority)
     }
 }

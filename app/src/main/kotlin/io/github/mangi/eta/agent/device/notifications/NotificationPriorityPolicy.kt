@@ -4,7 +4,16 @@ import android.app.Notification
 import java.util.Locale
 
 /** The briefing priority is separate from topic classification and deletion safety. */
-internal enum class NotificationPriority { NOW, TODAY, LOW }
+internal enum class NotificationPriority {
+    NOW, TODAY, LOW;
+
+    companion object {
+        val default = TODAY
+
+        fun effective(user: String?, mastra: String?): NotificationPriority =
+            entries.firstOrNull { it.name == (user ?: mastra) } ?: default
+    }
+}
 
 internal data class NotificationPriorityInput(
     val packageName: String,

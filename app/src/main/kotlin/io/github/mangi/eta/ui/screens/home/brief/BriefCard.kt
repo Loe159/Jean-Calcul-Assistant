@@ -4,7 +4,6 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,7 +45,6 @@ import io.github.suqi8.coui.kmp.icon.extended.Months
 import io.github.suqi8.coui.kmp.icon.extended.Notes
 import io.github.suqi8.coui.kmp.icon.extended.Tasks
 import io.github.suqi8.coui.kmp.squircle.squircleSurface
-import io.github.suqi8.coui.kmp.theme.COUIRoundCorner
 import io.github.suqi8.coui.kmp.theme.COUITheme
 
 private val BriefCardRadius = 24.dp
@@ -93,7 +91,6 @@ internal fun BriefCard(
     modifier: Modifier = Modifier,
     meta: String? = null,
     preview: Boolean = false,
-    continuesInLazyList: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val tint = card.tint()
@@ -104,7 +101,7 @@ internal fun BriefCard(
         animationSpec = if (motionAllowed) tween(400, easing = BriefMotionTiming.EaseMove) else snap(),
         label = "brief-density-chevron",
     )
-    val body: @Composable () -> Unit = {
+    Card(modifier.fillMaxWidth(), cornerRadius = BriefCardRadius, insideMargin = PaddingValues(0.dp)) {
         Column(
             Modifier.fillMaxWidth()
                 .drawWithCache {
@@ -161,28 +158,4 @@ internal fun BriefCard(
             content()
         }
     }
-    if (continuesInLazyList) {
-        Box(modifier.fillMaxWidth().briefFeedCardSegment(top = true)) { body() }
-    } else {
-        Card(modifier.fillMaxWidth(), cornerRadius = BriefCardRadius, insideMargin = PaddingValues(0.dp)) {
-            body()
-        }
-    }
-}
-
-/** Matches the COUI card surface while allowing a notification row to remain a lazy item. */
-@Composable
-internal fun Modifier.briefFeedCardSegment(top: Boolean = false, bottom: Boolean = false): Modifier {
-    val color = COUITheme.colorScheme.cardBackground
-    if (!top && !bottom) return background(color)
-    val topRadius = if (top) BriefCardRadius else 0.dp
-    val bottomRadius = if (bottom) BriefCardRadius else 0.dp
-    return squircleSurface(
-        color = color,
-        topStart = topRadius,
-        topEnd = topRadius,
-        bottomStart = bottomRadius,
-        bottomEnd = bottomRadius,
-        weight = COUIRoundCorner.Normal.Weight,
-    )
 }

@@ -61,17 +61,15 @@ class BriefModelTest {
     }
 
     @Test
-    fun localSummaryHighlightsAccurateCountsAndHandlesPartialOrHiddenHistory() {
+    fun localSummaryHighlightsExactCountsAndHandlesHiddenHistory() {
         val now = LocalDateTime.parse("2026-11-20T18:00")
-        fun highlights(count: Int?, hasMore: Boolean = false): List<String> =
-            localBriefSummary(BriefSummaryInput(now, count, hasMore))
+        fun highlights(count: Int?): List<String> =
+            localBriefSummary(BriefSummaryInput(now, count))
                 .filter { it.highlighted }.map { it.text }
 
         assertEquals(listOf("1 notification urgente.", "la journée de demain."), highlights(1))
         assertEquals("2 notifications urgentes.", highlights(2).first())
-        assertEquals("au moins 2 notifications urgentes.", highlights(2, hasMore = true).first())
         assertEquals("Aucune notification urgente.", highlights(0).first())
-        assertEquals("Aucune urgence dans les notifications affichées.", highlights(0, hasMore = true).first())
         assertEquals(listOf("la journée de demain."), highlights(null))
     }
 
