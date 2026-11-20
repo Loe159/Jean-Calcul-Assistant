@@ -8,12 +8,14 @@ import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.ComposeView
 import io.github.mangi.eta.data.model.AppearanceSettings
 import io.github.mangi.eta.data.model.AppearanceThemeMode
 import io.github.mangi.eta.ui.app.AgentAppTheme
-import io.github.suqi8.coui.kmp.theme.COUITheme
 import java.io.File
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,6 +32,7 @@ class Peugeot208IllustrationTest {
     @Test
     fun rendersPearlBodyworkAndDarkWheelArchesInBothThemes() {
         for (theme in listOf(AppearanceThemeMode.LIGHT, AppearanceThemeMode.DARK)) {
+            val background = if (theme == AppearanceThemeMode.DARK) Color(0xFF1C1C1E) else Color.White
             Robolectric.buildActivity(ComponentActivity::class.java).setup().use { controller ->
                 val activity = controller.get()
                 val view = ComposeView(activity).apply {
@@ -38,8 +41,7 @@ class Peugeot208IllustrationTest {
                             Peugeot208Illustration(
                                 alert = false,
                                 motionAllowed = false,
-                                modifier = Modifier.background(COUITheme.colorScheme.backgroundWithCard)
-                                    .background(COUITheme.colorScheme.card),
+                                modifier = Modifier.background(background),
                             )
                         }
                     }
@@ -56,15 +58,12 @@ class Peugeot208IllustrationTest {
                 output.outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
 
                 val body = bitmap.getPixel(312, 176)
-                val tyre = bitmap.getPixel(494, 274)
-                val backdrop = bitmap.getPixel(0, 0) and 0xff
                 assertTrue("Pearl paint should stay light in ${theme.name}", (body and 0xff) > 170)
-                assertTrue("Black tyres should stay distinct in ${theme.name}", (tyre and 0xff) < 80)
-                assertTrue("Capture should show the chosen theme", if (theme == AppearanceThemeMode.DARK) {
-                    backdrop < 80
-                } else {
-                    backdrop > 170
-                })
+                for (hubX in listOf(168, 571)) {
+                    val tyre = bitmap.getPixel(hubX, 257)
+                    assertTrue("Both tyres should stay dark in ${theme.name}", (tyre and 0xff) < 80)
+                }
+                assertEquals("Capture should show the chosen background", background.toArgb(), bitmap.getPixel(0, 0))
             }
         }
     }

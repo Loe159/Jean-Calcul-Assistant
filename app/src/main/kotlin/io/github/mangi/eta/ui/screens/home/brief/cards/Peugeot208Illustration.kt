@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -27,9 +26,13 @@ import io.github.suqi8.coui.kmp.theme.COUITheme
 
 private const val ViewportWidth = 360f
 private const val ViewportHeight = 150f
-private val RearHub = Offset(88f, 109f)
-private val FrontHub = Offset(247f, 115f)
-private const val RearWheelScale = .91f
+
+// In viewport units: the body spans x = 20 to 340, the roof peaks at y = 18,
+// and the tyres meet the ground at y = 130.
+private val FrontHub = Offset(84f, 105.2f)
+private val RearHub = Offset(285.6f, 105.2f)
+private const val TyreRadius = 24.8f
+private const val WheelForeshortening = .97f
 
 private fun path(data: String): Path = PathParser().parsePathString(data).toPath()
 private fun color(rgb: Int): Color = Color(rgb or 0xFF000000.toInt())
@@ -37,70 +40,97 @@ private fun gradient(from: Offset, to: Offset, vararg rgb: Int): Brush =
     Brush.linearGradient(rgb.map(::color), start = from, end = to)
 
 private object Peugeot208Paths {
-    // The left flank and nose converge towards different vanishing points.
-    // The tailgate ends at the C pillar. That edge continues into the rear bumper.
-    val body = path("M36 106 Q34 99 37 92 L40 77 Q42 70 47 61 L49 49 Q51 40 60 35 C79 25 115 20 162 20 Q195 19 211 28 C227 35 243 47 257 55 L299 60 Q318 63 327 72 Q335 78 339 90 L341 107 Q341 114 332 119 L281 132 L252 133 L41 117 Q36 114 36 106Z")
-    val side = path("M40 79 L60 69 Q114 68 166 71 L218 74 L261 75 L287 85 L289 116 L277 131 L43 117 Q35 114 36 105Z")
-    val shoulder = path("M41 78 L61 68 Q127 68 167 69 Q212 70 232 73 L267 75 L276 82 Q250 82 224 85 Q140 80 62 84 L38 93Z")
-    val sideHollow = path("M38 97 Q67 89 119 90 Q179 93 217 89 Q241 86 270 88 L285 98 Q252 98 219 106 Q173 112 111 106 L37 110Z")
-    val rocker = path("M41 108 Q101 112 148 116 L222 119 L281 124 L276 132 L42 117Z")
-    val rockerHighlight = path("M111 112 Q160 116 220 116 L224 120 L110 117Z")
-    val tailgate = path("M49 49 Q50 40 58 37 L62 40 L55 61 L46 77 L39 88 L42 77 L47 64Z")
-    val rearBumper = path("M37 95 L46 92 L51 93 L48 106 L62 110 L64 119 L42 117 Q35 114 36 105Z")
-    val rearLamp = path("M44 67 L52 61 Q61 61 75 63 L73 67 L61 70 L43 73Z")
-    val rearLampLens = path("M45 68 L54 64 L71 64 L69 66 L45 70Z")
-    val rearLampClaws = path("M54 64 L53 68 M60 63.5 L59 67.5 M66 64 L65 67")
-    val rearReflector = path("M37 98 L48 95 L48 98 L37 101Z")
+    val body = path(
+        "M20 85 Q20 76 27 72 Q34 68 53 67 L118 59 L135 61 " +
+            "L280 53 L318 51 Q331 56 337 69 Q340 77 340 92 Q340 108 331 113 " +
+            "L308 117 L266 118.8 L107 118.8 L57 117 L32 113 Q20 108 20 98Z",
+    )
+    val side = path(
+        "M36 79 Q75 68 135 61 C181 59 252 56 282 54 Q309 54 330 63 " +
+            "Q340 73 340 91 Q340 106 331 113 L308 117 L266 118.8 L107 118.8 " +
+            "L57 117 L34 112 L31 104Z",
+    )
+    val shoulder = path(
+        "M43 80 Q85 67 135 61 C188 59 240 57 281 54 Q308 54 331 64 " +
+            "L335 74 Q316 66 288 66 Q209 68 138 72 Q74 73 44 84Z",
+    )
+    val sideHollow = path(
+        "M104 92 C145 88 192 96 240 89 Q256 86 266 80 " +
+            "Q257 95 252 102 C214 106 157 110 112 103Z",
+    )
+    val rocker = path("M103 107 Q147 112 230 109 L265 105 L269 118.8 L104 118.8Z")
+    val rockerHighlight = path("M107 110 Q170 116 263 109")
+    val rearBumper = path("M312 96 L339 89 Q341 105 331 113 L308 117Z")
+    val rearValance = path("M312 108 Q328 107 337 104 Q335 111 331 113 L308 117Z")
+    val rearLamp = path("M303 64 Q317 63 333 67 L337 65.8 L338.5 71 Q324 75 305 69.5 L300 67Z")
+    val rearLampLens = path("M304 66 Q317 65 331 68.7 L336 68 L337 69.5 Q325 72.5 307 68.5Z")
+    val rearLampClaws = path("M310 66.8 L308.5 68.3 M316 67.1 L314.5 68.7 M322 67.9 L320.5 69.6")
+    val rearReflector = path("M327 98 L338 95 L337 98 L327 101Z")
 
-    val roof = path("M51 47 Q53 39 60 35 C79 25 115 20 162 20 Q194 19 211 28 Q227 35 244 48 L257 55 L224 76 L61 70 L49 60Z")
-    val roofReflection = path("M55 45 C77 27 124 22 165 22 Q194 21 209 30 L214 34 Q188 26 155 26 Q98 25 64 42Z")
-    val sideGlass = path("M67 43 C89 31 115 27 151 26 L169 27 Q191 32 221 72 Q147 68 71 67 L61 61Z")
-    val rearGlassReflection = path("M66 47 Q84 35 111 32 L113 37 Q86 41 63 55Z")
-    val frontGlassReflection = path("M122 32 Q153 28 170 31 Q183 35 193 45 Q160 36 123 39Z")
-    val quarterPillar = path("M60 38 L70 40 L66 51 Q63 57 62 60 L73 68 L59 67 L52 61Z")
-    val bPillar = path("M111 29 L120 28 L130 69 L120 69Z")
-    val windshield = path("M172 27 Q198 26 211 33 C228 41 240 49 254 57 L223 74 Q201 45 172 27Z")
-    val windshieldReflection = path("M183 29 Q203 29 212 36 Q229 43 246 55 L239 59 Q222 48 203 42Z")
-    val cowl = path("M216 70 L254 54 L258 57 L223 76 L214 75Z")
-    val wipers = path("M220 70 L238 63 M230 68 L251 58")
+    val roof = path(
+        "M118 59 C139 42 159 27 178 22 Q193 17.8 218 18 " +
+            "C254 18 293 28 318 37 L324 38 L326 40.5 L321 42 " +
+            "Q330 50 334 61 Q314 55.5 282 55 L135 62Z",
+    )
+    val roofReflection = path(
+        "M175 25 Q196 18.5 219 19.5 C255 20.5 287 28 317 38 " +
+            "L312 39 Q273 28 220 23 Q198 22 179 28Z",
+    )
+    val windshield = path("M120 59 C138 44 157 29 178 24 L186 25 C170 34 151 49 135 61Z")
+    val windshieldReflection = path("M129 55 Q151 35 178 25 L182 25 Q152 42 135 56Z")
+    val sideGlass = path(
+        "M142 59 C157 47 176 32 190 27 Q205 22 224 24 " +
+            "Q251 25 269 31 Q279 36 284 44 Q277 51 268 54Z",
+    )
+    val glassReflection = path(
+        "M158 48 Q177 33 191 28 Q205 23 224 25 Q253 26 270 32 L277 36 " +
+            "Q246 30 222 31 Q182 31 158 48Z",
+    )
+    val bPillar = path("M215 23 L223 24 L222 58 L213 58Z")
+    val quarterPillarReflection = path(
+        "M275 32 Q302 34 317 40 Q327 50 330 58 L324 56 Q317 46 312 43 Q296 35 275 32Z",
+    )
+    val spoilerEdge = path("M313 39 L321 41 L325 40.5")
+    val windowTrim = path("M140 61 Q218 57 268 55 Q278 51 284 44")
 
-    val bonnet = path("M222 75 L257 55 L301 60 Q319 64 327 72 L333 78 L289 89 L270 83 L243 80Z")
-    val bonnetCrown = path("M234 74 L261 57 Q287 60 307 65 L320 71 L285 78 L266 77Z")
-    val bonnetCreases = path("M232 75 Q262 74 284 80 L322 71 M256 57 Q274 58 293 62")
-    val bonnetShutLine = path("M222 76 Q251 82 269 81 L288 86 Q312 82 333 76")
-    val nearFender = path("M224 86 Q252 79 274 85 L289 94 L295 116 L276 130 L270 112 Q265 94 246 92 Q232 91 222 101Z")
-    val frontBumper = path("M276 87 L332 75 Q339 82 340 94 L341 107 Q341 114 332 119 L281 132 Q284 128 280 112 L270 89Z")
-    val nearScoop = path("M273 91 L288 91 L296 114 L287 120 L281 117Z")
-    val farScoop = path("M331 81 L336 81 Q341 94 339 105 L333 110 L330 107Z")
-    val grille = path("M288 89 Q306 84 331 79 Q335 87 334 101 L329 110 L302 119 L294 114Z")
-    val grilleRim = path("M287 89 Q312 84 332 78 M294 114 L302 119 L329 110")
-    val lowerIntake = path("M285 123 Q309 117 334 111 L332 117 L281 131Z")
-    val splitter = path("M281 131 L332 118 L327 121 L280 134 L268 133Z")
-    val noseReflection = path("M297 119 L334 109 L332 112 L292 124Z")
-    val nearLamp = path("M263 79 Q276 76 288 77 L300 81 Q294 85 289 87 Q274 88 267 86 L261 83Z")
-    val farLamp = path("M321 70 Q330 71 334 77 L336 82 L330 81 L321 75 L317 73Z")
-    val lampSignature = path("M266 82 Q276 79 286 80 L292 81 M322 73 Q329 76 332 78")
-    val nearFang = path("M288 82 L291 86 L291 99 L287 111 L283 114 L285 102 L285 87Z")
-    val farFang = path("M331 77 L335 81 L337 91 L336 101 L333 105 L333 91 L330 81Z")
-    val fangCore = path("M288 85 L288 101 L285 111 M333 80 L335 91 L334 102")
+    val bonnet = path("M26 73 Q33 67 54 67 L118 59 L135 61 Q105 67 80 72 Q58 75 38 80Z")
+    val bonnetHighlight = path("M38 71 Q79 67 118 60 L127 61 Q86 68 53 72Z")
+    val bonnetShutLine = path("M38 78 Q86 71 135 62")
+    val bumperFace = path("M27 73 L39 78 L44 96 L52 114 L32 113 Q20 108 20 98 L20 85 Q20 77 27 73Z")
+    val grille = path("M21 85 Q27 81 36 83 L39 87 L39 95 Q29 96 21 92Z")
+    val lowerIntake = path("M21 98 Q29 101 41 101 L46 108 Q31 110 24 105Z")
+    val frontValance = path("M26 107 Q36 112 57 110 L60 117 L32 113Z")
+    val lamp = path("M28 75 L39 72 Q49 69 65 71 L75 72 Q71 76 57 79 L43 81 L36 79Z")
+    val lampSignature = path("M41 75.5 Q52 72.5 66 73.4")
+    val lampLens = path("M43 77 Q53 75 63 75.2 Q54 77.5 45 78.5Z")
+    val fangHousing = path("M37 77 L43 78 L42 88 L45 95 L42 101 L37 96 L35 86Z")
+    val fang = path("M38 79 Q37 87 40 93 L41.5 96")
 
-    val windowTrim = path("M59 68 Q136 66 219 74")
-    val doorSeams = path("M73 69 L73 78 Q74 89 84 90 Q100 88 109 102 L114 115 M125 70 L133 82 L135 113 Q136 117 140 118 M215 75 Q221 91 220 104 L216 120")
-    val beltCrease = path("M55 77 Q124 73 210 80 L237 82")
-    val lowerCrease = path("M114 109 Q163 115 219 109")
-    val rearHandle = path("M88 75 L104 75 L102 78 L90 78Z")
-    val frontHandle = path("M152 77 L170 78 L168 81 L154 81Z")
-    val handleHighlights = path("M90 75.5 L101 75.5 M154 77.5 L167 78")
-    val mirrorMount = path("M198 63 L211 65 L218 74 L206 74Z")
-    val mirror = path("M189 63 Q189 59 197 58 Q207 58 214 62 L214 66 Q209 70 196 69 L190 67Z")
-    val mirrorHighlight = path("M191 62 Q197 59 204 61 L212 63 L204 64 L193 64Z")
+    val doorSeams = path(
+        "M146 61 Q136 72 131 86 L128 104 Q127 110 130 113 " +
+            "M220 58 L218 82 L215 108 Q215 111 212 113 " +
+            "M282 55 Q287 61 287 73 Q270 73 261 89 Q257 97 256 107 L253 110",
+    )
+    val beltCrease = path("M94 76 Q154 73 186 71 Q258 65 291 64")
+    val lowerCrease = path("M119 104 Q183 110 249 99")
+    val frontHandle = path("M190 69.5 L205 68.5 L203 71.5 L192 72.5Z")
+    val rearHandle = path("M254 65.5 L268 64.4 L266 67.4 L255 68.4Z")
+    val handleHighlights = path("M192 69.6 L203 68.8 M256 65.5 L266 64.7")
+    val mirrorMount = path("M146 57 L154 57 L158 66 L149 65Z")
+    val mirror = path("M135 53 Q144 49 152 52 Q158 54 157 58 Q154 62 145 62 L136 60 Q132 57 135 53Z")
+    val mirrorHighlight = path("M136 55 Q144 51 152 54 L155 56 Q147 54 137 57Z")
 
-    val rearArch = path("M63 119 L63 109 C63 95 72 85 88 85 C104 85 114 98 114 113 L115 121Z")
-    val frontArch = path("M218 130 L219 115 C219 99 230 88 247 88 C265 88 276 101 276 117 L275 132Z")
-    val archHighlights = path("M62 111 C62 95 73 84 88 84 Q109 84 114 105 M218 116 C218 99 230 87 247 87 Q269 87 275 107")
-    val spoke = path("M-2 -3 L-9 -15 L-6 -19 L-2 -19 L2 -11 L4 -18 L8 -17 L6 -9 L2 -2Z")
-    val spokeCut = path("M-2 -5 L-6 -15 L-4 -17 L0 -9 L2 -5Z")
-    val spokeBevel = path("M1 -7 L5 -16 L7 -16 L5 -9Z")
+    val frontArch = path("M56 117 L56 105 C56 89 67 77 84 77 C101 77 112 89 112 105 L112 118.8Z")
+    val rearArch = path(
+        "M257.6 118.8 L257.6 105 C257.6 89 268.6 77 285.6 77 " +
+            "C302.6 77 313.6 89 313.6 105 L313.6 116Z",
+    )
+    val archHighlights = path(
+        "M56 105 C56 89 68 77 84 77 Q104 77 110 96 " +
+            "M257.6 105 C257.6 89 269.6 77 285.6 77 Q305.6 77 311.6 96",
+    )
+    val spoke = path("M-2.3 -4.6 L-7.2 -17.7 L-3.8 -19 L.3 -9.4 L3.9 -19 L7.1 -17.5 L2.8 -5Z")
+    val spokeBevel = path("M-.8 -5.6 L-5.8 -17.9 L-4.2 -18.3 L.1 -8.4 L4.2 -18.3 L5.7 -17.7 L1.6 -5.6Z")
 }
 
 @Composable
@@ -109,157 +139,141 @@ internal fun Peugeot208Illustration(alert: Boolean, motionAllowed: Boolean, modi
     val pulse = briefAmbientCycle(alert && motionAllowed, 800, "brief-208-tyre", reverse = true)
     Box(
         modifier.fillMaxWidth().aspectRatio(ViewportWidth / ViewportHeight)
-            .semantics { contentDescription = "Peugeot 208 blanc nacré, vue de trois quarts avant gauche" },
+            .semantics { contentDescription = "Peugeot 208 blanc nacré, profil gauche avec la face avant visible" },
     ) {
-        Canvas(Modifier.matchParentSize()) { drawPeugeot208(colors.azure) }
+        Canvas(Modifier.matchParentSize()) { drawPeugeot208() }
         if (alert) {
             Canvas(Modifier.matchParentSize().graphicsLayer()) {
                 scale(size.width / ViewportWidth, size.height / ViewportHeight, pivot = Offset.Zero) {
                     val intensity = if (motionAllowed) pulse.value else .72f
-                    drawTyreAlert(RearHub, RearWheelScale, colors.red, intensity)
-                    drawTyreAlert(FrontHub, 1f, colors.red, intensity)
+                    drawTyreAlert(RearHub, colors.red, intensity)
+                    drawTyreAlert(FrontHub, colors.red, intensity)
                 }
             }
         }
     }
 }
 
-internal fun DrawScope.drawPeugeot208(halo: Color) {
+private fun DrawScope.drawPeugeot208() {
     scale(size.width / ViewportWidth, size.height / ViewportHeight, pivot = Offset.Zero) {
-        drawGround(halo)
+        drawGround()
         drawBodywork()
         drawCabin()
         drawFront()
-        draw208Wheel(RearHub, RearWheelScale)
-        draw208Wheel(FrontHub, 1f)
+        draw208Wheel(FrontHub)
+        draw208Wheel(RearHub)
     }
 }
 
-private fun DrawScope.drawGround(halo: Color) {
-    scale(1f, .11f, Offset(181f, 130f)) {
+private fun DrawScope.drawGround() {
+    val center = Offset(180f, 125f)
+    scale(1f, .085f, center) {
         drawCircle(
-            Brush.radialGradient(listOf(halo.copy(alpha = .43f), Color.Transparent), Offset(181f, 130f), 168f),
-            radius = 168f, center = Offset(181f, 130f),
-        )
-        drawCircle(
-            Brush.radialGradient(listOf(Color(0xA8101D2A), Color.Transparent), Offset(177f, 137f), 143f),
-            radius = 143f, center = Offset(177f, 137f),
+            Brush.radialGradient(listOf(Color(0x79101720), Color.Transparent), center, 173f),
+            radius = 173f, center = center,
         )
     }
-    drawOval(Color(0x55132436), Offset(65f, 127f), Size(48f, 7f))
-    drawOval(Color(0x66132436), Offset(222f, 134f), Size(53f, 7f))
-}
-
-private fun DrawScope.drawBodywork() = with(Peugeot208Paths) {
-    outline(body, 0x485363, 1.6f)
-    drawPath(body, gradient(Offset(124f, 23f), Offset(145f, 132f),
-        0xFBFCFF, 0xE6EBF5, 0xEFF4FA, 0x8796AA))
-    drawPath(side, gradient(Offset(145f, 69f), Offset(142f, 126f),
-        0xF6F9FC, 0xDCE4EE, 0xF4F3F5, 0x8390A2))
-    drawPath(shoulder, gradient(Offset(55f, 82f), Offset(266f, 77f),
-        0xB7BCCB, 0xF3F5FB, 0xFFFFFF, 0xD6E2ED))
-    drawPath(sideHollow, gradient(Offset(159f, 90f), Offset(159f, 111f),
-        0xCED8E4, 0xE2E9F2, 0xE7E5ED))
-    drawPath(rocker, gradient(Offset(143f, 111f), Offset(143f, 127f),
-        0xA8B4C3, 0x647487, 0x293748))
-    fill(rockerHighlight, 0x9AA9BD)
-    fill(tailgate, 0x9AA4B6)
-    drawPath(rearBumper, gradient(Offset(45f, 91f), Offset(46f, 116f), 0xE9ECF4, 0x939DB0, 0x596979))
-    fill(rearLamp, 0x2C202C)
-    fill(rearLampLens, 0x6E263B)
-    outline(rearLampClaws, 0xF67F8D, 1f)
-    fill(rearReflector, 0xA63654)
-    outline(beltCrease, 0xFFFFFF, 1.1f)
-    outline(lowerCrease, 0xA1AEC0, .85f)
-    outline(doorSeams, 0x7D8A9A, .8f)
-    fill(rearHandle, 0x8793A4)
-    fill(frontHandle, 0x8290A1)
-    outline(handleHighlights, 0xFAFBFE, 1f)
-    fill(rearArch, 0x111823)
-    outline(rearArch, 0x333C4B, 1.7f)
-}
-
-private fun DrawScope.drawCabin() = with(Peugeot208Paths) {
-    drawPath(roof, gradient(Offset(112f, 20f), Offset(119f, 72f), 0x313B49, 0x141B26, 0x080E17))
-    drawPath(sideGlass, gradient(Offset(123f, 27f), Offset(137f, 70f), 0x556E87, 0x26374C, 0x151D2B))
-    fill(roofReflection, 0x5C6E83)
-    drawPath(rearGlassReflection, Color(0x686C89A4))
-    drawPath(frontGlassReflection, Color(0x707994B1))
-    fill(quarterPillar, 0x171F2A)
-    fill(bPillar, 0x141C28)
-    drawPath(windshield, gradient(Offset(190f, 27f), Offset(221f, 73f), 0x8197AD, 0x3C5369, 0x132235))
-    drawPath(windshieldReflection, Color(0x5CABC2D6))
-    fill(cowl, 0x131C29)
-    outline(wipers, 0x223144, 1.1f)
-    outline(windowTrim, 0xE4EAF2, .9f)
-    fill(mirrorMount, 0x171E28)
-    outline(mirror, 0x161D27, 1.1f)
-    drawPath(mirror, gradient(Offset(199f, 58f), Offset(202f, 69f), 0x5E748A, 0x212E3D, 0x0A1019))
-    drawPath(mirrorHighlight, Color(0x657F9AB7))
-}
-
-private fun DrawScope.drawFront() = with(Peugeot208Paths) {
-    drawPath(bonnet, gradient(Offset(253f, 56f), Offset(282f, 88f), 0xB6C1D0, 0xF3F6FA, 0xDEE6F2))
-    drawPath(bonnetCrown, gradient(Offset(247f, 63f), Offset(311f, 77f), 0xE5ECF5, 0xFDFDFE, 0xD3DEEC))
-    outline(bonnetCreases, 0xD1DBE8, .8f)
-    outline(bonnetShutLine, 0x7B899C, .8f)
-    drawPath(nearFender, gradient(Offset(250f, 86f), Offset(262f, 128f), 0xEDF2F9, 0xD3DDEA, 0x7C8DA0))
-    drawPath(frontBumper, gradient(Offset(296f, 78f), Offset(310f, 126f), 0xE8EDF5, 0xACBBCD, 0x77879B))
-    fill(nearScoop, 0x263342)
-    fill(farScoop, 0x1B2533)
-    drawPath(grille, gradient(Offset(309f, 80f), Offset(313f, 118f), 0x33404D, 0x17212D, 0x0E151E))
-    clipPath(grille) { drawGrilleBars() }
-    outline(grilleRim, 0x5D6C7D, .9f)
-    fill(lowerIntake, 0x181F29)
-    fill(splitter, 0x4F5E70)
-    fill(noseReflection, 0xB8C7D8)
-    fill(nearLamp, 0x151F2F)
-    fill(farLamp, 0x151F2F)
-    outline(lampSignature, 0x90ACC9, 2.5f)
-    outline(lampSignature, 0xEDF8FF, 1f)
-    drawPath(nearFang, Color(0x3366C6FC), style = Stroke(5f, join = StrokeJoin.Round))
-    drawPath(farFang, Color(0x3366C6FC), style = Stroke(4f, join = StrokeJoin.Round))
-    fill(nearFang, 0x8ACAF3)
-    fill(farFang, 0x8ACAF3)
-    outline(fangCore, 0xF6FCFF, 1.3f)
-    fill(frontArch, 0x111823)
-    outline(frontArch, 0x303B4B, 2.1f)
-    outline(archHighlights, 0xCDD6E1, 1.35f)
-}
-
-private fun DrawScope.drawGrilleBars() {
-    // Staggered pearl-coloured inserts follow the slope of the grille face.
-    for (row in 0..5) {
-        for (column in 0..5) {
-            val x = 289f + 7.6f * column + 1.8f * (row % 2)
-            val y = 91f + 4.7f * row - (x - 289f) * .25f
-            drawLine(
-                color(if (row < 3) 0xC1CCD8 else 0x8596AB),
-                Offset(x, y), Offset(x + 4f, y - 1f), 1.6f, StrokeCap.Round,
+    for (hub in listOf(FrontHub, RearHub)) {
+        val contact = hub + Offset(0f, TyreRadius)
+        scale(1f, .18f, contact) {
+            drawCircle(
+                Brush.radialGradient(listOf(Color(0x6B0E1520), Color.Transparent), contact, 29f),
+                radius = 29f, center = contact,
             )
-            drawLine(color(0x526175), Offset(x, y + 1.3f), Offset(x + 4f, y + .3f), .55f)
         }
     }
 }
 
-private fun DrawScope.draw208Wheel(hub: Offset, ratio: Float) {
-    scale(ratio * .93f, ratio, hub) {
-        drawCircle(color(0x0E131B), 24f, hub)
+private fun DrawScope.drawBodywork() = with(Peugeot208Paths) {
+    drawPath(body, gradient(Offset(180f, 30f), Offset(182f, 119f),
+        0xFAFAFC, 0xEDEFF2, 0xB7BFCA))
+    drawPath(side, Brush.verticalGradient(
+        0f to color(0xF6F7F9), .32f to color(0xF2F4F7), .56f to color(0xD8DDE6),
+        .78f to color(0xE7EBEF), 1f to color(0xA1AAB7), startY = 57f, endY = 119f,
+    ))
+    drawPath(shoulder, gradient(Offset(175f, 58f), Offset(175f, 78f),
+        0xE8ECF1, 0xFDFDFE, 0xF3F5F8))
+    drawPath(sideHollow, gradient(Offset(183f, 88f), Offset(183f, 107f),
+        0xD9DFE8, 0xE5E9EE, 0xEBEEF0))
+    drawPath(rocker, gradient(Offset(184f, 109f), Offset(184f, 119f), 0x55606B, 0x181D25))
+    outline(rockerHighlight, 0x7B8590, .85f)
+    drawPath(rearBumper, gradient(Offset(326f, 93f), Offset(329f, 116f), 0xDDE0E7, 0x9FA8B5))
+    fill(rearValance, 0x272B34)
+    fill(rearLamp, 0x24212A)
+    fill(rearLampLens, 0x702439)
+    outline(rearLampClaws, 0xE48993, .9f)
+    fill(rearReflector, 0xA94D5B)
+    outline(beltCrease, 0xFDFDFE, 1f)
+    outline(lowerCrease, 0xB5BFCA, .8f)
+    drawPath(doorSeams, Color(0xA3687585), style = Stroke(.8f, cap = StrokeCap.Round))
+    fill(frontHandle, 0x8893A0)
+    fill(rearHandle, 0x8893A0)
+    outline(handleHighlights, 0xF9FAFD, .8f)
+    fill(frontArch, 0x12161E)
+    fill(rearArch, 0x12161E)
+    outline(archHighlights, 0x414952, 1.6f)
+}
+
+private fun DrawScope.drawCabin() = with(Peugeot208Paths) {
+    drawPath(roof, gradient(Offset(204f, 18f), Offset(208f, 63f), 0x313842, 0x1C242E, 0x10151D))
+    drawPath(sideGlass, gradient(Offset(227f, 25f), Offset(230f, 58f), 0x617080, 0x354352, 0x202832))
+    fill(roofReflection, 0x58626E)
+    drawPath(glassReflection, Color(0x566F8294))
+    fill(bPillar, 0x19212A)
+    drawPath(quarterPillarReflection, gradient(Offset(283f, 32f), Offset(328f, 57f),
+        0x444F5B, 0x394654, 0x293442))
+    outline(spoilerEdge, 0x57606A, .7f)
+    drawPath(windshield, gradient(Offset(174f, 26f), Offset(133f, 62f), 0x738697, 0x455769, 0x263444))
+    drawPath(windshieldReflection, Color(0x5196A9BD))
+    outline(windowTrim, 0xA5ABB3, .8f)
+    fill(mirrorMount, 0x181F29)
+    drawPath(mirror, gradient(Offset(145f, 51f), Offset(146f, 62f), 0x667483, 0x242E3A, 0x11161F))
+    drawPath(mirrorHighlight, Color(0x6596A5B4))
+}
+
+private fun DrawScope.drawFront() = with(Peugeot208Paths) {
+    drawPath(bonnet, gradient(Offset(101f, 60f), Offset(101f, 81f), 0xFDFDFE, 0xE8EBEF, 0xC6CED9))
+    fill(bonnetHighlight, 0xFBFBFC)
+    outline(bonnetShutLine, 0xA7B2C0, .75f)
+    drawPath(bumperFace, gradient(Offset(28f, 74f), Offset(29f, 113f), 0xC9D1DC, 0xE1E6EC, 0x959EAB))
+    fill(grille, 0x232B35)
+    clipPath(grille) {
+        for (row in 0..2) {
+            val y = 85f + 3.3f * row
+            for (column in 0..2) {
+                val x = 21f + 6.5f * column + 1.2f * (row % 2)
+                val slope = (x - 21f) * .13f
+                drawLine(color(0xBFC6CF), Offset(x, y + slope), Offset(x + 4.5f, y + slope + .6f), 1f)
+            }
+        }
+    }
+    fill(lowerIntake, 0x151C25)
+    fill(frontValance, 0x424B56)
+    fill(lamp, 0x171F2A)
+    fill(lampLens, 0x354C61)
+    outline(lampSignature, 0xD8E8F6, 1.35f)
+    fill(fangHousing, 0x273444)
+    outline(fang, 0x8EB5CF, 2.8f)
+    outline(fang, 0xF6FAFF, 1.35f)
+}
+
+private fun DrawScope.draw208Wheel(hub: Offset) {
+    scale(WheelForeshortening, 1f, hub) {
+        drawCircle(color(0x10141A), TyreRadius, hub)
         drawCircle(color(0x3B4858), 21.7f, hub, style = Stroke(1.25f))
         drawCircle(
             gradient(hub - Offset(11f, 22f), hub + Offset(9f, 23f), 0xB1BBC7, 0x4C5969, 0x8092A8),
             19.25f, hub, style = Stroke(1.5f),
         )
         drawCircle(color(0x181F2B), 18f, hub)
-        drawCircle(color(0x586577), 12.5f, hub)
-        drawCircle(color(0x292F3A), 10.5f, hub, style = Stroke(.8f))
+        drawCircle(color(0x3F4955), 12.5f, hub)
+        drawCircle(color(0x222A34), 10.5f, hub, style = Stroke(.8f))
         repeat(5) { spoke ->
             rotate(spoke * 72f - 13f, hub) {
                 translate(hub.x, hub.y) {
-                    drawPath(Peugeot208Paths.spoke, gradient(Offset(-8f, -15f), Offset(8f, -6f),
-                        0x758A9F, 0xEAF0F6, 0xACBAC9, 0x4E5E70))
-                    fill(Peugeot208Paths.spokeCut, 0x252E3A)
-                    fill(Peugeot208Paths.spokeBevel, 0xC2CFDE)
+                    fill(Peugeot208Paths.spoke, 0x536173)
+                    drawPath(Peugeot208Paths.spokeBevel, gradient(Offset(-6f, -18f), Offset(4f, -7f),
+                        0xF1F4F7, 0xBAC5D2, 0xE2E8EE, 0x8E9BAD))
                 }
             }
         }
@@ -278,9 +292,9 @@ private fun DrawScope.fill(path: Path, rgb: Int) = drawPath(path, color(rgb))
 private fun DrawScope.outline(path: Path, rgb: Int, width: Float) =
     drawPath(path, color(rgb), style = Stroke(width, cap = StrokeCap.Round, join = StrokeJoin.Round))
 
-private fun DrawScope.drawTyreAlert(hub: Offset, ratio: Float, alert: Color, pulse: Float) {
-    scale(.93f, 1f, hub) {
-        drawCircle(alert.copy(alpha = .16f + .12f * pulse), (24f + 3f * pulse) * ratio, hub, style = Stroke(4f))
-        drawCircle(alert.copy(alpha = .40f + .50f * pulse), (23.7f + pulse) * ratio, hub, style = Stroke(1.8f))
+private fun DrawScope.drawTyreAlert(hub: Offset, alert: Color, pulse: Float) {
+    scale(WheelForeshortening, 1f, hub) {
+        drawCircle(alert.copy(alpha = .16f + .12f * pulse), TyreRadius + 3f * pulse, hub, style = Stroke(4f))
+        drawCircle(alert.copy(alpha = .40f + .50f * pulse), TyreRadius - .3f + pulse, hub, style = Stroke(1.8f))
     }
 }
