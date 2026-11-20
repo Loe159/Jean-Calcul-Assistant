@@ -112,8 +112,19 @@ internal fun vllmBaseUrl(value: String): String {
     return url.toString().trimEnd('/')
 }
 
+/**
+ * Langue de la voix : le réglage explicite, sinon la langue du téléphone. On ne prend pas `Locale.getDefault()` :
+ * l’app ne livre que des textes anglais (`localeFilters`), donc sa propre locale reste l’anglais sur un téléphone en français.
+ */
+internal fun speechLanguageTag(configured: String, system: () -> String? = ::systemLanguageTag): String =
+    configured.trim().ifEmpty { system() ?: java.util.Locale.getDefault().toLanguageTag() }
+
+internal fun systemLanguageTag(): String? = runCatching {
+    android.content.res.Resources.getSystem().configuration.locales.takeIf { !it.isEmpty }?.get(0)?.toLanguageTag()
+}.getOrNull()?.takeIf { it.isNotBlank() && it != "und" }
+
 /** Langue envoyée aux API de transcription : seul le code ISO-639-1 est accepté par Whisper. */
-internal fun SpeechSettings.transcriptionLanguage(): String? =
-    language.trim().substringBefore('-').substringBefore('_').lowercase().takeIf { it.length in 2..3 }
+internal fun SpeechSettings.transcriptionLanguage(system: () -> String? = ::systemLanguageTag): String? =
+    language.trim().ifEmpty { system().orEmpty() }.substringBefore('-').substringBefore('_').lowercase().takeIf { it.length in 2..3 }
 
 private val LANGUAGE = Regex("[A-Za-z]{2,3}([-_][A-Za-z0-9]{2,8})*")

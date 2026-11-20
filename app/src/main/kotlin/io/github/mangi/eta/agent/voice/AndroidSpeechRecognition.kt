@@ -9,7 +9,6 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import io.github.mangi.eta.core.AndroidAgentLogger
-import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.Dispatchers
@@ -54,7 +53,7 @@ internal class AndroidSpeechRecognition(context: Context) : DeviceSpeechRecognit
                 "No speech recognition engine on this phone. Choose OpenAI or vLLM in speech settings.",
             )
         }
-        val intent = recognizerIntent(language.ifBlank { Locale.getDefault().toLanguageTag() }, endpointSilenceMs)
+        val intent = recognizerIntent(speechLanguageTag(language), endpointSilenceMs)
         var failure: SpeechFailure? = null
         for (route in routes) {
             when (val attempt = listen(route, intent, onReady, onLevel, onPreview)) {

@@ -82,7 +82,14 @@ class SpeechProtocolTest {
     @Test fun languageCodeIsReducedForWhisper() {
         assertEquals("fr", SpeechSettings(language = "fr-FR").transcriptionLanguage())
         assertEquals("en", SpeechSettings(language = "EN").transcriptionLanguage())
-        assertNull(SpeechSettings(language = "").transcriptionLanguage())
+        assertNull(SpeechSettings(language = "").transcriptionLanguage { null })
+        assertEquals("fr", SpeechSettings(language = "").transcriptionLanguage { "fr-FR" })
+        assertEquals("en", SpeechSettings(language = "en-US").transcriptionLanguage { "fr-FR" })
+    }
+
+    @Test fun voiceFollowsPhoneLanguageNotAppLocale() {
+        assertEquals("fr-FR", speechLanguageTag("", system = { "fr-FR" }))
+        assertEquals("de-DE", speechLanguageTag(" de-DE ", system = { "fr-FR" }))
     }
 
     @Test fun wavHeaderDescribesRecordedPcm() {
