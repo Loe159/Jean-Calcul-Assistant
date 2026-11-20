@@ -43,6 +43,7 @@ import io.github.mangi.eta.ui.components.coui.rememberPopupMaterialBlur
 import io.github.mangi.eta.ui.screens.home.brief.BriefCard
 import io.github.mangi.eta.ui.screens.home.brief.BriefCardId
 import io.github.mangi.eta.ui.screens.home.brief.BriefCustomization
+import io.github.mangi.eta.ui.screens.home.brief.BriefDemoData
 import io.github.mangi.eta.ui.screens.home.brief.BriefFeedItem
 import io.github.mangi.eta.ui.screens.home.brief.BriefHeader
 import io.github.mangi.eta.ui.screens.home.brief.BriefHeroKey
@@ -58,7 +59,13 @@ import io.github.mangi.eta.ui.screens.home.brief.briefFeedOrder
 import io.github.mangi.eta.ui.screens.home.brief.briefMoment
 import io.github.mangi.eta.ui.screens.home.brief.localBriefSummary
 import io.github.mangi.eta.ui.screens.home.brief.rememberBriefTime
+import io.github.mangi.eta.ui.screens.home.brief.cards.BriefAgendaCard
+import io.github.mangi.eta.ui.screens.home.brief.cards.BriefCarCard
+import io.github.mangi.eta.ui.screens.home.brief.cards.BriefHabitsCard
+import io.github.mangi.eta.ui.screens.home.brief.cards.BriefHealthCard
 import io.github.mangi.eta.ui.screens.home.brief.cards.BriefNotificationsCard
+import io.github.mangi.eta.ui.screens.home.brief.cards.BriefSuggestionsCard
+import io.github.mangi.eta.ui.screens.home.brief.cards.BriefTasksCard
 import io.github.suqi8.coui.kmp.basic.Scaffold
 import io.github.suqi8.coui.kmp.basic.SnackbarHost
 import io.github.suqi8.coui.kmp.basic.SnackbarHostState
@@ -105,6 +112,12 @@ internal fun NowBriefScreen(
     val showNotifications = BriefCardId.NOTIFICATIONS !in hiddenCards
     var showCustomization by remember { mutableStateOf(false) }
     val expandedCards = remember { mutableStateMapOf<BriefCardId, Boolean>() }
+    var checkedSuggestions by remember { mutableStateOf(emptySet<String>()) }
+    var deferredSuggestions by remember { mutableStateOf(emptySet<String>()) }
+    var checkedTasks by remember {
+        mutableStateOf(BriefDemoData.tasks.filter { it.done }.map { it.title }.toSet())
+    }
+    val habitCounts = remember { mutableStateMapOf<String, Int>() }
     val atDashboard = active && notificationPage == null
     val now by rememberBriefTime(atDashboard)
     val moment = briefMoment(now.toLocalTime())
@@ -115,6 +128,7 @@ internal fun NowBriefScreen(
     val repository = remember(context) { NotificationHistoryRepository(context) }
     val listState = rememberLazyListState()
     val snackbars = remember { SnackbarHostState() }
+    val showDemoAction: () -> Unit = { scope.launch { snackbars.showSnackbar("Bientôt disponible") } }
     val (notificationActions, actionDialogs) = rememberBriefNotificationActions(repository, snackbars)
     var overview by remember(repository) { mutableStateOf<NotificationHistoryRepository.BriefOverview?>(null) }
     var activityError by remember { mutableStateOf(false) }
@@ -174,9 +188,10 @@ internal fun NowBriefScreen(
                 val expanded = expandedCards[card] ?: false
                 val cardModifier = Modifier.padding(horizontal = 16.dp).padding(top = 8.dp)
                 val toggleDensity = { expandedCards[card] = !expanded }
+                val animateCard = motionAllowed && atDashboard
                 BriefReveal(card.key, atDashboard, motionAllowed, index) {
-                    if (card == BriefCardId.NOTIFICATIONS) {
-                        BriefNotificationsCard(
+                    when (card) {
+                        BriefCardId.NOTIFICATIONS -> BriefNotificationsCard(
                             overview = overview,
                             hasError = activityError,
                             expanded = expanded,
@@ -187,24 +202,50 @@ internal fun NowBriefScreen(
                             actions = notificationActions,
                             modifier = cardModifier,
                         )
-                    } else {
-                        val demo = briefDemoCard(card)
-                        BriefCard(
-                            card = card,
-                            expanded = expanded,
-                            onToggleDensity = toggleDensity,
-                            motionAllowed = motionAllowed,
-                            modifier = cardModifier,
-                            meta = demo.headline,
-                            preview = true,
-                        ) {
-                            if (expanded) {
-                                Text(
-                                    demo.detail,
-                                    style = COUITheme.textStyles.bodyS,
-                                    color = COUITheme.colorScheme.labelSecondary,
-                                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
-                                )
+                        BriefCardId.SUGGESTIONS -> BriefSuggestionsCard(
+                            expanded, animateCard, toggleDensity, cardModifier,
+                            checked = checkedSuggestions,
+                            deferred = deferredSuggestions,
+                            onCheck = { id, checked ->
+                                checkedSuggestions = if (checked) checkedSuggestions + id else checkedSuggestions - id
+                            },
+                            onLater = { id -> deferredSuggestions += id },
+                            onDemoAction = showDemoAction,
+                        )
+                        BriefCardId.AGENDA -> BriefAgendaCard(expanded, animateCard, toggleDensity, cardModifier, showDemoAction)
+                        BriefCardId.CAR -> BriefCarCard(expanded, animateCard, toggleDensity, cardModifier, showDemoAction)
+                        BriefCardId.TASKS -> BriefTasksCard(
+                            expanded, animateCard, toggleDensity, cardModifier,
+                            checked = checkedTasks,
+                            onCheck = { id, checked -> checkedTasks = if (checked) checkedTasks + id else checkedTasks - id },
+                            onDemoAction = showDemoAction,
+                        )
+                        BriefCardId.HEALTH -> BriefHealthCard(expanded, animateCard, toggleDensity, cardModifier, showDemoAction)
+                        BriefCardId.HABITS -> BriefHabitsCard(
+                            expanded, animateCard, toggleDensity, cardModifier,
+                            counts = habitCounts,
+                            onCountChange = { id, count -> habitCounts[id] = count },
+                            onDemoAction = showDemoAction,
+                        )
+                        else -> {
+                            val demo = briefDemoCard(card)
+                            BriefCard(
+                                card = card,
+                                expanded = expanded,
+                                onToggleDensity = toggleDensity,
+                                motionAllowed = motionAllowed,
+                                modifier = cardModifier,
+                                meta = demo.headline,
+                                preview = true,
+                            ) {
+                                if (expanded) {
+                                    Text(
+                                        demo.detail,
+                                        style = COUITheme.textStyles.bodyS,
+                                        color = COUITheme.colorScheme.labelSecondary,
+                                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                                    )
+                                }
                             }
                         }
                     }

@@ -32,6 +32,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
 import io.github.mangi.eta.ui.screens.home.BriefMotionTiming
+import io.github.mangi.eta.ui.screens.home.brief.cards.BriefSuggestionOrb
+import io.github.mangi.eta.ui.screens.home.brief.cards.briefSuggestionBorder
 import io.github.suqi8.coui.kmp.basic.Card
 import io.github.suqi8.coui.kmp.basic.Icon
 import io.github.suqi8.coui.kmp.basic.Text
@@ -96,6 +98,10 @@ internal fun BriefCard(
     val tint = card.tint()
     val tintLabel = briefTintedLabel(tint)
     val dark = COUITheme.isDark
+    val colors = COUITheme.colorScheme
+    val decoration = if (card == BriefCardId.SUGGESTIONS) {
+        Modifier.briefSuggestionBorder(motionAllowed)
+    } else Modifier
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         animationSpec = if (motionAllowed) tween(400, easing = BriefMotionTiming.EaseMove) else snap(),
@@ -104,14 +110,42 @@ internal fun BriefCard(
     Card(modifier.fillMaxWidth(), cornerRadius = BriefCardRadius, insideMargin = PaddingValues(0.dp)) {
         Column(
             Modifier.fillMaxWidth()
+                .then(decoration)
                 .drawWithCache {
+                    val radius = size.width.coerceAtLeast(1f)
                     val halo = Brush.radialGradient(
                         0f to tint.copy(alpha = if (dark) .22f else .14f),
                         .74f to Color.Transparent,
                         center = Offset.Zero,
-                        radius = size.width.coerceAtLeast(1f),
+                        radius = radius,
                     )
-                    onDrawBehind { drawRect(halo) }
+                    val accents = when (card) {
+                        BriefCardId.SUGGESTIONS -> listOf(
+                            Brush.radialGradient(
+                                listOf(colors.azure.copy(alpha = if (dark) .24f else .14f), Color.Transparent),
+                                center = Offset(size.width, size.height), radius = radius * .78f,
+                            ),
+                            Brush.radialGradient(
+                                listOf(colors.purple.copy(alpha = if (dark) .17f else .09f), Color.Transparent),
+                                center = Offset(size.width, 0f), radius = radius * .64f,
+                            ),
+                        )
+                        BriefCardId.CAR -> listOf(
+                            Brush.verticalGradient(
+                                listOf(tint.copy(alpha = if (dark) .14f else .10f), Color.Transparent),
+                                endY = radius * .64f,
+                            ),
+                            Brush.radialGradient(
+                                listOf(tint.copy(alpha = if (dark) .21f else .12f), Color.Transparent),
+                                center = Offset(size.width * .62f, radius * .29f), radius = radius * .62f,
+                            ),
+                        )
+                        else -> emptyList()
+                    }
+                    onDrawBehind {
+                        if (card != BriefCardId.CAR) drawRect(halo)
+                        accents.forEach { drawRect(it) }
+                    }
                 }
                 .then(
                     if (motionAllowed) Modifier.animateContentSize(
@@ -124,11 +158,15 @@ internal fun BriefCard(
                 horizontalArrangement = Arrangement.spacedBy(9.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(
-                    Modifier.size(32.dp).squircleSurface(tint.copy(alpha = .22f), cornerRadius = 10.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(card.icon, contentDescription = null, tint = tintLabel, modifier = Modifier.size(19.dp))
+                if (card == BriefCardId.SUGGESTIONS) {
+                    BriefSuggestionOrb(motionAllowed)
+                } else {
+                    Box(
+                        Modifier.size(32.dp).squircleSurface(tint.copy(alpha = .22f), cornerRadius = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(card.icon, contentDescription = null, tint = tintLabel, modifier = Modifier.size(19.dp))
+                    }
                 }
                 Column(Modifier.weight(1f)) {
                     Text(card.title, style = COUITheme.textStyles.headlineXS, color = COUITheme.colorScheme.labelPrimary)
