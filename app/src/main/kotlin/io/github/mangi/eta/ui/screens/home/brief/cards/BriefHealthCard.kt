@@ -53,7 +53,7 @@ internal fun BriefHealthCard(
     val colors = COUITheme.colorScheme
     val styles = COUITheme.textStyles
     val steps = briefProgress(demo.steps, demo.stepGoal)
-    BriefCard(BriefCardId.HEALTH, expanded, onToggleDensity, motionAllowed, modifier, "${briefPercent(steps)} % de l’objectif de pas", preview = true) {
+    BriefCard(BriefCardId.HEALTH, expanded, onToggleDensity, motionAllowed, modifier, "${briefPercent(steps)} % de l’objectif de pas") {
         Row(
             Modifier.fillMaxWidth().padding(top = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(15.dp),
@@ -81,13 +81,10 @@ internal fun BriefHealthCard(
         StepsWeek(motionAllowed)
         if (expanded) {
             SleepPhases()
-            Row(
-                Modifier.fillMaxWidth().padding(top = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                BriefMetric("Score sommeil", "${demo.sleepScore}/100", Modifier.weight(1f))
-                BriefMetric("Récupération", "${demo.recoveryPercent} %", Modifier.weight(1f))
-                BriefMetric("VFC", "${demo.hrv} ms", Modifier.weight(1f))
+            BriefMetricRow(Modifier.padding(top = 12.dp)) { item ->
+                BriefMetric("Score sommeil", "${demo.sleepScore}/100", item(1f))
+                BriefMetric("Récupération", "${demo.recoveryPercent} %", item(1f))
+                BriefMetric("VFC", "${demo.hrv} ms", item(1f))
             }
             val session = demo.nextWorkout
             Row(

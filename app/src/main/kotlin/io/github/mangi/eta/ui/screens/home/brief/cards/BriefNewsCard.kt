@@ -58,7 +58,7 @@ internal fun BriefNewsCard(
         articles?.filter { category == null || it.category == category }
     }
 
-    BriefCard(BriefCardId.NEWS, expanded, onToggleDensity, motionAllowed, modifier, "Sélection du jour", preview = true) {
+    BriefCard(BriefCardId.NEWS, expanded, onToggleDensity, motionAllowed, modifier, "Sélection du jour") {
         ChipTabRow(
             tabs = NewsTabs,
             selectedTabIndex = selected,
@@ -137,7 +137,7 @@ private fun ArticleSummary(lines: List<String>) {
     val styles = COUITheme.textStyles
     Column(
         Modifier.fillMaxWidth().padding(bottom = 5.dp)
-            .squircleSurface(colors.purple.copy(alpha = .12f), cornerRadius = 14.dp).padding(11.dp),
+            .briefInset(14.dp).padding(11.dp),
         verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         Text("L’essentiel", style = styles.headlineXS, color = colors.labelPrimary)

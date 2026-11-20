@@ -49,12 +49,12 @@ internal fun BriefCarCard(
     val demo = BriefDemoData
     val colors = COUITheme.colorScheme
     val styles = COUITheme.textStyles
-    BriefCard(BriefCardId.CAR, expanded, onToggleDensity, motionAllowed, modifier, demo.carModel, preview = true) {
+    BriefCard(BriefCardId.CAR, expanded, onToggleDensity, motionAllowed, modifier, demo.carModel) {
         Peugeot208Illustration(alert = expanded, motionAllowed = motionAllowed, modifier = Modifier.padding(vertical = 4.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BriefMetric("Autonomie", "${demo.rangeKm} km", Modifier.weight(1f))
-            BriefMetric("Carburant", "${demo.fuelPercent} %", Modifier.weight(1f))
-            BriefMetric("Compteur", "${briefNumber(demo.odometerKm)} km", Modifier.weight(1f))
+        BriefMetricRow { item ->
+            BriefMetric("Autonomie", "${demo.rangeKm}", item(.9f), unit = "km")
+            BriefMetric("Carburant", "${demo.fuelPercent}", item(.9f), unit = "%")
+            BriefMetric("Compteur", briefNumber(demo.odometerKm), item(1.2f), unit = "km")
         }
         BriefGauge(
             briefProgress(demo.fuelPercent, 100), listOf(colors.red, colors.orange, colors.yellow),
@@ -103,14 +103,10 @@ private fun CarTrip(trip: BriefDemoTrip) {
     val colors = COUITheme.colorScheme
     val styles = COUITheme.textStyles
     val traffic = demo.traffic.map { it.color() }
-    Row(
-        Modifier.fillMaxWidth().padding(top = 12.dp)
-            .squircleSurface(colors.labelPrimary.copy(alpha = .045f), cornerRadius = 18.dp).padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        BriefIconTile(Icons.Rounded.NearMe, colors.azure, 38.dp)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+    BriefInlineAction(
+        Modifier.fillMaxWidth().padding(top = 12.dp).briefInset(18.dp).padding(12.dp),
+        leading = { BriefIconTile(Icons.Rounded.NearMe, colors.azure, 38.dp) },
+        text = { Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text("${demo.tripKm} km · ${demo.tripMinutes} min", color = colors.labelSecondary, style = styles.bodyXS)
             Text(demo.destination, color = colors.labelPrimary, style = styles.headlineXS)
             Canvas(Modifier.fillMaxWidth().padding(top = 2.dp).height(6.dp)) {
@@ -125,29 +121,31 @@ private fun CarTrip(trip: BriefDemoTrip) {
                 }
             }
             Text(demo.tripTraffic, color = briefTintedLabel(colors.orange), style = styles.bodyXS)
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(if (trip.tomorrow) "Demain · partir à" else "Partir à", color = colors.labelSecondary, style = styles.bodyXS)
-            Text(briefHour(trip.departure), color = colors.labelPrimary, style = styles.headlineS)
-        }
-    }
+        } },
+        action = {
+            Column(horizontalAlignment = Alignment.End) {
+                Text(if (trip.tomorrow) "Demain · partir à" else "Partir à", color = colors.labelSecondary, style = styles.bodyXS)
+                Text(briefHour(trip.departure), color = colors.labelPrimary, style = styles.headlineS)
+            }
+        },
+        spacing = 10.dp,
+    )
 }
 
 @Composable
 private fun CarAlert(icon: ImageVector, tint: Color, title: String, detail: String, onAction: (() -> Unit)? = null) {
     val colors = COUITheme.colorScheme
     val styles = COUITheme.textStyles
-    Row(
+    BriefInlineAction(
         Modifier.fillMaxWidth().padding(top = 8.dp)
-            .squircleSurface(tint.copy(alpha = .15f), cornerRadius = 16.dp).padding(horizontal = 10.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(icon, null, Modifier.size(19.dp), tint = briefTintedLabel(tint))
-        Column(Modifier.weight(1f)) {
-            Text(title, color = colors.labelPrimary, style = styles.headlineXS)
-            Text(detail, color = colors.labelSecondary, style = styles.bodyXS)
-        }
-        if (onAction != null) BriefDemoButton("Y aller", onAction)
-    }
+            .briefInset(16.dp).padding(horizontal = 10.dp, vertical = 8.dp),
+        leading = { Icon(icon, null, Modifier.size(19.dp), tint = briefTintedLabel(tint)) },
+        text = {
+            Column {
+                Text(title, color = colors.labelPrimary, style = styles.headlineXS)
+                Text(detail, color = colors.labelSecondary, style = styles.bodyXS)
+            }
+        },
+        action = onAction?.let { { BriefDemoButton("Y aller", it) } },
+    )
 }

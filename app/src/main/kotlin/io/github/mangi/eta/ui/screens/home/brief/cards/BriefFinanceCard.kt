@@ -54,7 +54,7 @@ internal fun BriefFinanceCard(
     onToggleDensity: () -> Unit,
     modifier: Modifier,
 ) {
-    BriefCard(BriefCardId.FINANCE, expanded, onToggleDensity, motionAllowed, modifier, "Budget du mois", preview = true) {
+    BriefCard(BriefCardId.FINANCE, expanded, onToggleDensity, motionAllowed, modifier, "Budget du mois") {
         BudgetSummary(motionAllowed)
         if (expanded) {
             BudgetCategories()
@@ -179,7 +179,7 @@ private fun UpcomingPayments() {
                 pair.forEach { payment ->
                     val tint = payment.tone.color()
                     Column(
-                        Modifier.weight(1f).squircleSurface(tint.copy(alpha = .09f), cornerRadius = 14.dp)
+                        Modifier.weight(1f).briefInset(14.dp)
                             .padding(horizontal = 9.dp, vertical = 7.dp),
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {

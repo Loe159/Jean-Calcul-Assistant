@@ -237,7 +237,7 @@ private fun briefRelativeTime(postedAt: Long, now: Long): String {
 private fun NotificationShield(count: Int) {
     val green = COUITheme.colorScheme.green
     Row(
-        Modifier.fillMaxWidth().squircleSurface(green.copy(alpha = .10f), cornerRadius = 16.dp)
+        Modifier.fillMaxWidth().briefInset(16.dp)
             .padding(horizontal = 12.dp, vertical = 9.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,

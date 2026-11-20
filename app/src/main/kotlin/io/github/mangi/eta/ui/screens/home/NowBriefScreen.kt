@@ -50,6 +50,8 @@ import io.github.mangi.eta.ui.screens.home.brief.BriefHeader
 import io.github.mangi.eta.ui.screens.home.brief.BriefHeroKey
 import io.github.mangi.eta.ui.screens.home.brief.BriefMinibar
 import io.github.mangi.eta.ui.screens.home.brief.BriefNowBar
+import io.github.mangi.eta.ui.screens.home.brief.BriefPreviewsKey
+import io.github.mangi.eta.ui.screens.home.brief.BriefPreviewsSection
 import io.github.mangi.eta.ui.screens.home.brief.BriefSummaryInput
 import io.github.mangi.eta.ui.screens.home.brief.BriefSummarySource
 import io.github.mangi.eta.ui.screens.home.brief.BriefVisibilityPreferences
@@ -118,6 +120,13 @@ internal fun NowBriefScreen(
     var hiddenCards by remember(preferences) { mutableStateOf(preferences.hiddenCards()) }
     val showNotifications = BriefCardId.NOTIFICATIONS !in hiddenCards
     var showCustomization by remember { mutableStateOf(false) }
+    var previewsExpanded by remember(preferences) { mutableStateOf(preferences.previewsExpanded()) }
+    val setPreviewsExpanded: (Boolean) -> Unit = { expanded ->
+        previewsExpanded = expanded
+        preferences.setPreviewsExpanded(expanded)
+    }
+    // A scroll requested before its row exists (e.g. a preview card behind the fold) waits for the next layout.
+    var pendingScroll by remember { mutableStateOf<String?>(null) }
     val expandedCards = remember { mutableStateMapOf<BriefCardId, Boolean>() }
     var checkedSuggestions by remember { mutableStateOf(emptySet<String>()) }
     var deferredSuggestions by remember { mutableStateOf(emptySet<String>()) }
@@ -209,8 +218,10 @@ internal fun NowBriefScreen(
         extensions.filter { it.id !in reserved }
             .sortedWith(compareBy(NowBriefCardExtension::priority, NowBriefCardExtension::id))
     }
+    // Real data first; demo cards only below the "Aperçus" fold, in their moment order.
+    val realCards = cards.filterNot { it.isPreview }
+    val previewCards = cards.filter { it.isPreview }
     val rows = buildList {
-        val topCards = cards.takeWhile { it != BriefCardId.WEATHER && it != BriefCardId.HOME }
         fun addCard(card: BriefCardId, index: Int) {
             add(BriefFeedItem(card.key, "brief-card") {
                 val expanded = expandedCards[card] ?: false
@@ -277,16 +288,24 @@ internal fun NowBriefScreen(
                 }
             })
         }
-        topCards.forEachIndexed { index, card -> addCard(card, index) }
+        realCards.forEachIndexed { index, card -> addCard(card, index) }
         extensionsInOrder.forEachIndexed { index, extension ->
             add(BriefFeedItem("extension:${extension.id}", "brief-extension") {
-                BriefReveal("extension:${extension.id}", active, motionAllowed, topCards.size + index) {
+                BriefReveal("extension:${extension.id}", active, motionAllowed, realCards.size + index) {
                     Box(Modifier.padding(horizontal = 16.dp).padding(top = 8.dp)) { extension.content() }
                 }
             })
         }
-        cards.drop(topCards.size).forEachIndexed { index, card ->
-            addCard(card, topCards.size + extensionsInOrder.size + index)
+        if (previewCards.isNotEmpty()) {
+            val sectionIndex = realCards.size + extensionsInOrder.size
+            add(BriefFeedItem(BriefPreviewsKey, "brief-previews") {
+                BriefReveal(BriefPreviewsKey, atDashboard, motionAllowed, sectionIndex) {
+                    BriefPreviewsSection(previewCards.size, previewsExpanded, setPreviewsExpanded)
+                }
+            })
+            if (previewsExpanded) {
+                previewCards.forEachIndexed { index, card -> addCard(card, sectionIndex + 1 + index) }
+            }
         }
     }
 
@@ -307,14 +326,23 @@ internal fun NowBriefScreen(
         derivedStateOf { listState.firstVisibleItemIndex == 0 && !showMinibar }
     }
     val onScrollToCard: (BriefCardId) -> Unit = { card ->
-        val index = rows.indexOfFirst { it.key == card.key }
-        if (index >= 0) scope.launch {
+        if (card.isPreview && !previewsExpanded) setPreviewsExpanded(true)
+        pendingScroll = card.key
+    }
+    val rowKeys = rows.map { it.key }
+    LaunchedEffect(pendingScroll, rowKeys) {
+        val key = pendingScroll ?: return@LaunchedEffect
+        val index = rowKeys.indexOf(key)
+        if (index >= 0) {
             val targetOffset = -maxOf(minibarHeight, minibarSpace)
+            // +1 skips the hero item that precedes the rows.
             if (motionAllowed) listState.animateScrollToItem(index + 1, targetOffset)
             else listState.scrollToItem(index + 1, targetOffset)
         }
+        pendingScroll = null
     }
-    val shortcuts = remember(cards) { cards.sortedBy { it != BriefCardId.NOTIFICATIONS }.take(3) }
+    // Shortcuts only point at real cards; the demo cards share a single "Aperçus" chip.
+    val shortcuts = realCards
     val onCustomize = { showCustomization = true }
 
     val background = COUITheme.colorScheme.backgroundWithCard
@@ -346,6 +374,8 @@ internal fun NowBriefScreen(
                             summary = summary,
                             summaryElapsed = summaryElapsed,
                             shortcuts = shortcuts,
+                            previewCount = previewCards.size,
+                            onShowPreviews = { pendingScroll = BriefPreviewsKey },
                             animateSky = active && allowSkyMotion,
                             motionAllowed = motionAllowed,
                             scrollOffsetPx = { listState.firstVisibleItemScrollOffset.toFloat() },

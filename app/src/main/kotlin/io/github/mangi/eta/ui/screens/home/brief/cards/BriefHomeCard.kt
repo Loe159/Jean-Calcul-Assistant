@@ -64,13 +64,13 @@ internal fun BriefHomeCard(
     onTargetChange: (Float) -> Unit,
     onDemoAction: () -> Unit,
 ) {
-    BriefCard(BriefCardId.HOME, expanded, onToggleDensity, motionAllowed, modifier, "Salon", preview = true) {
+    BriefCard(BriefCardId.HOME, expanded, onToggleDensity, motionAllowed, modifier, "Salon") {
         HomeOverview(target, onTargetChange, motionAllowed)
         Column(Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             BriefHomeControl.entries.chunked(2).forEach { controls ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                BriefMetricRow { item ->
                     controls.forEach { control ->
-                        HomeControlTile(control, control in enabledControls, { onControlChange(control, it) }, Modifier.weight(1f))
+                        HomeControlTile(control, control in enabledControls, { onControlChange(control, it) }, item(1f))
                     }
                 }
             }
@@ -207,20 +207,20 @@ private fun BriefHomeControl.icon(): ImageVector = when (this) {
 private fun OpenWindowAlert(onDemoAction: () -> Unit) {
     val colors = COUITheme.colorScheme
     val styles = COUITheme.textStyles
-    Row(
+    BriefInlineAction(
         Modifier.fillMaxWidth().padding(top = 9.dp)
-            .squircleSurface(colors.orange.copy(alpha = .13f), cornerRadius = 14.dp)
+            .briefInset(14.dp)
             .padding(horizontal = 8.dp, vertical = 3.dp),
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(COUIIcons.Info, null, Modifier.size(17.dp), tint = briefTintedLabel(colors.orange))
-        Column(Modifier.weight(1f)) {
-            Text("Fenêtre de la chambre ouverte", color = colors.labelPrimary, style = styles.headlineXS)
-            Text("Depuis ${BriefDemoData.openWindowMinutes} min", color = colors.labelSecondary, style = styles.bodyXS)
-        }
-        BriefDemoButton("Rappel", onDemoAction)
-    }
+        leading = { Icon(COUIIcons.Info, null, Modifier.size(17.dp), tint = briefTintedLabel(colors.orange)) },
+        text = {
+            Column {
+                Text("Fenêtre de la chambre ouverte", color = colors.labelPrimary, style = styles.headlineXS)
+                Text("Depuis ${BriefDemoData.openWindowMinutes} min", color = colors.labelSecondary, style = styles.bodyXS)
+            }
+        },
+        action = { BriefDemoButton("Rappel", onDemoAction) },
+        spacing = 7.dp,
+    )
 }
 
 @Composable

@@ -51,7 +51,7 @@ internal fun BriefTasksCard(
         1 -> "1 tâche restante"
         else -> "${open.size} tâches restantes"
     }
-    BriefCard(BriefCardId.TASKS, expanded, onToggleDensity, motionAllowed, modifier, meta, preview = true) {
+    BriefCard(BriefCardId.TASKS, expanded, onToggleDensity, motionAllowed, modifier, meta) {
         Row(
             Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -84,20 +84,19 @@ internal fun BriefTasksCard(
             TaskRows(open.take(3), false, onCheck)
         }
         if (demo.garageCall !in checked && demo.tyreAppointment !in checked) {
-            Row(
+            BriefInlineAction(
                 Modifier.fillMaxWidth().padding(top = 10.dp)
-                    .squircleSurface(colors.violet.copy(alpha = .14f), cornerRadius = 16.dp)
+                    .briefInset(16.dp)
                     .padding(horizontal = 9.dp, vertical = 7.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(COUIIcons.Merge, null, Modifier.size(19.dp), tint = briefTintedLabel(colors.violet))
-                Text(
-                    "Regroupe « ${demo.garageCall} » et « ${demo.tyreAppointment} » en une seule tâche.",
-                    Modifier.weight(1f), color = colors.labelPrimary, style = styles.bodyXS,
-                )
-                BriefDemoButton("Regrouper", onDemoAction)
-            }
+                leading = { Icon(COUIIcons.Merge, null, Modifier.size(19.dp), tint = briefTintedLabel(colors.violet)) },
+                text = {
+                    Text(
+                        "Regroupe « ${demo.garageCall} » et « ${demo.tyreAppointment} » en une seule tâche.",
+                        color = colors.labelPrimary, style = styles.bodyXS,
+                    )
+                },
+                action = { BriefDemoButton("Regrouper", onDemoAction) },
+            )
         }
         if (expanded && complete.isNotEmpty()) {
             BriefSection("Terminées", complete.size.toString())
