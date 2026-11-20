@@ -1,0 +1,11 @@
+{
+  "comment": "Test vector only. Synthetic secret, never used by a real device.",
+  "secret": "c3ludGhldGljLXRlc3Qtc2VjcmV0LTMyLWJ5dGVzLW9rIQ",
+  "method": "POST",
+  "path": "/mobile/v1/notifications/analyze",
+  "timestamp": "1795195805000",
+  "nonce": "nonce_0123456789abcdef",
+  "body": "{\"hello\":\"jean-calcul\"}",
+  "canonical": "JC1\nPOST\n/mobile/v1/notifications/analyze\n1795195805000\nnonce_0123456789abcdef\nebe40666442990a684df354139d59958dc02b26fe8f1f57c60399c29fb468c56",
+  "signature": "7131241b32c7dfcf39a602dac5d32c075bc529f49be96057a854b70df242ee84"
+}

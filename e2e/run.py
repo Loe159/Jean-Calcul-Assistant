@@ -27,7 +27,7 @@ SCENARIOS = ('empty', 'message', 'reset', 'settings', 'dark', 'small_screen',
              'notifications_no_confirmation', 'brief', 'brief_dark',
              'brief_large_text', 'brief_notifications', 'brief_archive', 'brief_archive_dark',
              'brief_archive_large_text', 'brief_archive_restore',
-             'brief_decisions',
+             'brief_decisions', 'brief_mastra',
              'brief_swipe_isolation',
              'regression_fixture')
 

@@ -94,10 +94,13 @@ internal object NotificationTopics {
     }
 }
 
-internal enum class NotificationUserFeedback(val weight: Double, val wanted: Boolean?) {
-    INTERESTING(4.0, true), UNWANTED(4.0, false),
-    OPENED(1.0, true), ARCHIVED(0.35, false), RESTORED(2.0, true),
-    WRONG_REMOVAL(6.0, true), CATEGORY_CORRECTED(0.0, null),
+/** Local feedback kinds and their name in the Mastra feedback contract. */
+internal enum class NotificationUserFeedback(val weight: Double, val wanted: Boolean?, val remoteType: String) {
+    INTERESTING(4.0, true, "INTERESTING"), UNWANTED(4.0, false, "UNWANTED"),
+    OPENED(1.0, true, "OPENED"), ARCHIVED(0.35, false, "ARCHIVED"), RESTORED(2.0, true, "RESTORED"),
+    WRONG_REMOVAL(6.0, true, "WRONG_REMOVAL"), CATEGORY_CORRECTED(0.0, null, "TOPIC_CORRECTION"),
+    PRIORITY_CORRECTED(0.0, null, "PRIORITY_CORRECTION"),
+    ACTION_ACCEPTED(0.0, null, "ACTION_ACCEPTED"), ACTION_REJECTED(0.0, null, "ACTION_REJECTED"),
 }
 
 /** Persist hashed word features only; never persist additional sensitive text. */

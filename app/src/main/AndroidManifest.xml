@@ -187,6 +187,12 @@
             </intent-filter>
         </service>
 
+        <!-- Event-driven upload to the private homelab (network constraint, backoff, no polling). -->
+        <service
+            android:name=".agent.device.notifications.remote.MastraNotificationSyncJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
         <provider
             android:name=".agent.accessibility.AgentAccessibilityHealthProvider"
             android:authorities="fr.loevan.jeancalcul.v2.accessibility.health"

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "batchId": "fb_batch_000001",
+  "accepted": ["fb_evt_0000001", "fb_evt_0000002"],
+  "duplicates": ["fb_evt_0000003"],
+  "discarded": [],
+  "errors": [],
+  "policyVersion": "rules-2026.11.19+p2"
+}

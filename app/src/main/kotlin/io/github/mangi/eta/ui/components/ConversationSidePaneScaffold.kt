@@ -87,6 +87,7 @@ fun ConversationSidePaneScaffold(
     onDismiss: () -> Unit,
     onOpenBrief: () -> Unit = {},
     onDismissBrief: () -> Unit = {},
+    onBackFromBriefPage: (() -> Unit)? = null,
     onSearchChange: (String) -> Unit,
     onNewConversation: () -> Unit = {},
     onConversationSelected: (String) -> Unit,
@@ -180,7 +181,7 @@ fun ConversationSidePaneScaffold(
             focusManager.clearFocus()
             keyboard?.hide()
             if (currentBriefVisible) {
-                currentOnDismissBrief()
+                (onBackFromBriefPage ?: currentOnDismissBrief)()
             } else if (currentVisible) {
                 currentOnDismiss()
             } else {
@@ -258,7 +259,7 @@ fun ConversationSidePaneScaffold(
                     reverseDirection = false,
                     orientation = Orientation.Horizontal,
                     enabled = backHandlerEnabled && sceneLifecycleState == Lifecycle.State.RESUMED &&
-                        !notificationTouchActive,
+                        !notificationTouchActive && onBackFromBriefPage == null,
                     flingBehavior = flingBehavior,
                     interactionSource = dragInteractions,
                 ),

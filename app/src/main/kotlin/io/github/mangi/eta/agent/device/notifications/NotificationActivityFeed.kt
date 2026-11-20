@@ -3,6 +3,7 @@ package io.github.mangi.eta.agent.device.notifications
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * A cheap invalidation signal, not a background poller. The notification
@@ -14,6 +15,6 @@ internal object NotificationActivityFeed {
     val changes: StateFlow<Long> = _changes.asStateFlow()
 
     fun notifyChanged() {
-        _changes.value += 1L
+        _changes.update { it + 1L }
     }
 }

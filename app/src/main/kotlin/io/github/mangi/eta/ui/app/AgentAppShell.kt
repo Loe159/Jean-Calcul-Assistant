@@ -59,6 +59,7 @@ import io.github.mangi.eta.ui.components.ChatImagePreviewHost
 import io.github.mangi.eta.ui.components.ConversationSidePaneScaffold
 import io.github.mangi.eta.ui.components.RoleplayChatUi
 import io.github.mangi.eta.ui.components.coui.CouiBackButton
+import io.github.mangi.eta.ui.screens.home.NotificationFilter
 import io.github.mangi.eta.ui.screens.home.NowBriefScreen
 import io.github.mangi.eta.ui.model.AgentModelPickerUiState
 import io.github.mangi.eta.ui.model.ConversationPaneUiState
@@ -119,6 +120,11 @@ internal fun AgentAppShell(
     content: @Composable (PaddingValues) -> Unit,
 ) {
     var briefOpen by remember { mutableStateOf(false) }
+    var briefNotificationPage by remember { mutableStateOf<NotificationFilter?>(null) }
+    val closeBrief: () -> Unit = {
+        briefNotificationPage = null
+        briefOpen = false
+    }
     val pageContent: @Composable () -> Unit = {
         val isHome = currentRoute is AppRoute.Home
         val barColor = COUITheme.colorScheme.background
@@ -178,7 +184,8 @@ internal fun AgentAppShell(
                 briefVisible = briefOpen,
                 backHandlerEnabled = isCurrentRoute,
                 onOpenBrief = { briefOpen = true },
-                onDismissBrief = { briefOpen = false },
+                onDismissBrief = closeBrief,
+                onBackFromBriefPage = if (briefNotificationPage != null) ({ briefNotificationPage = null }) else null,
                 onOpen = onOpenConversationPane,
                 onDismiss = onDismissConversationPane,
                 onSearchChange = onSearchConversations,
@@ -199,10 +206,13 @@ internal fun AgentAppShell(
                 briefContent = { revealProgress, onItemTouchChange ->
                     NowBriefScreen(
                         visible = briefOpen,
+                        notificationPage = briefNotificationPage,
+                        onOpenNotifications = { briefNotificationPage = it },
+                        onCloseNotifications = { briefNotificationPage = null },
                         revealProgress = revealProgress,
                         onNotificationTouchChange = onItemTouchChange,
                         onManageFiltering = onOpenNotifications,
-                        onClose = { briefOpen = false },
+                        onClose = closeBrief,
                     )
                 },
             ) {

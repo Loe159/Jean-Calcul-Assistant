@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "summary_id": "9a7c03ff-cfb1-4ece-a226-a0b039dfab9e",
+  "generated_at": "2026-11-20T08:10:00.000Z",
+  "valid_until": "2026-11-20T08:30:00.000Z",
+  "segments": [
+    { "text": "Tu as ", "emphasis": false },
+    { "text": "2 notifications prioritaires", "emphasis": true },
+    { "text": " et ", "emphasis": false },
+    { "text": "Dentiste à 9 h 30", "emphasis": true },
+    { "text": ".", "emphasis": false }
+  ],
+  "sources": ["calendar", "notifications"],
+  "degraded": false
+}

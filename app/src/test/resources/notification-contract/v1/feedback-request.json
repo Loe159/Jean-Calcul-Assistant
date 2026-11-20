@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "deviceId": "device_opaque_123",
+  "batchId": "fb_batch_000001",
+  "learningConsent": true,
+  "events": [
+    {
+      "eventId": "fb_evt_0000001",
+      "notificationId": "notif_001_snap",
+      "revision": 1,
+      "type": "UNWANTED",
+      "occurredAt": "2026-11-19T18:40:00+01:00",
+      "context": { "package": "com.snapchat.android", "channelId": "suggestions", "subtype": "friend_suggestion" }
+    },
+    {
+      "eventId": "fb_evt_0000002",
+      "notificationId": "notif_002_github",
+      "revision": 1,
+      "type": "PRIORITY_CORRECTION",
+      "correctedPriority": "TODAY",
+      "occurredAt": "2026-11-19T18:41:00+01:00"
+    },
+    {
+      "eventId": "fb_evt_0000003",
+      "notificationId": "notif_002_github",
+      "revision": 1,
+      "type": "ACTION_ACCEPTED",
+      "actionType": "CREATE_TASK",
+      "occurredAt": "2026-11-19T18:42:00+01:00"
+    }
+  ]
+}
