@@ -233,7 +233,6 @@ internal fun BriefNotificationRow(
             entry.syncState == NotificationHistoryRepository.SyncState.SENT -> "Analyse en attente"
         entry.syncState == NotificationHistoryRepository.SyncState.ERROR -> "Analyse en attente · homelab indisponible"
         entry.syncState == NotificationHistoryRepository.SyncState.EXPIRED -> "Non analysée"
-        entry.remoteProtected -> "Protégée"
         else -> legacyStatus(entry.state)
     }
     val actions = remember(entry.actionsJson) {

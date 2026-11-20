@@ -165,6 +165,7 @@ internal fun NowBriefScreen(
                 } }.onSuccess {
                     activityEntries = activityEntries.map { if (it.key == entry.key) it.copy(userPriority = priority.name) else it }
                     NotificationActivityFeed.notifyChanged()
+                    AgentNotificationHistoryService.requestRemoteDismiss(context, entry.key, entry.postedAt)
                     MastraNotificationSync.request(context)
                 }.onFailure { activityError = true }
             }

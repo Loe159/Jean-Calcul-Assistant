@@ -19,10 +19,14 @@ class NotificationPriorityProtectionTest {
     private val context: Context get() = RuntimeEnvironment.getApplication()
 
     private fun makeNotification(pkg: String, title: String, message: String,
-                                 category: String?, flags: Int = 0): StatusBarNotification {
+                                 category: String?, flags: Int = 0, appFlags: Int = 0,
+                                 group: String? = null, id: Int = 17): StatusBarNotification {
         val info = PackageInfo().apply {
             packageName = pkg
-            applicationInfo = ApplicationInfo().apply { packageName = pkg }
+            applicationInfo = ApplicationInfo().apply {
+                packageName = pkg
+                this.flags = appFlags
+            }
         }
         shadowOf(context.packageManager).installPackage(info)
         val notification = Notification.Builder(context, "brief-test")
@@ -30,8 +34,9 @@ class NotificationPriorityProtectionTest {
             .setContentText(message)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setCategory(category)
+            .setGroup(group)
             .build().apply { this.flags = flags }
-        return StatusBarNotification(pkg, pkg, 17, "brief-test", 1000, 0, 0,
+        return StatusBarNotification(pkg, pkg, id, "brief-test", 1000, 0, 0,
             notification, Process.myUserHandle(), System.currentTimeMillis())
     }
 
@@ -41,6 +46,25 @@ class NotificationPriorityProtectionTest {
         return NotificationProtection.safeForBrief(context, sbn,
             NotificationPriorityInput(sbn.packageName, title, text,
                 androidCategory = sbn.notification.category, topic = topic))
+    }
+
+    @Test fun remoteDismissChecksPlatformFlagsWithoutReadingCategoryOrContent() {
+        val sensitive = makeNotification("org.example.preinstalled", "Vérification fictive",
+            "Code de vérification 112233", Notification.CATEGORY_SYSTEM, appFlags = ApplicationInfo.FLAG_SYSTEM)
+        assertTrue(NotificationProtection.remoteDismissAllowed(sensitive, arrayOf(sensitive)))
+        val ongoing = makeNotification("org.example.preinstalled", "Activité", "En cours",
+            Notification.CATEGORY_SERVICE, Notification.FLAG_ONGOING_EVENT)
+        assertFalse(NotificationProtection.remoteDismissAllowed(ongoing, arrayOf(ongoing)))
+    }
+
+    @Test fun remoteDismissAllowsGroupSummaryOnceItsChildrenAreGone() {
+        val app = "org.example.grouped"
+        val summary = makeNotification(app, "Résumé fictif", "", null,
+            Notification.FLAG_GROUP_SUMMARY, group = "test-group")
+        val child = makeNotification(app, "Message fictif", "", null, group = "test-group", id = 18)
+        assertFalse(NotificationProtection.remoteDismissAllowed(summary, arrayOf(summary, child)))
+        assertTrue(NotificationProtection.remoteDismissAllowed(child, arrayOf(summary, child)))
+        assertTrue(NotificationProtection.remoteDismissAllowed(summary, arrayOf(summary)))
     }
 
     @Test fun routineSystemUpdateCanBeClearedEvenWhenAndroidAppIsProtected() {

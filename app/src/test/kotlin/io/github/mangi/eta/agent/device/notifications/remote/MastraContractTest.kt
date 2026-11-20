@@ -54,11 +54,11 @@ class MastraContractTest {
     }
 
     @Test
-    fun `a decision removing NOW or protected content is rejected by the phone`() {
+    fun `a decision removing NOW is rejected by the phone`() {
         val ok = MastraContract.json.decodeFromString(AnalyzeResponse.serializer(), fixture("analyze-response.json")).decisions[0]
         assertTrue(MastraContract.validate(ok))
         assertFalse(MastraContract.validate(ok.copy(priority = Priority.NOW)))
-        assertFalse(MastraContract.validate(ok.copy(protected = true)))
+        assertTrue(MastraContract.validate(ok.copy(protected = true)))
         assertFalse(MastraContract.validate(ok.copy(topic = "unknown")))
         assertFalse(MastraContract.validate(ok.copy(contentHash = "abc")))
     }
