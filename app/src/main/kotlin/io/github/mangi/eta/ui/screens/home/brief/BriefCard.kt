@@ -93,6 +93,7 @@ internal fun BriefCard(
     modifier: Modifier = Modifier,
     meta: String? = null,
     preview: Boolean = false,
+    backgroundDecoration: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val tint = card.tint()
@@ -147,6 +148,7 @@ internal fun BriefCard(
                         accents.forEach { drawRect(it) }
                     }
                 }
+                .then(backgroundDecoration)
                 .then(
                     if (motionAllowed) Modifier.animateContentSize(
                         tween(BriefMotionTiming.DENSITY_MS, easing = BriefMotionTiming.EaseMove),

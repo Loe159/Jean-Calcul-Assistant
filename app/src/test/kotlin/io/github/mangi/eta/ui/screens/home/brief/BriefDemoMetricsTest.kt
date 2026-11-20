@@ -101,5 +101,80 @@ class BriefDemoMetricsTest {
         assertEquals("12\u00a0480", briefNumber(12_480))
     }
 
+    @Test
+    fun budgetPaceComparesShareOfBudgetSpentWithElapsedShareOfMonth() {
+        val pace = briefBudgetPace(128_400, 180_000, 19, 30)
+        assertEquals(128_400.0 / 180_000, pace.spentFraction, .000001)
+        assertEquals(19.0 / 30, pace.elapsedFraction, .000001)
+        assertEquals(8.0, pace.differencePoints, .000001)
+        assertEquals(51_600L, pace.remainingCents)
+        assertTrue(pace.aheadOfPace)
+        assertFalse(briefBudgetPace(6_500, 10_000, 18, 30).aheadOfPace)
+        assertTrue(briefBudgetPace(6_501, 10_000, 18, 30).aheadOfPace)
+        assertFalse(briefBudgetPace(11_500, 30_000, 10, 30).aheadOfPace)
+        assertFalse(briefBudgetPace(4_500, 10_000, 18, 30).aheadOfPace)
+    }
+
+    @Test
+    fun budgetPacePreservesOverspendAndBoundsTheElapsedTime() {
+        assertEquals(BriefBudgetPace(1.2, 1.0, -2_000, true), briefBudgetPace(12_000, 10_000, 31, 30))
+        assertEquals(BriefBudgetPace(0.1, 0.0, 9_000, true), briefBudgetPace(1_000, 10_000, -2, 30))
+        assertEquals(BriefBudgetPace(0.0, 0.0, 0, false), briefBudgetPace(0, 0, 1, 0))
+    }
+
+    @Test
+    fun portfolioDailyChangeWeightsPositionsByTheirPreviousValue() {
+        val positions = listOf(
+            BriefDemoPosition("ETF Monde", "XWLD", 4, 10_500, 10_000),
+            BriefDemoPosition("Industrie Europe", "XIEU", 2, 4_500, 5_000),
+        )
+        assertEquals(BriefValueChange(1_000, 2.0), briefPortfolioChange(positions))
+        assertEquals(BriefValueChange(-1_000, -10.0), briefPortfolioChange(positions.takeLast(1)))
+        assertEquals(BriefValueChange(0, 0.0), briefValueChange(10_000, 10_000))
+        assertEquals(BriefValueChange(1_000, null), briefValueChange(1_000, 0))
+        assertEquals(BriefValueChange(0, null), briefPortfolioChange(emptyList()))
+    }
+
+    @Test
+    fun demoPortfolioWindowsShareTodaysValueAndIntradayStartsAtPreviousClose() {
+        val positions = BriefDemoData.portfolio
+        val total = positions.sumOf { it.valueCents }
+        val previousClose = positions.sumOf { it.previousValueCents }
+        val histories = BriefPortfolioPeriod.entries.map(BriefDemoData::portfolioHistory)
+        assertEquals(929_352L, total)
+        assertEquals(4_476L, briefPortfolioChange(positions).cents)
+        assertTrue(histories.all { it.size > 1 && it.last() == total })
+        assertEquals(previousClose, histories.first().first())
+        assertEquals(4, histories.map { it.first() }.distinct().size)
+        val week = BriefDemoData.portfolioHistory(BriefPortfolioPeriod.Week)
+        val month = BriefDemoData.portfolioHistory(BriefPortfolioPeriod.Month)
+        val year = BriefDemoData.portfolioHistory(BriefPortfolioPeriod.Year)
+        assertEquals(8, week.size)
+        assertEquals(31, month.size)
+        assertEquals(13, year.size)
+        assertEquals(week, month.takeLast(week.size))
+        assertEquals(month.first(), year[year.lastIndex - 1])
+    }
+
+    @Test
+    fun financialValuesUseFrenchGroupingAndShowSignedVariations() {
+        assertEquals("9\u00a0293,52\u00a0€", briefEuro(929_352))
+        assertEquals("+44,76\u00a0€", briefEuro(4_476, signed = true))
+        assertEquals("−9,36\u00a0€", briefEuro(-936, signed = true))
+        assertEquals("0,00\u00a0€", briefEuro(0, signed = true))
+        assertEquals("−1,80", briefDecimal(-1.8, decimals = 2, signed = true))
+    }
+
+    @Test
+    fun weatherForecastChangesConditionsAndContinuesAfterMidnight() {
+        val forecast = briefWeatherForecast(20)
+        assertEquals(listOf(20, 21, 22, 23, 0, 1, 2), forecast.map { it.hour })
+        assertEquals(listOf(8, 8, 7, 7, 7, 7, 6), forecast.map { it.temperature })
+        assertEquals(BriefWeatherCondition.Rain, forecast[0].condition)
+        assertEquals(BriefWeatherCondition.Cloudy, forecast[1].condition)
+        assertEquals(BriefWeatherCondition.ClearNight, forecast[4].condition)
+        assertEquals(BriefWeatherCondition.ClearDay, briefWeatherForecast(10).first().condition)
+    }
+
     private fun event(start: Int, end: Int) = BriefDemoEvent(start, end, "Atelier", "Visio", BriefDemoTone.Blue)
 }

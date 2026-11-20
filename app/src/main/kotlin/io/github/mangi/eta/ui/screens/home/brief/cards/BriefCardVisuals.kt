@@ -29,6 +29,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -133,8 +134,10 @@ internal fun BriefGauge(
     motionAllowed: Boolean,
     modifier: Modifier = Modifier,
     description: String? = null,
+    marker: Float? = null,
 ) {
     val track = COUITheme.colorScheme.labelPrimary.copy(alpha = .09f)
+    val markerColor = COUITheme.colorScheme.labelPrimary.copy(alpha = .75f)
     val animated = briefAnimatedProgress(progress, motionAllowed)
     Canvas(modifier.semantics {
         if (description != null) contentDescription = description
@@ -148,6 +151,55 @@ internal fun BriefGauge(
             if (colors.size == 1) drawRoundRect(colors.first(), size = filled, cornerRadius = radius)
             else drawRoundRect(Brush.horizontalGradient(colors, endX = size.width * progress), size = filled, cornerRadius = radius)
         }
+        if (marker != null) {
+            val x = (size.width - 2.dp.toPx()).coerceAtLeast(0f) * marker.coerceIn(0f, 1f) + 1.dp.toPx()
+            drawLine(markerColor, Offset(x, -3.dp.toPx()), Offset(x, size.height + 3.dp.toPx()), 2.dp.toPx(), StrokeCap.Round)
+        }
+    }
+}
+
+@Composable
+internal fun BriefSparkline(
+    values: List<Float>,
+    tint: Color,
+    description: String,
+    modifier: Modifier = Modifier,
+    bars: List<Float> = emptyList(),
+    barTint: Color = tint,
+) {
+    if (values.size < 2) return
+    Canvas(modifier.semantics { contentDescription = description }) {
+        val low = values.min()
+        val range = (values.max() - low).coerceAtLeast(1f)
+        val inset = 4.dp.toPx()
+        val width = (size.width - 2 * inset).coerceAtLeast(0f)
+        val height = (size.height - 2 * inset).coerceAtLeast(0f)
+        val step = width / values.lastIndex
+        val points = values.mapIndexed { index, value ->
+            Offset(inset + step * index, inset + height * (1f - (value - low) / range) * .84f)
+        }
+        val line = Path().apply {
+            moveTo(points.first().x, points.first().y)
+            points.zipWithNext().forEach { (start, end) ->
+                val middle = (start.x + end.x) / 2
+                cubicTo(middle, start.y, middle, end.y, end.x, end.y)
+            }
+        }
+        val fill = Path().apply {
+            addPath(line)
+            lineTo(points.last().x, size.height)
+            lineTo(points.first().x, size.height)
+            close()
+        }
+        drawPath(fill, Brush.verticalGradient(listOf(tint.copy(alpha = .24f), Color.Transparent)))
+        points.zip(bars).forEach { (point, fraction) ->
+            val barHeight = height * fraction.coerceIn(0f, 1f) * .46f
+            val barWidth = minOf(step * .4f, 16.dp.toPx())
+            val x = point.x.coerceIn(barWidth / 2f, size.width - barWidth / 2f)
+            drawRoundRect(barTint, Offset(x - barWidth / 2f, size.height - barHeight), Size(barWidth, barHeight), CornerRadius(3.dp.toPx()))
+        }
+        drawPath(line, tint, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+        drawCircle(tint, 3.dp.toPx(), points.last())
     }
 }
 

@@ -18,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -40,7 +41,6 @@ import io.github.mangi.eta.ui.components.coui.couiPageScroll
 import io.github.mangi.eta.ui.components.coui.rememberMaterialBackdropProvider
 import io.github.mangi.eta.ui.components.coui.rememberPageBackdrop
 import io.github.mangi.eta.ui.components.coui.rememberPopupMaterialBlur
-import io.github.mangi.eta.ui.screens.home.brief.BriefCard
 import io.github.mangi.eta.ui.screens.home.brief.BriefCardId
 import io.github.mangi.eta.ui.screens.home.brief.BriefCustomization
 import io.github.mangi.eta.ui.screens.home.brief.BriefDemoData
@@ -54,22 +54,24 @@ import io.github.mangi.eta.ui.screens.home.brief.BriefSummarySource
 import io.github.mangi.eta.ui.screens.home.brief.BriefVisibilityPreferences
 import io.github.mangi.eta.ui.screens.home.brief.LocalBriefSummary
 import io.github.mangi.eta.ui.screens.home.brief.briefBarSuggestion
-import io.github.mangi.eta.ui.screens.home.brief.briefDemoCard
 import io.github.mangi.eta.ui.screens.home.brief.briefFeedOrder
 import io.github.mangi.eta.ui.screens.home.brief.briefMoment
 import io.github.mangi.eta.ui.screens.home.brief.localBriefSummary
 import io.github.mangi.eta.ui.screens.home.brief.rememberBriefTime
 import io.github.mangi.eta.ui.screens.home.brief.cards.BriefAgendaCard
 import io.github.mangi.eta.ui.screens.home.brief.cards.BriefCarCard
+import io.github.mangi.eta.ui.screens.home.brief.cards.BriefFinanceCard
 import io.github.mangi.eta.ui.screens.home.brief.cards.BriefHabitsCard
 import io.github.mangi.eta.ui.screens.home.brief.cards.BriefHealthCard
+import io.github.mangi.eta.ui.screens.home.brief.cards.BriefHomeCard
+import io.github.mangi.eta.ui.screens.home.brief.cards.BriefNewsCard
 import io.github.mangi.eta.ui.screens.home.brief.cards.BriefNotificationsCard
 import io.github.mangi.eta.ui.screens.home.brief.cards.BriefSuggestionsCard
 import io.github.mangi.eta.ui.screens.home.brief.cards.BriefTasksCard
+import io.github.mangi.eta.ui.screens.home.brief.cards.BriefWeatherCard
 import io.github.suqi8.coui.kmp.basic.Scaffold
 import io.github.suqi8.coui.kmp.basic.SnackbarHost
 import io.github.suqi8.coui.kmp.basic.SnackbarHostState
-import io.github.suqi8.coui.kmp.basic.Text
 import io.github.suqi8.coui.kmp.blur.layerBackdrop
 import io.github.suqi8.coui.kmp.effect.LocalMaterialBackdrop
 import io.github.suqi8.coui.kmp.effect.LocalPopupMaterialBlur
@@ -118,6 +120,8 @@ internal fun NowBriefScreen(
         mutableStateOf(BriefDemoData.tasks.filter { it.done }.map { it.title }.toSet())
     }
     val habitCounts = remember { mutableStateMapOf<String, Int>() }
+    var homeControls by remember { mutableStateOf(BriefDemoData.homeEnabledControls) }
+    var thermostatTarget by remember { mutableFloatStateOf(BriefDemoData.thermostatTarget) }
     val atDashboard = active && notificationPage == null
     val now by rememberBriefTime(atDashboard)
     val moment = briefMoment(now.toLocalTime())
@@ -127,6 +131,9 @@ internal fun NowBriefScreen(
     val scope = rememberCoroutineScope()
     val repository = remember(context) { NotificationHistoryRepository(context) }
     val listState = rememberLazyListState()
+    val weatherInViewport by remember(listState) {
+        derivedStateOf { listState.layoutInfo.visibleItemsInfo.any { it.key == BriefCardId.WEATHER.key } }
+    }
     val snackbars = remember { SnackbarHostState() }
     val showDemoAction: () -> Unit = { scope.launch { snackbars.showSnackbar("Bientôt disponible") } }
     val (notificationActions, actionDialogs) = rememberBriefNotificationActions(repository, snackbars)
@@ -227,27 +234,22 @@ internal fun NowBriefScreen(
                             onCountChange = { id, count -> habitCounts[id] = count },
                             onDemoAction = showDemoAction,
                         )
-                        else -> {
-                            val demo = briefDemoCard(card)
-                            BriefCard(
-                                card = card,
-                                expanded = expanded,
-                                onToggleDensity = toggleDensity,
-                                motionAllowed = motionAllowed,
-                                modifier = cardModifier,
-                                meta = demo.headline,
-                                preview = true,
-                            ) {
-                                if (expanded) {
-                                    Text(
-                                        demo.detail,
-                                        style = COUITheme.textStyles.bodyS,
-                                        color = COUITheme.colorScheme.labelSecondary,
-                                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
-                                    )
-                                }
-                            }
-                        }
+                        BriefCardId.FINANCE -> BriefFinanceCard(expanded, animateCard, toggleDensity, cardModifier)
+                        BriefCardId.NEWS -> BriefNewsCard(expanded, animateCard, toggleDensity, cardModifier)
+                        BriefCardId.WEATHER -> BriefWeatherCard(
+                            expanded, animateCard, toggleDensity, cardModifier, now.hour,
+                            inViewport = { weatherInViewport },
+                        )
+                        BriefCardId.HOME -> BriefHomeCard(
+                            expanded, animateCard, toggleDensity, cardModifier,
+                            enabledControls = homeControls,
+                            onControlChange = { control, checked ->
+                                homeControls = if (checked) homeControls + control else homeControls - control
+                            },
+                            target = thermostatTarget,
+                            onTargetChange = { thermostatTarget = it.coerceIn(BriefDemoData.thermostatMin, BriefDemoData.thermostatMax) },
+                            onDemoAction = showDemoAction,
+                        )
                     }
                 }
             })

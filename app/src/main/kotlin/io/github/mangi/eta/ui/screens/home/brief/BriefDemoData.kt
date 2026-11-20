@@ -1,14 +1,7 @@
 package io.github.mangi.eta.ui.screens.home.brief
 
-internal data class BriefDemoCard(val headline: String, val detail: String)
-
-internal fun briefDemoCard(card: BriefCardId): BriefDemoCard = when (card) {
-    BriefCardId.FINANCE -> BriefDemoCard("Budget du mois · 62 %", "Exemple de dépenses et de suivi du budget.")
-    BriefCardId.NEWS -> BriefDemoCard("Une sélection à lire", "Exemple de lecture · 4 minutes.")
-    BriefCardId.WEATHER -> BriefDemoCard("11° · Éclaircies", "Des averses en fin de journée dans cet aperçu.")
-    BriefCardId.HOME -> BriefDemoCard("20° à l’intérieur", "Exemple de consommation · 5,2 kWh aujourd’hui.")
-    else -> error("This card has dedicated content: $card")
-}
+import java.net.URI
+import java.time.Instant
 
 internal data class BriefBarSuggestion(
     val card: BriefCardId,
@@ -53,6 +46,30 @@ internal data class BriefDemoHabit(val title: String, val target: Int = 1, val c
 internal data class BriefDemoGoal(val title: String, val completed: Int, val target: Int, val tone: BriefDemoTone)
 internal data class BriefDemoSleep(val label: String, val minutes: Int, val tone: BriefDemoTone)
 internal data class BriefDemoOccasion(val month: String, val day: String, val title: String, val detail: String)
+
+internal data class BriefDemoCategory(val label: String, val cents: Long, val tone: BriefDemoTone)
+internal data class BriefDemoPayment(val label: String, val detail: String, val cents: Long, val tone: BriefDemoTone)
+internal data class BriefDemoPosition(
+    val name: String,
+    val ticker: String,
+    val quantity: Int,
+    val priceCents: Long,
+    val previousCloseCents: Long,
+) {
+    val valueCents get() = quantity * priceCents
+    val previousValueCents get() = quantity * previousCloseCents
+}
+
+internal enum class BriefPortfolioPeriod(val label: String, val description: String) {
+    Day("1J", "sur un jour"), Week("1S", "sur une semaine"), Month("1M", "sur un mois"), Year("1A", "sur un an"),
+}
+
+internal enum class BriefHomeControl(val label: String, val onLabel: String, val offLabel: String) {
+    Lights("Lumières", "3 allumées", "Éteintes"),
+    Heating("Chauffage", "Actif · Éco", "À l’arrêt"),
+    Shutters("Volets", "Fermés", "Ouverts"),
+    Lock("Serrure", "Verrouillée", "Déverrouillée"),
+}
 
 internal object BriefDemoData {
     val suggestions = listOf(
@@ -146,4 +163,123 @@ internal object BriefDemoData {
         BriefDemoOccasion("DÉC", "03", "Dîner de fin d’année", "Jeudi · 19:30 · chez Clara"),
     )
     val achievements = listOf("Record du mois · 12 480 pas mardi", "12 soirs de suite sous 2 h d’écran")
+
+    const val budgetCents = 180_000L
+    const val budgetDay = 19
+    const val budgetDays = 30
+    val budgetCategories = listOf(
+        BriefDemoCategory("Courses", 41_200, BriefDemoTone.Green),
+        BriefDemoCategory("Restaurants", 24_600, BriefDemoTone.Orange),
+        BriefDemoCategory("Transport", 19_800, BriefDemoTone.Azure),
+        BriefDemoCategory("Abonnements", 12_400, BriefDemoTone.Purple),
+        BriefDemoCategory("Loisirs", 16_800, BriefDemoTone.Yellow),
+        BriefDemoCategory("Autres", 13_600, BriefDemoTone.Blue),
+    )
+    val recentExpenses = listOf(
+        BriefDemoPayment("Supermarché du quartier", "Courses · aujourd’hui", 3_460, BriefDemoTone.Green),
+        BriefDemoPayment("Station-service", "Transport · hier", 5_210, BriefDemoTone.Azure),
+        BriefDemoPayment("Café de la Place", "Restaurants · hier", 1_820, BriefDemoTone.Orange),
+        BriefDemoPayment("Boulangerie", "Courses · mardi", 480, BriefDemoTone.Green),
+    )
+    val upcomingPayments = listOf(
+        BriefDemoPayment("Musique en ligne", "Demain", 1_099, BriefDemoTone.Purple),
+        BriefDemoPayment("Stockage cloud", "22 nov.", 299, BriefDemoTone.Azure),
+        BriefDemoPayment("Salle de sport", "1 déc.", 2_990, BriefDemoTone.Orange),
+        BriefDemoPayment("Assurance auto", "3 déc.", 4_120, BriefDemoTone.Red),
+    )
+    val portfolio = listOf(
+        BriefDemoPosition("ETF Monde", "XWLD", 42, 11_842, 11_768),
+        BriefDemoPosition("ETF S&P 500", "XSP5", 30, 6_574, 6_532),
+        BriefDemoPosition("Énergie Europe", "XEUE", 24, 4_286, 4_325),
+        BriefDemoPosition("Industrie Europe", "XIEU", 18, 7_328, 7_270),
+    )
+    private val portfolioDayMoves = listOf(0L, -450, -1_280, 850, 1_930, 1_240, 3_860, 3_170)
+    private val portfolioWeekOffsets = listOf(-15_410L, -11_210, -13_540, -8_020, -9_660, -5_120)
+    private val portfolioMonthOffsets = listOf(
+        -31_610L, -32_100, -33_480, -35_860, -32_600, -30_200, -28_600, -26_420,
+        -25_810, -26_590, -28_110, -26_500, -25_920, -23_770, -21_150, -19_620,
+        -19_400, -18_260, -16_120, -14_850, -15_760, -16_200, -17_290,
+    )
+    private val portfolioYearOffsets = listOf(
+        -91_450L, -98_140, -80_820, -75_190, -88_540, -69_510, -60_140, -64_530, -51_600, -44_860, -38_110,
+    )
+
+    fun portfolioHistory(period: BriefPortfolioPeriod): List<Long> {
+        val total = portfolio.sumOf { it.valueCents }
+        val previousClose = portfolio.sumOf { it.previousValueCents }
+        val week = portfolioWeekOffsets.map { total + it } + previousClose + total
+        return when (period) {
+            BriefPortfolioPeriod.Day -> portfolioDayMoves.map { previousClose + it } + total
+            BriefPortfolioPeriod.Week -> week
+            BriefPortfolioPeriod.Month -> portfolioMonthOffsets.map { total + it } + week
+            BriefPortfolioPeriod.Year -> portfolioYearOffsets.map { total + it } + (total + portfolioMonthOffsets.first()) + total
+        }
+    }
+
+    val news = listOf(
+        NewsArticle(
+            "Des assistants vocaux qui tournent sans connexion", "Le Signal Numérique",
+            URI.create("https://news.example/assistants-locaux"), Instant.parse("2026-11-20T07:30:00Z"),
+            NewsCategory.Tech, 3, listOf(
+                "Un prototype exécute les tâches simples directement sur le téléphone.",
+                "Les modèles compressés occupent moins de mémoire et consomment moins d’énergie.",
+                "Les essais se poursuivront sur des appareils d’entrée de gamme.",
+            ),
+        ),
+        NewsArticle(
+            "Un atelier coopératif teste la livraison à vélo", "La Gazette des Ateliers",
+            URI.create("https://news.example/livraison-velo"), Instant.parse("2026-11-20T07:10:00Z"),
+            NewsCategory.Economy, 4, listOf(
+                "Plusieurs commerces mutualisent leurs livraisons de proximité.",
+                "La phase d’essai se concentre sur les trajets de moins de trois kilomètres.",
+            ),
+        ),
+        NewsArticle(
+            "La médiathèque ouvre un espace de prêt d’outils", "Le Courrier du Quartier",
+            URI.create("https://news.example/pret-outils"), Instant.parse("2026-11-20T06:50:00Z"),
+            NewsCategory.Local, 2, listOf(
+                "Une carte de lecteur suffit pour emprunter du matériel de bricolage.",
+                "Des permanences accompagneront les premiers emprunts le samedi.",
+            ),
+        ),
+        NewsArticle(
+            "Une bibliothèque libre allège l’entraînement des petits modèles", "Le Signal Numérique",
+            URI.create("https://news.example/modeles-compacts"), Instant.parse("2026-11-20T06:30:00Z"),
+            NewsCategory.Tech, 5, listOf(
+                "Le projet réutilise une partie des calculs entre les sessions d’entraînement.",
+                "Le gain de mémoire permet de lancer les essais sur des machines modestes.",
+            ),
+        ),
+    )
+
+    const val weatherLocation = "Les Tilleuls"
+    const val windKmh = 14
+    const val feelsLikeOffset = 2
+    val hourlyTemperatures = listOf(
+        5, 5, 4, 4, 4, 4, 5, 6, 7, 8, 9, 10, 11, 11, 11, 11, 10, 10, 9, 9, 8, 8, 7, 7,
+        7, 7, 6, 6, 6, 6, 6, 7, 8, 9, 10, 11, 12, 12, 12, 11, 10, 9, 9, 8, 8, 7, 7, 7,
+    )
+    val hourlyRain = listOf(
+        10, 10, 5, 5, 5, 5, 5, 5, 10, 10, 15, 20, 30, 35, 40, 50, 60, 70, 75, 80, 60, 35, 15, 10,
+        10, 10, 5, 5, 5, 5, 10, 25, 55, 60, 40, 25, 15, 10, 10, 15, 20, 35, 60, 50, 30, 20, 10, 5,
+    )
+
+    const val indoorTemperature = 20.5f
+    const val thermostatTarget = 21f
+    const val thermostatMin = 16f
+    const val thermostatMax = 26f
+    const val humidityPercent = 46
+    const val energyVsAverage = -12
+    const val homeDemoHour = 19
+    const val homePowerKw = 1.2
+    val homeEnergy = listOf(
+        .6f, .5f, .3f, .2f, .2f, .2f, .2f, .2f, .2f, .3f, .5f, .6f,
+        .4f, .2f, .2f, .3f, .4f, .3f, .3f, .4f, .5f, .8f, 1.0f, 1.2f,
+    )
+    val homeEnergyToday = homeEnergy.takeLast(homeDemoHour + 1).sumOf { it.toDouble() }
+    val homeEnabledControls = setOf(BriefHomeControl.Lights, BriefHomeControl.Heating, BriefHomeControl.Lock)
+    const val openWindowMinutes = 20
+    const val washerMinutes = 24
+    const val washerCycleMinutes = 90
+    const val robotPercent = 100
 }
