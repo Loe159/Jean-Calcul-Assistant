@@ -1,7 +1,9 @@
 package io.github.mangi.eta.ui.screens.home.brief
 
+import io.github.mangi.eta.agent.device.notifications.remote.MastraBriefCounts
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -62,15 +64,16 @@ class BriefModelTest {
 
     @Test
     fun localSummaryHighlightsExactCountsAndHandlesHiddenHistory() {
-        val now = LocalDateTime.parse("2026-11-20T18:00")
-        fun highlights(count: Int?): List<String> =
-            localBriefSummary(BriefSummaryInput(now, count))
-                .filter { it.highlighted }.map { it.text }
+        val now = LocalDateTime.parse("2026-11-20T18:00").atZone(ZoneId.of("Europe/Paris"))
+        fun highlights(count: Int?, show: Boolean = true): List<String> =
+            localBriefSummary(BriefSummaryInput(now, "fr-FR", count?.let { MastraBriefCounts(it, 0, 0) }, show))
+                .parts.filter { it.highlighted }.map { it.text }
 
         assertEquals(listOf("1 notification urgente.", "la journée de demain."), highlights(1))
         assertEquals("2 notifications urgentes.", highlights(2).first())
         assertEquals("Aucune notification urgente.", highlights(0).first())
         assertEquals(listOf("la journée de demain."), highlights(null))
+        assertEquals(listOf("la journée de demain."), highlights(2, show = false))
     }
 
     @Test

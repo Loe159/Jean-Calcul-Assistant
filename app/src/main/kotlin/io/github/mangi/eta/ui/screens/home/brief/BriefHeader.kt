@@ -8,7 +8,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -26,21 +25,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.text
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -68,7 +61,8 @@ private val timeFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.FRENCH)
 internal fun BriefHeader(
     now: LocalDateTime,
     moment: BriefMoment,
-    summary: List<BriefSummaryPart>,
+    summary: BriefSummary,
+    summaryElapsed: () -> Float,
     shortcuts: List<BriefCardId>,
     active: Boolean,
     animateSky: Boolean,
@@ -123,7 +117,15 @@ internal fun BriefHeader(
                     BriefMoment.EVENING -> colors.blue
                     BriefMoment.NIGHT -> colors.violet
                 }
-                BriefSummaryText(summary, highlight, active, motionAllowed)
+                BriefSummaryText(summary, highlight, summaryElapsed)
+                if (summary.remote != null) {
+                    Text(
+                        "Résumé par Jean-Calcul",
+                        modifier = Modifier.padding(top = 6.dp),
+                        style = COUITheme.textStyles.bodyXS,
+                        color = colors.labelSecondary,
+                    )
+                }
             }
             if (shortcuts.isNotEmpty()) {
                 Row(
@@ -192,65 +194,76 @@ private fun BriefHeaderButton(back: Boolean, onClick: () -> Unit) {
     }
 }
 
-@Composable
-private fun BriefSummaryText(
-    summary: List<BriefSummaryPart>,
-    tint: Color,
-    active: Boolean,
-    motionAllowed: Boolean,
-) {
-    if (summary.isEmpty()) return
-    val words = remember(summary) {
-        summary.flatMap { part ->
-            part.text.split(' ').filter(String::isNotEmpty).map { part.copy(text = it) }
-        }
-    }
-    if (words.isEmpty()) return
-    var shown by rememberSaveable { mutableStateOf(false) }
-    val elapsed = remember { Animatable(0f) }
-    LaunchedEffect(active, motionAllowed, words) {
-        if (!active || shown) return@LaunchedEffect
-        if (motionAllowed) {
-            val duration = BriefMotionTiming.WORD_START_MS + BriefMotionTiming.WORD_MS +
-                (words.size - 1) * BriefMotionTiming.WORD_STAGGER_MS
-            elapsed.snapTo(0f)
-            elapsed.animateTo(duration.toFloat(), tween(duration, easing = LinearEasing))
-        }
-        shown = true
-    }
+private val summaryWord = Regex("[^\\s\\p{Z}]+")
 
+/** Hoisted above the lazy header so scrolling and reopening retain the reveal for the same text. */
+@Composable
+internal fun rememberBriefSummaryReveal(text: String, active: Boolean, motionAllowed: Boolean): () -> Float {
+    val elapsed = remember(text) { Animatable(0f) }
+    var started by remember(text) { mutableStateOf(false) }
+    var running by remember(text) { mutableStateOf(false) }
+    LaunchedEffect(text, active, motionAllowed) {
+        if (!active || started) return@LaunchedEffect
+        started = true
+        if (motionAllowed) {
+            val words = summaryWord.findAll(text).count()
+            val duration = BriefMotionTiming.WORD_START_MS + BriefMotionTiming.WORD_MS +
+                (words - 1).coerceAtLeast(0) * BriefMotionTiming.WORD_STAGGER_MS
+            running = true
+            try {
+                elapsed.animateTo(duration.toFloat(), tween(duration, easing = LinearEasing))
+            } finally {
+                running = false
+            }
+        }
+    }
+    return {
+        if (active && motionAllowed && (!started || running)) elapsed.value else Float.POSITIVE_INFINITY
+    }
+}
+
+@Composable
+private fun BriefSummaryText(summary: BriefSummary, tint: Color, elapsed: () -> Float) {
+    val words = remember(summary.text) { summaryWord.findAll(summary.text).map { it.range }.toList() }
+    val highlights = remember(summary.parts) {
+        buildList {
+            var offset = 0
+            for (part in summary.parts) {
+                val end = offset + part.text.length
+                if (part.highlighted) add(offset until end)
+                offset = end
+            }
+        }
+    }
     val colors = COUITheme.colorScheme
-    FlowRow(
-        Modifier.clearAndSetSemantics { text = AnnotatedString(summary.joinToString(" ") { it.text }) },
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
+    val regularColor = colors.labelPrimaryVariant
+    val emphasizedColor = colors.labelPrimary
+    val progress = elapsed()
+    val styled = buildAnnotatedString {
+        append(summary.text)
         words.forEachIndexed { index, word ->
             val start = BriefMotionTiming.WORD_START_MS + index * BriefMotionTiming.WORD_STAGGER_MS
-            Text(
-                text = word.text,
-                style = COUITheme.textStyles.bodyM.copy(
-                    fontSize = 16.5.sp, lineHeight = 23.5.sp,
-                    fontWeight = if (word.highlighted) FontWeight.SemiBold else FontWeight.Normal,
-                ),
-                color = if (word.highlighted) colors.labelPrimary else colors.labelPrimaryVariant,
-                modifier = Modifier.graphicsLayer {
-                    val fraction = if (!active || !motionAllowed || shown) 1f else {
-                        BriefMotionTiming.EaseMove.transform(
-                            ((elapsed.value - start) / BriefMotionTiming.WORD_MS).coerceIn(0f, 1f),
-                        )
-                    }
-                    alpha = fraction
-                    translationY = (1f - fraction) * 6.dp.toPx()
-                }.then(
-                    if (word.highlighted) Modifier.drawBehind {
-                        drawRect(
-                            tint.copy(alpha = .32f),
-                            topLeft = Offset(0f, size.height * .62f),
-                            size = Size(size.width, size.height * .38f),
-                        )
-                    } else Modifier,
-                ),
+            val alpha = BriefMotionTiming.EaseMove.transform(
+                ((progress - start) / BriefMotionTiming.WORD_MS).coerceIn(0f, 1f),
             )
+            val end = words.getOrNull(index + 1)?.first ?: length
+            addStyle(SpanStyle(color = regularColor.copy(alpha = regularColor.alpha * alpha)), word.first, end)
+            for (highlight in highlights) {
+                val highlightStart = maxOf(word.first, highlight.first)
+                val highlightEnd = minOf(end, highlight.last + 1)
+                if (highlightStart < highlightEnd) {
+                    addStyle(
+                        SpanStyle(
+                            color = emphasizedColor.copy(alpha = emphasizedColor.alpha * alpha),
+                            background = tint.copy(alpha = .32f * alpha),
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        highlightStart,
+                        highlightEnd,
+                    )
+                }
+            }
         }
     }
+    Text(styled, style = COUITheme.textStyles.bodyM.copy(fontSize = 16.5.sp, lineHeight = 23.5.sp))
 }

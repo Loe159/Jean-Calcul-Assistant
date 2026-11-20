@@ -404,6 +404,20 @@ internal class NotificationHistoryRepository(context: Context) {
 
     data class BriefOverview(val counts: BriefCounts, val threads: List<BriefThread>)
 
+    /** Exact priority totals when the brief does not need the notification preview. */
+    fun briefCounts(): BriefCounts {
+        val counts = IntArray(NotificationPriority.entries.size)
+        val sql = "SELECT $EFFECTIVE_TIER AS tier, COUNT(*) FROM $TABLE WHERE $ACTIVE_BRIEF GROUP BY tier"
+        database.readableDatabase.rawQuery(sql, arrayOf(briefCutoff())).use { cursor ->
+            while (cursor.moveToNext()) counts[cursor.getInt(0)] = cursor.getInt(1)
+        }
+        return BriefCounts(
+            counts[NotificationPriority.NOW.ordinal],
+            counts[NotificationPriority.TODAY.ordinal],
+            counts[NotificationPriority.LOW.ordinal],
+        )
+    }
+
     /** One snapshot for the exact counters and the bounded preview. Only the winning rows carry message content. */
     fun briefOverview(): BriefOverview {
         val sql = """

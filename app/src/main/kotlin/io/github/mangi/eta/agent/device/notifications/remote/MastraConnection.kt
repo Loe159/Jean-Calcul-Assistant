@@ -5,14 +5,22 @@ import androidx.core.content.edit
 import androidx.core.net.toUri
 import io.github.mangi.eta.data.repository.McpSecretStore
 import java.util.Base64
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /** Private homelab connection. The device secret is kept only as Android Keystore ciphertext. */
 internal data class MastraPairing(val baseUrl: String, val deviceId: String, val secret: String)
 
+internal class MastraBriefSession(val pairing: MastraPairing, val revision: Long, val cache: String?)
+
 internal object MastraConnection {
     private const val PREFS = "notification_mastra"
     private const val SECRET_ID = "jeancalcul-mastra-notifications"
+    private const val BRIEF_CACHE = "brief_summary_v1"
     private val loopbackHosts = setOf("127.0.0.1", "localhost", "10.0.2.2")
+    private val _pairingChanges = MutableStateFlow(0L)
+    val pairingChanges = _pairingChanges.asStateFlow()
 
     /** `jeancalcul-mastra:v1?url=https%3A%2F%2Fhost&device=jc_…&secret=…` printed by `npm run mobile:device`. */
     fun parsePairing(raw: String): MastraPairing? {
@@ -40,16 +48,23 @@ internal object MastraConnection {
             (uri.scheme == "https" || (uri.scheme == "http" && host in loopbackHosts))
     }.getOrDefault(false)
 
+    @Synchronized
     fun save(context: Context, pairing: MastraPairing) {
         McpSecretStore(context).setBearerToken(SECRET_ID, pairing.secret)
         prefs(context).edit(commit = true) {
             putString("url", pairing.baseUrl); putString("device", pairing.deviceId); putBoolean("enabled", true)
+            remove(BRIEF_CACHE)
         }
+        _pairingChanges.update { it + 1 }
     }
 
+    @Synchronized
     fun forget(context: Context) {
         McpSecretStore(context).clear(SECRET_ID)
-        prefs(context).edit(commit = true) { remove("url"); remove("device"); putBoolean("enabled", false) }
+        prefs(context).edit(commit = true) {
+            remove("url"); remove("device"); putBoolean("enabled", false); remove(BRIEF_CACHE)
+        }
+        _pairingChanges.update { it + 1 }
     }
 
     fun load(context: Context): MastraPairing? {
@@ -60,8 +75,35 @@ internal object MastraConnection {
         return MastraPairing(url, device, secret)
     }
 
-    fun enabled(context: Context): Boolean = prefs(context).getBoolean("enabled", false) && load(context) != null
-    fun setEnabled(context: Context, enabled: Boolean) = prefs(context).edit { putBoolean("enabled", enabled) }
+    fun enabled(context: Context): Boolean = loadEnabled(context) != null
+
+    @Synchronized
+    private fun loadEnabled(context: Context): MastraPairing? =
+        if (prefs(context).getBoolean("enabled", false)) load(context) else null
+
+    @Synchronized
+    fun setEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit {
+            putBoolean("enabled", enabled)
+            if (!enabled) remove(BRIEF_CACHE)
+        }
+        _pairingChanges.update { it + 1 }
+    }
+
+    @Synchronized
+    fun briefSession(context: Context): MastraBriefSession? {
+        val pairing = loadEnabled(context) ?: return null
+        return MastraBriefSession(pairing, pairingChanges.value, prefs(context).getString(BRIEF_CACHE, null))
+    }
+
+    @Synchronized
+    fun writeBriefCache(context: Context, revision: Long, value: String?): Boolean {
+        if (pairingChanges.value != revision) return false
+        prefs(context).edit {
+            if (value == null) remove(BRIEF_CACHE) else putString(BRIEF_CACHE, value)
+        }
+        return true
+    }
 
     /** Explicit consent for persistent learning on the homelab (default off). */
     fun learningConsent(context: Context): Boolean = prefs(context).getBoolean("learning_consent", false)

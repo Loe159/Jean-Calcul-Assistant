@@ -44,6 +44,35 @@ de feedback (`notification_remote_feedback_outbox`) envoyée au homelab.
 Actions : `PREPARE` → résumé exact (calendrier : appel suspendu du Secrétaire, approbation native) →
 `APPROVE` avec l'empreinte affichée, ou `REJECT`. Les brouillons sont seulement copiables.
 
+## Résumé du brief
+
+Si la connexion homelab est appairée et activée, Now Brief utilise
+`POST /mobile/v1/brief/summary` avec la même signature HMAC `X-JC-*` et le même client OkHttp
+que l'analyse des notifications. La requête v1 contient l'heure de l'appareil avec son décalage,
+le fuseau IANA, la locale BCP 47, le moment de la journée et les compteurs agrégés
+`now`, `today` et `low`. Ces compteurs restent exacts lorsque la carte Notifications est
+masquée. Aucun titre, message, identifiant de notification ou prénom n'est envoyé par cette route.
+
+Android valide la réponse v1 avant affichage et mise en cache, y compris les segments de texte
+brut, les emphases et la longueur totale (220 caractères au maximum). L'en-tête présente les
+emphases en gras surligné et affiche « Résumé par Jean-Calcul » avec un résumé du homelab.
+L'apparition mot par mot dépend du texte et des réglages de mouvement.
+
+Le dernier résumé et son contexte sont conservés dans les préférences privées jusqu'à
+`valid_until`. Le cache est invalidé si le moment, la date locale, le fuseau ou la locale
+change. Côté compteurs, toute variation de NOW déclenche une actualisation, ainsi qu'un écart
+d'au moins trois ou un passage par zéro pour TODAY ou LOW. La dissociation, le nouvel
+appairage et la désactivation effacent le cache.
+
+Le brief vérifie le cache à l'ouverture, à l'échéance tant qu'il reste visible et lors d'une
+invalidation du contexte. Les requêtes sont annulables, s'exécutent hors du thread principal
+et disposent de quatre secondes. Sans cache utilisable, une connexion absente, une réponse
+invalide ou une erreur ramène au résumé local sans alerte. Une tentative échouée ne programme
+aucun nouvel appel.
+
+Les tests JVM `MastraBriefSummaryContractTest` et `MastraBriefSummarySourceTest` utilisent les
+fixtures partagées `brief-summary-v1` et un transport simulé.
+
 ## Réglages
 
 Notifications intelligentes → Homelab : association par chaîne `jeancalcul-mastra:v1?...`

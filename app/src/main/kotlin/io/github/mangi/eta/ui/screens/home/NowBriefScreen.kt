@@ -22,7 +22,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -31,10 +30,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
+import io.github.mangi.eta.agent.device.notifications.remote.MastraBriefCounts
 import io.github.mangi.eta.agent.device.notifications.remote.MastraConnection
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
 import io.github.mangi.eta.ui.components.coui.couiPageScroll
@@ -52,11 +53,12 @@ import io.github.mangi.eta.ui.screens.home.brief.BriefNowBar
 import io.github.mangi.eta.ui.screens.home.brief.BriefSummaryInput
 import io.github.mangi.eta.ui.screens.home.brief.BriefSummarySource
 import io.github.mangi.eta.ui.screens.home.brief.BriefVisibilityPreferences
-import io.github.mangi.eta.ui.screens.home.brief.LocalBriefSummary
+import io.github.mangi.eta.ui.screens.home.brief.MastraBriefSummarySource
 import io.github.mangi.eta.ui.screens.home.brief.briefBarSuggestion
 import io.github.mangi.eta.ui.screens.home.brief.briefFeedOrder
 import io.github.mangi.eta.ui.screens.home.brief.briefMoment
-import io.github.mangi.eta.ui.screens.home.brief.localBriefSummary
+import io.github.mangi.eta.ui.screens.home.brief.rememberBriefSummary
+import io.github.mangi.eta.ui.screens.home.brief.rememberBriefSummaryReveal
 import io.github.mangi.eta.ui.screens.home.brief.rememberBriefTime
 import io.github.mangi.eta.ui.screens.home.brief.cards.BriefAgendaCard
 import io.github.mangi.eta.ui.screens.home.brief.cards.BriefCarCard
@@ -104,7 +106,7 @@ internal fun NowBriefScreen(
     revealProgress: () -> Float = { if (visible) 1f else 0f },
     modifier: Modifier = Modifier,
     extensions: List<NowBriefCardExtension> = emptyList(),
-    summarySource: BriefSummarySource = LocalBriefSummary,
+    summarySource: BriefSummarySource? = null,
 ) {
     val context = LocalContext.current
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
@@ -123,7 +125,8 @@ internal fun NowBriefScreen(
     var homeControls by remember { mutableStateOf(BriefDemoData.homeEnabledControls) }
     var thermostatTarget by remember { mutableFloatStateOf(BriefDemoData.thermostatTarget) }
     val atDashboard = active && notificationPage == null
-    val now by rememberBriefTime(atDashboard)
+    val deviceTime by rememberBriefTime(atDashboard)
+    val now = deviceTime.toLocalDateTime()
     val moment = briefMoment(now.toLocalTime())
     val motionAllowed = rememberBriefMotionAllowed(active)
     val cards = remember(moment, hiddenCards) { briefFeedOrder(moment, hiddenCards) }
@@ -139,16 +142,21 @@ internal fun NowBriefScreen(
     val (notificationActions, actionDialogs) = rememberBriefNotificationActions(repository, snackbars)
     var overview by remember(repository) { mutableStateOf<NotificationHistoryRepository.BriefOverview?>(null) }
     var activityError by remember { mutableStateOf(false) }
+    var overviewReady by remember(atDashboard, showNotifications) { mutableStateOf(false) }
     LaunchedEffect(atDashboard, showNotifications, repository) {
-        if (atDashboard && showNotifications) NotificationActivityFeed.changes.collect {
+        if (atDashboard) NotificationActivityFeed.changes.collect {
             try {
-                overview = withContext(Dispatchers.IO) { repository.briefOverview() }
+                overview = withContext(Dispatchers.IO) {
+                    if (showNotifications) repository.briefOverview()
+                    else NotificationHistoryRepository.BriefOverview(repository.briefCounts(), emptyList())
+                }
                 activityError = false
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
                 activityError = true
             }
+            overviewReady = true
         }
     }
     LaunchedEffect(visible) {
@@ -159,6 +167,18 @@ internal fun NowBriefScreen(
             if (BriefMotionSession.hasOpened) BriefMotionSession.hasClosedAfterOpening = true
         }
     }
+
+    val source = summarySource ?: remember(context) { MastraBriefSummarySource(context.applicationContext) }
+    val pairingRevision by MastraConnection.pairingChanges.collectAsState()
+    val locale = LocalLocale.current.toLanguageTag()
+    val summaryInput = BriefSummaryInput(
+        now = deviceTime,
+        locale = locale,
+        counts = overview?.counts?.takeUnless { activityError }?.let { MastraBriefCounts(it.now, it.today, it.low) },
+        showNotificationCount = showNotifications,
+    )
+    val summary = rememberBriefSummary(source, summaryInput, atDashboard && overviewReady, pairingRevision)
+    val summaryElapsed = rememberBriefSummaryReveal(summary.text, atDashboard, motionAllowed)
 
     if (notificationPage != null) {
         BriefNotificationsPage(
@@ -176,12 +196,6 @@ internal fun NowBriefScreen(
         return
     }
 
-    val summaryInput = BriefSummaryInput(now, overview?.counts?.now?.takeIf { showNotifications && !activityError })
-    val localSummary = remember(summaryInput) { localBriefSummary(summaryInput) }
-    val summary by produceState(localSummary, summarySource, summaryInput, atDashboard) {
-        value = localSummary
-        if (atDashboard) value = summarySource.summarize(summaryInput)
-    }
     val nowMillis = remember(now) { System.currentTimeMillis() }
     val extensionsInOrder = remember(extensions) {
         val reserved = BriefCardId.entries.map { it.key } + "header"
@@ -321,6 +335,7 @@ internal fun NowBriefScreen(
                             now = now,
                             moment = moment,
                             summary = summary,
+                            summaryElapsed = summaryElapsed,
                             shortcuts = shortcuts,
                             active = active,
                             animateSky = active && allowSkyMotion,

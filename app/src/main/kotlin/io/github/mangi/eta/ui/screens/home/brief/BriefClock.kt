@@ -10,11 +10,11 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import java.time.LocalDateTime
+import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 
 @Composable
-internal fun rememberBriefTime(active: Boolean): State<LocalDateTime> {
+internal fun rememberBriefTime(active: Boolean): State<ZonedDateTime> {
     val context = LocalContext.current
     val time = remember { mutableStateOf(localMinute()) }
     DisposableEffect(context, active) {
@@ -35,4 +35,4 @@ internal fun rememberBriefTime(active: Boolean): State<LocalDateTime> {
     return time
 }
 
-private fun localMinute(): LocalDateTime = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES)
+private fun localMinute(): ZonedDateTime = ZonedDateTime.now().truncatedTo(ChronoUnit.MINUTES)
