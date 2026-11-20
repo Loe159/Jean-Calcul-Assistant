@@ -24,7 +24,7 @@ internal suspend fun speakOnDevice(
 ) {
     val engine = openEngine(context.applicationContext)
     try {
-        val locale = language.takeIf(String::isNotBlank)?.let(Locale::forLanguageTag) ?: Locale.getDefault()
+        val locale = Locale.forLanguageTag(speechLanguageTag(language))
         when (engine.setLanguage(locale)) {
             TextToSpeech.LANG_MISSING_DATA, TextToSpeech.LANG_NOT_SUPPORTED -> throw SpeechFailure(
                 SpeechErrorCode.UNAVAILABLE,
