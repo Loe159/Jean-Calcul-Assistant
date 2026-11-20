@@ -13,13 +13,16 @@ conserve, envoie, puis **vérifie et exécute**. Référence serveur : `homelab-
    planifie un job `JobScheduler` (réseau requis, regroupement 3 s, backoff exponentiel). Pas de polling.
 3. Le job envoie des lots ≤ 50 signés HMAC (`MastraNotificationClient`), après `NotificationPrivacyFilter`
    (codes numériques masqués, `redactions: ["NUMERIC_CODE"]`). Ni icône ni pièce jointe.
-4. Chaque décision est validée (`MastraContract.validate` : jamais de `DISMISS` pour NOW ou contenu protégé),
-   puis enregistrée **uniquement** si `event_id`, révision et empreinte de contenu correspondent.
-   Une décision tardive pour une ancienne révision est ignorée.
-5. `DISMISS` → `requestRemoteDismiss` sur le thread principal : consentement « Retrait automatique »,
-   notification toujours active, même `postTime` et même empreinte, `NotificationProtection.remoteDismissAllowed`
-   (appels, alarmes, trajets, vraies conversations avec messages ou réponse directe, services persistants,
-   non effaçables, applications système, OTP/sécurité/paiements). Aucune liste d'applications autorisées.
+   Le homelab applique d’abord ses règles. Le mode OpenAI est activable côté serveur avec l’accord
+   de l’utilisateur pour un appareil précis. Il transmet à l’API OpenAI le texte filtré et les
+   métadonnées utiles à la classification des notifications sans règle applicable.
+4. Chaque décision valide est enregistrée **uniquement** si `event_id`, révision et empreinte
+   correspondent. La priorité de Now Brief suit la correction utilisateur ou, en son absence, Mastra.
+5. Quand « Retrait automatique » est activé, Jean-Calcul garde `NOW` dans le panneau et retire
+   `TODAY` et `LOW`. La règle couvre toutes les catégories. Sur le thread principal, la notification
+   doit toujours être active, effaçable et avoir la même empreinte. Un résumé de groupe attend le
+   départ de ses notifications enfants. Jean-Calcul réexamine les notifications classées encore
+   actives à la reconnexion, à la réactivation du retrait et après correction de priorité.
 6. Seul `onNotificationRemoved(REASON_LISTENER_CANCEL)` marque `android_action_state=CONFIRMED`.
    Archiver dans Now Brief reste une action locale qui n'efface rien sur Android.
 

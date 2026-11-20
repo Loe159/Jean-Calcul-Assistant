@@ -46,7 +46,7 @@ internal fun SpeechSynthesisScreen(onBack: () -> Unit) {
         }
         SpeechGroupCard(title = stringResource(R.string.speech_group_service)) {
             OverlayDropdownPreference(
-                title = stringResource(R.string.speech_tts_service),
+                title = stringResource(R.string.speech_engine),
                 items = ttsLabels,
                 selectedIndex = settings.tts.ordinal,
                 onSelectedIndexChange = { index ->
@@ -56,7 +56,6 @@ internal fun SpeechSynthesisScreen(onBack: () -> Unit) {
         }
         if (settings.tts != TtsProvider.NONE) {
             SpeechConnectionSection(store, synthesis = true)
-            SpeechVoiceSection(store)
             SpeechPreviewSection(store)
         }
         SpeechSaveBlock(store) {
@@ -65,7 +64,7 @@ internal fun SpeechSynthesisScreen(onBack: () -> Unit) {
                     store.settings,
                     store.credentials,
                     synthesis = true,
-                    hasProviderDeepSeekKey = store.hasProviderDeepSeekKey,
+                    hasProviderVllm = store.hasProviderVllm,
                 )
             }
         }

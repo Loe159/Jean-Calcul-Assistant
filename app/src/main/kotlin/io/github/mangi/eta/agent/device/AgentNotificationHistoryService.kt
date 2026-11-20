@@ -42,7 +42,13 @@ class AgentNotificationHistoryService : NotificationListenerService() {
         io.execute {
             // Replays of unchanged notifications keep their state and are not re-sent.
             val queued = active.count { record(it) }
-            if (queued > 0 || MastraConnection.enabled(this)) MastraNotificationSync.request(applicationContext)
+            val associated = MastraConnection.enabled(this)
+            if (associated && NotificationFilterSettings.load(this).mode == NotificationFilterMode.PERSONALIZED) {
+                for (snapshot in active) {
+                    requestRemoteDismiss(applicationContext, snapshot.key, snapshot.postTime)
+                }
+            }
+            if (queued > 0 || associated) MastraNotificationSync.request(applicationContext)
             NotificationActivityFeed.notifyChanged()
         }
     }
@@ -62,31 +68,37 @@ class AgentNotificationHistoryService : NotificationListenerService() {
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification, rankingMap: RankingMap, reason: Int) {
-        val postedAt = pending.remove(sbn.key) ?: return
-        if (postedAt != sbn.postTime) return
-        // Mastra's DISMISS is not proof of removal: only this callback is.
-        val state = if (reason == REASON_LISTENER_CANCEL) AndroidActionState.CONFIRMED else AndroidActionState.NONE
-        io.execute {
-            if (repository.setAndroidActionState(sbn.key, sbn.postTime, state,
-                    if (state == AndroidActionState.CONFIRMED) "Retirée des notifications Android" else null))
-                NotificationActivityFeed.notifyChanged()
+        if (pending.remove(sbn.key) == sbn.postTime) {
+            val state = if (reason == REASON_LISTENER_CANCEL) AndroidActionState.CONFIRMED else AndroidActionState.NONE
+            io.execute {
+                if (repository.setAndroidActionState(sbn.key, sbn.postTime, state,
+                        if (state == AndroidActionState.CONFIRMED) "Retirée des notifications Android" else null))
+                    NotificationActivityFeed.notifyChanged()
+            }
+        }
+        if (sbn.isGroup && sbn.notification.flags and Notification.FLAG_GROUP_SUMMARY == 0) {
+            val remaining = runCatching { activeNotifications }.getOrNull().orEmpty()
+                .singleOrNull { it.key != sbn.key && it.groupKey == sbn.groupKey }
+            if (remaining != null && remaining.notification.flags and Notification.FLAG_GROUP_SUMMARY != 0) {
+                requestRemoteDismiss(applicationContext, remaining.key, remaining.postTime)
+            }
         }
     }
 
     /** Main thread only. Every check is repeated here, against the live notification. */
-    private fun dismissIfStillSafe(target: NotificationHistoryRepository.RemoteTarget): AndroidActionState {
+    private fun dismissIfStillSafe(target: NotificationHistoryRepository.RemoteTarget): AndroidActionState? {
         if (connectedService !== this || !isEnabled(this)) return AndroidActionState.FAILED
         if (NotificationFilterSettings.load(this).mode != NotificationFilterMode.PERSONALIZED)
             return AndroidActionState.SKIPPED_NO_CONSENT
-        val current = runCatching { activeNotifications?.firstOrNull { it.key == target.key } }.getOrNull()
-            ?: return AndroidActionState.SKIPPED_STALE
+        val active = runCatching { activeNotifications }.getOrNull() ?: return AndroidActionState.FAILED
+        val current = active.firstOrNull { it.key == target.key } ?: return AndroidActionState.SKIPPED_STALE
         // A late decision never acts on a replaced or updated notification.
         if (current.packageName != target.packageName || current.postTime != target.postedAt ||
             NotificationProtection.fingerprint(current) != target.fingerprint) return AndroidActionState.SKIPPED_STALE
-        if (!NotificationProtection.remoteDismissAllowed(this, current)) return AndroidActionState.SKIPPED_PROTECTED
+        if (!NotificationProtection.remoteDismissAllowed(current, active)) return AndroidActionState.SKIPPED_PROTECTED
         val token = target.key + ":" + target.fingerprint
         val now = android.os.SystemClock.elapsedRealtime()
-        if (processed[token]?.let { now - it < 48L * 60 * 60 * 1000 } == true) return AndroidActionState.SKIPPED_STALE
+        if (processed[token]?.let { now - it < 48L * 60 * 60 * 1000 } == true) return null
         // Stored before the call: onNotificationRemoved may run synchronously.
         pending[current.key] = current.postTime
         return try {
@@ -159,20 +171,29 @@ class AgentNotificationHistoryService : NotificationListenerService() {
         @Volatile
         private var connectedService: AgentNotificationHistoryService? = null
 
-        /** Called by the sync job after storing a Mastra DISMISS recommendation. */
-        internal fun requestRemoteDismiss(context: Context, target: NotificationHistoryRepository.RemoteTarget) {
-            Handler(Looper.getMainLooper()).post {
-                val outcome = connectedService?.dismissIfStillSafe(target) ?: AndroidActionState.FAILED
-                val reason = when (outcome) {
-                    AndroidActionState.SKIPPED_PROTECTED -> "Conservée : protection Android"
-                    AndroidActionState.SKIPPED_STALE -> "Conservée : notification modifiée ou disparue"
-                    AndroidActionState.SKIPPED_NO_CONSENT -> "Conservée : retrait automatique désactivé"
-                    AndroidActionState.FAILED -> "Conservée : retrait impossible"
-                    else -> null
-                }
-                io.execute {
-                    if (NotificationHistoryRepository(context).setAndroidActionState(target.key, target.postedAt, outcome, reason))
-                        NotificationActivityFeed.notifyChanged()
+        internal fun reconsiderAndroidDismissals(context: Context) {
+            currentNotifications().orEmpty().forEach { requestRemoteDismiss(context, it.key, it.postTime) }
+        }
+
+        internal fun requestRemoteDismiss(context: Context, key: String, postedAt: Long) {
+            io.execute {
+                if (!MastraConnection.enabled(context)) return@execute
+                val history = NotificationHistoryRepository(context)
+                val target = history.androidDismissalTarget(key, postedAt) ?: return@execute
+                Handler(Looper.getMainLooper()).post {
+                    val service = connectedService ?: return@post
+                    val outcome = service.dismissIfStillSafe(target) ?: return@post
+                    val reason = when (outcome) {
+                        AndroidActionState.SKIPPED_PROTECTED -> "Retrait bloqué par Android ou par le groupe"
+                        AndroidActionState.SKIPPED_STALE -> "Notification modifiée ou disparue"
+                        AndroidActionState.SKIPPED_NO_CONSENT -> "Retrait automatique désactivé"
+                        AndroidActionState.FAILED -> "Retrait impossible"
+                        else -> null
+                    }
+                    io.execute {
+                        if (history.setAndroidActionState(target.key, target.postedAt, outcome, reason))
+                            NotificationActivityFeed.notifyChanged()
+                    }
                 }
             }
         }

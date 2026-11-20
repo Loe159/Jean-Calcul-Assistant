@@ -1,91 +1,95 @@
 package io.github.mangi.eta.agent.voice
 
-import java.io.ByteArrayOutputStream
+import io.github.mangi.eta.data.model.AsrProvider
+import io.github.mangi.eta.data.model.OpenAiSpeechConfig
+import io.github.mangi.eta.data.model.SpeechCredentials
+import io.github.mangi.eta.data.model.SpeechSettings
+import io.github.mangi.eta.data.model.TtsProvider
+import io.github.mangi.eta.data.model.VllmSpeechConfig
 import java.nio.ByteBuffer
-import java.util.zip.GZIPOutputStream
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.runBlocking
+import okio.Buffer
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
 
 class SpeechProtocolTest {
-    @Test fun qwenRevisionsReplaceDraftAndLatePreviewCannotReplaceFinal() {
-        val transcript = QwenTranscript()
-        fun event(id: String, suffix: String, text: String, stash: String = "") = JSONObject()
-            .put("type", "conversation.item.input_audio_transcription.$suffix")
-            .put("item_id", id).put("text", text).put("stash", stash).put("transcript", text)
-        assertEquals("北京的", transcript.accept(event("a", "text", "", "北京的")))
-        assertEquals("北京天气", transcript.accept(event("a", "text", "北京", "天气")))
-        assertEquals("北京天气。", transcript.accept(event("a", "completed", "北京天气。")))
-        assertEquals("北京天气。", transcript.accept(event("a", "text", "旧草稿")))
-        transcript.accept(event("b", "completed", "请查一下。"))
-        transcript.accept(event("c", "text", "未确认的内容"))
-        assertEquals("北京天气。请查一下。", transcript.result())
+    @Test fun openAiTranscriptionPostsWavModelAndIsoLanguage() {
+        val settings = SpeechSettings(asr = AsrProvider.OPENAI, language = "fr-FR")
+        val request = transcriptionRequest(settings, SpeechCredentials(openAi = "test-key"), pcmToWav(byteArrayOf(0, 1)))
+        assertEquals("https://api.openai.com/v1/audio/transcriptions", request.url.toString())
+        assertEquals("Bearer test-key", request.header("Authorization"))
+        val body = Buffer().also { request.body!!.writeTo(it) }.readUtf8()
+        assertTrue(body.contains("name=\"model\"") && body.contains(OpenAiSpeechConfig.DEFAULT_TRANSCRIPTION_MODEL))
+        assertTrue(Regex("name=\"language\"[\\s\\S]*?\r\n\r\nfr\r\n").containsMatchIn(body))
+        assertTrue(body.contains("filename=\"speech.wav\""))
     }
 
-    @Test fun doubaoFramesHandleCompressionHeaderExtensionsAndFinalSequence() {
-        val json = """{"result":{"text":"你好"}}""".toByteArray()
-        for (gzip in listOf(false, true)) {
-            val payload = if (gzip) ByteArrayOutputStream().apply { GZIPOutputStream(this).use { it.write(json) } }.toByteArray() else json
-            val frame = ByteBuffer.allocate(16 + payload.size)
-                .put(0x12).put(0x93.toByte()).put(if (gzip) 0x11 else 0x10).put(0)
-                .putInt(0).putInt(-2).putInt(payload.size).put(payload).array()
-            val result = DoubaoAsrCodec.decode(frame)
-            assertTrue(result.final)
-            assertEquals("你好", result.body.getJSONObject("result").getString("text"))
-            assertThrows(SpeechFailure::class.java) { DoubaoAsrCodec.decode(frame.copyOf(frame.size - 1)) }
+    @Test fun vllmTranscriptionAllowsLanHttpAndOmitsEmptyKey() {
+        val settings = SpeechSettings(
+            asr = AsrProvider.VLLM,
+            vllm = VllmSpeechConfig(baseUrl = "http://192.168.1.20:8000/v1/", transcriptionModel = "openai/whisper-large-v3"),
+        )
+        val request = transcriptionRequest(settings, SpeechCredentials(), pcmToWav(byteArrayOf(0, 1)))
+        assertEquals("http://192.168.1.20:8000/v1/audio/transcriptions", request.url.toString())
+        assertNull(request.header("Authorization"))
+    }
+
+    @Test fun transcriptionResponseRequiresText() {
+        assertEquals("Bonjour", transcriptionText(JSONObject("""{"text":" Bonjour "}""")))
+        assertEquals(SpeechErrorCode.SERVER, assertThrows(SpeechFailure::class.java) {
+            transcriptionText(JSONObject("""{"error":{"message":"private"}}"""))
+        }.code)
+        assertEquals(SpeechErrorCode.PROTOCOL, assertThrows(SpeechFailure::class.java) {
+            transcriptionText(JSONObject("{}"))
+        }.code)
+    }
+
+    @Test fun speechRequestAsksForPcmWithVoiceAndInstructions() {
+        val settings = SpeechSettings(
+            tts = TtsProvider.OPENAI,
+            openAi = OpenAiSpeechConfig(voice = "coral", instructions = "Calme"),
+        )
+        val request = speechRequest(settings, SpeechCredentials(openAi = "test-key"), "Salut")
+        assertEquals("https://api.openai.com/v1/audio/speech", request.url.toString())
+        val body = JSONObject(Buffer().also { request.body!!.writeTo(it) }.readUtf8())
+        assertEquals("pcm", body.getString("response_format"))
+        assertEquals("coral", body.getString("voice"))
+        assertEquals("Calme", body.getString("instructions"))
+        assertEquals("Salut", body.getString("input"))
+    }
+
+    @Test fun vllmSpeechRequestSkipsBlankVoiceAndInstructions() {
+        val settings = SpeechSettings(
+            tts = TtsProvider.VLLM,
+            vllm = VllmSpeechConfig(baseUrl = "http://tts.lan:8000/v1", speechModel = "kokoro"),
+            openAi = OpenAiSpeechConfig(instructions = "ignored"),
+        )
+        val body = JSONObject(Buffer().also { speechRequest(settings, SpeechCredentials(vllm = "k"), "x").body!!.writeTo(it) }.readUtf8())
+        assertEquals("kokoro", body.getString("model"))
+        assertFalse(body.has("voice"))
+        assertFalse(body.has("instructions"))
+    }
+
+    @Test fun vllmAddressRejectsCredentialsAndParameters() {
+        for (address in listOf("http://user:pass@host/v1", "http://host/v1?x=1", "http://host/v1#frag", "not a url")) {
+            assertEquals(SpeechErrorCode.CONFIGURATION, assertThrows(SpeechFailure::class.java) { vllmBaseUrl(address) }.code)
         }
+        assertEquals("https://host.example/v1", vllmBaseUrl(" https://host.example/v1/ "))
     }
 
-    @Test fun doubaoServerErrorDoesNotExposeServerBody() {
-        val frame = ByteBuffer.allocate(12).put(0x11).put(0xf0.toByte()).put(0x10).put(0)
-            .putInt(45000001).putInt(0).array()
-        val error = assertThrows(SpeechFailure::class.java) { DoubaoAsrCodec.decode(frame) }
-        assertEquals(SpeechErrorCode.SERVER, error.code)
-        assertTrue(error.userMessage.contains("45000001"))
+    @Test fun languageCodeIsReducedForWhisper() {
+        assertEquals("fr", SpeechSettings(language = "fr-FR").transcriptionLanguage())
+        assertEquals("en", SpeechSettings(language = "EN").transcriptionLanguage())
+        assertNull(SpeechSettings(language = "").transcriptionLanguage { null })
+        assertEquals("fr", SpeechSettings(language = "").transcriptionLanguage { "fr-FR" })
+        assertEquals("en", SpeechSettings(language = "en-US").transcriptionLanguage { "fr-FR" })
     }
 
-    @Test fun qwenSseUsesEventBoundariesAndDoesNotReplayFinalUrl() {
-        val chunks = mutableListOf<ByteArray>()
-        val decoder = SpeechAudioStreamDecoder(true, chunks::add)
-        decoder.line(": ping")
-        decoder.line("data: {\"output\":")
-        decoder.line("data: {\"audio\":{\"data\":\"AQI=\"}}}")
-        assertTrue(chunks.isEmpty())
-        decoder.line("")
-        decoder.line("data: {\"output\":{\"finish_reason\":\"stop\",\"audio\":{\"data\":\"\",\"url\":\"https://example.invalid/audio\"}}}")
-        decoder.end()
-        assertTrue(decoder.finished)
-        assertEquals(1, chunks.size)
-        assertArrayEquals(byteArrayOf(1, 2), chunks.single())
-    }
-
-    @Test fun synthesisRequiresTerminalSuccessAndNonEmptyAudio() {
-        for (qwen in listOf(true, false)) {
-            val decoder = SpeechAudioStreamDecoder(qwen) {}
-            decoder.line(if (qwen) "data: {\"output\":{\"audio\":{\"data\":\"AQI=\"}}}" else "{\"code\":0,\"data\":\"AQI=\"}")
-            assertThrows(SpeechFailure::class.java) { decoder.end() }
-        }
-        val empty = SpeechAudioStreamDecoder(false) {}
-        empty.line("{\"code\":20000000}")
-        assertThrows(SpeechFailure::class.java) { empty.end() }
-        val failed = SpeechAudioStreamDecoder(false) {}
-        assertThrows(SpeechFailure::class.java) { failed.line("{\"code\":45000001,\"message\":\"private content\"}") }
-    }
-
-    @Test fun doubaoAudioChunksPreserveOrder() {
-        val out = ByteArrayOutputStream()
-        val decoder = SpeechAudioStreamDecoder(false, out::write)
-        decoder.line("{\"code\":0,\"data\":\"AQI=\"}")
-        decoder.line("{\"code\":0,\"data\":\"AwQ=\"}")
-        decoder.line("{\"code\":20000000}")
-        decoder.end()
-        assertArrayEquals(byteArrayOf(1, 2, 3, 4), out.toByteArray())
-    }
-
-    @Test fun fileTranscriptReadsChannelText() {
-        assertEquals("完整转写", fileTranscript(JSONObject("""{"transcripts":[{"channel_id":0,"text":"完整转写","sentences":[]}]}""")))
+    @Test fun voiceFollowsPhoneLanguageNotAppLocale() {
+        assertEquals("fr-FR", speechLanguageTag("", system = { "fr-FR" }))
+        assertEquals("de-DE", speechLanguageTag(" de-DE ", system = { "fr-FR" }))
     }
 
     @Test fun wavHeaderDescribesRecordedPcm() {
@@ -121,5 +125,34 @@ class SpeechProtocolTest {
             runBlocking { collectSpeechAudio(oversized) }
         }
         assertEquals(SpeechErrorCode.AUDIO, error.code)
+    }
+
+    @Test fun endpointDetectorWaitsForSpeechThenSilence() {
+        val detector = SpeechEndpointDetector(silenceMs = 1_000, frameMs = 200)
+        repeat(3) { assertEquals(SpeechEndpointDetector.Decision.CONTINUE, detector.accept(0.01f)) }
+        repeat(4) { assertEquals(SpeechEndpointDetector.Decision.CONTINUE, detector.accept(0.4f)) }
+        repeat(4) { assertEquals(SpeechEndpointDetector.Decision.CONTINUE, detector.accept(0.01f)) }
+        assertEquals(SpeechEndpointDetector.Decision.END, detector.accept(0.01f))
+        assertFalse(detector.silent)
+    }
+
+    @Test fun endpointDetectorStopsWhenNobodySpeaks() {
+        val detector = SpeechEndpointDetector(silenceMs = 1_000, frameMs = 200)
+        repeat(39) { assertEquals(SpeechEndpointDetector.Decision.CONTINUE, detector.accept(0.02f)) }
+        assertEquals(SpeechEndpointDetector.Decision.NO_SPEECH, detector.accept(0.02f))
+        assertTrue(detector.silent)
+    }
+
+    @Test fun endpointDetectorIgnoresSteadyBackgroundNoise() {
+        val detector = SpeechEndpointDetector(silenceMs = 600, frameMs = 200)
+        repeat(5) { detector.accept(0.08f) }
+        repeat(3) { detector.accept(0.5f) }
+        repeat(2) { assertEquals(SpeechEndpointDetector.Decision.CONTINUE, detector.accept(0.08f)) }
+        assertEquals(SpeechEndpointDetector.Decision.END, detector.accept(0.08f))
+    }
+
+    @Test fun manualDictationNeverEndsOnSilence() {
+        val detector = SpeechEndpointDetector(silenceMs = 0)
+        repeat(100) { assertEquals(SpeechEndpointDetector.Decision.CONTINUE, detector.accept(0f)) }
     }
 }

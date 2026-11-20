@@ -3,8 +3,6 @@ package io.github.mangi.eta.agent.voice
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.util.Base64
-import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -81,22 +79,21 @@ class SpeechPcmDecoderTest {
         assertThrows(SpeechFailure::class.java) { decoder.write(prefix) }
     }
 
-    @Test fun qwenSseNormalizesEachSynthesisIndependently() {
+    @Test fun segmentAudioNormalizesEachSynthesisIndependently() {
         val output = ByteArrayOutputStream()
         repeat(2) {
-            val decoder = SpeechAudioStreamDecoder(true, output::write)
-            val wav = wav()
-            for (bytes in wav.toList().chunked(3)) {
-                val event = JSONObject().put("output", JSONObject().put("audio", JSONObject()
-                    .put("data", Base64.getEncoder().encodeToString(bytes.toByteArray()))))
-                decoder.line("data: $event")
-                decoder.line("")
-            }
-            decoder.line("data: {\"output\":{\"finish_reason\":\"stop\"}}")
-            decoder.line("")
-            decoder.end()
+            val audio = SpeechSegmentAudio({ output.write(it) })
+            for (bytes in wav().toList().chunked(3)) audio.write(bytes.toByteArray())
+            audio.end(completed = true)
         }
         assertArrayEquals(samples + samples, output.toByteArray())
+    }
+
+    @Test fun segmentAudioRejectsEmptyOrIncompleteResponses() {
+        assertThrows(SpeechFailure::class.java) { SpeechSegmentAudio({}).end(completed = true) }
+        val audio = SpeechSegmentAudio({})
+        audio.write(samples)
+        assertThrows(SpeechFailure::class.java) { audio.end(completed = false) }
     }
 
     private fun wav(metadata: Boolean = false): ByteArray {

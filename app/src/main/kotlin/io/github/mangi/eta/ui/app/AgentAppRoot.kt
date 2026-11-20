@@ -98,7 +98,6 @@ import io.github.mangi.eta.ui.screens.terminal.TerminalEntryScreen
 import io.github.mangi.eta.ui.screens.terminal.WorkspaceScreen
 import io.github.mangi.eta.ui.screens.tools.AgentToolsScreen
 import io.github.mangi.eta.ui.screens.tools.WebToolsSettingsScreen
-import io.github.mangi.eta.ui.voice.SpeechOssScreen
 import io.github.mangi.eta.ui.voice.SpeechRecognitionScreen
 import io.github.mangi.eta.ui.voice.SpeechSettingsScreen
 import io.github.mangi.eta.ui.voice.SpeechSynthesisScreen
@@ -703,16 +702,10 @@ fun AgentAppRoot(
                 )
             }
             entry<AppRoute.SpeechRecognition>(swipeDismiss = swipeDismiss) {
-                SpeechRecognitionScreen(
-                    onBack = ::popRoute,
-                    onOpenOss = { pushRoute(AppRoute.SpeechOss) },
-                )
+                SpeechRecognitionScreen(onBack = ::popRoute)
             }
             entry<AppRoute.SpeechSynthesis>(swipeDismiss = swipeDismiss) {
                 SpeechSynthesisScreen(onBack = ::popRoute)
-            }
-            entry<AppRoute.SpeechOss>(swipeDismiss = swipeDismiss) {
-                SpeechOssScreen(onBack = ::popRoute)
             }
             entry<AppRoute.AppearanceSettings>(swipeDismiss = swipeDismiss) {
                 AppearanceSettingsScreen(onBack = ::popRoute)

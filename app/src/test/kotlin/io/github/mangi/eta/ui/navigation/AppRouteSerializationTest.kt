@@ -42,7 +42,6 @@ class AppRouteSerializationTest {
             AppRoute.SpeechSettings,
             AppRoute.SpeechRecognition,
             AppRoute.SpeechSynthesis,
-            AppRoute.SpeechOss,
             AppRoute.DataBackup,
             AppRoute.Memory,
             AppRoute.LinuxEnvironment,

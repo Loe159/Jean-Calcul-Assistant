@@ -28,7 +28,7 @@ internal class MastraNotificationSync(
     private val client: (MastraPairing) -> MastraNotificationClient = { MastraNotificationClient(it) },
     /** Asks the listener to remove a notification after its own checks; never assumed to succeed. */
     private val dismisser: (NotificationHistoryRepository.RemoteTarget) -> Unit = { target ->
-        io.github.mangi.eta.agent.device.AgentNotificationHistoryService.requestRemoteDismiss(context, target)
+        io.github.mangi.eta.agent.device.AgentNotificationHistoryService.requestRemoteDismiss(context, target.key, target.postedAt)
     },
     private val zone: ZoneId = ZoneId.systemDefault(),
     private val pairingProvider: () -> MastraPairing? =

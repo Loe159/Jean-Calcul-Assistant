@@ -4,7 +4,7 @@ Blocs retenus : 1 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 
 
 Blocs exclus : 02 (style alternatif Miuix), 30 (Linux), 31 (outils de développement/Kimi), 39 (données/apps ColorOS), 40 (intégrations constructeur/Google), 41 (personnages), 42 (sauvegardes/exports).
 
-09–10 : seuls vLLM local et ChatGPT/Codex sont retenus pour les modèles de conversation ; Grok est exclu. Les services ASR/TTS restent ceux des blocs 18–19 et ne sont pas des fournisseurs de conversation supplémentaires.
+09–10 : seuls vLLM local et ChatGPT/Codex sont retenus pour les modèles de conversation ; Grok est exclu. Les services ASR/TTS des blocs 18–19 sont réduits le 20/11/2026 à Android local, OpenAI et vLLM ; ce ne sont pas des fournisseurs de conversation supplémentaires.
 
 24 : écran virtuel conservé avec root ou LSPosed system ; les autres hooks constructeur/Google ne sont pas installés.
 34 : création d’alarmes/minuteurs via Android ; modifications d’alarmes qui dépendent d’un backend constructeur restent indisponibles sur les appareils non compatibles.
