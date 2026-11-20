@@ -1,114 +1,52 @@
 package io.github.mangi.eta.agent.voice
 
-import android.content.Context
-import io.github.mangi.eta.data.model.AsrProvider
 import io.github.mangi.eta.data.model.SpeechCredentials
 import io.github.mangi.eta.data.model.SpeechSettings
-import java.util.Base64
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.Request
-import org.json.JSONArray
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
+/**
+ * Transcription d’un enregistrement WAV via `POST {base}/audio/transcriptions`,
+ * l’API commune à OpenAI et à vLLM (modèles Whisper, Voxtral…).
+ */
 internal suspend fun recognizeSpeechFile(
-    context: Context,
     settings: SpeechSettings,
     credentials: SpeechCredentials,
     wav: ByteArray,
-    onProgress: (String) -> Unit,
 ): String = withContext(Dispatchers.IO) {
-    withTimeout(300_000) {
-        when (settings.asr) {
-            AsrProvider.MIMO -> {
-                onProgress("Recognizing speech")
-                recognizeMimoSpeech(settings.mimoAsr, credentials.mimoAsr, wav)
-            }
-            AsrProvider.DEEPSEEK -> {
-                onProgress("Recognizing speech")
-                recognizeDeepSeekSpeech(settings.deepseekAsr, credentials.deepseekAsr, wav)
-            }
-            AsrProvider.QWEN_FLASH -> {
-                onProgress("Recognizing speech")
-                recognizeQwenShortAudio(settings, credentials, wav)
-            }
-            AsrProvider.QWEN_FILE -> recognizeQwenFile(context, settings, credentials, wav, onProgress)
-            AsrProvider.QWEN_REALTIME, AsrProvider.DOUBAO ->
-                throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "This speech service requires streaming recognition")
-        }
+    withTimeout(120_000) {
+        transcriptionText(SpeechHttp.json(transcriptionRequest(settings, credentials, wav)))
     }
 }
 
-private suspend fun recognizeQwenShortAudio(
-    settings: SpeechSettings,
-    credentials: SpeechCredentials,
-    wav: ByteArray,
-): String {
-    val base = speechBaseUrl(settings.qwenAsr.endpoint())
-    val options = JSONObject().put("enable_itn", true)
-    settings.language.takeIf(String::isNotBlank)?.let { options.put("language", it) }
-    val audio = JSONObject().put("type", "input_audio").put("input_audio", JSONObject()
-        .put("data", "data:audio/wav;base64," + Base64.getEncoder().encodeToString(wav)))
-    val body = JSONObject().put("model", "qwen3-asr-flash").put("stream", false)
-        .put("messages", JSONArray().put(JSONObject().put("role", "user").put("content", JSONArray().put(audio))))
-        .put("asr_options", options)
-    val response = SpeechHttp.json(SpeechHttp.jsonRequest(
-        "$base/compatible-mode/v1/chat/completions", credentials.qwenAsr, body,
-    ).build())
-    return response.getJSONArray("choices").getJSONObject(0).getJSONObject("message").getString("content").trim()
-}
-
-private suspend fun recognizeQwenFile(
-    context: Context,
-    settings: SpeechSettings,
-    credentials: SpeechCredentials,
-    wav: ByteArray,
-    onProgress: (String) -> Unit,
-): String {
-    val base = speechBaseUrl(settings.qwenAsr.endpoint())
-    onProgress("Uploading recording")
-    return SpeechOssUpload(context).withAudio(settings.oss, credentials, wav) { audioUrl ->
-        val parameters = JSONObject().put("channel_id", JSONArray().put(0)).put("enable_itn", true)
-        settings.language.takeIf(String::isNotBlank)?.let { parameters.put("language", it) }
-        val body = JSONObject().put("model", "qwen3-asr-flash-filetrans")
-            .put("input", JSONObject().put("file_url", audioUrl)).put("parameters", parameters)
-        val submitted = SpeechHttp.json(SpeechHttp.jsonRequest(
-            "$base/api/v1/services/audio/asr/transcription", credentials.qwenAsr, body,
-        ).header("X-DashScope-Async", "enable").build())
-        val task = submitted.getJSONObject("output").getString("task_id")
-        if (!Regex("[A-Za-z0-9_-]+").matches(task)) {
-            throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Invalid transcription task ID")
-        }
-        onProgress("Waiting for transcription. You can cancel at any time.")
-        awaitQwenFileTranscript(base, credentials.qwenAsr, task)
+internal fun transcriptionRequest(settings: SpeechSettings, credentials: SpeechCredentials, wav: ByteArray): Request {
+    if (wav.size > MAX_TRANSCRIPTION_BYTES) {
+        throw SpeechFailure(SpeechErrorCode.AUDIO, "Recording exceeds the 25 MB transcription limit")
     }
+    val endpoint = settings.transcriptionEndpoint(credentials)
+    val body = MultipartBody.Builder()
+        .setType(MultipartBody.FORM)
+        .addFormDataPart("file", "speech.wav", wav.toRequestBody("audio/wav".toMediaType()))
+        .addFormDataPart("model", endpoint.model.trim())
+        .addFormDataPart("response_format", "json")
+        .apply { settings.transcriptionLanguage()?.let { addFormDataPart("language", it) } }
+        .build()
+    return SpeechHttp.authorizedPost("${endpoint.baseUrl}/audio/transcriptions", endpoint.apiKey, body).build()
 }
 
-private suspend fun awaitQwenFileTranscript(base: String, key: String, task: String): String {
-    while (true) {
-        delay(1500)
-        val result = SpeechHttp.json(Request.Builder().url("$base/api/v1/tasks/$task")
-            .header("Authorization", "Bearer ${key.trim()}").build()).getJSONObject("output")
-        when (result.getString("task_status")) {
-            "PENDING", "RUNNING" -> Unit
-            "SUCCEEDED" -> {
-                val url = result.getJSONObject("result").getString("transcription_url")
-                    .toHttpUrl().newBuilder().scheme("https").build()
-                // 下载签名结果链接时不附带百炼认证，避免凭据随跨域请求外传。
-                val transcription = SpeechHttp.json(Request.Builder().url(url).build())
-                return fileTranscript(transcription)
-            }
-            "FAILED", "CANCELED", "UNKNOWN" ->
-                throw SpeechFailure(SpeechErrorCode.SERVER, "Qwen file transcription failed. Check service permissions.")
-            else -> throw SpeechFailure(SpeechErrorCode.PROTOCOL, "Transcription returned an unknown task status")
-        }
+internal fun transcriptionText(response: JSONObject): String {
+    response.optJSONObject("error")?.let {
+        throw SpeechFailure(SpeechErrorCode.SERVER, "Transcription failed. Check the model name and server settings.")
     }
+    val text = response.opt("text") as? String
+        ?: throw SpeechFailure(SpeechErrorCode.PROTOCOL, "The server returned no transcription")
+    return text.trim()
 }
 
-internal fun fileTranscript(result: JSONObject): String {
-    val transcripts = result.getJSONArray("transcripts")
-    return (0 until transcripts.length()).map { transcripts.getJSONObject(it).getString("text") }.joinToString("\n").trim()
-}
+private const val MAX_TRANSCRIPTION_BYTES = 25 * 1024 * 1024

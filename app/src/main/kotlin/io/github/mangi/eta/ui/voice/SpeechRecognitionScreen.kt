@@ -30,24 +30,13 @@ import androidx.compose.foundation.layout.padding
 import io.github.suqi8.coui.kmp.basic.HorizontalDivider
 
 @Composable
-internal fun SpeechRecognitionScreen(onBack: () -> Unit, onOpenOss: () -> Unit) {
+internal fun SpeechRecognitionScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val store = remember { SpeechSettingsStore(context, scope) }
     SpeechLifecycle { store.stop() }
     val settings = store.settings
     val asrLabels = AsrProvider.entries.map { it.label() }
-    val asrNoteRes = when (settings.asr) {
-        AsrProvider.QWEN_REALTIME, AsrProvider.DOUBAO -> R.string.speech_asr_note_streaming
-        AsrProvider.QWEN_FLASH -> R.string.speech_asr_note_flash
-        AsrProvider.QWEN_FILE -> R.string.speech_asr_note_file
-        AsrProvider.MIMO -> R.string.speech_asr_note_mimo
-        AsrProvider.DEEPSEEK -> R.string.speech_asr_note_deepseek
-    }
-    val showQwenLanguage = when (settings.asr) {
-        AsrProvider.QWEN_REALTIME, AsrProvider.QWEN_FLASH, AsrProvider.QWEN_FILE -> true
-        AsrProvider.DOUBAO, AsrProvider.MIMO, AsrProvider.DEEPSEEK -> false
-    }
 
     CouiScaffoldPage(
         title = stringResource(R.string.speech_recognition_title),
@@ -67,7 +56,7 @@ internal fun SpeechRecognitionScreen(onBack: () -> Unit, onOpenOss: () -> Unit) 
         if (settings.recognitionEnabled) {
             SpeechGroupCard(title = stringResource(R.string.speech_group_service)) {
                 OverlayDropdownPreference(
-                    title = stringResource(R.string.speech_service_and_model),
+                    title = stringResource(R.string.speech_engine),
                     items = asrLabels,
                     selectedIndex = settings.asr.ordinal,
                     onSelectedIndexChange = { index ->
@@ -75,29 +64,17 @@ internal fun SpeechRecognitionScreen(onBack: () -> Unit, onOpenOss: () -> Unit) 
                     },
                 )
             }
-            SpeechNote(stringResource(asrNoteRes))
             SpeechConnectionSection(store, synthesis = false)
-            if (showQwenLanguage) {
-                SpeechGroupCard {
-                    SpeechFieldColumn {
-                        SpeechField(
-                            label = stringResource(R.string.speech_language_hint),
-                            value = settings.language,
-                            onChange = { store.edit(settings.copy(language = it.trim())) },
-                        )
-                    }
-                }
-            }
-            SpeechResultSection(store)
-            if (settings.asr == AsrProvider.QWEN_FILE) {
-                SpeechGroupCard {
-                    ArrowPreference(
-                        title = stringResource(R.string.speech_oss_title),
-                        summary = settings.oss.bucket.ifBlank { stringResource(R.string.speech_oss_configure) },
-                        onClick = onOpenOss,
+            SpeechGroupCard {
+                SpeechFieldColumn {
+                    SpeechField(
+                        label = stringResource(R.string.speech_language_hint),
+                        value = settings.language,
+                        onChange = { store.edit(settings.copy(language = it.trim())) },
                     )
                 }
             }
+            SpeechResultSection(store)
             SpeechRecognitionTestSection(store)
         } else {
             SpeechNote(stringResource(R.string.speech_recognition_disabled_note))
@@ -107,7 +84,7 @@ internal fun SpeechRecognitionScreen(onBack: () -> Unit, onOpenOss: () -> Unit) 
                 store.settings,
                 store.credentials,
                 synthesis = false,
-                hasProviderDeepSeekKey = store.hasProviderDeepSeekKey,
+                hasProviderVllm = store.hasProviderVllm,
             )
         }
         CouiPageBottomSpacer()
@@ -117,7 +94,6 @@ internal fun SpeechRecognitionScreen(onBack: () -> Unit, onOpenOss: () -> Unit) 
 @Composable
 private fun SpeechResultSection(store: SpeechSettingsStore) {
     val settings = store.settings
-    val streaming = settings.asr == AsrProvider.QWEN_REALTIME || settings.asr == AsrProvider.DOUBAO
     val options = SpeechSettings.AUTO_SEND_SILENCE_OPTIONS
     val optionLabels = options.map { millis ->
         if (millis == 0) {
@@ -132,17 +108,15 @@ private fun SpeechResultSection(store: SpeechSettingsStore) {
 
     Column {
         SpeechGroupCard(title = stringResource(R.string.speech_group_result)) {
-            if (streaming) {
-                OverlayDropdownPreference(
-                    title = stringResource(R.string.speech_auto_send_title),
+            OverlayDropdownPreference(
+                title = stringResource(R.string.speech_auto_send_title),
                     items = optionLabels,
                     selectedIndex = selectedOptionIndex,
                     onSelectedIndexChange = { index ->
                         options.getOrNull(index)?.let { store.edit(settings.copy(autoSendSilenceMs = it)) }
                     },
                 )
-                HorizontalDivider(modifier = Modifier.padding(start = 16.dp, end = 16.dp))
-            }
+            HorizontalDivider(modifier = Modifier.padding(start = 16.dp, end = 16.dp))
             SwitchPreference(
                 title = stringResource(R.string.speech_refine_title),
                 summary = stringResource(R.string.speech_refine_summary),
@@ -150,7 +124,7 @@ private fun SpeechResultSection(store: SpeechSettingsStore) {
                 onCheckedChange = { store.edit(settings.copy(refineTranscript = it)) },
             )
         }
-        if (streaming) SpeechNote(stringResource(R.string.speech_auto_send_note))
+        SpeechNote(stringResource(R.string.speech_auto_send_note))
     }
 }
 

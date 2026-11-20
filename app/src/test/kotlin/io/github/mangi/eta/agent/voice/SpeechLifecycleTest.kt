@@ -5,12 +5,12 @@ import android.os.Looper
 import io.github.mangi.eta.data.model.AsrProvider
 import io.github.mangi.eta.data.model.SpeechCredentials
 import io.github.mangi.eta.data.model.SpeechSettings
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.channels.Channel
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -26,7 +26,7 @@ import org.robolectric.annotation.Config
 class SpeechLifecycleTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val results = mutableListOf<String>()
-    private val sessions = mutableListOf<FakeStreamSession>()
+    private val sessions = mutableListOf<FakeDeviceSession>()
     private lateinit var controller: SpeechInputController
 
     @Before fun setup() {
@@ -42,19 +42,13 @@ class SpeechLifecycleTest {
         automaticEndpoint: Boolean = false,
         refiner: SpeechTranscriptRefiner = SpeechTranscriptRefiner(),
     ): SpeechInputController {
-        var pending: FakeStreamSession? = null
         return SpeechInputController(
             context = RuntimeEnvironment.getApplication(),
             scope = scope,
             automaticEndpoint = automaticEndpoint,
             refiner = refiner,
-            createRecorder = { FakeStreamSession().also { pending = it; sessions += it } },
-            recognizeStream = { _, _, _, onReady, onPreview, onEndpoint, endpointSilenceMs ->
-                val session = checkNotNull(pending)
-                pending = null
-                session.attach(onReady, onPreview, onEndpoint, endpointSilenceMs)
-                session.awaitTranscript()
-            },
+            createRecorder = { error("Android recognition must not open the microphone itself") },
+            createDeviceRecognizer = { FakeDeviceSession().also { sessions += it } },
             onResult = results::add,
         )
     }
@@ -63,10 +57,10 @@ class SpeechLifecycleTest {
         target: SpeechInputController = controller,
         settings: SpeechSettings = SpeechSettings(),
         holdToTalk: Boolean = false,
-    ): FakeStreamSession {
+    ): FakeDeviceSession {
         target.start(
             settings = settings,
-            credentials = SpeechCredentials(qwenAsr = "test-key", doubaoAsr = "test-key"),
+            credentials = SpeechCredentials(),
             holdToTalk = holdToTalk,
         )
         shadowOf(Looper.getMainLooper()).idle()
@@ -241,12 +235,9 @@ class SpeechLifecycleTest {
         }
     }
 
-    private class FakeStreamSession : SpeechAudioCapture {
-        override val frames = Channel<ByteArray>(Channel.UNLIMITED)
-        private val stopSignal = CompletableDeferred<Unit>()
+    private class FakeDeviceSession : DeviceSpeechRecognition {
         private val transcript = CompletableDeferred<String>()
         private var previewCallback: (String) -> Unit = {}
-        private var endpointCallback: () -> Unit = {}
         var endpointSilenceMs = -1
             private set
         var finished = false
@@ -254,24 +245,21 @@ class SpeechLifecycleTest {
         var canceled = false
             private set
 
-        fun attach(
-            onReady: () -> Unit,
-            onPreview: (String) -> Unit,
-            onEndpoint: () -> Unit,
+        override suspend fun recognize(
+            language: String,
             endpointSilenceMs: Int,
-        ) {
+            onReady: () -> Unit,
+            onLevel: (Float) -> Unit,
+            onPreview: (String) -> Unit,
+        ): String {
             previewCallback = onPreview
-            endpointCallback = onEndpoint
             this.endpointSilenceMs = endpointSilenceMs
             onReady()
-        }
-
-        override suspend fun record(onReady: () -> Unit, onLevel: (Float) -> Unit) {
-            onReady()
-            try {
-                stopSignal.await()
-            } finally {
-                frames.close()
+            return try {
+                transcript.await()
+            } catch (error: CancellationException) {
+                canceled = true
+                throw error
             }
         }
 
@@ -279,11 +267,12 @@ class SpeechLifecycleTest {
             if (!canceled) previewCallback(text)
         }
 
+        /** Le moteur Android coupe lui-même après le silence demandé. */
         fun serverEndpoint(text: String) {
             if (canceled) return
             previewCallback(text)
             if (endpointSilenceMs > 0) {
-                endpointCallback()
+                finished = true
                 transcript.complete(text)
             }
         }
@@ -292,17 +281,8 @@ class SpeechLifecycleTest {
             if (!canceled) transcript.complete(text)
         }
 
-        suspend fun awaitTranscript(): String = transcript.await()
-
         override fun finish() {
             finished = true
-            stopSignal.complete(Unit)
-        }
-
-        override fun cancel() {
-            canceled = true
-            finish()
-            frames.cancel()
         }
     }
 }

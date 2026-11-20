@@ -80,6 +80,7 @@ internal class SpeechRecorder : SpeechAudioCapture {
     companion object {
         const val RATE = 16_000
         const val FRAME_BYTES = 6_400
+        const val FRAME_MS = FRAME_BYTES * 1_000 / (RATE * 2)
         const val MAX_BYTES = RATE * 2 * 60
     }
 }

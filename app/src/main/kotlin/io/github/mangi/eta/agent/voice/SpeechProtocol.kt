@@ -1,6 +1,7 @@
 package io.github.mangi.eta.agent.voice
 
 import io.github.mangi.eta.data.model.AsrProvider
+import io.github.mangi.eta.data.model.OpenAiSpeechConfig
 import io.github.mangi.eta.data.model.SpeechCredentials
 import io.github.mangi.eta.data.model.SpeechSettings
 import io.github.mangi.eta.data.model.TtsProvider
@@ -10,7 +11,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 internal enum class SpeechErrorCode {
     CONFIGURATION, CREDENTIALS, PERMISSION, AUDIO, NETWORK, TIMEOUT, AUTHENTICATION,
-    RATE_LIMITED, SERVER, PROTOCOL, NO_SPEECH, BACKPRESSURE, STORAGE,
+    RATE_LIMITED, SERVER, PROTOCOL, NO_SPEECH, BACKPRESSURE, UNAVAILABLE,
 }
 
 internal class SpeechFailure(val code: SpeechErrorCode, val userMessage: String) : IOException(code.name)
@@ -24,98 +25,95 @@ internal fun Throwable.speechFailure(): SpeechFailure = when (this) {
     else -> SpeechFailure(SpeechErrorCode.PROTOCOL, "Speech service returned unsupported data")
 }
 
+/** Point d’accès OpenAI-compatible résolu pour un appel : racine `/v1`, clé (facultative pour vLLM) et modèle. */
+internal data class SpeechEndpoint(val baseUrl: String, val apiKey: String, val model: String) {
+    override fun toString(): String = "SpeechEndpoint(baseUrl=$baseUrl, model=$model)"
+}
+
+internal fun SpeechSettings.transcriptionEndpoint(secrets: SpeechCredentials): SpeechEndpoint = when (asr) {
+    AsrProvider.OPENAI -> SpeechEndpoint(OpenAiSpeechConfig.BASE_URL, secrets.openAi, openAi.transcriptionModel)
+    AsrProvider.VLLM -> SpeechEndpoint(vllmBaseUrl(vllm.baseUrl), secrets.vllm, vllm.transcriptionModel)
+    AsrProvider.ANDROID -> throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Android recognition does not use a server")
+}
+
+internal fun SpeechSettings.speechEndpoint(secrets: SpeechCredentials): SpeechEndpoint = when (tts) {
+    TtsProvider.OPENAI -> SpeechEndpoint(OpenAiSpeechConfig.BASE_URL, secrets.openAi, openAi.speechModel)
+    TtsProvider.VLLM -> SpeechEndpoint(vllmBaseUrl(vllm.baseUrl), secrets.vllm, vllm.speechModel)
+    TtsProvider.ANDROID, TtsProvider.NONE ->
+        throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "This speech output does not use a server")
+}
+
+internal fun SpeechSettings.speechVoice(): String = when (tts) {
+    TtsProvider.OPENAI -> openAi.voice
+    TtsProvider.VLLM -> vllm.voice
+    TtsProvider.ANDROID, TtsProvider.NONE -> ""
+}
+
+/**
+ * [hasProviderVllm] : un fournisseur vLLM de conversation est configuré et peut prêter son adresse
+ * lorsque le champ vocal est vide.
+ */
 internal fun validateSpeechSettings(
     settings: SpeechSettings,
     secrets: SpeechCredentials,
     synthesis: Boolean,
-    hasProviderDeepSeekKey: Boolean = false,
+    hasProviderVllm: Boolean = false,
 ) {
     if (!synthesis && !settings.recognitionEnabled) return
     fun required(value: String, name: String) {
         if (value.isBlank()) throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Configure first: $name")
     }
+    fun vllmServer() {
+        if (settings.vllm.baseUrl.isBlank()) {
+            if (!hasProviderVllm) required("", "vLLM server address")
+        } else {
+            vllmBaseUrl(settings.vllm.baseUrl)
+        }
+    }
     if (synthesis) {
         when (settings.tts) {
-            TtsProvider.NONE -> throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Configure speech synthesis in settings first")
-            TtsProvider.QWEN -> {
-                required(secrets.qwenTts, "Qwen speech API key")
-                required(settings.qwenVoice, "Voice")
-                speechBaseUrl(settings.qwenTts.endpoint())
-            }
-            TtsProvider.DOUBAO -> {
-                required(secrets.doubaoTts, "Doubao speech credentials")
-                required(settings.doubaoVoice, "Voice")
-                speechBaseUrl(settings.doubaoTts.baseUrl)
-                if (settings.doubaoTts.legacyAuth) required(settings.doubaoTts.appId, "Doubao app ID")
-            }
-            TtsProvider.GEMINI -> {
-                required(secrets.geminiTts, "Gemini speech API key")
-                required(settings.geminiTts.voice, "Voice")
-                speechBaseUrl(settings.geminiTts.baseUrl)
-                if (settings.geminiTts.style.length > 500) {
-                    throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Reading style must be at most 500 characters")
+            TtsProvider.NONE -> throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Configure spoken answers in settings first")
+            TtsProvider.ANDROID -> Unit
+            TtsProvider.OPENAI -> {
+                required(secrets.openAi, "OpenAI API key")
+                required(settings.openAi.speechModel, "Speech model")
+                required(settings.openAi.voice, "Voice")
+                if (settings.openAi.instructions.length > 500) {
+                    throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Reading instructions must be at most 500 characters")
                 }
             }
-            TtsProvider.MINIMAX -> {
-                required(secrets.minimaxTts, "MiniMax speech API key")
-                required(settings.minimaxTts.voice, "Voice")
-                speechBaseUrl(settings.minimaxTts.baseUrl)
-                if (settings.minimaxTts.speed !in 0.5f..2f) {
-                    throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "MiniMax speech speed must be between 0.5 and 2")
-                }
-            }
-            TtsProvider.MIMO -> {
-                required(secrets.mimoTts, "MiMo speech API key")
-                required(settings.mimoTts.voice, "Voice")
-                speechBaseUrl(settings.mimoTts.baseUrl)
-                if (settings.mimoTts.style.length > 500) {
-                    throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Reading style must be at most 500 characters")
-                }
-            }
-            TtsProvider.DEEPSEEK -> {
-                if (!hasProviderDeepSeekKey) required(secrets.deepseekTts, "DeepSeek speech API key")
-                required(settings.deepseekTts.voice, "Voice")
-                speechBaseUrl(settings.deepseekTts.baseUrl)
+            TtsProvider.VLLM -> {
+                vllmServer()
+                required(settings.vllm.speechModel, "Speech model")
             }
         }
     } else when (settings.asr) {
-        AsrProvider.MIMO -> {
-            required(secrets.mimoAsr, "MiMo recognition API key")
-            speechBaseUrl(settings.mimoAsr.baseUrl)
+        AsrProvider.ANDROID -> Unit
+        AsrProvider.OPENAI -> {
+            required(secrets.openAi, "OpenAI API key")
+            required(settings.openAi.transcriptionModel, "Transcription model")
         }
-        AsrProvider.DEEPSEEK -> {
-            if (!hasProviderDeepSeekKey) required(secrets.deepseekAsr, "DeepSeek recognition API key")
-            speechBaseUrl(settings.deepseekAsr.baseUrl)
+        AsrProvider.VLLM -> {
+            vllmServer()
+            required(settings.vllm.transcriptionModel, "Transcription model")
         }
-        AsrProvider.DOUBAO -> {
-            required(secrets.doubaoAsr, "Doubao recognition credentials")
-            speechBaseUrl(settings.doubaoAsr.baseUrl)
-            if (settings.doubaoAsr.legacyAuth) required(settings.doubaoAsr.appId, "Doubao app ID")
-        }
-        AsrProvider.QWEN_REALTIME,
-        AsrProvider.QWEN_FLASH,
-        AsrProvider.QWEN_FILE,
-        -> {
-            required(secrets.qwenAsr, "Qwen recognition API key")
-            speechBaseUrl(settings.qwenAsr.endpoint())
-            if (settings.asr == AsrProvider.QWEN_FILE) {
-                required(settings.oss.bucket, "OSS Bucket")
-                required(settings.oss.region, "OSS region")
-                required(secrets.ossAccessKeyId, "OSS AccessKey ID")
-                required(secrets.ossAccessKeySecret, "OSS AccessKey Secret")
-                speechBaseUrl(settings.oss.endpoint)
-                if (!Regex("[a-z0-9][a-z0-9-]{1,61}[a-z0-9]").matches(settings.oss.bucket) ||
-                    settings.oss.prefix.split('/').any { it == ".." || it == "." }
-                ) throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Check the OSS bucket and directory prefix")
-            }
-        }
+    }
+    if (settings.language.isNotBlank() && !LANGUAGE.matches(settings.language)) {
+        throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Language must be a code such as fr or fr-FR")
     }
 }
 
-internal fun speechBaseUrl(value: String): String {
+/** Serveur vLLM du réseau local : HTTP accepté, mais ni identifiants, ni paramètres, ni fragment dans l’adresse. */
+internal fun vllmBaseUrl(value: String): String {
     val url = value.trim().toHttpUrlOrNull()
-    if (url == null || !url.isHttps || url.username.isNotEmpty() || url.password.isNotEmpty() ||
+    if (url == null || url.username.isNotEmpty() || url.password.isNotEmpty() ||
         url.query != null || url.fragment != null
-    ) throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "Service URL must use HTTPS without credentials or query parameters")
+    ) throw SpeechFailure(SpeechErrorCode.CONFIGURATION, "The vLLM address must be http(s)://host:port/v1 without credentials or parameters")
     return url.toString().trimEnd('/')
 }
+
+/** Langue envoyée aux API de transcription : seul le code ISO-639-1 est accepté par Whisper. */
+internal fun SpeechSettings.transcriptionLanguage(): String? =
+    language.trim().substringBefore('-').substringBefore('_').lowercase().takeIf { it.length in 2..3 }
+
+private val LANGUAGE = Regex("[A-Za-z]{2,3}([-_][A-Za-z0-9]{2,8})*")
