@@ -2,7 +2,7 @@ package io.github.mangi.eta.ui.screens.settings
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.net.Uri
+import android.util.Log
 import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import io.github.mangi.eta.BuildConfig
 import io.github.mangi.eta.data.car.MyPeugeotCarSource
 import io.github.mangi.eta.data.car.PeugeotLogin
 import io.github.mangi.eta.data.car.carFetchMessage
@@ -38,6 +39,8 @@ import io.github.suqi8.coui.kmp.icon.COUIIcons
 import io.github.suqi8.coui.kmp.icon.basic.Close
 import io.github.suqi8.coui.kmp.overlay.OverlayBottomSheet
 import io.github.suqi8.coui.kmp.theme.COUITheme
+import java.net.URI
+import java.net.URISyntaxException
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -102,8 +105,6 @@ internal fun PeugeotLoginSheet(source: MyPeugeotCarSource, onDismiss: () -> Unit
     }
 }
 
-private val peugeotWebHosts = setOf("idpcvs.peugeot.com", "id-dcr.peugeot.com")
-
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun PeugeotLoginView(
@@ -127,19 +128,29 @@ private fun PeugeotLoginView(
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                         val url = request.url
-                        if (url.scheme.equals("mymap", ignoreCase = true)) {
-                            if (request.isForMainFrame && url.toString().substringBefore('?') == peugeotRedirectUri) {
-                                val state = url.getQueryParameters("state").singleOrNull()
-                                val code = url.getQueryParameters("code").singleOrNull()
-                                if (!attempt.acceptsState(state) || code.isNullOrBlank()) {
-                                    onFailure("La connexion MyPeugeot a été interrompue.")
-                                } else {
-                                    onCode(requireNotNull(state), code)
-                                }
+                        if (request.isForMainFrame && url.toString().substringBefore('?') == peugeotRedirectUri) {
+                            val state = url.getQueryParameters("state").singleOrNull()
+                            val code = url.getQueryParameters("code").singleOrNull()
+                            if (!attempt.acceptsState(state) || code.isNullOrBlank()) {
+                                onFailure("La connexion MyPeugeot a été interrompue.")
+                            } else {
+                                onCode(requireNotNull(state), code)
                             }
                             return true
                         }
-                        return !url.isPeugeotPage()
+
+                        val origin = try {
+                            URI(url.scheme, url.encodedAuthority, null, null, null)
+                        } catch (_: URISyntaxException) {
+                            null
+                        }
+                        if (origin?.isAllowedPeugeotLoginPage() == true) return false
+                        if (request.isForMainFrame) {
+                            val host = origin?.host ?: "hôte inconnu"
+                            if (BuildConfig.DEBUG) Log.w("PeugeotLogin", host)
+                            onFailure("Page de connexion inattendue : $host")
+                        }
+                        return true
                     }
 
                     override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -160,9 +171,6 @@ private fun PeugeotLoginView(
         },
     )
 }
-
-private fun Uri.isPeugeotPage(): Boolean =
-    scheme == "https" && host in peugeotWebHosts && (port == -1 || port == 443) && userInfo == null
 
 internal suspend fun clearPeugeotWebData(context: Context) {
     val cleaner = WebView(context)
