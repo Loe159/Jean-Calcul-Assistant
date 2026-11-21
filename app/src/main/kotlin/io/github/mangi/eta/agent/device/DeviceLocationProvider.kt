@@ -27,13 +27,13 @@ internal object DeviceLocationProvider {
         data class Unavailable(val status: String) : Result
     }
 
-    fun accessState(context: Context): AccessState {
+    fun accessState(context: Context, requireBackground: Boolean = true): AccessState {
         val foregroundGranted = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED ||
             context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
         if (!foregroundGranted) return AccessState.DENIED
-        if (context.checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) !=
+        if (requireBackground && context.checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) !=
             PackageManager.PERMISSION_GRANTED
         ) {
             return AccessState.FOREGROUND_ONLY
@@ -44,8 +44,8 @@ internal object DeviceLocationProvider {
     }
 
     @SuppressLint("MissingPermission")
-    fun latest(context: Context): Result {
-        return when (accessState(context)) {
+    fun latest(context: Context, requireBackground: Boolean = true): Result {
+        return when (accessState(context, requireBackground)) {
             AccessState.DENIED -> Result.Unavailable("permission_required")
             AccessState.FOREGROUND_ONLY -> Result.Unavailable("background_permission_required")
             AccessState.DISABLED -> Result.Unavailable("location_disabled")

@@ -46,6 +46,7 @@ internal class BriefVisibilityPreferences(context: Context) {
 internal fun BriefCustomization(
     show: Boolean,
     hiddenCards: Set<BriefCardId>,
+    hasCarSession: Boolean,
     onVisibilityChange: (BriefCardId, Boolean) -> Unit,
     onDismiss: () -> Unit,
     onManageFiltering: () -> Unit,
@@ -65,7 +66,7 @@ internal fun BriefCustomization(
             verticalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(bottom = 16.dp),
         ) {
-            val (previewCards, realCards) = BriefCardId.entries.partition { it.isPreview }
+            val (previewCards, realCards) = BriefCardId.entries.partition { it.isPreview(hasCarSession) }
             item {
                 CardListGroup {
                     realCards.forEach { card ->
@@ -80,7 +81,7 @@ internal fun BriefCustomization(
                     }
                 }
             }
-            item { PreferenceCategory(title = "Aperçus · données fictives") }
+            item { PreferenceCategory(title = "Aperçus") }
             item {
                 CardListGroup {
                     previewCards.forEach { card ->

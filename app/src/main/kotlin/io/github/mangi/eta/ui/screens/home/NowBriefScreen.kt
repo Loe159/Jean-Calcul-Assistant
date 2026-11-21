@@ -37,6 +37,10 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.mangi.eta.agent.device.notifications.NotificationActivityFeed
 import io.github.mangi.eta.agent.device.notifications.remote.MastraBriefCounts
 import io.github.mangi.eta.agent.device.notifications.remote.MastraConnection
+import io.github.mangi.eta.data.car.BriefCarState
+import io.github.mangi.eta.data.car.CarConnection
+import io.github.mangi.eta.data.car.CarSource
+import io.github.mangi.eta.data.car.MyPeugeotCarSource
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
 import io.github.mangi.eta.ui.components.coui.couiPageScroll
 import io.github.mangi.eta.ui.components.coui.rememberMaterialBackdropProvider
@@ -59,7 +63,6 @@ import io.github.mangi.eta.ui.screens.home.brief.MastraBriefSummarySource
 import io.github.mangi.eta.ui.screens.home.brief.briefBarSuggestion
 import io.github.mangi.eta.ui.screens.home.brief.briefDemoAgenda
 import io.github.mangi.eta.ui.screens.home.brief.briefDemoSuggestions
-import io.github.mangi.eta.ui.screens.home.brief.briefDemoTrip
 import io.github.mangi.eta.ui.screens.home.brief.briefFeedOrder
 import io.github.mangi.eta.ui.screens.home.brief.briefMoment
 import io.github.mangi.eta.ui.screens.home.brief.rememberBriefSummary
@@ -76,6 +79,7 @@ import io.github.mangi.eta.ui.screens.home.brief.cards.BriefNotificationsCard
 import io.github.mangi.eta.ui.screens.home.brief.cards.BriefSuggestionsCard
 import io.github.mangi.eta.ui.screens.home.brief.cards.BriefTasksCard
 import io.github.mangi.eta.ui.screens.home.brief.cards.BriefWeatherCard
+import io.github.mangi.eta.ui.screens.settings.PeugeotLoginSheet
 import io.github.suqi8.coui.kmp.basic.Scaffold
 import io.github.suqi8.coui.kmp.basic.SnackbarHost
 import io.github.suqi8.coui.kmp.basic.SnackbarHostState
@@ -85,6 +89,7 @@ import io.github.suqi8.coui.kmp.effect.LocalPopupMaterialBlur
 import io.github.suqi8.coui.kmp.theme.COUITheme
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -108,10 +113,12 @@ internal fun NowBriefScreen(
     onCloseNotifications: () -> Unit,
     onNotificationTouchChange: (Boolean) -> Unit = {},
     onManageFiltering: () -> Unit = {},
+    onOpenCarSettings: () -> Unit = {},
     revealProgress: () -> Float = { if (visible) 1f else 0f },
     modifier: Modifier = Modifier,
     extensions: List<NowBriefCardExtension> = emptyList(),
     summarySource: BriefSummarySource? = null,
+    carSource: CarSource? = null,
 ) {
     val context = LocalContext.current
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
@@ -137,6 +144,38 @@ internal fun NowBriefScreen(
     var homeControls by remember { mutableStateOf(BriefDemoData.homeEnabledControls) }
     var thermostatTarget by remember { mutableFloatStateOf(BriefDemoData.thermostatTarget) }
     val atDashboard = active && notificationPage == null
+    val defaultCarSource = if (carSource == null) remember(context) { MyPeugeotCarSource.get(context) } else null
+    val vehicleSource = carSource ?: requireNotNull(defaultCarSource)
+    val vehicleSettings by vehicleSource.settings.collectAsState()
+    val hasCarSession = vehicleSettings.hasSession
+    var showCarLogin by remember { mutableStateOf(false) }
+    val carConnection = vehicleSettings.connection
+    val vehicleId = vehicleSettings.vehicleId
+    val fuel = vehicleSettings.fuel
+    var carState by remember(vehicleSource, carConnection, vehicleId, fuel) {
+        mutableStateOf<BriefCarState>(
+            when (carConnection) {
+                CarConnection.Disconnected -> BriefCarState.Disconnected
+                CarConnection.MyPeugeotMissing -> BriefCarState.MyPeugeotMissing
+                CarConnection.NeedsReauth -> BriefCarState.NeedsReauth
+                else -> BriefCarState.Loading
+            },
+        )
+    }
+    val showCar = BriefCardId.CAR !in hiddenCards
+    LaunchedEffect(defaultCarSource, atDashboard, showCar) {
+        if (atDashboard && !showCar) defaultCarSource?.checkConnection()
+    }
+    val loadCar = atDashboard && showCar && !showCarLogin
+    LaunchedEffect(vehicleSource, loadCar, carConnection, vehicleId, fuel) {
+        if (loadCar) {
+            do {
+                carState = vehicleSource.load()
+                if (vehicleSource.settings.value.connection != CarConnection.Connected) break
+                delay(60_000)
+            } while (true)
+        }
+    }
     val deviceTime by rememberBriefTime(atDashboard)
     val now = deviceTime.toLocalDateTime()
     val moment = briefMoment(now.toLocalTime())
@@ -176,6 +215,7 @@ internal fun NowBriefScreen(
             BriefMotionSession.hasOpened = true
         } else {
             showCustomization = false
+            showCarLogin = false
             if (BriefMotionSession.hasOpened) BriefMotionSession.hasClosedAfterOpening = true
         }
     }
@@ -210,17 +250,16 @@ internal fun NowBriefScreen(
 
     val nowMillis = deviceTime.toInstant().toEpochMilli()
     val agenda = remember(deviceTime) { briefDemoAgenda(deviceTime) }
-    val trip = remember(deviceTime, agenda) { briefDemoTrip(deviceTime, agenda) }
-    val suggestions = remember(deviceTime, agenda) { briefDemoSuggestions(deviceTime, agenda) }
-    val barSuggestion = remember(deviceTime, agenda, trip) { briefBarSuggestion(deviceTime, agenda, trip) }
+    val suggestions = remember(agenda) { briefDemoSuggestions(agenda) }
+    val barSuggestion = remember(deviceTime, agenda) { briefBarSuggestion(deviceTime, agenda) }
     val extensionsInOrder = remember(extensions) {
         val reserved = BriefCardId.entries.map { it.key } + "header"
         extensions.filter { it.id !in reserved }
             .sortedWith(compareBy(NowBriefCardExtension::priority, NowBriefCardExtension::id))
     }
     // Real data first; demo cards only below the "Aperçus" fold, in their moment order.
-    val realCards = cards.filterNot { it.isPreview }
-    val previewCards = cards.filter { it.isPreview }
+    val realCards = cards.filterNot { it.isPreview(hasCarSession) }
+    val previewCards = cards.filter { it.isPreview(hasCarSession) }
     val rows = buildList {
         fun addCard(card: BriefCardId, index: Int) {
             add(BriefFeedItem(card.key, "brief-card") {
@@ -254,7 +293,17 @@ internal fun NowBriefScreen(
                             suggestions = suggestions,
                         )
                         BriefCardId.AGENDA -> BriefAgendaCard(expanded, animateCard, toggleDensity, cardModifier, showDemoAction, agenda)
-                        BriefCardId.CAR -> BriefCarCard(expanded, animateCard, toggleDensity, cardModifier, showDemoAction, trip)
+                        BriefCardId.CAR -> BriefCarCard(
+                            state = carState,
+                            now = deviceTime,
+                            expanded = expanded,
+                            motionAllowed = animateCard,
+                            onToggleDensity = toggleDensity,
+                            onConnect = { showCarLogin = true },
+                            onSettings = onOpenCarSettings,
+                            onMapUnavailable = { scope.launch { snackbars.showSnackbar("Application de carte indisponible") } },
+                            modifier = cardModifier,
+                        )
                         BriefCardId.TASKS -> BriefTasksCard(
                             expanded, animateCard, toggleDensity, cardModifier,
                             checked = checkedTasks,
@@ -300,7 +349,10 @@ internal fun NowBriefScreen(
             val sectionIndex = realCards.size + extensionsInOrder.size
             add(BriefFeedItem(BriefPreviewsKey, "brief-previews") {
                 BriefReveal(BriefPreviewsKey, atDashboard, motionAllowed, sectionIndex) {
-                    BriefPreviewsSection(previewCards.size, previewsExpanded, setPreviewsExpanded)
+                    BriefPreviewsSection(
+                        previewCards.size, previewsExpanded, setPreviewsExpanded,
+                        includesCarConnection = BriefCardId.CAR in previewCards && defaultCarSource != null,
+                    )
                 }
             })
             if (previewsExpanded) {
@@ -326,7 +378,7 @@ internal fun NowBriefScreen(
         derivedStateOf { listState.firstVisibleItemIndex == 0 && !showMinibar }
     }
     val onScrollToCard: (BriefCardId) -> Unit = { card ->
-        if (card.isPreview && !previewsExpanded) setPreviewsExpanded(true)
+        if (card.isPreview(hasCarSession) && !previewsExpanded) setPreviewsExpanded(true)
         pendingScroll = card.key
     }
     val rowKeys = rows.map { it.key }
@@ -406,9 +458,13 @@ internal fun NowBriefScreen(
             )
         }
         actionDialogs()
+        if (visible && showCarLogin && defaultCarSource != null) {
+            PeugeotLoginSheet(defaultCarSource) { showCarLogin = false }
+        }
         BriefCustomization(
             show = visible && showCustomization,
             hiddenCards = hiddenCards,
+            hasCarSession = hasCarSession,
             onVisibilityChange = { card, show ->
                 preferences.setVisible(card, show)
                 hiddenCards = if (show) hiddenCards - card else hiddenCards + card

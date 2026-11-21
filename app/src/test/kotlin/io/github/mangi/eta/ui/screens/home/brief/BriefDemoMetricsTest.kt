@@ -94,16 +94,14 @@ class BriefDemoMetricsTest {
     }
 
     @Test
-    fun demoUsesTheBriefMinuteAndKeepsTheCarAndAgendaDepartureInSync() {
+    fun morningBriefUsesTheNextAgendaEvent() {
         val now = ZonedDateTime.parse("2026-11-20T08:57:00+01:00[Europe/Paris]")
         val agenda = briefDemoAgenda(now)
-        val trip = briefDemoTrip(now, agenda)
         assertEquals(now.toLocalDate(), agenda.date)
         assertEquals(8 * 60 + 57, agenda.nowMinute)
         assertEquals(33, agenda.countdown.minutes)
-        assertEquals(now, agenda.departure)
-        assertEquals(agenda.departure, trip.departure)
-        assertEquals("C’est l’heure de partir", briefBarSuggestion(now, agenda, trip).title)
+        assertNull(agenda.departure)
+        assertEquals("Point projet à 09:30", briefBarSuggestion(now, agenda).title)
     }
 
     @Test
@@ -111,7 +109,7 @@ class BriefDemoMetricsTest {
         val noon = ZonedDateTime.parse("2026-11-20T12:15:00+01:00[Europe/Paris]")
         fun barAt(now: ZonedDateTime): BriefBarSuggestion {
             val agenda = briefDemoAgenda(now)
-            return briefBarSuggestion(now, agenda, briefDemoTrip(now, agenda))
+            return briefBarSuggestion(now, agenda)
         }
         assertEquals("Déjeuner à 12:30", barAt(noon).title)
         val lunch = noon.withHour(13).withMinute(0)
@@ -128,7 +126,7 @@ class BriefDemoMetricsTest {
         assertEquals(evening.toLocalDate().plusDays(1), tomorrow.date)
         assertEquals(15 * 60 + 15, tomorrow.countdown.minutes)
         assertNull(briefAgendaRibbon(tomorrow.events, tomorrow.nowMinute).now)
-        assertEquals("Départ demain à 08:45", barAt(evening).title)
+        assertEquals("Demain · Point projet", barAt(evening).title)
         val night = noon.withHour(23).withMinute(55)
         assertEquals("Coucher conseillé à 00:10", barAt(night).title)
         assertEquals("Réveil à 07:40 · 7 h 30 de sommeil", barAt(night).detail)
@@ -140,20 +138,18 @@ class BriefDemoMetricsTest {
         val evening = ZonedDateTime.parse("2026-03-28T20:00:00+01:00[Europe/Paris]")
         val agenda = briefDemoAgenda(evening)
         assertEquals(12 * 60 + 30, agenda.countdown.minutes)
-        assertEquals(2 * 3600, agenda.departure?.offset?.totalSeconds)
+        assertNull(agenda.departure)
     }
 
     @Test
-    fun suggestionsReflectStationHoursAndFutureFreeSlots() {
+    fun suggestionsReflectFutureFreeSlots() {
         val now = ZonedDateTime.parse("2026-11-20T13:30:00+01:00[Europe/Paris]")
-        val daytime = briefDemoSuggestions(now, briefDemoAgenda(now))
-        assertEquals("Fais le plein avant 22 h", daytime.first().title)
+        val daytime = briefDemoSuggestions(briefDemoAgenda(now))
         assertEquals("Créneau libre de 15:30 à 17:00.", daytime.single { it.id == "sport" }.detail)
         val night = now.withHour(22)
-        val nighttime = briefDemoSuggestions(night, briefDemoAgenda(night))
-        assertEquals("merge", nighttime.first().id)
+        val nighttime = briefDemoSuggestions(briefDemoAgenda(night))
         assertTrue(nighttime.single { it.id == "sport" }.detail.contains("demain"))
-        assertTrue(nighttime.single { it.id == "fuel" }.detail.contains("07:00"))
+        assertTrue(nighttime.none { it.id == "fuel" })
     }
 
     @Test

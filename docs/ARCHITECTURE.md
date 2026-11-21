@@ -7,6 +7,7 @@ Un module Android `app`, Kotlin/Compose. Namespace interne `io.github.mangi.eta`
 - `agent/tool`, `agent/accessibility`, `agent/virtualdisplay` : exécution Android avec contrôles de disponibilité/permissions.
 - `agent/voice`, `agent/auth`, `agent/mcp`, `agent/skill`, `agent/subagent`, `agent/terminal` : moteurs amont conservés pour les blocs retenus.
 - `data/` : Room, DataStore et secrets chiffrés. Les tables/types de compatibilité amont ne constituent pas des fonctionnalités exposées.
+- `data/car/` : source du Now Brief Voiture. La session MyPeugeot est chiffrée via Android Keystore et les relevés sont mis en cache en mémoire. Le Brief injecte une source de démonstration pour les tests. Voir [NOW-BRIEF-CAR.md](NOW-BRIEF-CAR.md).
 - `product/JeanCalculProfile.kt` : sélection immuable ; filtrage des providers, du catalogue et refus des appels d’outils exclus.
 - Module LSPosed : seul `system` est déclaré, pour accessibilité/écran virtuel. Les hooks constructeurs/Google ne sont plus installés.
 

@@ -17,8 +17,11 @@ internal enum class BriefCardId(val key: String, val title: String) {
     HOME("home", "Maison"),
     ;
 
-    /** Drawn from fictional demo data: grouped under the folded "Aperçus" section, never mixed with real data. */
-    val isPreview: Boolean get() = this != NOTIFICATIONS
+    fun isPreview(hasCarSession: Boolean): Boolean = when (this) {
+        NOTIFICATIONS -> false
+        CAR -> !hasCarSession
+        else -> true
+    }
 }
 
 internal const val BriefPreviewsKey = "previews"

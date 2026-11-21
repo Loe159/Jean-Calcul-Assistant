@@ -212,6 +212,10 @@ internal fun AgentAppShell(
                         revealProgress = revealProgress,
                         onNotificationTouchChange = onItemTouchChange,
                         onManageFiltering = onOpenNotifications,
+                        onOpenCarSettings = {
+                            closeBrief()
+                            onOpenSettings()
+                        },
                         onClose = closeBrief,
                     )
                 },

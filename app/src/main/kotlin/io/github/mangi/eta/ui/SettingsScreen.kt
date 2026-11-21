@@ -97,6 +97,7 @@ import io.github.suqi8.coui.kmp.preference.SwitchPreference
 import io.github.suqi8.coui.kmp.theme.COUITheme
 import io.github.mangi.eta.ui.components.coui.PreferenceValueText
 import io.github.suqi8.coui.kmp.basic.CardListGroup
+import io.github.mangi.eta.ui.screens.settings.CarSettingsSection
 import io.github.suqi8.coui.kmp.preference.PreferenceCategory
 
 private object SettingsIconColors {
@@ -482,6 +483,7 @@ private fun SettingsPageContent(
 
 
 
+        CarSettingsSection(context)
         PreferenceCategory(title = "Notifications")
         Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
             CardListGroup {

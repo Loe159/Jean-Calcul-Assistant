@@ -16,7 +16,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.LocalGasStation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,7 +63,6 @@ internal fun BriefSuggestionOrb(motionAllowed: Boolean) {
 
 private val BriefDemoSuggestion.icon: ImageVector
     get() = when (id) {
-        "fuel" -> Icons.Rounded.LocalGasStation
         "reply" -> COUIIcons.Messages
         "sport" -> Icons.Rounded.FitnessCenter
         else -> COUIIcons.Merge

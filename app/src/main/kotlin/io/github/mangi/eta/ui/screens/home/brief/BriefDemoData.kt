@@ -66,12 +66,8 @@ internal enum class BriefHomeControl(val label: String, val onLabel: String, val
 }
 
 internal object BriefDemoData {
-    const val destination = "Atelier de démonstration"
-    const val tripKm = 18
-    const val tripMinutes = 38
-    const val tripArrivalLeadMinutes = tripMinutes + 7
     const val lunchWalkMinutes = 9
-    val project = BriefDemoEvent(570, 630, "Point projet", destination, BriefDemoTone.Blue, tripArrivalLeadMinutes)
+    val project = BriefDemoEvent(570, 630, "Point projet", "Atelier de démonstration", BriefDemoTone.Blue)
     val lunch = BriefDemoEvent(750, 810, "Déjeuner avec Clara", "Café du quartier", BriefDemoTone.Orange, lunchWalkMinutes)
     val agenda = listOf(
         project,
@@ -82,19 +78,11 @@ internal object BriefDemoData {
     )
     val attendees = listOf("Inès" to BriefDemoTone.Violet, "Karim" to BriefDemoTone.Green, "Sophie" to BriefDemoTone.Orange)
 
-    const val carModel = "208 · Blanc nacré"
+    const val carModel = "Peugeot 208"
     const val rangeKm = 168
     const val fuelPercent = 24
     const val odometerKm = 38_760
     const val serviceRemainingKm = 1_240
-    const val serviceIntervalKm = 10_000
-    const val lastService = "12 mai"
-    const val nextService = "7 janv."
-    const val tripTraffic = "Trafic dense"
-    const val station = "Station à 1,4 km · 1,72 €/L · ouverte jusqu’à 22:00"
-    const val tyreAlert = "Pneu arrière gauche à 1,9 bar"
-    const val tyreDetail = "Pression recommandée · 2,3 bar"
-    val traffic = listOf(BriefDemoTone.Green, BriefDemoTone.Green, BriefDemoTone.Yellow, BriefDemoTone.Orange, BriefDemoTone.Orange, BriefDemoTone.Yellow, BriefDemoTone.Green)
 
     const val garageCall = "Appeler le garage"
     const val tyreAppointment = "Prendre RDV pneus"
