@@ -34,8 +34,10 @@ internal class FuelStations(private val http: CarHttp) {
             .addQueryParameter("select", "id,adresse,ville,geom,$price,$updated,horaires,distance(geom, $point) AS distance_m")
             .addQueryParameter("limit", "1")
             .build()
-        val raw = http.execute(Request.Builder().url(url).get().build()).requireSuccess()
-        val row = carJson.decodeFromString<StationResults>(raw).results?.firstOrNull() ?: return null
+        val row = http.read(
+            CarReadStage.Stations, Request.Builder().url(url).get().build(),
+            listOf(center.latitude.toString(), center.longitude.toString()),
+        ) { carJson.decodeFromString<StationResults>(it.requireSuccess()) }.results?.firstOrNull() ?: return null
         val stationPrice = (row[price] as? JsonPrimitive)?.doubleOrNull?.takeIf { it > 0 && it.isFinite() } ?: return null
         val geo = (row["geom"] as? JsonObject)?.let {
             val lat = (it["lat"] as? JsonPrimitive)?.doubleOrNull ?: return@let null

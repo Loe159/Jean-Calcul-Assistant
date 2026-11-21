@@ -1,6 +1,7 @@
 package io.github.mangi.eta.data.car
 
 import android.content.Context
+import io.github.mangi.eta.BuildConfig
 import io.github.mangi.eta.agent.device.DeviceLocationProvider
 import io.github.mangi.eta.data.repository.KeystoreSecretStore
 import java.io.IOException
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerializationException
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 
@@ -122,7 +124,10 @@ internal class MyPeugeotCarSource private constructor(private val context: Conte
     private suspend fun loadFleet(parameters: MyPeugeotParameters): List<PeugeotVehicle> {
         val cached = fleet?.takeIf { it.isFresh(DAY) }
         val vehicles = cached?.value ?: try {
-            collection(parameters, api.newBuilder().addPathSegment("vehicles").addQueryParameter("extension", "branding").build())
+            collection(
+                parameters, CarReadStage.Vehicles,
+                api.newBuilder().addPathSegment("vehicles").build(),
+            )
                 .flatMap { it.vehicles.orEmpty() }.distinctBy { it.id }
                 .filter { !it.id.isNullOrBlank() }.also { fleet = Cached(it) }
         } catch (error: Exception) {
@@ -151,14 +156,19 @@ internal class MyPeugeotCarSource private constructor(private val context: Conte
         fun endpoint(path: String): HttpUrl = root.newBuilder().addPathSegment(path).build()
 
         val status = current.status.read(QUARTER_HOUR) {
-            carJson.decodeFromString<PeugeotStatus>(session.get(parameters, endpoint("status"))).toStatus()
+            session.get(parameters, endpoint("status"), CarReadStage.Status) {
+                carJson.decodeFromString<PeugeotStatus>(it).toStatus()
+            }
         }
         val maintenance = current.maintenance.read(DAY) {
             val url = peugeotLink(root, vehicle.links?.maintenance?.href) ?: endpoint("maintenance")
-            carJson.decodeFromString<PeugeotMaintenance>(session.get(parameters, url)).toMaintenance(ZoneId.systemDefault())
+            session.get(parameters, url, CarReadStage.Maintenance) {
+                carJson.decodeFromString<PeugeotMaintenance>(it).toMaintenance(ZoneId.systemDefault())
+            }
         }
         val alerts = current.alerts.read(QUARTER_HOUR) {
-            collection(parameters, endpoint("alerts")).flatMap { it.alerts.orEmpty() }.mapNotNull(PeugeotAlert::toActiveAlert)
+            collection(parameters, CarReadStage.Alerts, endpoint("alerts"))
+                .flatMap { it.alerts.orEmpty() }.mapNotNull(PeugeotAlert::toActiveAlert)
         }
         if (status.first == null && maintenance.first == null && alerts.first == null) {
             return BriefCarState.Error(carFetchMessage(status.second ?: maintenance.second ?: alerts.second))
@@ -186,15 +196,26 @@ internal class MyPeugeotCarSource private constructor(private val context: Conte
         return BriefCarState.Ready(data, partial = incomplete)
     }
 
-    private suspend fun collection(parameters: MyPeugeotParameters, first: HttpUrl): List<CarCollectionItems> = buildList {
+    private suspend fun collection(
+        parameters: MyPeugeotParameters,
+        stage: CarReadStage,
+        first: HttpUrl,
+    ): List<CarCollectionItems> = buildList {
         val seen = mutableSetOf<HttpUrl>()
         var url: HttpUrl? = first
-        while (url != null && seen.size < 20 && seen.add(url)) {
-            val page = carJson.decodeFromString<CarCollection>(session.get(parameters, url))
-            page.embedded?.let(::add)
-            url = peugeotLink(url, page.links?.next?.href)
+        while (url != null) {
+            val pageUrl = url
+            seen += pageUrl
+            url = session.get(parameters, pageUrl, stage) {
+                val page = carJson.decodeFromString<CarCollection>(it)
+                page.embedded?.let(::add)
+                peugeotLink(pageUrl, page.links?.next?.href).also { next ->
+                    if (next != null && (seen.size >= 20 || next in seen)) {
+                        throw SerializationException("Incomplete Peugeot collection")
+                    }
+                }
+            }
         }
-        if (url != null) throw IOException("Incomplete Peugeot collection")
     }
 
     private class Readings(val vehicleId: String) {
@@ -260,13 +281,22 @@ private class EncryptedPeugeotSession(context: Context) : PeugeotSessionStorage 
     override fun clear() = store.clear("session")
 }
 
-internal fun carFetchMessage(error: Exception?): String = when (error) {
-    is PeugeotExchangeRejected -> "MyPeugeot a refusé la connexion avec PKCE (HTTP 400)."
-    is PeugeotReauthRequired -> carReauthMessage
-    is CarHttpFailure -> when (error.status) {
-        429 -> "MyPeugeot limite les requêtes. Réessaie plus tard."
-        401, 403 -> "Vérifie l’accès aux données dans MyPeugeot."
+internal fun carFetchMessage(error: Exception?, debug: Boolean = BuildConfig.DEBUG): String {
+    val readFailure = error as? CarReadFailure
+    val cause = readFailure?.error ?: error
+    val status = readFailure?.status ?: (cause as? CarHttpFailure)?.status
+    val message = when {
+        cause is PeugeotExchangeRejected -> "MyPeugeot a refusé la connexion avec PKCE (HTTP 400)."
+        cause is PeugeotReauthRequired -> carReauthMessage
+        status == 429 -> "MyPeugeot limite les requêtes. Réessaie plus tard."
+        status == 401 || status == 403 -> "Vérifie l’accès aux données dans MyPeugeot."
+        status == 404 -> "Véhicule introuvable côté Peugeot (services connectés ou partage des données désactivés ?)"
+        status != null && status in 500..599 -> "Serveurs Peugeot indisponibles. Réessaie plus tard."
+        cause is SerializationException -> "Réponse Peugeot inattendue."
+        cause is IOException && cause !is CarHttpFailure -> "Pas de connexion au service Peugeot."
         else -> "Service Voiture indisponible."
     }
-    else -> "Service Voiture indisponible."
+    if (!debug || readFailure == null) return message
+    val http = status?.let { " · HTTP $it" }.orEmpty()
+    return "$message (${readFailure.stage.label}$http)"
 }

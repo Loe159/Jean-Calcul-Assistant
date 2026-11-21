@@ -1,5 +1,6 @@
 package io.github.mangi.eta.data.car
 
+import io.github.mangi.eta.BuildConfig
 import java.io.IOException
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
@@ -102,16 +103,16 @@ class PeugeotSessionTest {
                 request.response(200, "{}")
             }
         }, store, now = { now })
-        val one = async { session.get(parameters, vehicles) }
-        val two = async { session.get(parameters, vehicles) }
+        val one = async { session.readVehicles() }
+        val two = async { session.readVehicles() }
         assertEquals("{}", one.await())
         assertEquals("{}", two.await())
         assertEquals(1, refreshes.get())
         now = now.plusSeconds(3299)
-        session.get(parameters, vehicles)
+        session.readVehicles()
         assertEquals(1, refreshes.get())
         now = now.plusSeconds(1)
-        session.get(parameters, vehicles)
+        session.readVehicles()
         assertEquals(2, refreshes.get())
         assertEquals("refresh-2", store.record.refreshToken)
         assertEquals("example-car", store.record.vehicleId)
@@ -127,12 +128,14 @@ class PeugeotSessionTest {
                 val count = refreshes.incrementAndGet()
                 request.response(200, token("access-$count"))
             } else {
+                assertEquals("application/hal+json", request.header("Accept"))
                 assertEquals("Bearer access-${attempts.incrementAndGet()}", request.header("Authorization"))
                 request.response(401, "{}")
             }
         }, MemoryStore(PeugeotSessionRecord("refresh-initial")), now = { now })
-        val error = runCatching { session.get(parameters, vehicles) }.exceptionOrNull()
-        assertEquals(401, (error as? CarHttpFailure)?.status)
+        val error = runCatching { session.readVehicles() }.exceptionOrNull() as CarReadFailure
+        assertEquals(401, error.status)
+        assertEquals(CarReadStage.Vehicles, error.stage)
         assertEquals(2, refreshes.get())
         assertEquals(2, attempts.get())
     }
@@ -142,21 +145,31 @@ class PeugeotSessionTest {
         val refreshes = AtomicInteger()
         val attempts = AtomicInteger()
         val store = MemoryStore(PeugeotSessionRecord("refresh-initial", vehicleId = "example-car"))
-        val session = PeugeotSession(transport { request ->
+        val warnings = mutableListOf<String>()
+        val session = PeugeotSession(transport(warn = { warnings += it }) { request ->
             if (request.method == "POST") {
                 if (refreshes.incrementAndGet() == 1) request.response(200, token("access-one"))
-                else request.response(400, """{"error":"invalid_grant"}""")
+                else request.response(400, """{"error":"invalid_grant","refresh_token":"refresh-initial"}""")
             } else {
                 attempts.incrementAndGet()
                 request.response(401, "{}")
             }
         }, store)
         repeat(2) {
-            val error = runCatching { session.get(parameters, vehicles) }.exceptionOrNull()
+            val error = runCatching { session.readVehicles() }.exceptionOrNull()
             assertTrue(error is PeugeotReauthRequired)
         }
         assertEquals(2, refreshes.get())
         assertEquals(1, attempts.get())
+        if (BuildConfig.DEBUG) {
+            assertEquals(2, warnings.size)
+            assertTrue(warnings[0].contains("vehicles /connectedcar/v4/user/vehicles HTTP 401"))
+            assertTrue(warnings[1].contains("token refresh /am/oauth2/access_token HTTP 400"))
+            assertTrue(warnings[1].contains("invalid_grant"))
+            assertFalse(warnings[1].contains("refresh-initial"))
+        } else {
+            assertTrue(warnings.isEmpty())
+        }
         assertNull(store.record.refreshToken)
         assertNull(store.record.expiresAt)
         assertTrue(store.record.needsReauth)
@@ -182,9 +195,12 @@ class PeugeotSessionTest {
         assertEquals(200, http.execute(request).status)
     }
 
-    private fun transport(respond: (Request) -> Response): CarHttp = CarHttp(
+    private suspend fun PeugeotSession.readVehicles(): String = get(parameters, vehicles, CarReadStage.Vehicles) { it }
+
+    private fun transport(warn: (String) -> Unit = {}, respond: (Request) -> Response): CarHttp = CarHttp(
         OkHttpClient.Builder().addInterceptor { chain -> respond(chain.request()) }.build(),
         now = { now },
+        warn = warn,
     )
 
     private fun token(access: String, refresh: String? = null): String =

@@ -1,5 +1,6 @@
 package io.github.mangi.eta.data.car
 
+import io.github.mangi.eta.BuildConfig
 import io.github.mangi.eta.agent.model.AgentHttpClient
 import java.io.IOException
 import java.time.Duration
@@ -10,9 +11,12 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.serialization.SerializationException
 import okhttp3.Call
 import okhttp3.Callback
+import okhttp3.Headers
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -26,23 +30,50 @@ internal class CarHttpResponse(val status: Int, val body: String) {
 internal class CarHttp(
     private val client: OkHttpClient = defaultCarHttpClient,
     private val now: () -> Instant = Instant::now,
+    private val warn: (String) -> Unit = ::logCarWarning,
 ) {
     private val rateLimits = ConcurrentHashMap<String, Instant>()
 
-    suspend fun execute(request: Request): CarHttpResponse {
+    suspend fun <T> read(
+        stage: CarReadStage,
+        request: Request,
+        sensitive: List<String?> = emptyList(),
+        decode: (CarHttpResponse) -> T,
+    ): T {
+        var status: Int? = null
+        var headers: Headers? = null
+        var response: CarHttpResponse? = null
+        try {
+            val received = execute(request) { code, receivedHeaders ->
+                status = code
+                headers = receivedHeaders
+            }
+            response = received
+            return decode(received)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            val failure = CarReadFailure(stage, status ?: (error as? CarHttpFailure)?.status, error)
+            if (BuildConfig.DEBUG) warn(carReadDiagnostic(failure, request.url, headers, response?.body, sensitive))
+            throw failure
+        }
+    }
+
+    suspend fun execute(request: Request, onHeaders: (Int, Headers) -> Unit = { _, _ -> }): CarHttpResponse {
         val host = request.url.host
         if (rateLimits[host]?.isAfter(now()) == true) throw CarHttpFailure(429)
-        val call = client.newCall(request.newBuilder().header("Accept", "application/json").build())
+        val call = client.newCall(if (request.header("Accept") != null) request else request.newBuilder().header("Accept", "application/json").build())
         return suspendCancellableCoroutine { continuation ->
             continuation.invokeOnCancellation { call.cancel() }
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
-                    continuation.resumeWithException(IOException("Car network request failed"))
+                    continuation.resumeWithException(e)
                 }
 
                 override fun onResponse(call: Call, response: Response) {
                     try {
                         val result = response.use {
+                            onHeaders(it.code, it.headers)
                             if (it.code == 429) {
                                 val current = now()
                                 val retryAt = retryAfter(it.header("Retry-After"), current)
@@ -52,7 +83,7 @@ internal class CarHttp(
                                 rateLimits.merge(host, retryAt) { previous, next -> maxOf(previous, next) }
                             }
                             if (it.body.source().request(MAX_CAR_BODY_BYTES + 1)) {
-                                throw IOException("Car response is too large")
+                                throw SerializationException("Car response is too large")
                             }
                             CarHttpResponse(it.code, it.body.string())
                         }

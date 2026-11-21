@@ -1,5 +1,6 @@
 package io.github.mangi.eta.data.car
 
+import io.github.mangi.eta.BuildConfig
 import java.io.IOException
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -9,6 +10,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import okhttp3.Credentials
 import okhttp3.FormBody
 import okhttp3.HttpUrl
@@ -117,7 +119,7 @@ internal class PeugeotSession(
             .add("code", code)
             .add("redirect_uri", peugeotRedirectUri)
         attempt.verifier?.let { form.add("code_verifier", it) }
-        val response = exchange(attempt.parameters, form.build(), pkce = attempt.verifier != null)
+        val response = http.execute(tokenRequest(attempt.parameters, form.build())).tokenBody(pkce = attempt.verifier != null)
         install(response, existingRefreshToken = null)
     }
 
@@ -127,24 +129,40 @@ internal class PeugeotSession(
         access = null
     }
 
-    suspend fun get(parameters: MyPeugeotParameters, url: HttpUrl): String {
+    suspend fun <T> get(
+        parameters: MyPeugeotParameters,
+        url: HttpUrl,
+        stage: CarReadStage,
+        decode: (String) -> T,
+    ): T {
         require(url.scheme == "https" && url.host == "api.groupe-psa.com" && url.port == 443)
         val authorizedUrl = url.newBuilder()
             .setQueryParameter("client_id", requireNotNull(parameters.cvsClientId))
             .setQueryParameter("locale", peugeotLocale)
             .build()
 
-        suspend fun request(token: Access): CarHttpResponse = http.execute(
-            Request.Builder().url(authorizedUrl).get()
+        suspend fun request(token: Access): T {
+            val request = Request.Builder().url(authorizedUrl).get()
                 .header("Authorization", "Bearer ${token.token}")
+                .header("Accept", "application/hal+json")
                 .header("x-introspect-realm", "clientsB2CPeugeot")
-                .build(),
-        )
+                .build()
+            val sensitive = if (BuildConfig.DEBUG) {
+                val session = snapshot()
+                listOf(parameters.cvsClientId, parameters.cvsSecret, token.token, session.refreshToken, session.vehicleId)
+            } else {
+                emptyList()
+            }
+            return http.read(stage, request, sensitive) { decode(it.requireSuccess()) }
+        }
 
         val firstToken = token(parameters)
-        val first = request(firstToken)
-        return if (first.status == 401) request(token(parameters, rejected = firstToken)).requireSuccess()
-        else first.requireSuccess()
+        return try {
+            request(firstToken)
+        } catch (failure: CarReadFailure) {
+            if ((failure.error as? CarHttpFailure)?.status != 401) throw failure
+            request(token(parameters, rejected = firstToken))
+        }
     }
 
     private suspend fun token(parameters: MyPeugeotParameters, rejected: Access? = null): Access = mutex.withLock {
@@ -160,8 +178,13 @@ internal class PeugeotSession(
             .add("scope", "openid profile")
             .build()
         try {
-            install(exchange(parameters, form), existingRefreshToken = refresh)
-        } catch (_: PeugeotInvalidGrant) {
+            val request = tokenRequest(parameters, form)
+            http.read(CarReadStage.TokenRefresh, request, listOf(
+                parameters.cvsClientId, parameters.cvsSecret, refresh, current?.token,
+                stored().vehicleId, request.header("Authorization")?.removePrefix("Basic "),
+            )) { install(it.tokenBody(), existingRefreshToken = refresh) }
+        } catch (failure: CarReadFailure) {
+            if (failure.error !is PeugeotInvalidGrant) throw failure
             val previous = stored()
             save(PeugeotSessionRecord(vehicleId = previous.vehicleId, fuel = previous.fuel, needsReauth = true))
             access = null
@@ -170,10 +193,10 @@ internal class PeugeotSession(
     }
 
     private fun install(body: PeugeotTokenBody, existingRefreshToken: String?): Access {
-        val token = body.accessToken?.takeIf(String::isNotBlank) ?: throw IOException("Missing access token")
+        val token = body.accessToken?.takeIf(String::isNotBlank) ?: throw SerializationException("Missing access token")
         val refresh = body.refreshToken?.takeIf(String::isNotBlank) ?: existingRefreshToken
-            ?: throw IOException("Missing refresh token")
-        val ttl = body.expiresIn?.takeIf { it in 1..253_402_300_799L } ?: throw IOException("Missing token lifetime")
+            ?: throw SerializationException("Missing refresh token")
+        val ttl = body.expiresIn?.takeIf { it in 1..253_402_300_799L } ?: throw SerializationException("Missing token lifetime")
         val expiry = now().plusSeconds(ttl)
         val previous = stored()
         // Save a rotated refresh token and its expiry in the same encrypted record.
@@ -181,17 +204,17 @@ internal class PeugeotSession(
         return Access(token, expiry).also { access = it }
     }
 
-    private suspend fun exchange(parameters: MyPeugeotParameters, form: FormBody, pkce: Boolean = false): PeugeotTokenBody {
-        val response = http.execute(
-            Request.Builder().url("$oauthBase/access_token")
-                .header("Authorization", Credentials.basic(requireNotNull(parameters.cvsClientId), requireNotNull(parameters.cvsSecret)))
-                .post(form).build(),
-        )
-        if (response.status == 400 && pkce) throw PeugeotExchangeRejected()
-        if (response.status in 400..499 && response.status != 429) {
-            val error = runCatching { carJson.decodeFromString<PeugeotTokenBody>(response.body).error }.getOrNull()
+    private fun tokenRequest(parameters: MyPeugeotParameters, form: FormBody): Request =
+        Request.Builder().url("$oauthBase/access_token")
+            .header("Authorization", Credentials.basic(requireNotNull(parameters.cvsClientId), requireNotNull(parameters.cvsSecret)))
+            .post(form).build()
+
+    private fun CarHttpResponse.tokenBody(pkce: Boolean = false): PeugeotTokenBody {
+        if (status == 400 && pkce) throw PeugeotExchangeRejected()
+        if (status in 400..499 && status != 429) {
+            val error = runCatching { carJson.decodeFromString<PeugeotTokenBody>(body).error }.getOrNull()
             if (error == "invalid_grant") throw PeugeotInvalidGrant()
         }
-        return carJson.decodeFromString(response.requireSuccess())
+        return carJson.decodeFromString(requireSuccess())
     }
 }
