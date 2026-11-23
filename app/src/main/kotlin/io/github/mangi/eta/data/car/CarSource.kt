@@ -4,6 +4,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.flow.StateFlow
+import okhttp3.HttpUrl
 
 internal interface CarSource {
     val settings: StateFlow<CarSettings>
@@ -64,6 +65,8 @@ internal data class CarStatus(
     val odometerMeasuredAt: Instant? = null,
     val measuredAt: Instant? = null,
     val position: CarPosition? = null,
+    // Jauge/autonomie déduites du compteur + dernier plein/relevé, pas lues du véhicule.
+    val estimated: Boolean = false,
 )
 
 internal data class CarMaintenance(
@@ -88,6 +91,8 @@ internal data class BriefCarData(
     val alerts: List<CarAlert>? = null,
     val station: FuelStation? = null,
     val stationFromPhone: Boolean = false,
+    val imageUrl: HttpUrl? = null,
+    val useDemoIllustration: Boolean = false,
 ) {
     val measuredAt: Instant?
         get() = status?.measuredAt

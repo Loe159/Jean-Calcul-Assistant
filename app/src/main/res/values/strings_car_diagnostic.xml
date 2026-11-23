@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="aa_diagnostic_app">Jean-Calcul · Diagnostic voiture</string>
+    <string name="aa_diagnostic_title">Diagnostic Android Auto</string>
+    <string name="aa_permissions">Autoriser à l’arrêt</string>
+    <string name="aa_permission_required">Permission requise</string>
+    <string name="aa_permission_denied">Permission refusée</string>
+    <string name="aa_waiting">En attente de la voiture</string>
+    <string name="aa_read_error">Erreur de lecture</string>
+    <string name="aa_more_readings">Autres relevés</string>
+    <string name="aa_model_group">Identification</string>
+    <string name="aa_profile_group">Profil énergétique</string>
+    <string name="aa_energy_group">Énergie</string>
+    <string name="aa_speed_group">Vitesse</string>
+    <string name="aa_mileage_toll_group">Compteur et péage</string>
+    <string name="aa_fuel_percent">Carburant restant</string>
+    <string name="aa_range">Autonomie restante</string>
+    <string name="aa_odometer">Compteur kilométrique</string>
+    <string name="aa_manufacturer">Constructeur</string>
+    <string name="aa_model">Modèle</string>
+    <string name="aa_model_year">Année modèle</string>
+    <string name="aa_fuel_types">Types de carburant</string>
+    <string name="aa_ev_connectors">Connecteurs électriques</string>
+    <string name="aa_battery_percent">Batterie de traction</string>
+    <string name="aa_energy_low">Énergie faible</string>
+    <string name="aa_range_unit">Unité affichée pour l’autonomie</string>
+    <string name="aa_fuel_volume_unit">Unité affichée pour le volume</string>
+    <string name="aa_raw_speed">Vitesse brute</string>
+    <string name="aa_display_speed">Vitesse au tableau de bord</string>
+    <string name="aa_speed_unit">Unité affichée pour la vitesse</string>
+    <string name="aa_odometer_unit">Unité affichée pour le compteur</string>
+    <string name="aa_toll_state">État de la carte de péage</string>
+</resources>

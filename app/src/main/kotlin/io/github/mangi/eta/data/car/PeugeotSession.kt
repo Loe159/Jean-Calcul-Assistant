@@ -1,6 +1,5 @@
 package io.github.mangi.eta.data.car
 
-import io.github.mangi.eta.BuildConfig
 import java.io.IOException
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -21,6 +20,8 @@ import okhttp3.Request
 private const val usePeugeotPkce = true
 internal const val peugeotRedirectUri = "mymap://oauth2redirect/fr"
 private const val oauthBase = "https://idpcvs.peugeot.com/am/oauth2"
+private const val mymBase = "https://microservices.mym.awsmpsa.com"
+private const val mymLanguage = "fr"
 private const val refreshLeadSeconds = 300L
 
 internal class PeugeotLogin private constructor(
@@ -89,13 +90,13 @@ private class PeugeotTokenBody(
 )
 
 internal class PeugeotSession(
-    private val http: CarHttp,
     private val storage: PeugeotSessionStorage,
     private val now: () -> Instant = Instant::now,
 ) {
     private val mutex = Mutex()
     private class Access(val token: String, val expiry: Instant)
     private var access: Access? = null
+    private var mymAccess: String? = null
     private var record: PeugeotSessionRecord? = null
 
     private fun stored(): PeugeotSessionRecord = record ?: storage.read().also { record = it }
@@ -112,7 +113,7 @@ internal class PeugeotSession(
         save(PeugeotSessionRecord(session.refreshToken, session.expiresAt, vehicleId, fuel, session.needsReauth))
     }
 
-    suspend fun connect(attempt: PeugeotLogin, state: String?, code: String): Unit = mutex.withLock {
+    suspend fun connect(attempt: PeugeotLogin, state: String?, code: String, http: CarHttp): Unit = mutex.withLock {
         if (!attempt.acceptsState(state) || code.isBlank()) throw IOException("Invalid Peugeot OAuth callback")
         val form = FormBody.Builder()
             .add("grant_type", "authorization_code")
@@ -127,67 +128,57 @@ internal class PeugeotSession(
         storage.clear()
         record = PeugeotSessionRecord()
         access = null
+        mymAccess = null
     }
 
-    suspend fun <T> get(
-        parameters: MyPeugeotParameters,
-        url: HttpUrl,
-        stage: CarReadStage,
-        decode: (String) -> T,
-    ): T {
-        require(url.scheme == "https" && url.host == "api.groupe-psa.com" && url.port == 443)
-        val authorizedUrl = url.newBuilder()
-            .setQueryParameter("client_id", requireNotNull(parameters.cvsClientId))
-            .setQueryParameter("locale", peugeotLocale)
-            .build()
-
-        suspend fun request(token: Access): T {
-            val request = Request.Builder().url(authorizedUrl).get()
-                .header("Authorization", "Bearer ${token.token}")
-                .header("Accept", "application/hal+json")
-                .header("x-introspect-realm", "clientsB2CPeugeot")
-                .build()
-            val sensitive = if (BuildConfig.DEBUG) {
-                val session = snapshot()
-                listOf(parameters.cvsClientId, parameters.cvsSecret, token.token, session.refreshToken, session.vehicleId)
-            } else {
-                emptyList()
-            }
-            return http.read(stage, request, sensitive) { decode(it.requireSuccess()) }
-        }
-
-        val firstToken = token(parameters)
-        return try {
-            request(firstToken)
+    suspend fun profile(parameters: MyPeugeotParameters, http: CarHttp): MymGarage = mutex.withLock {
+        val oauth = token(parameters, http)
+        try {
+            readProfile(oauth, http)
         } catch (failure: CarReadFailure) {
-            if ((failure.error as? CarHttpFailure)?.status != 401) throw failure
-            request(token(parameters, rejected = firstToken))
+            if (failure.status != 401) throw failure
+            val retry = if (failure.stage == CarReadStage.CvsSession) token(parameters, http, forceRefresh = true) else oauth
+            readProfile(retry, http)
         }
     }
 
-    private suspend fun token(parameters: MyPeugeotParameters, rejected: Access? = null): Access = mutex.withLock {
+    private suspend fun readProfile(oauth: Access, http: CarHttp): MymGarage {
+        val token = mymAccess ?: http.read(
+            CarReadStage.CvsSession,
+            mymRequest("/session/v2/accesstoken", "cvs-token", oauth.token, siteCode = "AP_FR_ESP"),
+        ) { parseMymAccessToken(it.requireSuccess()) }.also { mymAccess = it }
+        return try {
+            http.read(CarReadStage.Profile, mymRequest("/me/v1/user", "mym-access-token", token)) {
+                parseMymGarage(it.requireSuccess())
+            }
+        } catch (failure: CarReadFailure) {
+            if (failure.status == 401) mymAccess = null
+            throw failure
+        }
+    }
+
+    private suspend fun token(parameters: MyPeugeotParameters, http: CarHttp, forceRefresh: Boolean = false): Access {
         val refresh = stored().refreshToken ?: throw PeugeotReauthRequired()
         val current = access
-        if (current != null && current !== rejected &&
-            (rejected != null || current.expiry.isAfter(now().plusSeconds(refreshLeadSeconds)))
-        ) return@withLock current
+        if (!forceRefresh && current != null && current.expiry.isAfter(now().plusSeconds(refreshLeadSeconds))) {
+            return current
+        }
 
         val form = FormBody.Builder()
             .add("grant_type", "refresh_token")
             .add("refresh_token", refresh)
             .add("scope", "openid profile")
             .build()
-        try {
-            val request = tokenRequest(parameters, form)
-            http.read(CarReadStage.TokenRefresh, request, listOf(
-                parameters.cvsClientId, parameters.cvsSecret, refresh, current?.token,
-                stored().vehicleId, request.header("Authorization")?.removePrefix("Basic "),
-            )) { install(it.tokenBody(), existingRefreshToken = refresh) }
+        return try {
+            http.read(CarReadStage.TokenRefresh, tokenRequest(parameters, form)) {
+                install(it.tokenBody(), existingRefreshToken = refresh)
+            }
         } catch (failure: CarReadFailure) {
             if (failure.error !is PeugeotInvalidGrant) throw failure
             val previous = stored()
             save(PeugeotSessionRecord(vehicleId = previous.vehicleId, fuel = previous.fuel, needsReauth = true))
             access = null
+            mymAccess = null
             throw PeugeotReauthRequired()
         }
     }
@@ -201,6 +192,7 @@ internal class PeugeotSession(
         val previous = stored()
         // Save a rotated refresh token and its expiry in the same encrypted record.
         save(PeugeotSessionRecord(refresh, expiry.epochSecond, previous.vehicleId, previous.fuel))
+        mymAccess = null
         return Access(token, expiry).also { access = it }
     }
 
@@ -208,6 +200,19 @@ internal class PeugeotSession(
         Request.Builder().url("$oauthBase/access_token")
             .header("Authorization", Credentials.basic(requireNotNull(parameters.cvsClientId), requireNotNull(parameters.cvsSecret)))
             .post(form).build()
+
+    private fun mymRequest(path: String, tokenHeader: String, token: String, siteCode: String? = null): Request {
+        val url = "$mymBase$path".toHttpUrl().newBuilder().apply {
+            siteCode?.let { addQueryParameter("site_code", it) }
+            addQueryParameter("language", mymLanguage)
+        }.build()
+        return Request.Builder().url(url).get()
+            .header(tokenHeader, token)
+            .header("User-Agent", "okhttp/4.8.0")
+            .header("Version", "1.55.1")
+            .header("Source-Agent", "App-Android")
+            .build()
+    }
 
     private fun CarHttpResponse.tokenBody(pkce: Boolean = false): PeugeotTokenBody {
         if (status == 400 && pkce) throw PeugeotExchangeRejected()

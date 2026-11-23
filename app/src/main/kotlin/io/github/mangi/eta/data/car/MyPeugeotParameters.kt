@@ -1,6 +1,7 @@
 package io.github.mangi.eta.data.car
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.res.Configuration
 import kotlinx.serialization.Serializable
 import java.io.InputStream
@@ -15,9 +16,8 @@ internal class MyPeugeotParameters(val cvsClientId: String? = null, val cvsSecre
     fun isUsable(): Boolean = !cvsClientId.isNullOrBlank() && !cvsSecret.isNullOrBlank()
 }
 
-internal fun readMyPeugeotParameters(context: Context): MyPeugeotParameters? {
+internal fun readMyPeugeotParameters(context: Context, appInfo: ApplicationInfo): MyPeugeotParameters? {
     val manager = context.packageManager
-    val appInfo = runCatching { manager.getApplicationInfo(myPeugeotPackage, 0) }.getOrNull() ?: return null
     val localized = runCatching {
         val base = manager.getResourcesForApplication(appInfo)
         val configuration = Configuration(base.configuration).apply { setLocale(Locale.FRANCE) }

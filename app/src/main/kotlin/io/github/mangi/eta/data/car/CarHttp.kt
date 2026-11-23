@@ -31,6 +31,7 @@ internal class CarHttp(
     private val client: OkHttpClient = defaultCarHttpClient,
     private val now: () -> Instant = Instant::now,
     private val warn: (String) -> Unit = ::logCarWarning,
+    private val logDetails: Boolean = true,
 ) {
     private val rateLimits = ConcurrentHashMap<String, Instant>()
 
@@ -54,7 +55,13 @@ internal class CarHttp(
             throw cancelled
         } catch (error: Exception) {
             val failure = CarReadFailure(stage, status ?: (error as? CarHttpFailure)?.status, error)
-            if (BuildConfig.DEBUG) warn(carReadDiagnostic(failure, request.url, headers, response?.body, sensitive))
+            if (BuildConfig.DEBUG) {
+                warn(if (logDetails) {
+                    carReadDiagnostic(failure, request.url, headers, response?.body, sensitive)
+                } else {
+                    "${stage.label}: HTTP ${failure.status ?: "—"}"
+                })
+            }
             throw failure
         }
     }
@@ -105,7 +112,7 @@ private fun retryAfter(value: String?, now: Instant): Instant? {
 
 private const val MAX_CAR_BODY_BYTES = 1_048_576L
 
-private val defaultCarHttpClient by lazy {
+internal val defaultCarHttpClient by lazy {
     AgentHttpClient.client.newBuilder()
         .followRedirects(false)
         .followSslRedirects(false)

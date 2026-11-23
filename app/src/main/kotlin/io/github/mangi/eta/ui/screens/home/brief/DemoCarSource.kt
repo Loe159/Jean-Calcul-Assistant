@@ -34,6 +34,7 @@ internal class DemoCarSource(
                 measuredAt.atOffset(ZoneOffset.UTC).toLocalDate().plusDays(45), measuredAt,
             ),
             alerts = listOf(CarAlert(carAlertLabel("LeftRearTireUnderInflated"), "Warning", measuredAt, measuredAt, null)),
+            useDemoIllustration = true,
         ),
         partial = false,
     )

@@ -16,7 +16,7 @@ import okhttp3.HttpUrl
 
 internal enum class CarReadStage(val label: String) {
     Vehicles("vehicles"), Status("status"), Maintenance("maintenance"), Alerts("alerts"),
-    Stations("stations"), TokenRefresh("token refresh"),
+    Stations("stations"), TokenRefresh("token refresh"), CvsSession("session MYM"), Profile("profil MYM"),
 }
 
 internal class CarReadFailure(val stage: CarReadStage, val status: Int?, val error: Exception) :

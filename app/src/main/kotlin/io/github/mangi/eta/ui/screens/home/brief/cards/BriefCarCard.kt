@@ -79,6 +79,7 @@ internal fun BriefCarCard(
     Card(modifier.fillMaxWidth(), insideMargin = PaddingValues(16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Voiture", style = COUITheme.textStyles.headlineXS, color = COUITheme.colorScheme.labelPrimary)
+            if (state == BriefCarState.Loading) PeugeotCarImage(null)
             CarDetail(message)
             when (state) {
                 BriefCarState.MyPeugeotMissing, BriefCarState.Disconnected, BriefCarState.NeedsReauth ->
@@ -104,11 +105,15 @@ private fun CarReadings(
     val range = status?.rangeKm
     val fuel = status?.fuelPercent
     val odometer = status?.odometerKm
-    Peugeot208Illustration(
-        alert = !data.alerts.isNullOrEmpty(),
-        motionAllowed = motionAllowed,
-        modifier = Modifier.padding(vertical = 4.dp),
-    )
+    if (data.useDemoIllustration) {
+        Peugeot208Illustration(
+            alert = !data.alerts.isNullOrEmpty(),
+            motionAllowed = motionAllowed,
+            modifier = Modifier.padding(vertical = 4.dp),
+        )
+    } else {
+        PeugeotCarImage(data.imageUrl, Modifier.padding(vertical = 4.dp))
+    }
     if (range != null || fuel != null || odometer != null) {
         BriefMetricRow { item ->
             range?.let { BriefMetric("Autonomie", briefDecimal(it, 0), item(.9f), unit = "km") }
@@ -123,12 +128,8 @@ private fun CarReadings(
         )
     }
     Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (data.alerts == null) {
-            CarDetail("Alertes indisponibles")
-        } else {
-            data.alerts.forEach { alert ->
-                CarAlert(alert.label, alert.severity, expanded)
-            }
+        data.alerts.orEmpty().forEach { alert ->
+            CarAlert(alert.label, alert.severity, expanded)
         }
         data.station?.let {
             val refuelSoon = (fuel != null && fuel < 25) || (range != null && range < 100)
@@ -142,8 +143,8 @@ private fun CarReadings(
                 CarSection("Prochain entretien", maintenanceText(maintenance))
             }
         }
-        if (expanded && status != null) {
-            val quality = status.position?.quality(now.toInstant().plusSeconds(59)) ?: CarPositionQuality.Missing
+        if (expanded && status?.position != null) {
+            val quality = status.position.quality(now.toInstant().plusSeconds(59))
             when (quality) {
                 CarPositionQuality.Missing -> CarDetail("Position du véhicule indisponible")
                 CarPositionQuality.Estimated -> CarDetail("Position du véhicule estimée")
@@ -301,7 +302,8 @@ private fun freshnessText(data: BriefCarData, partial: Boolean, now: ZonedDateTi
         age.toMinutes() > 0 -> "Mis à jour il y a ${age.toMinutes()} min"
         else -> "Mis à jour il y a moins d’une minute"
     }
-    return if (partial) "$update · Données partielles" else update
+    val base = if (partial) "$update · Données partielles" else update
+    return if (data.status?.estimated == true) "$base · estimé (dernier plein/relevé)" else base
 }
 
 private val carDateFormat = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.FRANCE)

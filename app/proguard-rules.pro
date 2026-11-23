@@ -69,3 +69,8 @@
 -keep class io.github.mangi.eta.agent.virtualdisplay.VirtualDisplayCommandMain {
     public static void main(java.lang.String[]);
 }
+
+# Android Auto entry point, session and screens.
+-keep,allowoptimization class io.github.mangi.eta.car.aa.JeanCalculCarAppService { *; }
+-keep,allowoptimization class io.github.mangi.eta.car.aa.** extends androidx.car.app.Session { *; }
+-keep,allowoptimization class io.github.mangi.eta.car.aa.** extends androidx.car.app.Screen { *; }

@@ -1,6 +1,9 @@
 package io.github.mangi.eta.ui.screens.settings
 
 import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,6 +30,7 @@ import io.github.suqi8.coui.kmp.preference.ArrowPreference
 import io.github.suqi8.coui.kmp.preference.OverlayDropdownPreference
 import io.github.suqi8.coui.kmp.preference.PreferenceCategory
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -52,6 +56,19 @@ internal fun CarSettingsSection(context: Context) {
             message = carFetchMessage(error)
         } finally {
             loading = false
+        }
+    }
+    val importMyp = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            update {
+                val text = withContext(Dispatchers.IO) { readMypText(context, uri) }
+                val result = text?.let { source.importMyp(it) }
+                message = if (result == null) {
+                    "Import .myp impossible (fichier illisible ou vide)."
+                } else {
+                    "Recalibré : ${result.anchor.fuelPercent.toInt()} % · ${result.anchor.rangeKm.toInt()} km"
+                }
+            }
         }
     }
     LaunchedEffect(lifecycle, settings.hasSession, showLogin) {
@@ -110,6 +127,32 @@ internal fun CarSettingsSection(context: Context) {
                     },
                 )
             }
+            if (settings.connection == CarConnection.Connected) {
+                item {
+                    ArrowPreference(
+                        title = "J’ai fait le plein",
+                        summary = "Repart de 100 % pour estimer carburant et autonomie.",
+                        onClick = {
+                            if (!loading) scope.launch {
+                                update {
+                                    message = if (source.recordFillUp()) {
+                                        "Plein enregistré. Estimation remise à 100 %."
+                                    } else {
+                                        "Compteur indisponible : ouvre d’abord le Brief."
+                                    }
+                                }
+                            }
+                        },
+                    )
+                }
+                item {
+                    ArrowPreference(
+                        title = "Importer un .myp",
+                        summary = "Recalibre l’estimation sur le dernier relevé MyPeugeot.",
+                        onClick = { if (!loading) importMyp.launch(arrayOf("*/*")) },
+                    )
+                }
+            }
             if (settings.hasSession || settings.connection == CarConnection.NeedsReauth) {
                 item {
                     ArrowPreference(
@@ -131,4 +174,13 @@ internal fun CarSettingsSection(context: Context) {
     }
     message?.let { PreferenceFooter(it) }
     if (showLogin) PeugeotLoginSheet(source) { showLogin = false }
+}
+
+private fun readMypText(context: Context, uri: Uri): String? = try {
+    context.contentResolver.openInputStream(uri)?.use { stream ->
+        val bytes = stream.readBytes()
+        if (bytes.size > 8 * 1024 * 1024) null else String(bytes, Charsets.UTF_8)
+    }
+} catch (_: Exception) {
+    null
 }

@@ -7,7 +7,6 @@ import io.github.mangi.eta.data.repository.KeystoreSecretStore
 import java.io.IOException
 import java.time.Duration
 import java.time.Instant
-import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,29 +16,29 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import okhttp3.HttpUrl
-import okhttp3.HttpUrl.Companion.toHttpUrl
 
 internal class MyPeugeotCarSource private constructor(private val context: Context) : CarSource {
-    private val http = CarHttp()
-    private val session = PeugeotSession(http, EncryptedPeugeotSession(context))
-    private val stations = FuelStations(http)
+    private val session = PeugeotSession(EncryptedPeugeotSession(context))
+    private val stations = FuelStations(CarHttp(logDetails = false))
     private val mutex = Mutex()
     private val mutableSettings = MutableStateFlow(CarSettings())
     override val settings = mutableSettings.asStateFlow()
 
-    private var fleet: Cached<List<PeugeotVehicle>>? = null
-    private var readings: Readings? = null
+    private var installed: InstalledMyPeugeot? = null
+    private var profile = CarCache<MymGarage>()
     private var nearby: Nearby? = null
+    private val estimates = FuelEstimateStore(context)
+    private var estimate: FuelEstimateState? = null
 
     override suspend fun load(): BriefCarState = transaction {
         try {
-            val parameters = syncConnection()
+            val client = syncConnection()
             when (settings.value.connection) {
                 CarConnection.MyPeugeotMissing -> BriefCarState.MyPeugeotMissing
                 CarConnection.Disconnected -> BriefCarState.Disconnected
                 CarConnection.NeedsReauth -> BriefCarState.NeedsReauth
                 CarConnection.Checking -> BriefCarState.Loading
-                CarConnection.Connected -> loadVehicle(requireNotNull(parameters))
+                CarConnection.Connected -> loadVehicle(requireNotNull(client))
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
@@ -55,10 +54,11 @@ internal class MyPeugeotCarSource private constructor(private val context: Conte
     suspend fun checkConnection(): Unit = transaction { syncConnection() }
 
     suspend fun refreshSettings(): Unit = transaction {
-        val parameters = syncConnection()
-        if (parameters == null || !settings.value.hasSession) return@transaction
+        val client = syncConnection()
+        if (client == null || !settings.value.hasSession) return@transaction
         try {
-            loadFleet(parameters)
+            val (garage, error) = loadGarage(client)
+            if (garage == null && error != null) throw error
         } catch (error: PeugeotReauthRequired) {
             clearReadings()
             syncConnection()
@@ -66,10 +66,13 @@ internal class MyPeugeotCarSource private constructor(private val context: Conte
         }
     }
 
-    suspend fun beginLogin(): PeugeotLogin? = transaction { syncConnection()?.let { PeugeotLogin.create(it) } }
+    suspend fun beginLogin(): PeugeotLogin? = transaction {
+        syncConnection()?.let { PeugeotLogin.create(it.parameters) }
+    }
 
     suspend fun finishLogin(attempt: PeugeotLogin, state: String?, code: String): Unit = transaction {
-        session.connect(attempt, state, code)
+        val client = syncConnection() ?: throw MyPeugeotUnavailable()
+        session.connect(attempt, state, code, client.http)
         clearReadings()
         syncConnection()
     }
@@ -96,133 +99,123 @@ internal class MyPeugeotCarSource private constructor(private val context: Conte
     private suspend fun <T> transaction(block: suspend () -> T): T =
         withContext(Dispatchers.IO) { mutex.withLock { block() } }
 
-    private suspend fun syncConnection(): MyPeugeotParameters? {
+    private suspend fun syncConnection(): InstalledMyPeugeot? {
         val record = session.snapshot()
-        val parameters = readMyPeugeotParameters(context)
+        val client = installedClient()
         val connection = when {
-            parameters == null -> CarConnection.MyPeugeotMissing
+            client == null -> CarConnection.MyPeugeotMissing
             record.needsReauth -> CarConnection.NeedsReauth
             record.refreshToken == null -> CarConnection.Disconnected
             else -> CarConnection.Connected
         }
+        val garage = profile.lastValue
         mutableSettings.value = CarSettings(
             connection = connection,
             hasSession = record.refreshToken != null,
-            vehicles = fleet?.value.orEmpty().mapNotNull(PeugeotVehicle::toVehicle),
-            vehicleId = record.vehicleId,
+            vehicles = garage?.settingsVehicles().orEmpty(),
+            vehicleId = garage?.choose(record.vehicleId)?.id,
             fuel = record.fuel,
         )
-        return parameters
+        return client
+    }
+
+    private fun installedClient(): InstalledMyPeugeot? {
+        val info = runCatching { context.packageManager.getApplicationInfo(myPeugeotPackage, 0) }.getOrNull()
+        val path = info?.sourceDir
+        installed?.takeIf { it.path == path }?.let { return it }
+        clearReadings()
+        installed = if (info == null || path == null) null else runCatching {
+            readMyPeugeotParameters(context, info)?.let { parameters ->
+                InstalledMyPeugeot(path, parameters, myPeugeotHttp(path))
+            }
+        }.getOrNull()
+        return installed
     }
 
     private fun clearReadings() {
-        fleet = null
-        readings = null
+        profile = CarCache()
         nearby = null
     }
 
-    private suspend fun loadFleet(parameters: MyPeugeotParameters): List<PeugeotVehicle> {
-        val cached = fleet?.takeIf { it.isFresh(DAY) }
-        val vehicles = cached?.value ?: try {
-            collection(
-                parameters, CarReadStage.Vehicles,
-                api.newBuilder().addPathSegment("vehicles").build(),
-            )
-                .flatMap { it.vehicles.orEmpty() }.distinctBy { it.id }
-                .filter { !it.id.isNullOrBlank() }.also { fleet = Cached(it) }
-        } catch (error: Exception) {
-            if (error is CancellationException || error is PeugeotReauthRequired) throw error
-            fleet?.value ?: throw error
+    private suspend fun loadGarage(client: InstalledMyPeugeot): Pair<MymGarage?, Exception?> {
+        val result = profile.read(Duration.ofMinutes(15)) { session.profile(client.parameters, client.http) }
+        result.first?.let { garage ->
+            val current = settings.value
+            val selection = garage.choose(session.snapshot().vehicleId)
+            mutableSettings.value = current.copy(vehicles = garage.settingsVehicles(), vehicleId = selection?.id)
         }
-        val current = settings.value
-        val selected = current.vehicleId?.takeIf { id -> vehicles.any { it.id == id } }
-            ?: vehicles.singleOrNull()?.id
-        if (selected != current.vehicleId) session.select(selected, current.fuel)
-        mutableSettings.value = current.copy(vehicles = vehicles.mapNotNull(PeugeotVehicle::toVehicle), vehicleId = selected)
-        return vehicles
+        return result
     }
 
-    private suspend fun loadVehicle(parameters: MyPeugeotParameters): BriefCarState {
-        val vehicles = loadFleet(parameters)
-        val selected = settings.value.vehicleId
-        val vehicle = vehicles.firstOrNull { it.id == selected }
-        if (vehicle == null) return BriefCarState.Error(
-            if (vehicles.isEmpty()) "Aucun véhicule associé à ce compte MyPeugeot."
+    private suspend fun loadVehicle(client: InstalledMyPeugeot): BriefCarState {
+        val (garage, error) = loadGarage(client)
+        if (garage == null) return BriefCarState.Error(carFetchMessage(error))
+        val vehicle = garage.choose(settings.value.vehicleId) ?: return BriefCarState.Error(
+            if (garage.vehicles.isEmpty()) "Aucun véhicule associé à ce compte MyPeugeot."
             else "Choisis ton véhicule dans les réglages Voiture.",
         )
-        val id = requireNotNull(vehicle.id)
-        val current = readings?.takeIf { it.vehicleId == id } ?: Readings(id).also { readings = it }
-        val root = api.newBuilder().addPathSegment("vehicles").addPathSegment(id).build()
-        fun endpoint(path: String): HttpUrl = root.newBuilder().addPathSegment(path).build()
-
-        val status = current.status.read(QUARTER_HOUR) {
-            session.get(parameters, endpoint("status"), CarReadStage.Status) {
-                carJson.decodeFromString<PeugeotStatus>(it).toStatus()
-            }
-        }
-        val maintenance = current.maintenance.read(DAY) {
-            val url = peugeotLink(root, vehicle.links?.maintenance?.href) ?: endpoint("maintenance")
-            session.get(parameters, url, CarReadStage.Maintenance) {
-                carJson.decodeFromString<PeugeotMaintenance>(it).toMaintenance(ZoneId.systemDefault())
-            }
-        }
-        val alerts = current.alerts.read(QUARTER_HOUR) {
-            collection(parameters, CarReadStage.Alerts, endpoint("alerts"))
-                .flatMap { it.alerts.orEmpty() }.mapNotNull(PeugeotAlert::toActiveAlert)
-        }
-        if (status.first == null && maintenance.first == null && alerts.first == null) {
-            return BriefCarState.Error(carFetchMessage(status.second ?: maintenance.second ?: alerts.second))
-        }
-        val vehicleStatus = status.first
-        val vehiclePoint = vehicleStatus?.position?.takeIf { it.quality(Instant.now()) == CarPositionQuality.Available }?.point
-        val point = vehiclePoint ?: (DeviceLocationProvider.latest(context, requireBackground = false) as? DeviceLocationProvider.Result.Available)
-            ?.takeIf { it.ageMillis < DAY.toMillis() }?.let { CarPoint(it.latitude, it.longitude).takeIf(CarPoint::isValid) }
+        val point = (DeviceLocationProvider.latest(context, requireBackground = false) as? DeviceLocationProvider.Result.Available)
+            ?.takeIf { it.ageMillis < DAY.toMillis() }
+            ?.let { CarPoint(it.latitude, it.longitude).takeIf(CarPoint::isValid) }
         val station = point?.let {
             val fuel = settings.value.fuel
-            val currentNearby = nearby?.takeIf { it.point == point && it.fuel == fuel }
+            val cached = nearby?.takeIf { it.point == point && it.fuel == fuel }
                 ?: Nearby(point, fuel).also { nearby = it }
-            currentNearby.station.read(Duration.ofMinutes(20)) { stations.nearest(point, fuel) }
+            cached.station.read(Duration.ofMinutes(20)) { stations.nearest(point, fuel) }
         }
-        val data = BriefCarData(
-            label = requireNotNull(vehicle.toVehicle()).label,
-            status = vehicleStatus,
-            maintenance = maintenance.first,
-            alerts = alerts.first,
-            station = station?.first,
-            stationFromPhone = vehiclePoint == null,
+        val data = applyEstimate(vehicle.data.copy(station = station?.first, stationFromPhone = station?.first != null))
+        val partial = error != null || data.status?.odometerKm == null || station?.second != null
+        return BriefCarState.Ready(data, partial)
+    }
+
+    // Remplit jauge/autonomie par estimation quand le véhicule ne les expose pas (cas thermique
+    // sans services connectés). Ne touche jamais à une vraie mesure si elle existe.
+    private fun applyEstimate(data: BriefCarData): BriefCarData {
+        val status = data.status ?: return data
+        if (status.rangeKm != null || status.fuelPercent != null) return data
+        val reading = estimateState().estimate(status.odometerKm) ?: return data
+        return data.copy(
+            status = status.copy(
+                rangeKm = reading.rangeKm,
+                fuelPercent = reading.fuelPercent,
+                fuelMeasuredAt = reading.recordedAt,
+                estimated = true,
+            ),
         )
-        val incomplete = vehicleStatus?.rangeKm == null || vehicleStatus.fuelPercent == null || vehicleStatus.odometerKm == null ||
-            maintenance.first == null || alerts.first == null || listOf(status.second, maintenance.second, alerts.second, station?.second).any { it != null }
-        return BriefCarState.Ready(data, partial = incomplete)
     }
 
-    private suspend fun collection(
-        parameters: MyPeugeotParameters,
-        stage: CarReadStage,
-        first: HttpUrl,
-    ): List<CarCollectionItems> = buildList {
-        val seen = mutableSetOf<HttpUrl>()
-        var url: HttpUrl? = first
-        while (url != null) {
-            val pageUrl = url
-            seen += pageUrl
-            url = session.get(parameters, pageUrl, stage) {
-                val page = carJson.decodeFromString<CarCollection>(it)
-                page.embedded?.let(::add)
-                peugeotLink(pageUrl, page.links?.next?.href).also { next ->
-                    if (next != null && (seen.size >= 20 || next in seen)) {
-                        throw SerializationException("Incomplete Peugeot collection")
-                    }
-                }
-            }
-        }
+    private fun estimateState(): FuelEstimateState = estimate ?: estimates.read().also { estimate = it }
+
+    private fun saveEstimate(state: FuelEstimateState) {
+        estimate = state
+        estimates.write(state)
     }
 
-    private class Readings(val vehicleId: String) {
-        val status = CarCache<CarStatus>()
-        val maintenance = CarCache<CarMaintenance?>()
-        val alerts = CarCache<List<CarAlert>>()
+    private suspend fun currentOdometerKm(): Double? {
+        val client = installedClient() ?: return null
+        if (profile.lastValue == null) runCatching { loadGarage(client) }
+        val garage = profile.lastValue ?: return null
+        return garage.choose(session.snapshot().vehicleId)?.data?.status?.odometerKm
     }
+
+    // Signalé par l'utilisateur via un bouton : pose une ancre à 100 % sur le compteur courant.
+    suspend fun recordFillUp(): Boolean = transaction {
+        val odometer = currentOdometerKm() ?: return@transaction false
+        saveEstimate(estimateState().withFillUp(odometer, Instant.now()))
+        true
+    }
+
+    // Recalibre l'estimation sur le dernier relevé réel d'un export MyPeugeot (.myp).
+    suspend fun importMyp(text: String): MypImportResult? = transaction {
+        val result = runCatching { parseMypAnchor(text) }.getOrNull() ?: return@transaction null
+        saveEstimate(estimateState().withAnchor(result.anchor))
+        result
+    }
+
+    private fun MymGarage.settingsVehicles(): List<CarVehicle> =
+        vehicles.mapNotNull { vehicle -> vehicle.id?.let { CarVehicle(it, vehicle.data.label) } }
+
+    private class InstalledMyPeugeot(val path: String, val parameters: MyPeugeotParameters, val http: CarHttp)
 
     private class Nearby(val point: CarPoint, val fuel: CarFuel) {
         val station = CarCache<FuelStation?>()
@@ -234,9 +227,7 @@ internal class MyPeugeotCarSource private constructor(private val context: Conte
             instance ?: MyPeugeotCarSource(context.applicationContext).also { instance = it }
         }
 
-        private val api = "https://api.groupe-psa.com/connectedcar/v4/user".toHttpUrl()
         private val DAY = Duration.ofHours(24)
-        private val QUARTER_HOUR = Duration.ofMinutes(15)
     }
 }
 
@@ -254,6 +245,7 @@ private class Cached<T>(val value: T) {
 private class CarCache<T> {
     private var success: Cached<T>? = null
     private var failure: Cached<Exception>? = null
+    val lastValue: T? get() = success?.value
 
     suspend fun read(ttl: Duration, fetch: suspend () -> T): Pair<T?, Exception?> {
         success?.takeIf { it.isFresh(ttl) }?.let { return it.value to null }
@@ -281,15 +273,19 @@ private class EncryptedPeugeotSession(context: Context) : PeugeotSessionStorage 
     override fun clear() = store.clear("session")
 }
 
+private class MyPeugeotUnavailable : IOException(carInstallMessage)
+
 internal fun carFetchMessage(error: Exception?, debug: Boolean = BuildConfig.DEBUG): String {
     val readFailure = error as? CarReadFailure
     val cause = readFailure?.error ?: error
     val status = readFailure?.status ?: (cause as? CarHttpFailure)?.status
     val message = when {
+        cause is MyPeugeotUnavailable -> carInstallMessage
         cause is PeugeotExchangeRejected -> "MyPeugeot a refusé la connexion avec PKCE (HTTP 400)."
         cause is PeugeotReauthRequired -> carReauthMessage
         status == 429 -> "MyPeugeot limite les requêtes. Réessaie plus tard."
         status == 401 || status == 403 -> "Vérifie l’accès aux données dans MyPeugeot."
+        status == 404 && readFailure?.stage == CarReadStage.Profile -> "Profil MyPeugeot introuvable."
         status == 404 -> "Véhicule introuvable côté Peugeot (services connectés ou partage des données désactivés ?)"
         status != null && status in 500..599 -> "Serveurs Peugeot indisponibles. Réessaie plus tard."
         cause is SerializationException -> "Réponse Peugeot inattendue."
