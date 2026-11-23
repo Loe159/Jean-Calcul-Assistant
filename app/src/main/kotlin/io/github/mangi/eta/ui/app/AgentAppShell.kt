@@ -289,6 +289,7 @@ private fun HomeTopBar(
 private fun titleForRoute(route: AppRoute?): String = when (route) {
     is AppRoute.Home, is AppRoute.Browser -> ""
     is AppRoute.Terminal -> stringResource(R.string.route_terminal)
+    is AppRoute.CookingSession -> stringResource(R.string.food_cooking_session)
     is AppRoute.Tools -> stringResource(R.string.route_tools)
     is AppRoute.WebToolsSettings -> stringResource(R.string.web_tools_settings_title)
     is AppRoute.Skills -> stringResource(R.string.route_skills)

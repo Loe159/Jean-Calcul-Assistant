@@ -78,7 +78,7 @@ internal object MastraConnection {
     fun enabled(context: Context): Boolean = loadEnabled(context) != null
 
     @Synchronized
-    private fun loadEnabled(context: Context): MastraPairing? =
+    fun loadEnabled(context: Context): MastraPairing? =
         if (prefs(context).getBoolean("enabled", false)) load(context) else null
 
     @Synchronized

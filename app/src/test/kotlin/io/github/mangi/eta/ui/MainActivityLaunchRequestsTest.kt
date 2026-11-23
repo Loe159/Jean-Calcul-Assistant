@@ -18,6 +18,20 @@ import org.robolectric.annotation.Config
 @Config(application = android.app.Application::class)
 class MainActivityLaunchRequestsTest {
     @Test
+    fun cookingNotificationRequestSurvivesRecreationAndIsConsumedOnce() {
+        val id = "ses_eb0308f9-7d28-442b-9e0f-77339e660f3a"
+        val intent = Intent(MainActivity.ACTION_OPEN_COOKING_SESSION)
+            .putExtra(MainActivity.EXTRA_COOKING_SESSION_ID, id)
+        val pending = MainActivityLaunchRequests.restore(null, intent)
+        assertEquals(id, pending.cookingSessionId)
+        assertEquals(pending, MainActivityLaunchRequests.restore(savedState(pending), null))
+        assertEquals(
+            MainActivityLaunchRequests(),
+            MainActivityLaunchRequests.restore(savedState(pending.copy(cookingSessionId = null)), intent),
+        )
+    }
+
+    @Test
     fun `重建不重新执行已消费的启动会话`() {
         val originalIntent = Intent(EtaAssistantOverlayService.ACTION_OPEN_CONVERSATION)
             .putExtra(EtaAssistantOverlayService.EXTRA_CONVERSATION_KEY, "old-conversation")

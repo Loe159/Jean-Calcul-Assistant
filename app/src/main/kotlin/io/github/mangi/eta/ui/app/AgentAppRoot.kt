@@ -73,6 +73,7 @@ import io.github.mangi.eta.ui.pages.providers.CommunityCatalogProviderScreen
 import io.github.mangi.eta.ui.pages.providers.CommunityCatalogScreen
 import io.github.mangi.eta.ui.pages.providers.ModelProviderDetailScreen
 import io.github.mangi.eta.ui.pages.providers.ModelProviderListScreen
+import io.github.mangi.eta.ui.screens.food.CookingSessionDestination
 import io.github.mangi.eta.ui.screens.backup.DataBackupScreen
 import io.github.mangi.eta.ui.screens.browser.AgentBrowserActivity
 import io.github.mangi.eta.agent.browser.BrowserSessionRegistry
@@ -130,11 +131,14 @@ fun AgentAppRoot(
     onTerminalOpened: () -> Unit = {},
     onSpeechSettingsOpened: () -> Unit = {},
     onAssistantConversationOpened: (Boolean) -> Unit = {},
+    requestedCookingSessionId: String? = null,
+    onCookingSessionOpened: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val resources = LocalResources.current
     val uiScope = rememberCoroutineScope()
     val backStack = rememberNavBackStack<AppRoute>(AppRoute.Home)
+    val navigator = remember(backStack) { AgentNavigator(backStack) }
     LaunchedEffect(Unit) {
         backStack.removeAll { route -> route is AppRoute && !route.isAvailableInJeanCalcul() }
         if (backStack.isEmpty()) backStack.add(AppRoute.Home)
@@ -143,6 +147,13 @@ fun AgentAppRoot(
         if (openSpeechSettings) {
             if (backStack.lastOrNull() != AppRoute.SpeechSettings) backStack.add(AppRoute.SpeechSettings)
             onSpeechSettingsOpened()
+        }
+    }
+    LaunchedEffect(requestedCookingSessionId) {
+        if (requestedCookingSessionId != null) {
+            val route = AppRoute.CookingSession(requestedCookingSessionId)
+            if (route in backStack) navigator.replace(route) else navigator.push(route)
+            onCookingSessionOpened()
         }
     }
     LaunchedEffect(openTerminal) {
@@ -160,7 +171,6 @@ fun AgentAppRoot(
             onAppImprovementsOpened()
         }
     }
-    val navigator = remember(backStack) { AgentNavigator(backStack) }
     var navigationResetKey by rememberSaveable { mutableIntStateOf(0) }
     val appViewModel = viewModel<AgentAppViewModel>()
     val agentState = appViewModel.state
@@ -483,6 +493,9 @@ fun AgentAppRoot(
                     backStack.remove(route)
                     if (backStack.isEmpty()) backStack.add(AppRoute.Home)
                 }
+            }
+            entry<AppRoute.CookingSession>(swipeDismiss = swipeDismiss) { route ->
+                CookingSessionDestination(route.sessionId, onBack = ::popRoute)
             }
             entry<AppRoute.Terminal>(swipeDismiss = swipeDismiss) {
                 LaunchedEffect(Unit) { requestExecutionNotifications() }

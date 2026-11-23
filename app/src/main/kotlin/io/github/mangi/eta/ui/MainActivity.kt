@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
+import io.github.mangi.eta.EtaApp
 import io.github.mangi.eta.agent.runtime.AgentRuntimeService
 import io.github.mangi.eta.agent.voice.EtaAssistantOverlayService
 import io.github.mangi.eta.core.AndroidAgentLogger
@@ -84,6 +85,11 @@ class MainActivity : ComponentActivity() {
                         },
                         openSpeechSettings = launchRequests.speechSettings,
                         openTerminal = launchRequests.terminal,
+                        requestedCookingSessionId = launchRequests.cookingSessionId,
+                        onCookingSessionOpened = {
+                            launchRequests = launchRequests.copy(cookingSessionId = null)
+                            intent?.action = null
+                        },
                         openAppImprovements = launchRequests.appImprovements,
                         onAppImprovementsOpened = {
                             launchRequests = launchRequests.copy(appImprovements = false)
@@ -119,6 +125,12 @@ class MainActivity : ComponentActivity() {
         io.github.mangi.eta.data.update.PreviewUpdates.check(this)
         io.github.mangi.eta.agent.development.DevelopmentMonitor.start(this)
         AgentRuntimeService.onEtaUiVisibilityChanged()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val food = (application as EtaApp).food
+        food.launch { food.restore() }
     }
 
     override fun onStop() {
@@ -198,6 +210,8 @@ class MainActivity : ComponentActivity() {
             private set
 
         const val ACTION_APP_IMPROVEMENTS = "fr.loevan.jeancalcul.v2.action.APP_IMPROVEMENTS"
+        const val ACTION_OPEN_COOKING_SESSION = "fr.loevan.jeancalcul.v2.action.OPEN_COOKING_SESSION"
+        const val EXTRA_COOKING_SESSION_ID = "io.github.mangi.eta.extra.COOKING_SESSION_ID"
         const val ACTION_OPEN_TERMINAL = "fr.loevan.jeancalcul.v2.action.OPEN_TERMINAL"
         /** 运行浮层的结果卡片回到本体：App 发起的 run 带会话 ID，直接打开该会话。 */
         const val ACTION_OPEN_CONVERSATION_ID = "fr.loevan.jeancalcul.v2.action.OPEN_CONVERSATION_ID"
