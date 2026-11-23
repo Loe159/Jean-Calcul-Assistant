@@ -96,16 +96,14 @@ class FoodContractTest {
 
         val larger = cached.recompute(recipe, 6)
         assertEquals(cached.stockAsOf, larger.stockAsOf)
-        assertEquals(AvailabilityCategory.FEW_PURCHASES, larger.summary.category)
-        assertEquals(3, larger.summary.missingCount)
+        assertEquals(AvailabilitySummary(3.0 / 6, AvailabilityCategory.FEW_PURCHASES, 3), larger.summary)
         val cream = larger.items.first { it.ingredientId == "ing_cream" }
         assertEquals(Quantity(300.0, UnitCode.ML), cream.required)
         assertEquals(MeasuredQuantity(180.0, UnitCode.ML), cream.missing)
         assertEquals(AvailabilityStatus.PARTIAL, cream.status)
 
         val smaller = cached.recompute(recipe, 2)
-        assertEquals(AvailabilityCategory.READY, smaller.summary.category)
-        assertEquals(1.0, smaller.summary.availableRatio, 0.0)
+        assertEquals(AvailabilitySummary(1.0, AvailabilityCategory.READY, 0), smaller.summary)
         assertTrue(smaller.items.none { it.missing != null })
 
         val unknown = cached.copy(items = cached.items.map {
@@ -117,6 +115,42 @@ class FoodContractTest {
         assertEquals(AvailabilityCategory.FEW_PURCHASES, unknown.summary.category)
         assertEquals(1, unknown.summary.missingCount)
         assertTrue(unknown.items.none { it.missing != null })
+
+        val unlinkedRecipe = recipe.copy(ingredients = recipe.ingredients.map {
+            when (it.id) {
+                "ing_thyme" -> it.copy(optional = false)
+                "ing_salt" -> it.copy(name = "Du SÉL-fins")
+                else -> it
+            }
+        })
+        val unlinkedIds = setOf("ing_thyme", "ing_salt")
+        assertEquals(
+            AvailabilitySummary(3.0 / 7, AvailabilityCategory.MANY_PURCHASES, 4),
+            cached.recompute(unlinkedRecipe, 6).summary,
+        )
+        val withoutRows = cached.copy(items = cached.items.filterNot { it.ingredientId in unlinkedIds })
+            .recompute(unlinkedRecipe, 2)
+        assertEquals(AvailabilitySummary(6.0 / 7, AvailabilityCategory.FEW_PURCHASES, 1), withoutRows.summary)
+        val unlinked = withoutRows.items.associateBy { it.ingredientId }
+        assertEquals(AvailabilityStatus.UNKNOWN, unlinked.getValue("ing_thyme").status)
+        assertEquals("NO_PRODUCT_LINK", unlinked.getValue("ing_thyme").reason)
+        assertEquals(AvailabilityStatus.NOT_TRACKED, unlinked.getValue("ing_salt").status)
+        assertEquals("NO_PRODUCT_LINK", unlinked.getValue("ing_salt").reason)
+
+        val cachedClassifications = cached.copy(items = cached.items.map {
+            when (it.ingredientId) {
+                "ing_thyme" -> it.copy(status = AvailabilityStatus.NOT_TRACKED, reason = null)
+                "ing_salt" -> it.copy(status = AvailabilityStatus.UNKNOWN, reason = "NO_CONVERSION")
+                else -> it
+            }
+        })
+        val withRows = cachedClassifications.recompute(unlinkedRecipe, 2)
+        assertEquals(withoutRows.summary, withRows.summary)
+        assertEquals(
+            cachedClassifications.items.filter { it.ingredientId in unlinkedIds }.map { it.status to it.reason },
+            withRows.items.filter { it.ingredientId in unlinkedIds }.map { it.status to it.reason },
+        )
+
         assertThrows(IllegalArgumentException::class.java) {
             cached.recompute(recipe.copy(version = recipe.version + 1), 2)
         }

@@ -116,7 +116,7 @@
     },
     {
       "ingredientId": "ing_thyme",
-      "status": "NOT_TRACKED",
+      "status": "UNKNOWN",
       "required": {
         "amount": 1,
         "unit": "pinch"

@@ -41,6 +41,7 @@ internal data class Substitution(
     val grocyProductId: Long?,
     val quantity: Quantity,
     val note: String,
+    val linkedBy: LinkedBy? = null,
 )
 
 @Serializable
@@ -55,7 +56,11 @@ internal data class RecipeIngredient(
     val optional: Boolean,
     val substitutions: List<Substitution>,
     val rounding: Rounding? = null,
+    val linkedBy: LinkedBy? = null,
 )
+
+/** How the server linked an ingredient to a Grocy product (informational). */
+@Serializable internal enum class LinkedBy { EXACT_NAME, TOKEN_CONTAINMENT }
 
 @Serializable internal data class IngredientRef(val ingredientId: String, val fraction: Double)
 @Serializable internal enum class TemperatureMode { OVEN, PAN, WATER }

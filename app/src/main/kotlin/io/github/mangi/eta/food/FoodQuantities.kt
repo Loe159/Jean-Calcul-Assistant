@@ -2,6 +2,7 @@ package io.github.mangi.eta.food
 
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.text.Normalizer
 import kotlin.math.floor
 import kotlinx.serialization.Serializable
 
@@ -144,6 +145,21 @@ internal object FoodQuantities {
     }
 }
 
+private val untrackedStaples = setOf("eau", "sel", "sel fin", "poivre")
+private val foodNameArticles = setOf("le", "la", "les", "l", "un", "une", "des", "du", "de", "d")
+private val foodNameMarks = Regex("""\p{M}""")
+private val foodNameSeparators = Regex("""[^\p{L}\p{N}]+""")
+
+private fun isUntrackedStaple(name: String): Boolean {
+    val normalized = Normalizer.normalize(name.lowercase(), Normalizer.Form.NFD)
+        .replace(foodNameMarks, "")
+        .replace("œ", "oe").replace("æ", "ae")
+        .replace(foodNameSeparators, " ").trim()
+    val tokens = normalized.split(' ').filter { it.isNotEmpty() && it !in foodNameArticles }
+        .map { if (it.length > 3 && (it.endsWith('s') || it.endsWith('x'))) it.dropLast(1) else it }
+    return tokens.joinToString(" ") in untrackedStaples
+}
+
 /** Reuses only stock from the same recipe version, in its original ingredient units. */
 internal fun Availability.recompute(recipe: RecipeDefinition, servings: Int): Availability {
     require(recipe.id == recipeId && recipe.version == recipeVersion && servings > 0)
@@ -151,18 +167,20 @@ internal fun Availability.recompute(recipe: RecipeDefinition, servings: Int): Av
     val recalculated = recipe.ingredients.map { ingredient ->
         val row = cached[ingredient.id]
         val required = FoodQuantities.exact(ingredient.quantity, recipe.servings, servings, ingredient.scaling)
-        val stock = row?.inStock?.takeIf { it.unit == required.unit }
-        val unknownStatus = when {
-            ingredient.grocyProductId == null || row?.status == AvailabilityStatus.NOT_TRACKED -> AvailabilityStatus.NOT_TRACKED
-            row?.status == AvailabilityStatus.UNKNOWN || stock == null -> AvailabilityStatus.UNKNOWN
-            else -> null
+        if (row?.status == AvailabilityStatus.NOT_TRACKED || row?.status == AvailabilityStatus.UNKNOWN) {
+            return@map row.copy(required = required)
         }
-        if (unknownStatus != null) {
-            val reason = if (unknownStatus == AvailabilityStatus.NOT_TRACKED) "NO_PRODUCT_LINK" else row?.reason
-            AvailabilityItem(ingredient.id, unknownStatus, required, null, null, reason, row?.substitutionAvailable)
+        if (row == null && ingredient.grocyProductId == null) {
+            val status = if (isUntrackedStaple(ingredient.name)) AvailabilityStatus.NOT_TRACKED else AvailabilityStatus.UNKNOWN
+            return@map AvailabilityItem(ingredient.id, status, required, null, null, "NO_PRODUCT_LINK", null)
+        }
+        val stock = row?.inStock?.takeIf { it.unit == required.unit }
+        if (stock == null) {
+            AvailabilityItem(ingredient.id, AvailabilityStatus.UNKNOWN, required, null, null, row?.reason, row?.substitutionAvailable)
         } else {
-            checkNotNull(stock)
-            val missing = ((required.amount ?: 0.0) - stock.amount).coerceAtLeast(0.0)
+            val need = required.amount ?: 0.0
+            val shortfall = need - stock.amount
+            val missing = if (shortfall <= maxOf(need, stock.amount) * 1e-12) 0.0 else shortfall
             val enough = if (required.amount == null) stock.amount > 0 else missing == 0.0
             val status = when {
                 enough -> AvailabilityStatus.AVAILABLE
@@ -177,17 +195,18 @@ internal fun Availability.recompute(recipe: RecipeDefinition, servings: Int): Av
             )
         }
     }
-    val requiredIds = recipe.ingredients.filterNot { it.optional }.mapTo(hashSetOf()) { it.id }
-    val tracked = recalculated.filter { it.ingredientId in requiredIds && it.status != AvailabilityStatus.NOT_TRACKED }
-    val available = tracked.count { it.status == AvailabilityStatus.AVAILABLE }
-    val missing = tracked.filter { it.status != AvailabilityStatus.AVAILABLE }
-    val purchases = missing.count { it.substitutionAvailable == null }
+    val required = recalculated.filterIndexed { index, item ->
+        !recipe.ingredients[index].optional && item.status != AvailabilityStatus.NOT_TRACKED
+    }
+    val availableCount = required.count { it.status == AvailabilityStatus.AVAILABLE }
+    val missingCount = required.size - availableCount
+    val purchases = required.count { it.status != AvailabilityStatus.AVAILABLE && it.substitutionAvailable == null }
     val category = when {
         purchases >= 3 -> AvailabilityCategory.MANY_PURCHASES
         purchases > 0 -> AvailabilityCategory.FEW_PURCHASES
-        missing.isNotEmpty() -> AvailabilityCategory.READY_WITH_SUBSTITUTIONS
+        availableCount < required.size -> AvailabilityCategory.READY_WITH_SUBSTITUTIONS
         else -> AvailabilityCategory.READY
     }
-    val ratio = if (tracked.isEmpty()) 1.0 else available.toDouble() / tracked.size
-    return copy(servings = servings, items = recalculated, summary = AvailabilitySummary(ratio, category, missing.size))
+    val ratio = if (required.isEmpty()) 1.0 else availableCount.toDouble() / required.size
+    return copy(servings = servings, items = recalculated, summary = AvailabilitySummary(ratio, category, missingCount))
 }
