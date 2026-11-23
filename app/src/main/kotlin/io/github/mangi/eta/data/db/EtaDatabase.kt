@@ -25,8 +25,17 @@ import androidx.room.migration.Migration
         McpServerEntity::class,
         CharacterEntity::class,
         UserPersonaEntity::class,
+        FoodRecipeEntity::class,
+        FoodRecipeLibraryEntity::class,
+        FoodRecipeIndexEntity::class,
+        FoodAvailabilityEntity::class,
+        FoodPantryEntity::class,
+        CookingSessionEntity::class,
+        CookingTimerEntity::class,
+        FoodOutboxEntity::class,
+        FoodBriefCardsEntity::class,
     ],
-    version = 26,
+    version = 27,
     exportSchema = false,
 )
 internal abstract class EtaDatabase : RoomDatabase() {
@@ -36,6 +45,7 @@ internal abstract class EtaDatabase : RoomDatabase() {
     abstract fun skillDao(): SkillDao
     abstract fun mcpServerDao(): McpServerDao
     abstract fun characterDao(): CharacterDao
+    abstract fun foodDao(): FoodDao
 
     companion object {
         @Volatile
@@ -69,6 +79,7 @@ internal abstract class EtaDatabase : RoomDatabase() {
                         MIGRATION_23_24,
                         MIGRATION_24_25,
                         MIGRATION_25_26,
+                        MIGRATION_26_27,
                     )
                     .addCallback(object : Callback() {
                         override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) { createTextChunkCleanup(db) }
@@ -134,6 +145,8 @@ internal abstract class EtaDatabase : RoomDatabase() {
             database.execSQL("ALTER TABLE conversation_messages ADD COLUMN decode_ms INTEGER")
             database.execSQL("ALTER TABLE conversation_messages ADD COLUMN decode_tokens INTEGER")
         }
+
+        internal val MIGRATION_26_27 = FOOD_MIGRATION_26_27
 
         internal val MIGRATION_25_26 = Migration(25, 26) { database ->
             database.execSQL("ALTER TABLE conversation_messages ADD COLUMN cache_write_tokens INTEGER")
