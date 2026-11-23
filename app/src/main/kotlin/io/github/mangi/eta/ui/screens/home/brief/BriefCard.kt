@@ -96,6 +96,7 @@ internal fun BriefCard(
     modifier: Modifier = Modifier,
     meta: String? = null,
     backgroundDecoration: Modifier = Modifier,
+    title: String = card.title,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val tint = card.tint()
@@ -139,7 +140,7 @@ internal fun BriefCard(
                     }
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(card.title, style = COUITheme.textStyles.headlineXS, color = colors.labelPrimary)
+                    Text(title, style = COUITheme.textStyles.headlineXS, color = colors.labelPrimary)
                     if (meta != null) {
                         Text(meta, style = COUITheme.textStyles.bodyXS, color = colors.labelSecondary)
                     }

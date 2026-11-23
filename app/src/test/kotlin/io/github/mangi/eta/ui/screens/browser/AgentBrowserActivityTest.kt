@@ -22,7 +22,11 @@ class AgentBrowserActivityTest {
         val component = ComponentName(context, AgentBrowserActivity::class.java)
         val info = context.packageManager.getActivityInfo(component, 0)
         assertFalse(info.exported)
-        assertEquals(context.applicationInfo.processName, info.processName)
+        // L'activity ne déclare pas android:process : elle tourne donc dans le
+        // process principal, dont le nom est le packageName (= applicationId).
+        // On compare à context.packageName plutôt qu'à applicationInfo.processName,
+        // que Robolectric laisse à null alors qu'un vrai device y met le packageName.
+        assertEquals(context.packageName, info.processName)
     }
 
     @Test

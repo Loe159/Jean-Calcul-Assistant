@@ -1,6 +1,8 @@
 package io.github.mangi.eta.ui.screens.home.brief
 
 import io.github.mangi.eta.agent.device.notifications.remote.MastraBriefCounts
+import io.github.mangi.eta.data.car.BriefCarState
+import kotlinx.coroutines.runBlocking
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
@@ -60,6 +62,18 @@ class BriefModelTest {
             assertEquals(BriefCardId.HOME, visible.last())
             assertTrue(briefFeedOrder(moment, BriefCardId.entries.toSet()).isEmpty())
         }
+    }
+
+    @Test
+    fun carKeepsItsKeyAndMovesOutOfPreviewsWithASession() = runBlocking {
+        val demo = DemoCarSource()
+        val ready = demo.load() as BriefCarState.Ready
+        assertEquals("Peugeot 208", ready.data.label)
+        assertEquals("car", BriefCardId.CAR.key)
+        assertTrue(BriefCardId.CAR.isPreview(demo.settings.value.hasSession))
+        assertFalse(BriefCardId.CAR.isPreview(hasCarSession = true))
+        assertFalse(BriefCardId.NOTIFICATIONS.isPreview(hasCarSession = false))
+        assertTrue(BriefCardId.AGENDA.isPreview(hasCarSession = true))
     }
 
     @Test

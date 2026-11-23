@@ -105,8 +105,6 @@ internal data class BriefDemoAgenda(
     val gaps get() = briefAgendaGaps(events, from = nowMinute ?: 0)
 }
 
-internal data class BriefDemoTrip(val departure: ZonedDateTime, val tomorrow: Boolean)
-
 private fun ZonedDateTime.atMinute(date: LocalDate, minute: Int): ZonedDateTime =
     date.atTime(minute / 60, minute % 60).atZone(zone)
 
@@ -126,67 +124,33 @@ internal fun briefDemoAgenda(now: ZonedDateTime): BriefDemoAgenda {
     return BriefDemoAgenda(date, minute.takeIf { current != null }, countdown, departure)
 }
 
-internal fun briefDemoTrip(now: ZonedDateTime, agenda: BriefDemoAgenda): BriefDemoTrip {
-    val project = BriefDemoData.project
-    val today = now.toLocalDate()
-    val todayStart = now.atMinute(today, project.start)
-    val date = if (agenda.tomorrow) agenda.date else if (now < todayStart) today else today.plusDays(1)
-    val departure = now.atMinute(date, project.start).minusMinutes(BriefDemoData.tripArrivalLeadMinutes.toLong())
-    return BriefDemoTrip(maxOf(now, departure), date != today)
-}
-
-internal fun briefBarSuggestion(now: ZonedDateTime, agenda: BriefDemoAgenda, trip: BriefDemoTrip): BriefBarSuggestion {
+internal fun briefBarSuggestion(now: ZonedDateTime, agenda: BriefDemoAgenda): BriefBarSuggestion {
     val minute = now.minuteOfDay
     val moment = briefMoment(now.toLocalTime())
-    return when (moment) {
-        BriefMoment.MORNING, BriefMoment.EVENING -> BriefBarSuggestion(
-            BriefCardId.CAR,
-            when {
-                trip.tomorrow -> "Départ demain à ${briefHour(trip.departure)}"
-                trip.departure == now -> "C’est l’heure de partir"
-                else -> "Départ à ${briefHour(trip.departure)}"
-            },
-            "${BriefDemoData.destination} · ${BriefDemoData.tripMinutes} min",
-            1f - briefProgress(Duration.between(now, trip.departure).toMinutes().toInt(), 6 * 60),
-        )
-        BriefMoment.DAY -> {
-            val next = agenda.countdown
-            val lunch = BriefDemoData.lunch
-            if (minute < lunch.start) {
-                BriefBarSuggestion(BriefCardId.AGENDA, "Déjeuner à ${briefHour(lunch.start)}", "${BriefDemoData.lunchWalkMinutes} min à pied",
-                    1f - briefProgress(lunch.start - minute, 60))
-            } else {
-                BriefBarSuggestion(
-                    BriefCardId.AGENDA,
-                    if (agenda.tomorrow) "Demain · ${next.event.title}"
-                    else if (next.inProgress) next.event.title
-                    else "${next.event.title} à ${briefHour(next.event.start)}",
-                    if (next.inProgress) "En cours · encore ${briefDuration(next.minutes)}"
-                    else "${next.event.place} · dans ${briefDuration(next.minutes)}",
-                    next.progress,
-                )
-            }
-        }
-        BriefMoment.NIGHT -> {
-            val bedtime = now.plusMinutes(15)
-            val wake = bedtime.plusMinutes(450)
-            BriefBarSuggestion(BriefCardId.HEALTH, "Coucher conseillé à ${briefHour(bedtime)}",
-                "Réveil à ${briefHour(wake)} · 7 h 30 de sommeil", briefProgress((minute + 120) % 1440, 420))
-        }
+    if (moment == BriefMoment.NIGHT) {
+        val bedtime = now.plusMinutes(15)
+        val wake = bedtime.plusMinutes(450)
+        return BriefBarSuggestion(BriefCardId.HEALTH, "Coucher conseillé à ${briefHour(bedtime)}",
+            "Réveil à ${briefHour(wake)} · 7 h 30 de sommeil", briefProgress((minute + 120) % 1440, 420))
     }
+    val lunch = BriefDemoData.lunch
+    if (moment == BriefMoment.DAY && minute < lunch.start) {
+        return BriefBarSuggestion(BriefCardId.AGENDA, "Déjeuner à ${briefHour(lunch.start)}",
+            "${BriefDemoData.lunchWalkMinutes} min à pied", 1f - briefProgress(lunch.start - minute, 60))
+    }
+    val next = agenda.countdown
+    return BriefBarSuggestion(
+        BriefCardId.AGENDA,
+        if (agenda.tomorrow) "Demain · ${next.event.title}"
+        else if (next.inProgress) next.event.title
+        else "${next.event.title} à ${briefHour(next.event.start)}",
+        if (next.inProgress) "En cours · encore ${briefDuration(next.minutes)}"
+        else "${next.event.place} · dans ${briefDuration(next.minutes)}",
+        next.progress,
+    )
 }
 
-internal fun briefDemoSuggestions(now: ZonedDateTime, agenda: BriefDemoAgenda): List<BriefDemoSuggestion> {
-    val minute = now.minuteOfDay
-    val stationOpen = minute in 7 * 60 until 22 * 60
-    val fuel = BriefDemoSuggestion(
-        "fuel",
-        if (stationOpen) "Fais le plein avant 22 h" else "Prévois un arrêt à la station",
-        "Il te reste ${BriefDemoData.rangeKm} km. ${BriefDemoData.station}" +
-            if (stationOpen) "." else ". Ouverture à 07:00.",
-        if (stationOpen) "Lancer l’itinéraire" else "Voir la station",
-        BriefDemoTone.Orange,
-    )
+internal fun briefDemoSuggestions(agenda: BriefDemoAgenda): List<BriefDemoSuggestion> {
     val reply = BriefDemoSuggestion("reply", "Camille attend une réponse", "Pense à répondre à son dernier message.",
         "Répondre", BriefDemoTone.Blue)
     val sport = agenda.gaps.firstOrNull()?.let { gap ->
@@ -197,8 +161,8 @@ internal fun briefDemoSuggestions(now: ZonedDateTime, agenda: BriefDemoAgenda): 
         )
     }
     val merge = BriefDemoSuggestion("merge", "Regroupe deux tâches",
-        "Un seul appel au garage pour la révision et les pneus.", "Regrouper", BriefDemoTone.Violet)
-    return if (stationOpen) listOfNotNull(fuel, reply, sport, merge) else listOfNotNull(merge, sport, fuel, reply)
+        "Prépare la facture et le point projet de l’atelier ensemble.", "Regrouper", BriefDemoTone.Violet)
+    return listOfNotNull(reply, sport, merge)
 }
 
 internal val BriefRibbonTicks = (7..21 step 2).map { it * 60 }

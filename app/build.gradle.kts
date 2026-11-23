@@ -191,6 +191,8 @@ dependencies {
     implementation(libs.androidx.navigationevent)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.car.app.core)
+    implementation(libs.androidx.car.app.projected)
     implementation(libs.activity.compose)
     // 只使用 GFM 解析器；聊天渲染层由 ui/markdown 自建，按块冻结并接入逐字显现。
     implementation(libs.intellij.markdown)
