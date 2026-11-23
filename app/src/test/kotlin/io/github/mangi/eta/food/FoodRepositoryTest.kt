@@ -183,6 +183,62 @@ class FoodRepositoryTest {
         assertNull(repository.pantry().first())
     }
 
+    @Test
+    fun assistantChangesPersistOnlyInTheActiveSession() = runBlocking {
+        val recipe = recipeFixture()
+        var repository = repository(this)
+        val id = repository.startSession(recipe, servings = 4)
+        val replacement = AssistantProposal.ReplaceIngredient(
+            "replace", "Remplacer les courgettes", ProposalImpact.MAJOR,
+            ReplacementPatch("ing_courgette", "aubergines", MeasuredQuantity(400.0, UnitCode.G), 42L),
+        )
+        val note = AssistantProposal.AddStepNote(
+            "note", "Couvrir", ProposalImpact.MINOR, NotePatch("st_2", "Couvrir la casserole"),
+        )
+        repository.applyProposal(id, "req_1", replacement)
+        repository.applyProposal(id, "req_1", note)
+        repository.applyProposal(id, "req_1", note)
+        repository.jumpToStep(id, "st_2")
+        repository.applyProposal(id, "req_2", AssistantProposal.SkipStep(
+            "skip", "Ignorer", ProposalImpact.MAJOR, StepPatch("st_2"),
+        ))
+        database.close()
+        openDatabase()
+        repository = repository(this)
+        val session = checkNotNull(repository.session(id).first())
+        assertEquals("st_3", session.currentStepId)
+        assertEquals(listOf("st_2"), session.skippedStepIds)
+        assertEquals(42L, session.recipeSnapshot.ingredients.first().grocyProductId)
+        assertEquals(listOf(IngredientOverride("ing_courgette", Quantity(400.0, UnitCode.G))), session.ingredientOverrides)
+        assertEquals(1, session.recipeSnapshot.steps.single { it.id == "st_2" }.tips.count { it == "Couvrir la casserole" })
+        val frozen = database.foodDao().session(id)!!.recipeSnapshotJson
+        assertEquals(recipe, FoodContract.json.decodeFromString<RecipeDefinition>(frozen))
+    }
+
+    @Test
+    fun partialCompletionPreservesLineDetailsAcrossReopen() = runBlocking {
+        pairing = paired
+        val repository = repository(this, Interceptor { chain ->
+            val request = chain.request()
+            val json = FoodContract.json
+            if (request.method == "PUT") return@Interceptor chain.response(500, "{}")
+            val body = Buffer().also { request.body?.writeTo(it) }.readUtf8()
+            val input = json.decodeFromString<CompleteRequest>(body)
+            val line = OperationLine("ing_courgette", 3, Quantity(500.0, UnitCode.G), null, null,
+                OperationLineState.NEEDS_CONVERSION, "Conversion manquante")
+            chain.response(200, json.encodeToString(OperationResult(1, input.operationId, OperationState.PARTIAL, false, listOf(line))))
+        })
+        val id = repository.startSession(recipeFixture(), 4)
+        assertNull(repository.completionResult(id).first())
+        repository.completeSession(id, 4, 5, emptyList(), null)
+        withTimeout(5_000) { repository.completionResult(id).first { it != null } }
+        database.close()
+        openDatabase()
+        val resumed = repository(this)
+        assertEquals(StockConsumptionStatus.PARTIAL, resumed.session(id).first()?.stockConsumptionStatus)
+        assertEquals(OperationLineState.NEEDS_CONVERSION, resumed.completionResult(id).first()?.lines?.single()?.state)
+    }
+
     private fun repository(scope: CoroutineScope, server: Interceptor = Interceptor { throw IOException() }): FoodRepository {
         val http = OkHttpClient.Builder().addInterceptor(server).build()
         return FoodRepository(

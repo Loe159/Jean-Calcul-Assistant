@@ -23,7 +23,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [36])
 class EtaDatabaseMigrationTest {
     @Test
-    fun migration6To27PreservesDataAndMovesCompleteConversationContext() {
+    fun migration6To28PreservesDataAndMovesCompleteConversationContext() {
         val context = RuntimeEnvironment.getApplication() as Context
         val databaseName = "migration-${UUID.randomUUID()}.db"
         createVersion6Database(context, databaseName)
@@ -40,7 +40,7 @@ class EtaDatabaseMigrationTest {
         }
 
         val database = Room.databaseBuilder(context, EtaDatabase::class.java, databaseName)
-            .addMigrations(*migrationsTo26(migration16To17WithMcpData), EtaDatabase.MIGRATION_26_27)
+            .addMigrations(*migrationsTo26(migration16To17WithMcpData), EtaDatabase.MIGRATION_26_27, FOOD_MIGRATION_27_28)
             .build()
         try {
             val result = runBlocking(Dispatchers.IO) {
@@ -127,7 +127,7 @@ class EtaDatabaseMigrationTest {
 
     @Test
     @Config(application = android.app.Application::class)
-    fun registeredMigration26To27PreservesExistingDataAndCreatesFoodTables() {
+    fun registeredMigration26To28PreservesExistingDataAndCreatesFoodTables() {
         val context = RuntimeEnvironment.getApplication() as Context
         val name = "eta.db"
         EtaDatabase.closeForTests()
@@ -149,7 +149,7 @@ class EtaDatabaseMigrationTest {
         try {
             val database = EtaDatabase.get(context)
             runBlocking {
-                assertEquals(27, database.openHelper.readableDatabase.version)
+                assertEquals(28, database.openHelper.readableDatabase.version)
                 assertEquals("保留的结果", database.runtimeRunDao().runtimeResults().single().content)
                 val dao = database.foodDao()
                 dao.savePantry(FoodPantryEntity("test-pairing", "{}", 17L))

@@ -22,6 +22,8 @@ import io.github.mangi.eta.agent.device.notifications.NotificationFilterAction
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterMode
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterSettings
 import org.junit.Assert.*
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
@@ -85,6 +87,78 @@ class VisualScenarioTest {
             device.wait(Until.hasObject(By.text("Regrouper par application")), 8000))
     }
 
+    private fun runFoodScenario(
+        device: UiDevice,
+        context: android.content.Context,
+        activity: ActivityScenario<MainActivity>,
+        fixture: LocalFoodFixture,
+    ) {
+        fun text(id: Int) = By.text(context.getString(id))
+        fun find(selector: BySelector, reverseFirst: Boolean = false): UiObject2 {
+            val middle = device.displayHeight / 2
+            val x = device.displayWidth / 2
+            for (reverse in listOf(reverseFirst, !reverseFirst)) {
+                repeat(14) {
+                    val row = device.findObject(selector)
+                    if (row != null && row.visibleBounds.centerY() in middle / 3..middle * 5 / 3 &&
+                        row.visibleBounds.height() > 0) return row
+                    val start = if (reverse) middle * 2 / 3 else middle * 3 / 2
+                    device.swipe(x, start, x, middle, 22)
+                    device.waitForIdle(350)
+                }
+            }
+            throw AssertionError("Cuisine control is not reachable: $selector")
+        }
+        fun click(selector: BySelector, reverseFirst: Boolean = false) = find(selector, reverseFirst).click()
+        fun await(selector: BySelector) = assertTrue(device.wait(Until.hasObject(selector), 10000))
+        fun captureStage(name: String) {
+            device.waitForIdle()
+            SystemClock.sleep(250)
+            val directory = File(context.filesDir, "e2e").apply { mkdirs() }
+            assertTrue("Cuisine display capture $name", device.takeScreenshot(File(directory, "$name.png")))
+        }
+
+        device.wait(Until.findObject(By.desc("Ouvrir mon briefing")), 10000).click()
+        click(text(R.string.food_brief_open))
+        await(text(R.string.food_start_cooking))
+        click(By.text("4"))
+        find(By.textContains("300 g"))
+        captureStage("food_recipe")
+        assertTrue(fixture.completions.isEmpty())
+        click(text(R.string.food_start_cooking), reverseFirst = true)
+        await(By.text("Faire chauffer l’eau"))
+        click(By.textStartsWith("Démarrer le minuteur"))
+        click(text(R.string.food_step_done))
+        await(By.text("Cuire le riz"))
+        click(By.textStartsWith("Démarrer le minuteur"))
+        val repo = (context.applicationContext as io.github.mangi.eta.EtaApp).food.repository
+        val sessionId = runBlocking {
+            kotlinx.coroutines.withTimeout(5_000) { repo.activeSessions().first { it.isNotEmpty() }.single().id }
+        }
+        val timerCount = runBlocking {
+            kotlinx.coroutines.withTimeout(5_000) { repo.session(sessionId).first { (it?.timers?.size ?: 0) >= 2 }?.timers?.size }
+        }
+        assertEquals(2, timerCount)
+        find(text(R.string.food_timers))
+        captureStage("food_timers")
+        assertTrue(fixture.completions.isEmpty())
+        activity.recreate()
+        await(By.text("Cuire le riz"))
+        click(text(R.string.food_step_done))
+        click(text(R.string.food_finish))
+        find(text(R.string.food_consumed))
+        captureStage("food_summary")
+        assertTrue(fixture.completions.isEmpty())
+        click(text(R.string.food_confirm))
+        await(text(R.string.food_succeeded))
+        val completion = fixture.completions.single()
+        assertEquals(4, completion.servingsMade)
+        assertEquals(300.0, completion.consumptions.single().quantity.amount, 0.0)
+        assertEquals(2, completion.session.timers.size)
+        assertTrue(fixture.feedback.any { it.action == io.github.mangi.eta.food.BriefFeedbackAction.OPENED })
+        assertTrue(fixture.feedback.any { it.action == io.github.mangi.eta.food.BriefFeedbackAction.COOKED })
+    }
+
     @Before fun prepareSyntheticPermissions() {
         if (!InstrumentationRegistry.getArguments().getString("scenario").orEmpty().startsWith("improvements_notifications")) {
             grantSyntheticNotificationPermission()
@@ -99,6 +173,7 @@ class VisualScenarioTest {
         val context = instrumentation.targetContext
         val device = UiDevice.getInstance(instrumentation)
         val fixture = if (scenario in setOf("message", "reset")) LocalVllmFixture(context) else null
+        val foodFixture = if (scenario == "food_cooking") LocalFoodFixture(context) else null
         val improvements = if (scenario.startsWith("improvements_notifications") || scenario.endsWith("_notice"))
             io.github.mangi.eta.agent.development.DevelopmentStore(context).also {
                 it.connect("synthetic-token-for-isolated-visual-test-123")
@@ -417,6 +492,7 @@ class VisualScenarioTest {
                         assertTrue("Confirmed removals remain in the category history",
                             device.wait(Until.hasObject(marker), 5000))
                     }
+                    "food_cooking" -> runFoodScenario(device, context, activity, checkNotNull(foodFixture))
                     "brief_mastra" -> {
                         // Synthetic decisions as returned by the homelab; nothing is sent
                         // over the network and no real Android notification is touched.
@@ -540,6 +616,7 @@ class VisualScenarioTest {
                 context.getSystemService(android.app.NotificationManager::class.java).cancel(6202)
             }
             fixture?.close()
+            foodFixture?.close()
             improvements?.disconnect()
         }
     }
