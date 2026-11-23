@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "declared": {
+    "allergies": [
+      "arachide"
+    ],
+    "excludedIngredients": [
+      "fenouil"
+    ],
+    "dietary": [
+      "végétarien"
+    ],
+    "equipment": [
+      "OVEN",
+      "STOVE"
+    ],
+    "defaultServings": 2,
+    "maxWeeknightMinutes": 55,
+    "cuisinesLiked": [
+      "française",
+      "méditerranéenne"
+    ]
+  },
+  "inferred": [
+    {
+      "key": "cuisine.méditerranéenne",
+      "value": true,
+      "confidence": 0.72,
+      "evidenceCount": 4,
+      "updatedAt": "2026-11-22T18:12:00Z"
+    }
+  ]
+}

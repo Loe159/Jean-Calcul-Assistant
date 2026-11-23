@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "requestId": "req_dbbe4dda-0b3c-4cf2-b46d-868720da2a8e",
+  "answer": "Baisse le four à 170 °C et surveille la cuisson. Si le dessus dore avant que le centre soit pris, couvre le plat de papier aluminium.",
+  "proposals": [
+    {
+      "id": "prp_1",
+      "kind": "ADJUST_TEMPERATURE",
+      "summary": "Baisser le four à 170 °C",
+      "impact": "MINOR",
+      "patch": {
+        "stepId": "st_3",
+        "temperature": {
+          "value": 170,
+          "unit": "C",
+          "mode": "OVEN"
+        }
+      }
+    },
+    {
+      "id": "prp_2",
+      "kind": "ADD_STEP_NOTE",
+      "summary": "Surveiller la coloration",
+      "impact": "MINOR",
+      "patch": {
+        "stepId": "st_3",
+        "note": "Couvrir si le dessus dore trop vite."
+      }
+    }
+  ],
+  "degraded": false
+}

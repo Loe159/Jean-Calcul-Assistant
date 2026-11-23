@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-23T18:01:00Z",
+  "validUntil": "2026-11-23T18:25:00Z",
+  "cards": [
+    {
+      "id": "rec_b6722eb3",
+      "kind": "RECIPE_RECOMMENDATION",
+      "priority": 40,
+      "title": "Clafoutis salé aux courgettes et au chèvre",
+      "subtitle": "50 min · 83 % des ingrédients",
+      "recipeId": "rcp_clafoutis_courgette_chevre",
+      "totalMinutes": 50,
+      "availableRatio": 0.8333333333333334,
+      "image": null,
+      "reasons": [
+        "USES_EXPIRING:courgettes",
+        "USES_EXPIRING:crème liquide"
+      ]
+    },
+    {
+      "id": "exp_2026-11-23",
+      "kind": "EXPIRING_PRODUCTS",
+      "priority": 30,
+      "title": "2 produits à consommer",
+      "subtitle": "Crème liquide et courgettes",
+      "products": [
+        {
+          "grocyProductId": 8,
+          "name": "Crème liquide",
+          "bestBeforeDate": "2026-11-24",
+          "status": "DUE_SOON"
+        },
+        {
+          "grocyProductId": 3,
+          "name": "Courgettes",
+          "bestBeforeDate": "2026-11-25",
+          "status": "DUE_SOON"
+        }
+      ],
+      "suggestedRecipeIds": [
+        "rcp_clafoutis_courgette_chevre"
+      ]
+    }
+  ]
+}

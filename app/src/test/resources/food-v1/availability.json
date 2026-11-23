@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "recipeId": "rcp_clafoutis_courgette_chevre",
+  "recipeVersion": 1,
+  "servings": 4,
+  "computedAt": "2026-11-23T18:01:00Z",
+  "stockAsOf": "2026-11-23T18:00:00Z",
+  "items": [
+    {
+      "ingredientId": "ing_courgette",
+      "status": "AVAILABLE",
+      "required": {
+        "amount": 500,
+        "unit": "g"
+      },
+      "inStock": {
+        "amount": 640,
+        "unit": "g"
+      },
+      "missing": null,
+      "reason": null,
+      "substitutionAvailable": null
+    },
+    {
+      "ingredientId": "ing_eggs",
+      "status": "AVAILABLE",
+      "required": {
+        "amount": 4,
+        "unit": "piece"
+      },
+      "inStock": {
+        "amount": 6,
+        "unit": "piece"
+      },
+      "missing": null,
+      "reason": null,
+      "substitutionAvailable": null
+    },
+    {
+      "ingredientId": "ing_cream",
+      "status": "PARTIAL",
+      "required": {
+        "amount": 200,
+        "unit": "ml"
+      },
+      "inStock": {
+        "amount": 120,
+        "unit": "ml"
+      },
+      "missing": {
+        "amount": 80,
+        "unit": "ml"
+      },
+      "reason": null,
+      "substitutionAvailable": {
+        "name": "lait entier",
+        "grocyProductId": 11
+      }
+    },
+    {
+      "ingredientId": "ing_flour",
+      "status": "AVAILABLE",
+      "required": {
+        "amount": 80,
+        "unit": "g"
+      },
+      "inStock": {
+        "amount": 750,
+        "unit": "g"
+      },
+      "missing": null,
+      "reason": null,
+      "substitutionAvailable": null
+    },
+    {
+      "ingredientId": "ing_cheese",
+      "status": "AVAILABLE",
+      "required": {
+        "amount": 160,
+        "unit": "g"
+      },
+      "inStock": {
+        "amount": 180,
+        "unit": "g"
+      },
+      "missing": null,
+      "reason": null,
+      "substitutionAvailable": null
+    },
+    {
+      "ingredientId": "ing_oil",
+      "status": "AVAILABLE",
+      "required": {
+        "amount": 30,
+        "unit": "ml"
+      },
+      "inStock": {
+        "amount": 350,
+        "unit": "ml"
+      },
+      "missing": null,
+      "reason": null,
+      "substitutionAvailable": null
+    },
+    {
+      "ingredientId": "ing_salt",
+      "status": "NOT_TRACKED",
+      "required": {
+        "amount": null,
+        "unit": "pinch"
+      },
+      "inStock": null,
+      "missing": null,
+      "reason": "NO_PRODUCT_LINK",
+      "substitutionAvailable": null
+    },
+    {
+      "ingredientId": "ing_thyme",
+      "status": "NOT_TRACKED",
+      "required": {
+        "amount": 1,
+        "unit": "pinch"
+      },
+      "inStock": null,
+      "missing": null,
+      "reason": "NO_PRODUCT_LINK",
+      "substitutionAvailable": null
+    }
+  ],
+  "summary": {
+    "availableRatio": 0.8333333333333334,
+    "category": "READY_WITH_SUBSTITUTIONS",
+    "missingCount": 1
+  }
+}
