@@ -1,6 +1,7 @@
 package io.github.mangi.eta.ui.screens.home.brief
 
 import androidx.compose.runtime.Composable
+import io.github.mangi.eta.ui.screens.home.NowBriefCardExtension
 import io.github.mangi.eta.ui.screens.home.brief.BriefCardId.*
 
 internal enum class BriefCardId(val key: String, val title: String) {
@@ -42,3 +43,18 @@ internal data class BriefFeedItem(
     val contentType: String,
     val content: @Composable () -> Unit,
 )
+
+internal fun <T> briefRealContent(
+    realCards: List<BriefCardId>,
+    extensions: List<NowBriefCardExtension>,
+    real: (BriefCardId) -> T,
+    extension: (NowBriefCardExtension) -> T,
+): List<T> {
+    val reserved = BriefCardId.entries.mapTo(mutableSetOf(), BriefCardId::key) + "header"
+    val (leading, trailing) = extensions.asSequence()
+        .filterNot { it.id in reserved }
+        .distinctBy(NowBriefCardExtension::id)
+        .sortedWith(compareBy(NowBriefCardExtension::priority, NowBriefCardExtension::id))
+        .partition(NowBriefCardExtension::beforeRealCards)
+    return leading.map(extension) + realCards.map(real) + trailing.map(extension)
+}

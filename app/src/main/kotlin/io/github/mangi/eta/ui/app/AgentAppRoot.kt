@@ -74,6 +74,11 @@ import io.github.mangi.eta.ui.pages.providers.CommunityCatalogScreen
 import io.github.mangi.eta.ui.pages.providers.ModelProviderDetailScreen
 import io.github.mangi.eta.ui.pages.providers.ModelProviderListScreen
 import io.github.mangi.eta.ui.screens.food.CookingSessionDestination
+import io.github.mangi.eta.ui.screens.food.FoodHomeScreen
+import io.github.mangi.eta.ui.screens.food.FoodPreferencesScreen
+import io.github.mangi.eta.ui.screens.food.InventoryScreen
+import io.github.mangi.eta.ui.screens.food.RecipeDetailScreen
+import io.github.mangi.eta.ui.screens.food.RecipeGenerateScreen
 import io.github.mangi.eta.ui.screens.backup.DataBackupScreen
 import io.github.mangi.eta.ui.screens.browser.AgentBrowserActivity
 import io.github.mangi.eta.agent.browser.BrowserSessionRegistry
@@ -384,6 +389,8 @@ fun AgentAppRoot(
             onOpenCharacters = { pushRoute(AppRoute.Characters) },
             onOpenPermissions = { pushRoute(AppRoute.Permissions) },
             onOpenSettings = { pushRoute(AppRoute.Settings) },
+            onOpenFoodHome = { pushRoute(AppRoute.FoodHome) },
+            onOpenFoodRoute = { pushRoute(it, restoreConversationPaneOnBack = false) },
             onOpenNotifications = { pushRoute(AppRoute.IntelligentNotifications) },
             onOpenModelProviders = { pushRoute(AppRoute.ModelProviders) },
             homeTitle = if (isHome) agentState.currentConversationTitle else null,
@@ -493,6 +500,23 @@ fun AgentAppRoot(
                     backStack.remove(route)
                     if (backStack.isEmpty()) backStack.add(AppRoute.Home)
                 }
+            }
+            entry<AppRoute.FoodHome>(swipeDismiss = swipeDismiss) {
+                FoodHomeScreen(onBack = ::popRoute, onOpen = { pushRoute(it) })
+            }
+            entry<AppRoute.Inventory>(swipeDismiss = swipeDismiss) { route ->
+                InventoryScreen(route.filter, onBack = ::popRoute)
+            }
+            entry<AppRoute.RecipeDetail>(swipeDismiss = swipeDismiss) { route ->
+                RecipeDetailScreen(route.recipeId, route.briefCardId, route.servings, onBack = ::popRoute, onOpen = { pushRoute(it) })
+            }
+            entry<AppRoute.RecipeGenerate>(swipeDismiss = swipeDismiss) { route ->
+                RecipeGenerateScreen(route.recipeId, route.servings, onBack = ::popRoute) {
+                    pushRoute(AppRoute.RecipeDetail(it))
+                }
+            }
+            entry<AppRoute.FoodPreferences>(swipeDismiss = swipeDismiss) {
+                FoodPreferencesScreen(onBack = ::popRoute)
             }
             entry<AppRoute.CookingSession>(swipeDismiss = swipeDismiss) { route ->
                 CookingSessionDestination(route.sessionId, onBack = ::popRoute)

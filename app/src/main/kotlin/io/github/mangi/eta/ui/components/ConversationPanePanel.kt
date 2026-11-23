@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Download
@@ -114,6 +115,7 @@ internal fun ConversationPanePanel(
     onConversationExport: (ConversationSummaryUi) -> Unit,
     onConversationDelete: (ConversationSummaryUi) -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenFood: (() -> Unit)? = null,
     onOpenModelProviders: () -> Unit,
     onOpenTools: () -> Unit,
     onOpenSkills: () -> Unit,
@@ -175,6 +177,7 @@ internal fun ConversationPanePanel(
                                         onOpenCharacters = onOpenCharacters,
                                         onOpenTools = onOpenTools,
                                         onOpenSkills = onOpenSkills,
+                                        onOpenFood = onOpenFood,
                                     )
                                 }
                             }
@@ -269,10 +272,11 @@ private fun PaneWorkbenchSection(
     onOpenCharacters: () -> Unit,
     onOpenTools: () -> Unit,
     onOpenSkills: () -> Unit,
+    onOpenFood: (() -> Unit)?,
 ) {
     val modelSummary = activeModelLabel?.takeIf { it.isNotBlank() }
         ?: stringResource(R.string.conversation_model_unconfigured)
-    val entries = listOf(
+    val entries = listOfNotNull(
         WorkbenchEntry(
             icon = ConversationPaneIcons.Model,
             title = stringResource(R.string.conversation_dock_models),
@@ -289,6 +293,13 @@ private fun PaneWorkbenchSection(
             title = stringResource(R.string.route_skills),
             onClick = onOpenSkills,
         ),
+        onOpenFood?.let {
+            WorkbenchEntry(
+                icon = Icons.Rounded.Restaurant,
+                title = stringResource(R.string.food_home),
+                onClick = it,
+            )
+        },
     )
 
     Card(modifier = Modifier.padding(horizontal = ConversationPanelMetrics.PaneHorizontalPadding)) {

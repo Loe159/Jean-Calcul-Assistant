@@ -53,6 +53,8 @@ internal data class CookingSessionEntity(
     val stockConsumptionStatus: StockConsumptionStatus,
     val revision: Long,
     val updatedAt: Long,
+    val localProposalsJson: String? = null,
+    val briefCardId: String? = null,
 )
 
 @Entity(
@@ -97,6 +99,7 @@ internal data class FoodOutboxEntity(
     val lastError: String?,
     val createdAt: Long,
     val updatedAt: Long,
+    val resultJson: String? = null,
 )
 
 @Entity(tableName = "food_brief_cards")

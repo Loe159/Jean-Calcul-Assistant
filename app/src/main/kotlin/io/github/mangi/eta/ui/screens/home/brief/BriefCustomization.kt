@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import io.github.mangi.eta.R
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
@@ -31,6 +33,12 @@ internal class BriefVisibilityPreferences(context: Context) {
         preferences.edit { putBoolean(card.key, !visible) }
     }
 
+    fun foodCardsVisible() = preferences.getBoolean("food_cards_visible", true)
+
+    fun setFoodCardsVisible(visible: Boolean) {
+        preferences.edit { putBoolean("food_cards_visible", visible) }
+    }
+
     fun previewsExpanded(): Boolean = preferences.getBoolean(PREVIEWS_EXPANDED, false)
 
     fun setPreviewsExpanded(expanded: Boolean) {
@@ -50,6 +58,8 @@ internal fun BriefCustomization(
     onVisibilityChange: (BriefCardId, Boolean) -> Unit,
     onDismiss: () -> Unit,
     onManageFiltering: () -> Unit,
+    foodCardsVisible: Boolean? = null,
+    onFoodCardsVisibilityChange: (Boolean) -> Unit = {},
 ) {
     OverlayBottomSheet(
         show = show,
@@ -69,6 +79,15 @@ internal fun BriefCustomization(
             val (previewCards, realCards) = BriefCardId.entries.partition { it.isPreview(hasCarSession) }
             item {
                 CardListGroup {
+                    if (foodCardsVisible != null) {
+                        item {
+                            SwitchPreference(
+                                title = stringResource(R.string.food_brief_customization),
+                                checked = foodCardsVisible,
+                                onCheckedChange = onFoodCardsVisibilityChange,
+                            )
+                        }
+                    }
                     realCards.forEach { card ->
                         item {
                             SwitchPreference(

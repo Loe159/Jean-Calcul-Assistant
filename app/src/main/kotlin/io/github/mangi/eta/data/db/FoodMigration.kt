@@ -65,3 +65,9 @@ internal val FOOD_MIGRATION_26_27 = Migration(26, 27) { db ->
         )
     """)
 }
+
+internal val FOOD_MIGRATION_27_28 = Migration(27, 28) { db ->
+    db.execSQL("ALTER TABLE cooking_sessions ADD COLUMN localProposalsJson TEXT")
+    db.execSQL("ALTER TABLE cooking_sessions ADD COLUMN briefCardId TEXT")
+    db.execSQL("ALTER TABLE food_outbox ADD COLUMN resultJson TEXT")
+}

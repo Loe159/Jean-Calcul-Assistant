@@ -26,6 +26,12 @@ internal interface FoodDao {
     @Query("SELECT * FROM food_recipe_index WHERE owner = :owner")
     fun observeRecipeIndex(owner: String): Flow<FoodRecipeIndexEntity?>
 
+    @Query("SELECT * FROM food_recipe_index WHERE owner = :owner")
+    suspend fun recipeIndex(owner: String): FoodRecipeIndexEntity?
+
+    @Query("SELECT * FROM food_brief_cards WHERE owner = :owner")
+    suspend fun briefCards(owner: String): FoodBriefCardsEntity?
+
     @Query("SELECT * FROM food_availability WHERE owner = :owner AND recipeId = :id AND version = :version")
     fun observeAvailability(owner: String, id: String, version: Int): Flow<List<FoodAvailabilityEntity>>
 
@@ -34,6 +40,15 @@ internal interface FoodDao {
 
     @Query("SELECT * FROM food_brief_cards WHERE owner = :owner")
     fun observeBriefCards(owner: String): Flow<FoodBriefCardsEntity?>
+
+    @Query("DELETE FROM food_recipes WHERE owner = :owner AND id = :id")
+    suspend fun deleteRecipeVersions(owner: String, id: String)
+
+    @Query("DELETE FROM food_recipe_library WHERE owner = :owner AND recipeId = :id")
+    suspend fun deleteLibrary(owner: String, id: String)
+
+    @Query("SELECT * FROM food_outbox WHERE sessionId = :sessionId")
+    fun observeSessionOutbox(sessionId: String): Flow<FoodOutboxEntity?>
 
     @Insert suspend fun insertSession(session: CookingSessionEntity)
     @Update suspend fun updateSession(session: CookingSessionEntity)

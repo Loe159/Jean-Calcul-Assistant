@@ -110,12 +110,90 @@ internal class FoodRepository(
     suspend fun refreshRecipe(id: String): FoodResult<RecipeDetailResponse> = refresh { owner, client ->
         val detail = client.recipe(id)
         if (detail.recipe.id != id) throw SerializationException("Unexpected recipe ID")
-        val now = clock.millis()
-        database.withTransaction {
-            dao.saveRecipe(FoodRecipeEntity(owner, id, detail.recipe.version, json.encodeToString(detail.recipe), now))
-            dao.saveRecipeLibrary(FoodRecipeLibraryEntity(owner, id, json.encodeToString(detail.library), now))
-        }
+        saveDetail(owner, detail)
         detail
+    }
+
+    private suspend fun saveDetail(owner: String, detail: RecipeDetailResponse) {
+        val recipe = detail.recipe
+        database.withTransaction {
+            saveRecipe(owner, recipe)
+            dao.saveRecipeLibrary(FoodRecipeLibraryEntity(owner, recipe.id, json.encodeToString(detail.library), clock.millis()))
+        }
+    }
+
+    private suspend fun saveRecipe(owner: String, recipe: RecipeDefinition) {
+        dao.saveRecipe(FoodRecipeEntity(owner, recipe.id, recipe.version, json.encodeToString(recipe), clock.millis()))
+    }
+
+    suspend fun catalog() = remote { _, client -> client.catalog() }
+    suspend fun addStock(request: PantryAddRequest) = remote { _, client -> client.addPantryItem(request) }
+    suspend fun consumeStock(id: Long, request: PantryConsumeRequest) = remote { _, client -> client.consumePantryItem(id, request) }
+    suspend fun suggest(request: SuggestRequest) = remote { _, client -> client.suggest(request) }
+    suspend fun generate(request: GenerateRequest) = remote { _, client -> client.generate(request) }
+    suspend fun adapt(id: String, request: AdaptRequest) = remote { _, client -> client.adapt(id, request) }
+    suspend fun cancelJob(id: String) = remote { owner, client -> saveJobResult(owner, client.cancelJob(id)) }
+    suspend fun job(id: String) = remote { owner, client -> saveJobResult(owner, client.job(id)) }
+
+    private suspend fun saveJobResult(owner: String, job: Job): Job {
+        val result = job.result ?: return job
+        database.withTransaction {
+            result.recipes.forEach {
+                saveRecipe(owner, it.recipe)
+                saveAvailability(owner, it.availability)
+            }
+        }
+        return job
+    }
+
+    suspend fun updateLibrary(id: String, request: UpdateRecipeLibraryRequest) = refresh { owner, client ->
+        client.updateLibrary(id, request).also { detail ->
+            database.withTransaction {
+                saveDetail(owner, detail)
+                if (request.favorite != null) updateRecipeIndex(owner) { recipes ->
+                    recipes.map { if (it.id == id) it.copy(favorite = detail.library.favorite) else it }
+                }
+            }
+        }
+    }
+
+    suspend fun duplicate(id: String) = remote { owner, client ->
+        client.duplicateRecipe(id).also { saveRecipe(owner, it.recipe) }
+    }
+
+    suspend fun archive(id: String) = refresh { owner, client ->
+        client.archiveRecipe(id).also {
+            database.withTransaction {
+                dao.deleteRecipeVersions(owner, id)
+                dao.deleteLibrary(owner, id)
+                updateRecipeIndex(owner) { recipes -> recipes.filterNot { it.id == id } }
+            }
+        }
+    }
+
+    private suspend fun updateRecipeIndex(owner: String, transform: (List<RecipeSummary>) -> List<RecipeSummary>) {
+        val row = dao.recipeIndex(owner) ?: return
+        val index = FoodContract.decode<RecipeListResponse>(row.json)
+        dao.saveRecipeIndex(row.copy(json = json.encodeToString(index.copy(recipes = transform(index.recipes)))))
+    }
+
+    suspend fun preferences() = remote { _, client -> client.preferences() }
+    suspend fun savePreferences(request: UpdatePreferencesRequest) = remote { _, client -> client.updatePreferences(request) }
+    suspend fun deleteInferred(key: String) = remote { _, client -> client.deleteInferredPreference(key) }
+    suspend fun briefFeedback(request: BriefFeedbackRequest): FoodResult<Unit> {
+        val cachedOwner = cachePairing()?.foodOwner()
+        if (request.action == BriefFeedbackAction.DISMISSED && cachedOwner != null) {
+            database.withTransaction {
+                dao.briefCards(cachedOwner)?.let { row ->
+                    val cached = FoodContract.decode<BriefCardsResponse>(row.json)
+                    val remaining = cached.cards.filterNot { it.id == request.cardId }
+                    dao.saveBriefCards(row.copy(json = json.encodeToString(cached.copy(cards = remaining))))
+                }
+            }
+        }
+        return remote { owner, client ->
+            if (owner == cachedOwner) client.briefFeedback(request)
+        }
     }
 
     suspend fun refreshAvailability(recipe: RecipeDefinition, servings: Int): FoodResult<Availability> =
@@ -124,15 +202,19 @@ internal class FoodRepository(
             if (result.recipeId != recipe.id || result.recipeVersion != recipe.version || result.servings != servings) {
                 throw SerializationException("Availability does not match the requested recipe version and servings")
             }
-            Instant.parse(result.stockAsOf)
-            dao.saveAvailability(
-                FoodAvailabilityEntity(
-                    owner, result.recipeId, result.recipeVersion, result.servings, json.encodeToString(result),
-                    result.stockAsOf, clock.millis(),
-                ),
-            )
+            saveAvailability(owner, result)
             result
         }
+
+    private suspend fun saveAvailability(owner: String, result: Availability) {
+        Instant.parse(result.stockAsOf)
+        dao.saveAvailability(
+            FoodAvailabilityEntity(
+                owner, result.recipeId, result.recipeVersion, result.servings, json.encodeToString(result),
+                result.stockAsOf, clock.millis(),
+            ),
+        )
+    }
 
     suspend fun refreshPantry(): FoodResult<PantryResponse> = refresh { owner, client ->
         client.pantry().also { dao.savePantry(FoodPantryEntity(owner, json.encodeToString(it), clock.millis())) }
@@ -149,17 +231,25 @@ internal class FoodRepository(
     suspend fun health(): FoodResult<FoodHealth> = remote { _, client -> client.health() }
     suspend fun assistant(request: AssistantRequest): FoodResult<AssistantResponse> {
         val currentPairing = pairing() ?: return FoodResult.Failure(FoodError.NOT_PAIRED)
-        val owner = dao.session(request.session.id)?.owner
-        if (owner != null && owner != currentPairing.foodOwner()) return FoodResult.Failure(FoodError.NOT_PAIRED)
-        return runRemote { clientFor(currentPairing).assistant(request.session.id, request) }
+        val snapshot = database.withTransaction {
+            val row = dao.session(request.session.id) ?: return@withTransaction null
+            if (row.owner != null && row.owner != currentPairing.foodOwner()) return@withTransaction null
+            row.toContract(dao.timers(row.id))
+        } ?: return FoodResult.Failure(FoodError.NOT_PAIRED)
+        return runRemote { clientFor(currentPairing).assistant(snapshot.id, request.copy(session = snapshot)) }
     }
 
     fun session(id: String): Flow<CookingSession?> =
-        dao.observeSession(id).map { it?.session?.toContract(it.timers) }
+        dao.observeSession(id).map { row ->
+            row?.session?.toContract(row.timers)?.withLocalProposals(row.session.localProposalsJson)
+        }
+
+    fun completionResult(id: String): Flow<OperationResult?> =
+        dao.observeSessionOutbox(id).map { it?.resultJson?.let { body -> FoodContract.decode<OperationResult>(body) } }
 
     fun activeSessions(): Flow<List<CookingSessionEntity>> = dao.observeActiveSessions()
 
-    suspend fun startSession(recipe: RecipeDefinition, servings: Int = recipe.servings): String {
+    suspend fun startSession(recipe: RecipeDefinition, servings: Int = recipe.servings, briefCardId: String? = null): String {
         require(servings > 0)
         val now = clock.millis()
         val id = "ses_${UUID.randomUUID()}"
@@ -179,6 +269,7 @@ internal class FoodRepository(
                 stockConsumptionStatus = StockConsumptionStatus.NOT_REQUESTED,
                 revision = 1,
                 updatedAt = now,
+                briefCardId = briefCardId,
             ),
         )
         syncSession(id)
@@ -192,6 +283,25 @@ internal class FoodRepository(
     suspend fun previousStep(id: String) = mutate(id) { row, recipe ->
         row.copy(currentStepId = adjacentStep(recipe, row.currentStepId, -1))
     }
+
+    suspend fun jumpToStep(id: String, stepId: String) = mutate(id) { row, recipe ->
+        require(recipe.steps.any { it.id == stepId })
+        row.copy(currentStepId = stepId)
+    }
+
+    suspend fun applyProposal(id: String, requestId: String, proposal: AssistantProposal) =
+        mutate(id) { row, _ ->
+            val proposals = localProposals(row.localProposalsJson)
+            if (proposals.any { it.requestId == requestId && it.proposal.id == proposal.id }) return@mutate row
+            val updated = row.toContract(emptyList()).withLocalProposals(row.localProposalsJson).applyAssistantProposal(proposal)
+            row.copy(
+                currentStepId = updated.currentStepId,
+                skippedStepIdsJson = json.encodeToString(updated.skippedStepIds),
+                completedStepIdsJson = json.encodeToString(updated.completedStepIds),
+                overridesJson = json.encodeToString(updated.ingredientOverrides),
+                localProposalsJson = json.encodeToString(proposals + AppliedProposal(requestId, proposal)),
+            )
+        }
 
     suspend fun completeStep(id: String) = setStepOutcome(id, skipped = false)
     suspend fun skipStep(id: String) = setStepOutcome(id, skipped = true)
@@ -327,9 +437,11 @@ internal class FoodRepository(
                 .also { dao.updateOutbox(it) }
         } ?: return
 
+        var operationResult: OperationResult? = null
         val (state, error) = try {
             val result = clientFor(currentPairing).replayCompletion(claimed.endpoint, claimed.bodyJson)
             if (result.operationId != operationId) throw SerializationException("Unexpected operation ID")
+            operationResult = result
             result.state to null
         } catch (error: MastraHttpException) {
             val state = if (error.permanent && error.code != "GROCY_UNAVAILABLE") {
@@ -341,6 +453,16 @@ internal class FoodRepository(
         } catch (_: SerializationException) {
             OperationState.UNCERTAIN to FoodError.SERVER_ERROR.name
         }
+        // A completion confirmed offline can still deliver the same COOKED event on replay.
+        if (operationResult != null) {
+            dao.session(claimed.sessionId)?.briefCardId?.let { cardId ->
+                runRemote {
+                    clientFor(currentPairing).briefFeedback(
+                        BriefFeedbackRequest(operationId.removePrefix("op_"), cardId, BriefFeedbackAction.COOKED),
+                    )
+                }
+            }
+        }
         val outboxState = when (state) {
             OperationState.SUCCEEDED, OperationState.PARTIAL -> FoodOutboxState.DONE
             OperationState.FAILED -> FoodOutboxState.FAILED
@@ -350,7 +472,8 @@ internal class FoodRepository(
             val now = clock.millis()
             val session = checkNotNull(dao.session(claimed.sessionId))
             dao.updateSession(session.nextRevision(now).copy(stockConsumptionStatus = StockConsumptionStatus.valueOf(state.name)))
-            dao.updateOutbox(claimed.copy(state = outboxState, lastError = error, updatedAt = now))
+            dao.updateOutbox(claimed.copy(state = outboxState, lastError = error, updatedAt = now,
+                resultJson = operationResult?.let { json.encodeToString(it) } ?: claimed.resultJson))
         }
     }
 

@@ -107,6 +107,8 @@ internal fun AgentAppShell(
     onOpenCharacters: () -> Unit,
     onOpenPermissions: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenFoodHome: () -> Unit,
+    onOpenFoodRoute: (AppRoute) -> Unit,
     onOpenNotifications: () -> Unit,
     onOpenModelProviders: () -> Unit,
     modifier: Modifier = Modifier,
@@ -196,6 +198,7 @@ internal fun AgentAppShell(
                 onConversationExport = onConversationExport,
                 onConversationDelete = onConversationDelete,
                 onOpenSettings = onOpenSettings,
+                onOpenFood = onOpenFoodHome,
                 onOpenModelProviders = onOpenModelProviders,
                 onOpenTools = onOpenTools,
                 onOpenSkills = onOpenSkills,
@@ -217,6 +220,10 @@ internal fun AgentAppShell(
                             onOpenSettings()
                         },
                         onClose = closeBrief,
+                        onOpenFoodRoute = { route ->
+                            closeBrief()
+                            onOpenFoodRoute(route)
+                        },
                     )
                 },
             ) {
@@ -289,6 +296,11 @@ private fun HomeTopBar(
 private fun titleForRoute(route: AppRoute?): String = when (route) {
     is AppRoute.Home, is AppRoute.Browser -> ""
     is AppRoute.Terminal -> stringResource(R.string.route_terminal)
+    AppRoute.FoodHome -> stringResource(R.string.food_home)
+    is AppRoute.Inventory -> stringResource(R.string.food_inventory)
+    is AppRoute.RecipeDetail -> stringResource(R.string.food_detail)
+    is AppRoute.RecipeGenerate -> stringResource(R.string.food_generate)
+    AppRoute.FoodPreferences -> stringResource(R.string.food_preferences)
     is AppRoute.CookingSession -> stringResource(R.string.food_cooking_session)
     is AppRoute.Tools -> stringResource(R.string.route_tools)
     is AppRoute.WebToolsSettings -> stringResource(R.string.web_tools_settings_title)
