@@ -151,7 +151,11 @@
     <string name="food_brief_open">Ouvrir la recette</string>
     <string name="food_brief_dismiss">Masquer</string>
     <string name="food_brief_resume">Reprendre</string>
-    <string name="food_brief_stock_ratio">%1$d %% des ingrédients selon le dernier relevé</string>
+    <string name="food_brief_total_time">Durée totale</string>
+    <string name="food_brief_in_stock">Ingrédients en stock</string>
+    <string name="food_brief_stock_ratio">%1$d\u00a0%%</string>
+    <string name="food_brief_stock_snapshot">D’après le dernier relevé des stocks</string>
+    <string name="food_brief_best_before">Date limite · %1$s</string>
     <string-array name="food_difficulties"><item>Facile</item><item>Moyenne</item><item>Difficile</item></string-array>
     <string-array name="food_meal_types"><item>Petit déjeuner</item><item>Déjeuner</item><item>Dîner</item><item>En-cas</item><item>Dessert</item></string-array>
     <string-array name="food_budgets"><item>Petit budget</item><item>Budget moyen</item><item>Tout budget</item></string-array>
