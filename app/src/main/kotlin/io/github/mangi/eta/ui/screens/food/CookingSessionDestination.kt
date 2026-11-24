@@ -108,9 +108,47 @@ private fun ActiveCookingSession(session: CookingSession, onBack: () -> Unit) {
 
     val scroll = rememberScrollState()
     LaunchedEffect(currentStep?.id) { scroll.scrollTo(0) }
+    val overlay: @Composable () -> Unit = {
+        val closeSheet = { sheet = null }
+        when (sheet) {
+            CookingSheet.INGREDIENTS -> FoodSheet(stringResource(R.string.food_ingredients), closeSheet) {
+                IngredientChecklist(session.recipeSnapshot.portions(session.servings, session.ingredientOverrides), showStock = false)
+            }
+            CookingSheet.OVERVIEW -> FoodSheet(stringResource(R.string.food_steps), closeSheet) {
+                progress.steps.forEachIndexed { index, step ->
+                    val label = stringResource(R.string.food_consumed_amount, stringResource(R.string.food_step_position, index + 1, progress.steps.size), step.title)
+                    FoodButton(label, {
+                        runAction { repo.jumpToStep(session.id, step.id) }
+                        sheet = null
+                    }, enabled = !busy, modifier = Modifier.fillMaxWidth())
+                    if (step.id in session.skippedStepIds) FoodSupporting(stringResource(R.string.food_step_skipped))
+                    if (step.id in session.completedStepIds) FoodSupporting(stringResource(R.string.food_step_done))
+                }
+            }
+            CookingSheet.ASSISTANT -> CookingAssistant(session, closeSheet)
+            CookingSheet.OPTIONS -> FoodSheet(stringResource(R.string.food_cooking_options), closeSheet) {
+                SwitchPreference(title = stringResource(R.string.food_keep_awake), checked = keepAwake, onCheckedChange = { keepAwake = it })
+                SwitchPreference(title = stringResource(R.string.food_large_text), checked = largeText, onCheckedChange = { largeText = it })
+            }
+            CookingSheet.COMPLETION -> {
+                val stock by remember(repo) { repo.pantry() }.collectAsState(initial = null)
+                LaunchedEffect(repo) { repo.refreshPantry() }
+                FoodSheet(stringResource(R.string.food_completion), { if (!busy) closeSheet() }) {
+                    RecipeCompletion(session, stock?.value?.locations.orEmpty(), busy) { draft ->
+                        runAction {
+                            repo.completeSession(session.id, draft.servingsMade, draft.rating, draft.consumptions, draft.leftovers)
+                            closeSheet()
+                        }
+                    }
+                }
+            }
+            null -> Unit
+        }
+    }
+
     CookingPage(session.recipeSnapshot.title, onBack, scroll, progress = { CookingProgress(progress) }, actions = {
         CouiTopAppBarIconButton(Icons.Outlined.MoreHoriz, stringResource(R.string.food_cooking_options), { sheet = CookingSheet.OPTIONS })
-    }) {
+    }, overlay = overlay) {
         if (currentStep != null) {
             FoodSection {
                 FoodHeading(currentStep.title)
@@ -171,42 +209,6 @@ private fun ActiveCookingSession(session: CookingSession, onBack: () -> Unit) {
             FoodButton(stringResource(R.string.food_steps), { sheet = CookingSheet.OVERVIEW })
             FoodButton(stringResource(R.string.food_assistant), { sheet = CookingSheet.ASSISTANT })
         }
-    }
-
-    val closeSheet = { sheet = null }
-    when (sheet) {
-        CookingSheet.INGREDIENTS -> FoodSheet(stringResource(R.string.food_ingredients), closeSheet) {
-            IngredientChecklist(session.recipeSnapshot.portions(session.servings, session.ingredientOverrides), showStock = false)
-        }
-        CookingSheet.OVERVIEW -> FoodSheet(stringResource(R.string.food_steps), closeSheet) {
-            progress.steps.forEachIndexed { index, step ->
-                val label = stringResource(R.string.food_consumed_amount, stringResource(R.string.food_step_position, index + 1, progress.steps.size), step.title)
-                FoodButton(label, {
-                    runAction { repo.jumpToStep(session.id, step.id) }
-                    sheet = null
-                }, enabled = !busy, modifier = Modifier.fillMaxWidth())
-                if (step.id in session.skippedStepIds) FoodSupporting(stringResource(R.string.food_step_skipped))
-                if (step.id in session.completedStepIds) FoodSupporting(stringResource(R.string.food_step_done))
-            }
-        }
-        CookingSheet.ASSISTANT -> CookingAssistant(session, closeSheet)
-        CookingSheet.OPTIONS -> FoodSheet(stringResource(R.string.food_cooking_options), closeSheet) {
-            SwitchPreference(title = stringResource(R.string.food_keep_awake), checked = keepAwake, onCheckedChange = { keepAwake = it })
-            SwitchPreference(title = stringResource(R.string.food_large_text), checked = largeText, onCheckedChange = { largeText = it })
-        }
-        CookingSheet.COMPLETION -> {
-            val stock by remember(repo) { repo.pantry() }.collectAsState(initial = null)
-            LaunchedEffect(repo) { repo.refreshPantry() }
-            FoodSheet(stringResource(R.string.food_completion), { if (!busy) closeSheet() }) {
-                RecipeCompletion(session, stock?.value?.locations.orEmpty(), busy) { draft ->
-                    runAction {
-                        repo.completeSession(session.id, draft.servingsMade, draft.rating, draft.consumptions, draft.leftovers)
-                        closeSheet()
-                    }
-                }
-            }
-        }
-        null -> Unit
     }
 }
 

@@ -59,6 +59,49 @@ internal fun RecipeDetailScreen(
         }
     }
 
+    val overlay: @Composable () -> Unit = {
+        when (sheet) {
+            RecipeSheet.OPTIONS -> FoodSheet(stringResource(R.string.food_options), { sheet = null }) {
+                FoodAction(R.string.food_duplicate, enabled = !busy) {
+                    write({ repo.duplicate(recipeId) }) {
+                        sheet = null
+                        onOpen(AppRoute.RecipeDetail(it.recipe.id))
+                    }
+                }
+                FoodAction(R.string.food_adapt) {
+                    sheet = null
+                    onOpen(AppRoute.RecipeGenerate(recipeId, servings))
+                }
+                FoodAction(R.string.food_rating_notes) { sheet = RecipeSheet.RATING }
+                FoodAction(R.string.food_delete) { sheet = RecipeSheet.DELETE }
+                FoodErrorText(error)
+            }
+            RecipeSheet.RATING -> {
+                var rating by rememberSaveable { mutableStateOf(library?.value?.rating?.toString().orEmpty()) }
+                var notes by rememberSaveable { mutableStateOf(library?.value?.notes.orEmpty()) }
+                FoodSheet(stringResource(R.string.food_rating_notes), { sheet = null }) {
+                    FoodNumberField(rating, { rating = it }, R.string.food_rating)
+                    CouiTextField(notes, { notes = it.take(2000) }, label = stringResource(R.string.food_notes), singleLine = false, maxLines = 6)
+                    FoodErrorText(error)
+                    val stars = rating.toIntOrNull()?.takeIf { it in 1..5 }
+                    FoodAction(R.string.food_save, primary = true, enabled = !busy && (rating.isBlank() || stars != null)) {
+                        write({ repo.updateLibrary(recipeId, UpdateRecipeLibraryRequest(rating = stars, notes = notes)) }) { sheet = null }
+                    }
+                }
+            }
+            RecipeSheet.DELETE -> CouiConfirmDialog(
+                visible = true, title = stringResource(R.string.food_delete_recipe), message = null,
+                confirmText = stringResource(R.string.food_delete), destructive = true, confirmEnabled = !busy,
+                onDismissRequest = { sheet = null },
+                onConfirm = {
+                    sheet = null
+                    write({ repo.archive(recipeId) }) { onBack() }
+                },
+            )
+            null -> Unit
+        }
+    }
+
     FoodPage(stringResource(R.string.food_detail), onBack, actions = {
         if (recipe != null) {
             val favorite = library?.value?.favorite == true
@@ -70,7 +113,7 @@ internal fun RecipeDetailScreen(
             )
             CouiTopAppBarIconButton(Icons.Outlined.MoreHoriz, stringResource(R.string.food_options), { sheet = RecipeSheet.OPTIONS })
         }
-    }) {
+    }, overlay = overlay) {
         FoodErrorText(error)
         if (error != null) FoodAction(R.string.food_retry) { refresh++ }
         if (recipe == null) {
@@ -119,47 +162,6 @@ internal fun RecipeDetailScreen(
                 Text(recipe.renderStep(step, servings))
             }
         }
-    }
-
-    when (sheet) {
-        RecipeSheet.OPTIONS -> FoodSheet(stringResource(R.string.food_options), { sheet = null }) {
-            FoodAction(R.string.food_duplicate, enabled = !busy) {
-                write({ repo.duplicate(recipeId) }) {
-                    sheet = null
-                    onOpen(AppRoute.RecipeDetail(it.recipe.id))
-                }
-            }
-            FoodAction(R.string.food_adapt) {
-                sheet = null
-                onOpen(AppRoute.RecipeGenerate(recipeId, servings))
-            }
-            FoodAction(R.string.food_rating_notes) { sheet = RecipeSheet.RATING }
-            FoodAction(R.string.food_delete) { sheet = RecipeSheet.DELETE }
-            FoodErrorText(error)
-        }
-        RecipeSheet.RATING -> {
-            var rating by rememberSaveable { mutableStateOf(library?.value?.rating?.toString().orEmpty()) }
-            var notes by rememberSaveable { mutableStateOf(library?.value?.notes.orEmpty()) }
-            FoodSheet(stringResource(R.string.food_rating_notes), { sheet = null }) {
-                FoodNumberField(rating, { rating = it }, R.string.food_rating)
-                CouiTextField(notes, { notes = it.take(2000) }, label = stringResource(R.string.food_notes), singleLine = false, maxLines = 6)
-                FoodErrorText(error)
-                val stars = rating.toIntOrNull()?.takeIf { it in 1..5 }
-                FoodAction(R.string.food_save, primary = true, enabled = !busy && (rating.isBlank() || stars != null)) {
-                    write({ repo.updateLibrary(recipeId, UpdateRecipeLibraryRequest(rating = stars, notes = notes)) }) { sheet = null }
-                }
-            }
-        }
-        RecipeSheet.DELETE -> CouiConfirmDialog(
-            visible = true, title = stringResource(R.string.food_delete_recipe), message = null,
-            confirmText = stringResource(R.string.food_delete), destructive = true, confirmEnabled = !busy,
-            onDismissRequest = { sheet = null },
-            onConfirm = {
-                sheet = null
-                write({ repo.archive(recipeId) }) { onBack() }
-            },
-        )
-        null -> Unit
     }
 }
 

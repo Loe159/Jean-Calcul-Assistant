@@ -31,14 +31,20 @@ import androidx.compose.ui.platform.LocalContext
 @Composable
 internal fun foodRuntime() = (LocalContext.current.applicationContext as EtaApp).food
 
+internal class FoodPageSlots(
+    val content: @Composable () -> Unit,
+    val overlay: @Composable () -> Unit,
+)
+
 @Composable
 internal fun FoodPage(
     title: String,
     onBack: () -> Unit,
     actions: @Composable RowScope.() -> Unit = {},
+    overlay: @Composable () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    CouiScaffoldPage(title = title, onBack = onBack, actions = actions) {
+    CouiScaffoldPage(title = title, onBack = onBack, actions = actions, overlay = overlay) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     }
@@ -51,6 +57,7 @@ internal fun CookingPage(
     scroll: ScrollState,
     progress: @Composable ColumnScope.() -> Unit,
     actions: @Composable RowScope.() -> Unit,
+    overlay: @Composable () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
     CouiScaffold(title, onBack, compactTitle = true, actions = actions) { padding, _, connection, sidePadding ->
@@ -66,6 +73,8 @@ internal fun CookingPage(
                 CouiPageBottomSpacer()
             }
         }
+        // COUI overlays must be composed here, where the page backdrop and popup blur are provided.
+        overlay()
     }
 }
 

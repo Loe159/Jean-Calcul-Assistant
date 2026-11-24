@@ -17,13 +17,14 @@ internal const val ExpiringInventoryFilter = "expiring"
 
 @Composable
 internal fun InventoryScreen(filter: String?, onBack: () -> Unit) {
-    FoodPage(stringResource(R.string.food_inventory), onBack) {
-        InventoryContent(filter == ExpiringInventoryFilter)
+    val slots = inventoryPageSlots(filter == ExpiringInventoryFilter)
+    FoodPage(stringResource(R.string.food_inventory), onBack, overlay = slots.overlay) {
+        slots.content()
     }
 }
 
 @Composable
-internal fun InventoryContent(expiringInitially: Boolean) {
+internal fun inventoryPageSlots(expiringInitially: Boolean): FoodPageSlots {
     val repo = foodRuntime().repository
     val snapshot by remember(repo) { repo.pantry() }.collectAsState(initial = null)
     var expiring by rememberSaveable { mutableStateOf(expiringInitially) }
@@ -34,33 +35,39 @@ internal fun InventoryContent(expiringInitially: Boolean) {
     val pantry = snapshot?.value
     LaunchedEffect(repo, refresh) { error = repo.refreshPantry() as? FoodResult.Failure }
 
-    FoodAction(R.string.food_add_stock, primary = true) { adding = true }
-    CouiChipTabs(listOf(false to stringResource(R.string.food_filter_all), true to stringResource(R.string.food_filter_expiring)),
-        expiring, { expiring = it })
-    FoodErrorText(error)
-    if (pantry != null || error != null) FoodAction(R.string.food_refresh) { refresh++ }
-    if (pantry == null) {
-        if (error == null) FoodSupporting(stringResource(R.string.food_loading))
-    } else {
-        FoodSupporting(stringResource(R.string.food_stock_as_of, stockDate(pantry.stockAsOf)))
-        val items = pantry.items.filter { !expiring || it.status == PantryStatus.DUE_SOON || it.status == PantryStatus.EXPIRED }
-        val groups = items.groupBy { it.locationId }
-        if (groups.isEmpty()) FoodSupporting(stringResource(R.string.food_no_stock))
-        val locations = pantry.locations.associateBy { it.id }
-        groups.entries.sortedWith(compareBy({ locationRank(locations[it.key]?.name.orEmpty()) }, { locations[it.key]?.name.orEmpty() }))
-            .forEach { (id, rows) ->
-                FoodHeading(locations[id]?.let { locationName(it) } ?: stringResource(R.string.food_pantry_other))
-                rows.sortedBy { it.name.lowercase() }.forEach { product ->
-                    StockProductRow(product) { correcting = product.grocyProductId }
+    return FoodPageSlots(
+        content = {
+            FoodAction(R.string.food_add_stock, primary = true) { adding = true }
+            CouiChipTabs(listOf(false to stringResource(R.string.food_filter_all), true to stringResource(R.string.food_filter_expiring)),
+                expiring, { expiring = it })
+            FoodErrorText(error)
+            if (pantry != null || error != null) FoodAction(R.string.food_refresh) { refresh++ }
+            if (pantry == null) {
+                if (error == null) FoodSupporting(stringResource(R.string.food_loading))
+            } else {
+                FoodSupporting(stringResource(R.string.food_stock_as_of, stockDate(pantry.stockAsOf)))
+                val items = pantry.items.filter { !expiring || it.status == PantryStatus.DUE_SOON || it.status == PantryStatus.EXPIRED }
+                val groups = items.groupBy { it.locationId }
+                if (groups.isEmpty()) FoodSupporting(stringResource(R.string.food_no_stock))
+                val locations = pantry.locations.associateBy { it.id }
+                groups.entries.sortedWith(compareBy({ locationRank(locations[it.key]?.name.orEmpty()) }, { locations[it.key]?.name.orEmpty() }))
+                    .forEach { (id, rows) ->
+                        FoodHeading(locations[id]?.let { locationName(it) } ?: stringResource(R.string.food_pantry_other))
+                        rows.sortedBy { it.name.lowercase() }.forEach { product ->
+                            StockProductRow(product) { correcting = product.grocyProductId }
+                        }
+                    }
+            }
+        },
+        overlay = {
+            if (adding) StockEditor(null, pantry?.locations.orEmpty(), { adding = false }) { refresh++ }
+            pantry?.items?.firstOrNull { it.grocyProductId == correcting }?.let { item ->
+                key(item.grocyProductId) {
+                    StockEditor(item, pantry.locations, { correcting = null }) { refresh++ }
                 }
             }
-    }
-    if (adding) StockEditor(null, pantry?.locations.orEmpty(), { adding = false }) { refresh++ }
-    pantry?.items?.firstOrNull { it.grocyProductId == correcting }?.let { item ->
-        key(item.grocyProductId) {
-            StockEditor(item, pantry.locations, { correcting = null }) { refresh++ }
-        }
-    }
+        },
+    )
 }
 
 @Composable

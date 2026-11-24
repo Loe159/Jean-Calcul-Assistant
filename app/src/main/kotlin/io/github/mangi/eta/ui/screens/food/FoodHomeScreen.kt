@@ -22,20 +22,24 @@ internal fun FoodHomeScreen(onBack: () -> Unit, onOpen: (AppRoute) -> Unit) {
     var pantry by rememberSaveable { mutableStateOf(false) }
     val recipes = stringResource(R.string.food_recipes)
     val inventory = stringResource(R.string.food_inventory)
-    FoodPage(stringResource(R.string.food_home), onBack, actions = {
-        CouiTopAppBarIconButton(Icons.Outlined.Settings, stringResource(R.string.food_preferences), { onOpen(AppRoute.FoodPreferences) })
-    }) {
-        CouiChipTabs(listOf(false to recipes, true to inventory), pantry, { pantry = it })
-        if (pantry) InventoryContent(expiringInitially = false)
-        else RecipeLibraryContent(
+    val slots = if (pantry) {
+        inventoryPageSlots(expiringInitially = false)
+    } else {
+        recipeLibraryPageSlots(
             onGenerate = { onOpen(AppRoute.RecipeGenerate()) },
             onRecipe = { id, servings -> onOpen(AppRoute.RecipeDetail(id, servings = servings)) },
         )
     }
+    FoodPage(stringResource(R.string.food_home), onBack, actions = {
+        CouiTopAppBarIconButton(Icons.Outlined.Settings, stringResource(R.string.food_preferences), { onOpen(AppRoute.FoodPreferences) })
+    }, overlay = slots.overlay) {
+        CouiChipTabs(listOf(false to recipes, true to inventory), pantry, { pantry = it })
+        slots.content()
+    }
 }
 
 @Composable
-private fun RecipeLibraryContent(onGenerate: () -> Unit, onRecipe: (String, Int?) -> Unit) {
+private fun recipeLibraryPageSlots(onGenerate: () -> Unit, onRecipe: (String, Int?) -> Unit): FoodPageSlots {
     val repo = foodRuntime().repository
     val scope = rememberCoroutineScope()
     val cached by remember(repo) { repo.recipes() }.collectAsState(initial = null)
@@ -50,7 +54,6 @@ private fun RecipeLibraryContent(onGenerate: () -> Unit, onRecipe: (String, Int?
 
     LaunchedEffect(repo, refresh) { libraryError = repo.refreshRecipes() as? FoodResult.Failure }
 
-    FoodAction(R.string.food_generate, primary = true, onClick = onGenerate)
     fun suggest() {
         if (suggesting) return
         showSuggestions = true
@@ -66,54 +69,62 @@ private fun RecipeLibraryContent(onGenerate: () -> Unit, onRecipe: (String, Int?
             suggesting = false
         }
     }
-    FoodAction(R.string.food_suggest, enabled = !suggesting, onClick = ::suggest)
-    FoodErrorText(libraryError)
-    if (libraryError != null) FoodAction(R.string.food_retry) { refresh++ }
-    CouiSearchBarBox(query, { query = it }, stringResource(R.string.food_search))
-    val recipes = cached?.value?.recipes.orEmpty()
-        .filter { it.title.contains(query.trim(), ignoreCase = true) || it.tags.any { tag -> tag.contains(query.trim(), ignoreCase = true) } }
-        .sortedWith(compareByDescending<RecipeSummary> { it.favorite }.thenBy { it.title.lowercase() })
 
-    if (cached == null && libraryError == null) FoodSupporting(stringResource(R.string.food_loading))
-    if (cached != null && recipes.isEmpty()) FoodSupporting(stringResource(R.string.food_no_recipes))
-    if (recipes.isNotEmpty()) {
-        CardListGroup {
-            recipes.forEach { recipe ->
-                item {
-                    ArrowPreference(
-                        title = recipe.title,
-                        summary = stringResource(R.string.food_minutes, recipe.prepTimeMinutes + recipe.cookTimeMinutes),
-                        onClick = { onRecipe(recipe.id, null) },
-                    )
-                }
-            }
-        }
-    }
-    if (showSuggestions) {
-        FoodLazySheet(stringResource(R.string.food_suggest), { showSuggestions = false }) {
-            if (suggestionError != null || suggesting) item {
-                FoodErrorText(suggestionError)
-                if (suggesting) FoodSupporting(stringResource(R.string.food_loading))
-                else FoodAction(R.string.food_retry, onClick = ::suggest)
-            }
-            val suggestionsByCategory = suggestions?.groupBy { it.availability.category }?.toSortedMap()
-            if (!suggesting && suggestionsByCategory?.isEmpty() == true) item {
-                FoodSupporting(stringResource(R.string.food_no_recipes))
-            }
-            if (!suggestionsByCategory.isNullOrEmpty()) item {
-                FoodSupporting(stringResource(R.string.food_suggestion_stock))
-            }
-            suggestionsByCategory?.forEach { (category, results) ->
-                item(key = category.name) { FoodHeading(stringResource(category.label())) }
-                items(results, key = { it.recipe.id }) { suggestion ->
-                    SuggestionRow(suggestion, params.servings) {
-                        showSuggestions = false
-                        onRecipe(suggestion.recipe.id, params.servings)
+    return FoodPageSlots(
+        content = {
+            FoodAction(R.string.food_generate, primary = true, onClick = onGenerate)
+            FoodAction(R.string.food_suggest, enabled = !suggesting, onClick = ::suggest)
+            FoodErrorText(libraryError)
+            if (libraryError != null) FoodAction(R.string.food_retry) { refresh++ }
+            CouiSearchBarBox(query, { query = it }, stringResource(R.string.food_search))
+            val recipes = cached?.value?.recipes.orEmpty()
+                .filter { it.title.contains(query.trim(), ignoreCase = true) || it.tags.any { tag -> tag.contains(query.trim(), ignoreCase = true) } }
+                .sortedWith(compareByDescending<RecipeSummary> { it.favorite }.thenBy { it.title.lowercase() })
+
+            if (cached == null && libraryError == null) FoodSupporting(stringResource(R.string.food_loading))
+            if (cached != null && recipes.isEmpty()) FoodSupporting(stringResource(R.string.food_no_recipes))
+            if (recipes.isNotEmpty()) {
+                CardListGroup {
+                    recipes.forEach { recipe ->
+                        item {
+                            ArrowPreference(
+                                title = recipe.title,
+                                summary = stringResource(R.string.food_minutes, recipe.prepTimeMinutes + recipe.cookTimeMinutes),
+                                onClick = { onRecipe(recipe.id, null) },
+                            )
+                        }
                     }
                 }
             }
-        }
-    }
+        },
+        overlay = {
+            if (showSuggestions) {
+                FoodLazySheet(stringResource(R.string.food_suggest), { showSuggestions = false }) {
+                    if (suggestionError != null || suggesting) item {
+                        FoodErrorText(suggestionError)
+                        if (suggesting) FoodSupporting(stringResource(R.string.food_loading))
+                        else FoodAction(R.string.food_retry, onClick = ::suggest)
+                    }
+                    val suggestionsByCategory = suggestions?.groupBy { it.availability.category }?.toSortedMap()
+                    if (!suggesting && suggestionsByCategory?.isEmpty() == true) item {
+                        FoodSupporting(stringResource(R.string.food_no_recipes))
+                    }
+                    if (!suggestionsByCategory.isNullOrEmpty()) item {
+                        FoodSupporting(stringResource(R.string.food_suggestion_stock))
+                    }
+                    suggestionsByCategory?.forEach { (category, results) ->
+                        item(key = category.name) { FoodHeading(stringResource(category.label())) }
+                        items(results, key = { it.recipe.id }) { suggestion ->
+                            SuggestionRow(suggestion, params.servings) {
+                                showSuggestions = false
+                                onRecipe(suggestion.recipe.id, params.servings)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+    )
 }
 
 @Composable
