@@ -1,19 +1,23 @@
 package io.github.mangi.eta.ui.screens.food
 
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.R
 import io.github.mangi.eta.food.*
+import io.github.mangi.eta.ui.components.ListEmptyState
 import io.github.mangi.eta.ui.components.coui.CouiChipTabs
 import io.github.mangi.eta.ui.components.coui.CouiSearchBarBox
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Settings
 import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
 import io.github.mangi.eta.ui.navigation.AppRoute
 import io.github.mangi.eta.ui.screens.food.components.*
 import io.github.suqi8.coui.kmp.basic.CardListGroup
+import io.github.suqi8.coui.kmp.icon.COUIIcons
+import io.github.suqi8.coui.kmp.icon.extended.Settings
 import io.github.suqi8.coui.kmp.preference.ArrowPreference
 import kotlinx.coroutines.launch
 
@@ -31,7 +35,10 @@ internal fun FoodHomeScreen(onBack: () -> Unit, onOpen: (AppRoute) -> Unit) {
         )
     }
     FoodPage(stringResource(R.string.food_home), onBack, actions = {
-        CouiTopAppBarIconButton(Icons.Outlined.Settings, stringResource(R.string.food_preferences), { onOpen(AppRoute.FoodPreferences) })
+        CouiTopAppBarIconButton(
+            COUIIcons.Settings, stringResource(R.string.food_preferences), { onOpen(AppRoute.FoodPreferences) },
+            Modifier.size(48.dp),
+        )
     }, overlay = slots.overlay) {
         CouiChipTabs(listOf(false to recipes, true to inventory), pantry, { pantry = it })
         slots.content()
@@ -81,8 +88,8 @@ private fun recipeLibraryPageSlots(onGenerate: () -> Unit, onRecipe: (String, In
                 .filter { it.title.contains(query.trim(), ignoreCase = true) || it.tags.any { tag -> tag.contains(query.trim(), ignoreCase = true) } }
                 .sortedWith(compareByDescending<RecipeSummary> { it.favorite }.thenBy { it.title.lowercase() })
 
-            if (cached == null && libraryError == null) FoodSupporting(stringResource(R.string.food_loading))
-            if (cached != null && recipes.isEmpty()) FoodSupporting(stringResource(R.string.food_no_recipes))
+            if (cached == null && libraryError == null) FoodLoading()
+            if (cached != null && recipes.isEmpty()) ListEmptyState(stringResource(R.string.food_no_recipes))
             if (recipes.isNotEmpty()) {
                 CardListGroup {
                     recipes.forEach { recipe ->
@@ -102,12 +109,12 @@ private fun recipeLibraryPageSlots(onGenerate: () -> Unit, onRecipe: (String, In
                 FoodLazySheet(stringResource(R.string.food_suggest), { showSuggestions = false }) {
                     if (suggestionError != null || suggesting) item {
                         FoodErrorText(suggestionError)
-                        if (suggesting) FoodSupporting(stringResource(R.string.food_loading))
+                        if (suggesting) FoodLoading()
                         else FoodAction(R.string.food_retry, onClick = ::suggest)
                     }
                     val suggestionsByCategory = suggestions?.groupBy { it.availability.category }?.toSortedMap()
                     if (!suggesting && suggestionsByCategory?.isEmpty() == true) item {
-                        FoodSupporting(stringResource(R.string.food_no_recipes))
+                        ListEmptyState(stringResource(R.string.food_no_recipes))
                     }
                     if (!suggestionsByCategory.isNullOrEmpty()) item {
                         FoodSupporting(stringResource(R.string.food_suggestion_stock))

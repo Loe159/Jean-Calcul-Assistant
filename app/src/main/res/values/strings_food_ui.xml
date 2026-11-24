@@ -37,6 +37,7 @@
     <string name="food_minutes">%1$d min</string>
     <string name="food_recipe_times">%1$d min au total · %2$d min actives</string>
     <string name="food_servings">%1$d portions</string>
+    <string name="food_portions">Portions</string>
     <string name="food_less_servings">Réduire les portions</string>
     <string name="food_more_servings">Augmenter les portions</string>
     <string name="food_ingredients">Ingrédients</string>
@@ -57,6 +58,7 @@
     <string name="food_delete_recipe">Supprimer cette recette de la bibliothèque ?</string>
     <string name="food_step_position">Étape %1$d/%2$d</string>
     <string name="food_remaining">Environ %1$d min restantes</string>
+    <string name="food_cooking_progress">Progression de la recette</string>
     <string name="food_previous">Précédente</string>
     <string name="food_next">Suivante</string>
     <string name="food_step_done">Étape terminée</string>
@@ -67,6 +69,11 @@
     <string name="food_timers">Minuteurs</string>
     <string name="food_timer_pause">Pause</string>
     <string name="food_timer_resume">Reprendre le minuteur</string>
+    <string name="food_timer_pause_named">Mettre le minuteur %1$s en pause</string>
+    <string name="food_timer_resume_named">Reprendre le minuteur %1$s</string>
+    <string name="food_timer_options">Options du minuteur %1$s</string>
+    <string name="food_timer_paused">%1$s · en pause</string>
+    <string name="food_timer_time_remaining">%1$d min %2$d s restantes</string>
     <string name="food_timer_plus">+%1$d min</string>
     <string name="food_timer_cancel">Arrêter</string>
     <string name="food_exact_alarms">Minuteurs approximatifs</string>
@@ -84,6 +91,13 @@
     <string name="food_consumed">Quantités consommées</string>
     <string name="food_consumed_amount">%1$s · %2$s</string>
     <string name="food_leftovers">Portions restantes</string>
+    <string name="food_invalid_servings">Saisissez au moins une portion.</string>
+    <string name="food_invalid_consumption">Saisissez une quantité positive ou nulle.</string>
+    <string name="food_invalid_leftovers">Saisissez un nombre de restes entre zéro et le nombre de portions préparées.</string>
+    <string name="food_invalid_date">Saisissez une date au format AAAA-MM-JJ.</string>
+    <string name="food_invalid_rating">Saisissez une note de 1 à 5 ou laissez le champ vide.</string>
+    <string name="food_no_leftover_location">Aucun emplacement disponible. Vous pouvez enregistrer la recette en laissant les portions restantes à zéro.</string>
+    <string name="food_select_leftover_location">Sélectionnez un emplacement pour les restes.</string>
     <string name="food_date">Date limite · AAAA-MM-JJ</string>
     <string name="food_location">Emplacement</string>
     <string name="food_pending">Consommation en attente de synchronisation</string>

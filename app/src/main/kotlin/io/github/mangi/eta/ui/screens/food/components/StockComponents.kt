@@ -1,42 +1,30 @@
 package io.github.mangi.eta.ui.screens.food.components
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.R
 import io.github.mangi.eta.food.*
 import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.preference.ArrowPreference
 
 @Composable
 internal fun StockProductRow(product: PantryItem, onEdit: () -> Unit) {
-    FoodSection {
-        FoodHeading(product.name)
-        Text(product.unit.unitCode?.let { FoodQuantities.formatFr(Quantity(product.amount, it)) }
-            ?: "${product.amount} ${product.unit.name}")
-        product.bestBeforeDate?.let { FoodSupporting(it) }
-        ExpiryIndicator(product.status, product.confidence)
-        FoodAction(R.string.food_correct_stock, onClick = onEdit)
-    }
-}
-
-@Composable
-internal fun ExpiryIndicator(status: PantryStatus, confidence: StockConfidence) {
-    val label = when (status) {
+    val label = when (product.status) {
         PantryStatus.DUE_SOON -> R.string.food_due_soon
         PantryStatus.EXPIRED -> R.string.food_expired
         PantryStatus.BELOW_MIN -> R.string.food_below_min
         PantryStatus.OUT_OF_STOCK -> R.string.food_out_of_stock
         PantryStatus.AVAILABLE -> null
     }
-    if (label == null && confidence != StockConfidence.ESTIMATED) return
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        label?.let { FoodSupporting(stringResource(it)) }
-        if (confidence == StockConfidence.ESTIMATED) {
-            Text(stringResource(R.string.food_estimated), color = io.github.suqi8.coui.kmp.theme.COUITheme.colorScheme.primary)
-        }
-    }
+    val quantity = product.unit.unitCode?.let { FoodQuantities.formatFr(Quantity(product.amount, it)) }
+        ?: "${product.amount} ${product.unit.name}"
+    val summary = listOfNotNull(
+        quantity,
+        product.bestBeforeDate,
+        label?.let { stringResource(it) },
+        if (product.confidence == StockConfidence.ESTIMATED) stringResource(R.string.food_estimated) else null,
+    ).joinToString(" · ")
+    ArrowPreference(title = product.name, summary = summary, onClick = onEdit)
 }
 
 internal fun unitName(unit: UnitCode) = FoodQuantities.formatFr(Quantity(1.0, unit)).substringAfter(' ')

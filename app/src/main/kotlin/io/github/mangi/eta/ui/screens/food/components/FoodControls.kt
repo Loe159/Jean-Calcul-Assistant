@@ -6,19 +6,26 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.EtaApp
 import io.github.mangi.eta.R
 import io.github.mangi.eta.food.FoodResult
 import io.github.mangi.eta.ui.components.coui.CouiScaffoldPage
-import io.github.mangi.eta.ui.components.coui.CouiPageBottomSpacer
-import io.github.mangi.eta.ui.components.coui.CouiScaffold
-import io.github.mangi.eta.ui.components.coui.couiPageScroll
+import io.github.mangi.eta.ui.components.coui.CouiTextField
 import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
 import io.github.mangi.eta.ui.screens.food.label
 import io.github.suqi8.coui.kmp.basic.*
@@ -26,7 +33,6 @@ import io.github.suqi8.coui.kmp.icon.COUIIcons
 import io.github.suqi8.coui.kmp.icon.basic.Close
 import io.github.suqi8.coui.kmp.overlay.OverlayBottomSheet
 import io.github.suqi8.coui.kmp.theme.COUITheme
-import androidx.compose.ui.platform.LocalContext
 
 @Composable
 internal fun foodRuntime() = (LocalContext.current.applicationContext as EtaApp).food
@@ -42,39 +48,16 @@ internal fun FoodPage(
     onBack: () -> Unit,
     actions: @Composable RowScope.() -> Unit = {},
     overlay: @Composable () -> Unit = {},
+    scrollState: ScrollState = rememberScrollState(),
+    compactTitle: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    CouiScaffoldPage(title = title, onBack = onBack, actions = actions, overlay = overlay) {
+    CouiScaffoldPage(
+        title = title, onBack = onBack, actions = actions, overlay = overlay,
+        scrollState = scrollState, compactTitle = compactTitle,
+    ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
-    }
-}
-
-@Composable
-internal fun CookingPage(
-    title: String,
-    onBack: () -> Unit,
-    scroll: ScrollState,
-    progress: @Composable ColumnScope.() -> Unit,
-    actions: @Composable RowScope.() -> Unit,
-    overlay: @Composable () -> Unit = {},
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    CouiScaffold(title, onBack, compactTitle = true, actions = actions) { padding, _, connection, sidePadding ->
-        Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = sidePadding)) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp), content = progress)
-            Column(
-                Modifier.weight(1f).fillMaxWidth().couiPageScroll(connection)
-                    .verticalScroll(scroll, overscrollEffect = null).padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                content()
-                CouiPageBottomSpacer()
-            }
-        }
-        // COUI overlays must be composed here, where the page backdrop and popup blur are provided.
-        overlay()
     }
 }
 
@@ -86,7 +69,9 @@ internal fun FoodSection(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-internal fun FoodHeading(text: String) = Text(text, style = COUITheme.textStyles.headlineXS)
+internal fun FoodHeading(text: String) = Text(
+    text, modifier = Modifier.semantics { heading() }, style = COUITheme.textStyles.headlineXS,
+)
 
 @Composable
 internal fun FoodSupporting(text: String) = Text(
@@ -99,24 +84,83 @@ internal fun FoodButton(
     onClick: () -> Unit,
     primary: Boolean = false,
     enabled: Boolean = true,
-    modifier: Modifier = Modifier,
 ) {
     Button(
-        onClick = onClick, enabled = enabled, modifier = modifier, minWidth = 0.dp, minHeight = 48.dp,
+        onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth(), minHeight = 48.dp,
         colors = if (primary) ButtonDefaults.buttonColorsPrimary() else ButtonDefaults.buttonColors(),
     ) {
-        Text(text, style = COUITheme.textStyles.buttonL)
+        Text(text, style = COUITheme.textStyles.buttonL, textAlign = TextAlign.Center)
     }
 }
 
 @Composable
 internal fun FoodAction(@StringRes label: Int, primary: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
-    FoodButton(stringResource(label), onClick, primary, enabled, Modifier.fillMaxWidth())
+    FoodButton(stringResource(label), onClick, primary, enabled)
 }
 
 @Composable
 internal fun FoodErrorText(error: FoodResult.Failure?) {
-    error?.let { Text(stringResource(it.error.label()), color = COUITheme.colorScheme.error) }
+    error?.let { FoodErrorMessage(stringResource(it.error.label())) }
+}
+
+@Composable
+internal fun FoodErrorMessage(message: String) {
+    Text(message, color = COUITheme.colorScheme.error, style = COUITheme.textStyles.bodyS)
+}
+
+@Composable
+internal fun FoodLoading() {
+    val label = stringResource(R.string.food_loading)
+    Row(
+        Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CircularProgressIndicator()
+        FoodSupporting(label)
+    }
+}
+
+@Composable
+internal fun FoodTextField(
+    value: String,
+    onChange: (String) -> Unit,
+    label: String,
+    placeholder: String? = null,
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    errorLabel: Int? = null,
+) {
+    val message = errorLabel?.let { stringResource(it) }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        CouiTextField(
+            value, onChange, label = label, placeholder = placeholder,
+            singleLine = singleLine, minLines = minLines, maxLines = maxLines,
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+            fieldModifier = Modifier.semantics {
+                contentDescription = label
+                if (message != null) error(message)
+            },
+        )
+        if (message != null) FoodErrorMessage(message)
+    }
+}
+
+@Composable
+internal fun FoodNumberField(
+    value: String,
+    onChange: (String) -> Unit,
+    @StringRes label: Int,
+    decimal: Boolean = false,
+    @StringRes errorLabel: Int? = null,
+) {
+    FoodTextField(
+        value, onChange, stringResource(label),
+        keyboardType = if (decimal) KeyboardType.Decimal else KeyboardType.Number,
+        errorLabel = errorLabel,
+    )
 }
 
 @Composable
@@ -154,7 +198,7 @@ private fun FoodSheetContainer(title: String, onClose: () -> Unit, content: @Com
 @Composable
 internal fun <T> FoodChoices(label: String, choices: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit) {
     FoodSupporting(label)
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         choices.forEach { (id, name) ->
             FoodChoiceChip(name, id == selected) { onSelect(id) }
         }
@@ -164,5 +208,5 @@ internal fun <T> FoodChoices(label: String, choices: List<Pair<T, String>>, sele
 
 @Composable
 internal fun FoodChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    Chip(label = label, selected = selected, onClick = onClick, modifier = Modifier.heightIn(min = 48.dp))
+    Chip(label = label, selected = selected, onClick = onClick, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp))
 }

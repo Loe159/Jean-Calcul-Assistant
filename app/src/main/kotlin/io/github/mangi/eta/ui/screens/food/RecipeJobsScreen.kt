@@ -1,17 +1,14 @@
 package io.github.mangi.eta.ui.screens.food
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.R
 import io.github.mangi.eta.food.*
-import io.github.mangi.eta.ui.components.coui.CouiTextField
+import io.github.mangi.eta.ui.components.ListEmptyState
 import io.github.mangi.eta.ui.screens.food.components.*
 import io.github.suqi8.coui.kmp.preference.SwitchPreference
 import kotlinx.coroutines.delay
@@ -91,13 +88,15 @@ internal fun RecipeGenerateScreen(recipeId: String?, initialServings: Int?, onBa
                 }
             } else {
                 when (current.state) {
-                    JobState.SUCCEEDED -> current.result?.recipes.orEmpty().forEach {
-                        RecipeResultRow(it.recipe, it.availability) { onRecipe(it.recipe.id) }
+                    JobState.SUCCEEDED -> {
+                        val recipes = current.result?.recipes.orEmpty()
+                        if (recipes.isEmpty()) ListEmptyState(stringResource(R.string.food_no_recipes))
+                        recipes.forEach { RecipeResultRow(it.recipe, it.availability) { onRecipe(it.recipe.id) } }
                     }
                     JobState.CANCELLED -> FoodSupporting(stringResource(R.string.food_job_cancelled))
                     JobState.FAILED -> {
                         val label = if (current.error?.code == "AI_DISABLED") R.string.food_ai_disabled else R.string.food_job_failed
-                        FoodSupporting(stringResource(label))
+                        FoodErrorMessage(stringResource(label))
                     }
                     else -> Unit
                 }
@@ -120,7 +119,7 @@ internal fun RecipeGenerateScreen(recipeId: String?, initialServings: Int?, onBa
                 mode == GenerateMode.IMPORT_TEXT -> R.string.food_import_text
                 else -> R.string.food_mode_craving
             }
-            CouiTextField(prompt, { prompt = it.take(if (mode == GenerateMode.IMPORT_TEXT && !adapt) 12000 else 1200) },
+            FoodTextField(prompt, { prompt = it.take(if (mode == GenerateMode.IMPORT_TEXT && !adapt) 12000 else 1200) },
                 label = stringResource(label), singleLine = false, minLines = 2, maxLines = 6)
         }
         PortionSelector(servings) { servings = it }
@@ -129,7 +128,7 @@ internal fun RecipeGenerateScreen(recipeId: String?, initialServings: Int?, onBa
             EnumChoices(R.string.food_difficulty, Difficulty.entries, R.array.food_difficulties, difficulty) { difficulty = it }
             EnumChoices(R.string.food_meal_type, MealType.entries, R.array.food_meal_types, meal) { meal = it }
             EnumChoices(R.string.food_budget, Budget.entries, R.array.food_budgets, budget) { budget = it }
-            CouiTextField(cuisine, { cuisine = it }, label = stringResource(R.string.food_cuisine))
+            FoodTextField(cuisine, { cuisine = it }, label = stringResource(R.string.food_cuisine))
             ListField(exclusions, { exclusions = it }, R.string.food_exclusions)
             ListField(allergies, { allergies = it }, R.string.food_allergies)
             EquipmentChoices(equipment) { equipment = ArrayList(it) }
@@ -139,7 +138,7 @@ internal fun RecipeGenerateScreen(recipeId: String?, initialServings: Int?, onBa
         val promptRequired = adapt || mode == GenerateMode.CRAVING || mode == GenerateMode.IMPORT_TEXT
         val parsedTime = time.toIntOrNull()?.takeIf { it in 1..1440 }
         FoodButton(title, primary = true, enabled = !busy && (!promptRequired || prompt.isNotBlank()) &&
-            (adapt || time.isEmpty() || parsedTime != null), modifier = Modifier.fillMaxWidth(), onClick = {
+            (adapt || time.isEmpty() || parsedTime != null), onClick = {
             val params = GenerationParams(servings, exclusions.listValues(), allergies.listValues(),
                 equipment.map(Equipment::valueOf), prioritize, expiring, parsedTime, difficulty, meal,
                 cuisine.trim().ifEmpty { null }, budget)
@@ -196,7 +195,7 @@ private fun <T : Enum<T>> EnumChoices(label: Int, values: List<T>, names: Int, s
 internal fun EquipmentChoices(selected: List<String>, onChange: (List<String>) -> Unit) {
     FoodSupporting(stringResource(R.string.food_equipment))
     val names = stringArrayResource(R.array.food_equipment_names)
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Equipment.entries.forEach {
             val checked = it.name in selected
             FoodChoiceChip(names[it.ordinal], checked) { onChange(if (checked) selected - it.name else selected + it.name) }
@@ -205,14 +204,8 @@ internal fun EquipmentChoices(selected: List<String>, onChange: (List<String>) -
 }
 
 @Composable
-internal fun FoodNumberField(value: String, onChange: (String) -> Unit, label: Int, decimal: Boolean = false) {
-    CouiTextField(value, onChange, label = stringResource(label),
-        keyboardOptions = KeyboardOptions(keyboardType = if (decimal) KeyboardType.Decimal else KeyboardType.Number))
-}
-
-@Composable
 internal fun ListField(value: String, onChange: (String) -> Unit, label: Int) {
-    CouiTextField(value, onChange, label = stringResource(label),
+    FoodTextField(value, onChange, label = stringResource(label),
         placeholder = stringResource(R.string.food_comma_separated))
 }
 

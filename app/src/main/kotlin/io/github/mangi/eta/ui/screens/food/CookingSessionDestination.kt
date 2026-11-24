@@ -12,8 +12,6 @@ import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -21,13 +19,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import io.github.mangi.eta.R
 import io.github.mangi.eta.food.*
+import io.github.mangi.eta.ui.components.ListEmptyState
 import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
 import io.github.mangi.eta.ui.screens.food.components.*
+import io.github.suqi8.coui.kmp.basic.CardListGroup
 import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.icon.COUIIcons
+import io.github.suqi8.coui.kmp.icon.extended.More
+import io.github.suqi8.coui.kmp.preference.ArrowPreference
 import io.github.suqi8.coui.kmp.preference.SwitchPreference
 import io.github.suqi8.coui.kmp.theme.COUITheme
 import kotlinx.coroutines.launch
@@ -46,7 +48,7 @@ internal fun CookingSessionDestination(sessionId: String, onBack: () -> Unit) {
     val session = current
     when {
         session == null -> FoodPage(stringResource(R.string.food_cooking_session), onBack) {
-            FoodSupporting(stringResource(if (loaded) R.string.food_cooking_session_unavailable else R.string.food_loading))
+            if (loaded) ListEmptyState(stringResource(R.string.food_cooking_session_unavailable)) else FoodLoading()
         }
         session.status == CookingStatus.COMPLETED -> {
             val result by remember(repo, sessionId) { repo.completionResult(sessionId) }.collectAsState(initial = null)
@@ -54,7 +56,7 @@ internal fun CookingSessionDestination(sessionId: String, onBack: () -> Unit) {
         }
         session.status == CookingStatus.ACTIVE -> ActiveCookingSession(session, onBack)
         else -> FoodPage(stringResource(R.string.food_cooking_session), onBack) {
-            FoodSupporting(stringResource(R.string.food_cooking_session_unavailable))
+            ListEmptyState(stringResource(R.string.food_cooking_session_unavailable))
         }
     }
 }
@@ -115,20 +117,48 @@ private fun ActiveCookingSession(session: CookingSession, onBack: () -> Unit) {
                 IngredientChecklist(session.recipeSnapshot.portions(session.servings, session.ingredientOverrides), showStock = false)
             }
             CookingSheet.OVERVIEW -> FoodSheet(stringResource(R.string.food_steps), closeSheet) {
-                progress.steps.forEachIndexed { index, step ->
-                    val label = stringResource(R.string.food_consumed_amount, stringResource(R.string.food_step_position, index + 1, progress.steps.size), step.title)
-                    FoodButton(label, {
-                        runAction { repo.jumpToStep(session.id, step.id) }
-                        sheet = null
-                    }, enabled = !busy, modifier = Modifier.fillMaxWidth())
-                    if (step.id in session.skippedStepIds) FoodSupporting(stringResource(R.string.food_step_skipped))
-                    if (step.id in session.completedStepIds) FoodSupporting(stringResource(R.string.food_step_done))
+                CardListGroup {
+                    progress.steps.forEachIndexed { index, step ->
+                        item {
+                            val position = stringResource(R.string.food_step_position, index + 1, progress.steps.size)
+                            val status = when (step.id) {
+                                in session.skippedStepIds -> stringResource(R.string.food_step_skipped)
+                                in session.completedStepIds -> stringResource(R.string.food_step_done)
+                                else -> null
+                            }
+                            ArrowPreference(
+                                title = step.title,
+                                summary = listOfNotNull(position, status).joinToString(" · "),
+                                enabled = !busy,
+                                onClick = {
+                                    runAction { repo.jumpToStep(session.id, step.id) }
+                                    closeSheet()
+                                },
+                            )
+                        }
+                    }
                 }
             }
             CookingSheet.ASSISTANT -> CookingAssistant(session, closeSheet)
             CookingSheet.OPTIONS -> FoodSheet(stringResource(R.string.food_cooking_options), closeSheet) {
-                SwitchPreference(title = stringResource(R.string.food_keep_awake), checked = keepAwake, onCheckedChange = { keepAwake = it })
-                SwitchPreference(title = stringResource(R.string.food_large_text), checked = largeText, onCheckedChange = { largeText = it })
+                CardListGroup {
+                    item {
+                        SwitchPreference(title = stringResource(R.string.food_keep_awake), checked = keepAwake, onCheckedChange = { keepAwake = it })
+                    }
+                    item {
+                        SwitchPreference(title = stringResource(R.string.food_large_text), checked = largeText, onCheckedChange = { largeText = it })
+                    }
+                    if (currentStep != null) item {
+                        ArrowPreference(
+                            title = stringResource(R.string.food_step_skip),
+                            enabled = !busy,
+                            onClick = {
+                                runAction { repo.skipStep(session.id) }
+                                closeSheet()
+                            },
+                        )
+                    }
+                }
             }
             CookingSheet.COMPLETION -> {
                 val stock by remember(repo) { repo.pantry() }.collectAsState(initial = null)
@@ -146,14 +176,25 @@ private fun ActiveCookingSession(session: CookingSession, onBack: () -> Unit) {
         }
     }
 
-    CookingPage(session.recipeSnapshot.title, onBack, scroll, progress = { CookingProgress(progress) }, actions = {
-        CouiTopAppBarIconButton(Icons.Outlined.MoreHoriz, stringResource(R.string.food_cooking_options), { sheet = CookingSheet.OPTIONS })
-    }, overlay = overlay) {
+    FoodPage(
+        session.recipeSnapshot.title, onBack, scrollState = scroll, compactTitle = true, overlay = overlay,
+        actions = {
+            CouiTopAppBarIconButton(
+                COUIIcons.More, stringResource(R.string.food_cooking_options), { sheet = CookingSheet.OPTIONS },
+                Modifier.size(48.dp),
+            )
+        },
+    ) {
         if (currentStep != null) {
+            CookingProgress(
+                progress, busy,
+                onPrevious = { runAction { repo.previousStep(session.id) } },
+                onNext = { runAction { repo.nextStep(session.id) } },
+            )
             FoodSection {
                 FoodHeading(currentStep.title)
                 Text(FoodQuantities.renderStep(session, currentStep),
-                    style = COUITheme.textStyles.bodyL.copy(fontSize = if (largeText) 31.sp else 23.sp, lineHeight = if (largeText) 42.sp else 32.sp))
+                    style = if (largeText) COUITheme.textStyles.headlineM else COUITheme.textStyles.bodyXL)
                 StepIngredientList(stepPortions(session, currentStep))
                 RecipePicture(currentStep.image)
                 currentStep.durationSeconds?.let { FoodSupporting(stringResource(R.string.food_minutes, (it + 59) / 60)) }
@@ -162,7 +203,7 @@ private fun ActiveCookingSession(session: CookingSession, onBack: () -> Unit) {
                 currentStep.timerSuggestion?.let { suggestion ->
                     FoodButton(
                         stringResource(R.string.food_timer_start, stringResource(R.string.food_minutes, (suggestion.durationSeconds + 59) / 60)),
-                        enabled = !busy, modifier = Modifier.fillMaxWidth(), onClick = {
+                        enabled = !busy, onClick = {
                             if (context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                                 if (!permissionAsked && session.timers.isEmpty()) {
                                     permissionAsked = true
@@ -174,12 +215,9 @@ private fun ActiveCookingSession(session: CookingSession, onBack: () -> Unit) {
                     )
                 }
             }
-            StepNavigator(
+            StepActions(
                 progress, busy, progress.finished == progress.steps.size,
-                onPrevious = { runAction { repo.previousStep(session.id) } },
-                onNext = { runAction { repo.nextStep(session.id) } },
                 onDone = { runAction { repo.completeStep(session.id) } },
-                onSkip = { runAction { repo.skipStep(session.id) } },
                 onFinish = { sheet = CookingSheet.COMPLETION },
             )
         }
@@ -204,10 +242,10 @@ private fun ActiveCookingSession(session: CookingSession, onBack: () -> Unit) {
             }
         }
         if (notificationsDenied) FoodSupporting(stringResource(R.string.food_notifications_denied))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            FoodButton(stringResource(R.string.food_ingredients), { sheet = CookingSheet.INGREDIENTS })
-            FoodButton(stringResource(R.string.food_steps), { sheet = CookingSheet.OVERVIEW })
-            FoodButton(stringResource(R.string.food_assistant), { sheet = CookingSheet.ASSISTANT })
+        CardListGroup {
+            item { ArrowPreference(title = stringResource(R.string.food_ingredients), onClick = { sheet = CookingSheet.INGREDIENTS }) }
+            item { ArrowPreference(title = stringResource(R.string.food_steps), onClick = { sheet = CookingSheet.OVERVIEW }) }
+            item { ArrowPreference(title = stringResource(R.string.food_assistant), onClick = { sheet = CookingSheet.ASSISTANT }) }
         }
     }
 }

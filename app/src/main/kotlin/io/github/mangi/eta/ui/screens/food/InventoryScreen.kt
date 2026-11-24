@@ -1,15 +1,16 @@
 package io.github.mangi.eta.ui.screens.food
 
-import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringResource
 import io.github.mangi.eta.R
 import io.github.mangi.eta.food.*
+import io.github.mangi.eta.ui.components.ListEmptyState
 import io.github.mangi.eta.ui.components.coui.CouiChipTabs
 import io.github.mangi.eta.ui.components.coui.CouiSearchBarBox
-import io.github.mangi.eta.ui.components.coui.CouiTextField
 import io.github.mangi.eta.ui.screens.food.components.*
+import io.github.suqi8.coui.kmp.basic.CardListGroup
+import io.github.suqi8.coui.kmp.preference.ArrowPreference
 import io.github.suqi8.coui.kmp.preference.SwitchPreference
 import kotlinx.coroutines.launch
 
@@ -43,18 +44,20 @@ internal fun inventoryPageSlots(expiringInitially: Boolean): FoodPageSlots {
             FoodErrorText(error)
             if (pantry != null || error != null) FoodAction(R.string.food_refresh) { refresh++ }
             if (pantry == null) {
-                if (error == null) FoodSupporting(stringResource(R.string.food_loading))
+                if (error == null) FoodLoading()
             } else {
                 FoodSupporting(stringResource(R.string.food_stock_as_of, stockDate(pantry.stockAsOf)))
                 val items = pantry.items.filter { !expiring || it.status == PantryStatus.DUE_SOON || it.status == PantryStatus.EXPIRED }
                 val groups = items.groupBy { it.locationId }
-                if (groups.isEmpty()) FoodSupporting(stringResource(R.string.food_no_stock))
+                if (groups.isEmpty()) ListEmptyState(stringResource(R.string.food_no_stock))
                 val locations = pantry.locations.associateBy { it.id }
                 groups.entries.sortedWith(compareBy({ locationRank(locations[it.key]?.name.orEmpty()) }, { locations[it.key]?.name.orEmpty() }))
                     .forEach { (id, rows) ->
                         FoodHeading(locations[id]?.let { locationName(it) } ?: stringResource(R.string.food_pantry_other))
-                        rows.sortedBy { it.name.lowercase() }.forEach { product ->
-                            StockProductRow(product) { correcting = product.grocyProductId }
+                        CardListGroup {
+                            rows.sortedBy { it.name.lowercase() }.forEach { product ->
+                                item { StockProductRow(product) { correcting = product.grocyProductId } }
+                            }
                         }
                     }
             }
@@ -115,18 +118,29 @@ private fun StockEditor(item: PantryItem?, locations: List<PantryLocation>, onCl
         } else {
             FoodErrorText(catalogError)
             if (catalogError != null) FoodAction(R.string.food_retry) { catalogRetry++ }
+            if (catalog == null && catalogError == null) FoodLoading()
             if (product == null && newProduct == null) {
                 CouiSearchBarBox(query, { query = it }, stringResource(R.string.food_catalog_search))
-                catalog?.products.orEmpty().asSequence()
-                    .filter { it.name.contains(query.trim(), ignoreCase = true) }.take(8).forEach { candidate ->
-                        FoodButton(candidate.name, {
-                            productId = candidate.id
-                            unit = candidate.stockUnit.unitCode ?: UnitCode.PIECE
-                            location = candidate.locationId
-                        })
+                val search = query.trim()
+                val candidates = catalog?.products.orEmpty().asSequence()
+                    .filter { it.name.contains(search, ignoreCase = true) }.take(8).toList()
+                val canCreate = search.isNotEmpty() && catalog != null
+                if (candidates.isNotEmpty() || canCreate) CardListGroup {
+                    candidates.forEach { candidate ->
+                        item {
+                            ArrowPreference(title = candidate.name, onClick = {
+                                productId = candidate.id
+                                unit = candidate.stockUnit.unitCode ?: UnitCode.PIECE
+                                location = candidate.locationId
+                            })
+                        }
                     }
-                if (query.isNotBlank() && catalog != null) {
-                    FoodButton(stringResource(R.string.food_new_product, query.trim()), { newProduct = query.trim() })
+                    if (canCreate) item {
+                        ArrowPreference(
+                            title = stringResource(R.string.food_new_product, search),
+                            onClick = { newProduct = search },
+                        )
+                    }
                 }
             } else {
                 FoodHeading(product?.name ?: newProduct.orEmpty())
@@ -140,7 +154,7 @@ private fun StockEditor(item: PantryItem?, locations: List<PantryLocation>, onCl
         FoodChoices(stringResource(R.string.food_unit), UnitCode.entries.map { it to unitName(it) }, unit) { unit = it }
         if (!removing) {
             FoodChoices(stringResource(R.string.food_location), places.map { it.id to locationName(it) }, selectedLocation) { location = it }
-            CouiTextField(date, { date = it }, label = stringResource(R.string.food_date))
+            FoodTextField(date, { date = it }, label = stringResource(R.string.food_date))
             SwitchPreference(title = stringResource(R.string.food_estimated), checked = estimated, onCheckedChange = { estimated = it })
         } else {
             SwitchPreference(title = stringResource(R.string.food_remove_spoiled), checked = spoiled, onCheckedChange = { spoiled = it })

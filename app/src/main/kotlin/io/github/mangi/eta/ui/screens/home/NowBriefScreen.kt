@@ -259,7 +259,7 @@ internal fun NowBriefScreen(
     val suggestions = remember(agenda) { briefDemoSuggestions(agenda) }
     val barSuggestion = remember(deviceTime, agenda) { briefBarSuggestion(deviceTime, agenda) }
     val foodExtensions = if (onOpenFoodRoute != null) {
-        rememberFoodBriefExtensions(atDashboard, foodCardsVisible, onOpenFoodRoute)
+        rememberFoodBriefExtensions(atDashboard, foodCardsVisible, motionAllowed && atDashboard, onOpenFoodRoute)
     } else emptyList()
     // Real data first; demo cards only below the "Aperçus" fold, in their moment order.
     val realCards = cards.filterNot { it.isPreview(hasCarSession) }

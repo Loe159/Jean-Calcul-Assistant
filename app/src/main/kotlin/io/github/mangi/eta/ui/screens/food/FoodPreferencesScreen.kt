@@ -33,7 +33,7 @@ internal fun FoodPreferencesScreen(onBack: () -> Unit) {
         FoodErrorText(error)
         val current = preferences
         if (current == null) {
-            if (busy) FoodSupporting(stringResource(R.string.food_loading))
+            if (busy) FoodLoading()
             else FoodAction(R.string.food_retry) { load(repo::preferences) }
             return@FoodPage
         }
@@ -50,8 +50,7 @@ internal fun FoodPreferencesScreen(onBack: () -> Unit) {
             ListField(exclusions, { exclusions = it }, R.string.food_exclusions)
             ListField(dietary, { dietary = it }, R.string.food_diet)
             EquipmentChoices(equipment) { equipment = ArrayList(it) }
-            FoodSupporting(stringResource(R.string.food_default_servings))
-            PortionSelector(servings) { servings = it }
+            PortionSelector(servings, R.string.food_default_servings) { servings = it }
             FoodNumberField(time, { time = it }, R.string.food_weeknight_minutes)
             ListField(cuisines, { cuisines = it }, R.string.food_liked_cuisines)
             val minutes = time.toIntOrNull()?.takeIf { it in 1..1440 }

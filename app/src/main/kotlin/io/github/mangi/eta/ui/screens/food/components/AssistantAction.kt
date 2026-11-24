@@ -6,7 +6,6 @@ import androidx.compose.ui.res.stringResource
 import io.github.mangi.eta.R
 import io.github.mangi.eta.food.*
 import io.github.mangi.eta.ui.components.coui.CouiConfirmDialog
-import io.github.mangi.eta.ui.components.coui.CouiTextField
 import io.github.suqi8.coui.kmp.basic.Text
 
 @Composable
@@ -22,9 +21,9 @@ internal fun AssistantAction(
     var question by rememberSaveable { mutableStateOf("") }
     var confirmId by rememberSaveable { mutableStateOf<String?>(null) }
     FoodSheet(stringResource(R.string.food_assistant), onClose) {
-        CouiTextField(question, { question = it.take(1200) }, label = stringResource(R.string.food_question), singleLine = false, maxLines = 5)
+        FoodTextField(question, { question = it.take(1200) }, label = stringResource(R.string.food_question), singleLine = false, maxLines = 5)
         FoodAction(R.string.food_send, primary = true, enabled = !working && question.isNotBlank()) { onAsk(question.trim()) }
-        if (working) FoodSupporting(stringResource(R.string.food_loading))
+        if (working) FoodLoading()
         FoodErrorText(error)
         answer?.let { response ->
             Text(response.answer)

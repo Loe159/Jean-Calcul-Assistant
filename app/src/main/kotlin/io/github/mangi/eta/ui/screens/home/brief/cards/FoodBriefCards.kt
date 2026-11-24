@@ -5,10 +5,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -18,9 +21,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.R
 import io.github.mangi.eta.food.*
+import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
 import io.github.mangi.eta.ui.navigation.AppRoute
 import io.github.mangi.eta.ui.screens.food.ExpiringInventoryFilter
 import io.github.mangi.eta.ui.screens.food.activeTimers
+import io.github.mangi.eta.ui.screens.food.components.FoodAction
 import io.github.mangi.eta.ui.screens.food.components.RecipePicture
 import io.github.mangi.eta.ui.screens.food.components.TimerStack
 import io.github.mangi.eta.ui.screens.food.components.foodRuntime
@@ -31,6 +36,7 @@ import io.github.suqi8.coui.kmp.basic.Card
 import io.github.suqi8.coui.kmp.basic.HorizontalDivider
 import io.github.suqi8.coui.kmp.basic.Text
 import io.github.suqi8.coui.kmp.icon.COUIIcons
+import io.github.suqi8.coui.kmp.icon.basic.Close
 import io.github.suqi8.coui.kmp.icon.extended.Months
 import io.github.suqi8.coui.kmp.icon.extended.Notes
 import io.github.suqi8.coui.kmp.icon.extended.Timer
@@ -54,6 +60,7 @@ import kotlin.math.roundToInt
 internal fun rememberFoodBriefExtensions(
     active: Boolean,
     showRecommendations: Boolean,
+    motionAllowed: Boolean,
     onOpen: (AppRoute) -> Unit,
 ): List<NowBriefCardExtension> {
     val runtime = foodRuntime()
@@ -78,7 +85,7 @@ internal fun rememberFoodBriefExtensions(
     return buildList {
         session?.takeIf { it.status == CookingStatus.ACTIVE }?.let { current ->
             add(NowBriefCardExtension("food-active", priority = 0, beforeRealCards = true) {
-                ActiveCookingCard(current, active) { onOpen(AppRoute.CookingSession(current.id)) }
+                ActiveCookingCard(current, active, motionAllowed) { onOpen(AppRoute.CookingSession(current.id)) }
             })
         }
         foodBriefServerCards(cache?.value, dismissed, showRecommendations).forEachIndexed { index, card ->
@@ -103,7 +110,7 @@ internal fun foodBriefServerCards(cache: BriefCardsResponse?, dismissed: Set<Str
         .distinctBy { it::class }.take(2).filterNot { it.id in dismissed }
 
 @Composable
-private fun ActiveCookingCard(session: CookingSession, active: Boolean, onOpen: () -> Unit) {
+private fun ActiveCookingCard(session: CookingSession, active: Boolean, motionAllowed: Boolean, onOpen: () -> Unit) {
     val colors = COUITheme.colorScheme
     val styles = COUITheme.textStyles
     val progress = session.progress()
@@ -114,14 +121,17 @@ private fun ActiveCookingCard(session: CookingSession, active: Boolean, onOpen: 
             style = styles.bodyM,
             color = colors.labelPrimary,
         )
-        BriefGauge(progress.ratio, listOf(colors.orange), motionAllowed = false, Modifier.fillMaxWidth().height(6.dp))
+        BriefGauge(
+            progress.ratio, listOf(colors.orange), motionAllowed, Modifier.fillMaxWidth().height(6.dp),
+            stringResource(R.string.food_cooking_progress),
+        )
         Text(
             stringResource(R.string.food_remaining, progress.remainingMinutes),
             style = styles.bodyXS,
             color = colors.labelSecondary,
         )
         if (active) TimerStack(session.activeTimers())
-        BriefDemoButton(stringResource(R.string.food_brief_resume), onOpen, Modifier.fillMaxWidth(), primary = true)
+        FoodAction(R.string.food_brief_resume, primary = true, onClick = onOpen)
     }
 }
 
@@ -150,13 +160,13 @@ private fun FoodServerCard(card: BriefCard, onOpen: () -> Unit, onDismiss: () ->
                     style = COUITheme.textStyles.bodyXS,
                     color = colors.labelSecondary,
                 )
-                BriefDemoButton(stringResource(R.string.food_brief_open), onOpen, Modifier.fillMaxWidth(), primary = true)
+                FoodAction(R.string.food_brief_open, primary = true, onClick = onOpen)
             }
         is BriefCard.ExpiringProducts ->
             FoodBriefCard(R.string.food_brief_expiring, COUIIcons.Months, colors.orange, onDismiss) {
                 FoodBriefTitle(card.title)
                 if (card.products.isNotEmpty()) ExpiringProductList(card.products)
-                BriefDemoButton(stringResource(R.string.food_filter_expiring), onOpen, Modifier.fillMaxWidth(), primary = true)
+                FoodAction(R.string.food_filter_expiring, primary = true, onClick = onOpen)
             }
     }
 }
@@ -171,19 +181,19 @@ private fun FoodBriefCard(
 ) {
     Card(Modifier.fillMaxWidth(), cornerRadius = 24.dp, insideMargin = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            BriefInlineAction(
-                modifier = Modifier.fillMaxWidth(),
-                leading = { BriefIconTile(icon, tint, size = 32.dp) },
-                text = {
-                    Text(
-                        stringResource(kind),
-                        style = COUITheme.textStyles.bodyS,
-                        color = briefTintedLabel(tint),
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BriefIconTile(icon, tint, size = 32.dp)
+                Text(stringResource(kind), Modifier.weight(1f), style = COUITheme.textStyles.bodyS, color = briefTintedLabel(tint))
+                if (onDismiss != null) {
+                    CouiTopAppBarIconButton(
+                        COUIIcons.Basic.Close, stringResource(R.string.food_brief_dismiss), onDismiss, Modifier.size(48.dp),
                     )
-                },
-                // Same compact secondary action as « Plus tard » on the suggestions card.
-                action = onDismiss?.let { dismiss -> { BriefDemoButton(stringResource(R.string.food_brief_dismiss), dismiss) } },
-            )
+                }
+            }
             content()
         }
     }

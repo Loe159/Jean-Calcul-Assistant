@@ -1,20 +1,25 @@
 package io.github.mangi.eta.ui.screens.food
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.MoreHoriz
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.R
 import io.github.mangi.eta.food.*
 import io.github.mangi.eta.ui.components.coui.CouiConfirmDialog
-import io.github.mangi.eta.ui.components.coui.CouiTextField
 import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
 import io.github.mangi.eta.ui.navigation.AppRoute
 import io.github.mangi.eta.ui.screens.food.components.*
+import io.github.suqi8.coui.kmp.basic.CardListGroup
 import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.icon.COUIIcons
+import io.github.suqi8.coui.kmp.icon.extended.Favorites
+import io.github.suqi8.coui.kmp.icon.extended.FavoritesFill
+import io.github.suqi8.coui.kmp.icon.extended.More
+import io.github.suqi8.coui.kmp.preference.ArrowPreference
+import io.github.suqi8.coui.kmp.theme.COUITheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -81,7 +86,7 @@ internal fun RecipeDetailScreen(
                 var notes by rememberSaveable { mutableStateOf(library?.value?.notes.orEmpty()) }
                 FoodSheet(stringResource(R.string.food_rating_notes), { sheet = null }) {
                     FoodNumberField(rating, { rating = it }, R.string.food_rating)
-                    CouiTextField(notes, { notes = it.take(2000) }, label = stringResource(R.string.food_notes), singleLine = false, maxLines = 6)
+                    FoodTextField(notes, { notes = it.take(2000) }, label = stringResource(R.string.food_notes), singleLine = false, maxLines = 6)
                     FoodErrorText(error)
                     val stars = rating.toIntOrNull()?.takeIf { it in 1..5 }
                     FoodAction(R.string.food_save, primary = true, enabled = !busy && (rating.isBlank() || stars != null)) {
@@ -106,18 +111,20 @@ internal fun RecipeDetailScreen(
         if (recipe != null) {
             val favorite = library?.value?.favorite == true
             CouiTopAppBarIconButton(
-                if (favorite) Icons.Outlined.Star else Icons.Outlined.StarBorder,
+                if (favorite) COUIIcons.FavoritesFill else COUIIcons.Favorites,
                 stringResource(if (favorite) R.string.food_remove_favorite else R.string.food_add_favorite),
-                enabled = !busy,
+                modifier = Modifier.size(48.dp), enabled = !busy,
                 onClick = { write({ repo.updateLibrary(recipeId, UpdateRecipeLibraryRequest(favorite = !favorite)) }) },
             )
-            CouiTopAppBarIconButton(Icons.Outlined.MoreHoriz, stringResource(R.string.food_options), { sheet = RecipeSheet.OPTIONS })
+            CouiTopAppBarIconButton(
+                COUIIcons.More, stringResource(R.string.food_options), { sheet = RecipeSheet.OPTIONS }, Modifier.size(48.dp),
+            )
         }
-    }, overlay = overlay) {
+    }, overlay = overlay, compactTitle = true) {
         FoodErrorText(error)
         if (error != null) FoodAction(R.string.food_retry) { refresh++ }
         if (recipe == null) {
-            if (error == null) FoodSupporting(stringResource(R.string.food_loading))
+            if (error == null) FoodLoading()
             return@FoodPage
         }
 
@@ -134,10 +141,11 @@ internal fun RecipeDetailScreen(
         val live = selectedAvailability?.value?.takeIf {
             it.servings == servings && it.recipeId == recipe.id && it.recipeVersion == recipe.version
         } ?: availability
-        RecipeHero(recipe, servings, live)
+        RecipeHero(recipe, live)
         if (recipe.allergenCheck == AllergenCheck.NOT_GUARANTEED) {
             FoodSupporting(stringResource(R.string.food_allergen_notice))
         }
+        CardListGroup { item { PortionSelector(servings) { selectedServings = it } } }
         FoodAction(R.string.food_start_cooking, primary = true, enabled = !busy && recipe.steps.isNotEmpty()) {
             if (!busy) {
                 busy = true
@@ -148,8 +156,14 @@ internal fun RecipeDetailScreen(
                 }
             }
         }
-        FoodAction(R.string.food_adapt) { onOpen(AppRoute.RecipeGenerate(recipeId, servings)) }
-        FoodSection { PortionSelector(servings) { selectedServings = it } }
+        CardListGroup {
+            item {
+                ArrowPreference(
+                    title = stringResource(R.string.food_adapt),
+                    onClick = { onOpen(AppRoute.RecipeGenerate(recipeId, servings)) },
+                )
+            }
+        }
         FoodSection {
             FoodHeading(stringResource(R.string.food_ingredients))
             if (stockError != error) FoodErrorText(stockError)
@@ -158,8 +172,8 @@ internal fun RecipeDetailScreen(
         FoodSection {
             FoodHeading(stringResource(R.string.food_steps))
             recipe.steps.sortedBy { it.order }.forEach { step ->
-                FoodHeading(step.title)
-                Text(recipe.renderStep(step, servings))
+                Text(step.title, style = COUITheme.textStyles.bodyXL)
+                Text(recipe.renderStep(step, servings), style = COUITheme.textStyles.bodyM)
             }
         }
     }
