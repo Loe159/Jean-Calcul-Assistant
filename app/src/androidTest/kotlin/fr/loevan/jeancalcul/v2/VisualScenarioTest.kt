@@ -65,14 +65,24 @@ class VisualScenarioTest {
         shortcut.click()
     }
 
+    // Some devices deliver Compose accessibility updates late; drop UiAutomation's node cache so
+    // lookups see the screen as drawn rather than a previous frame of the hierarchy.
+    private fun freshObject(device: UiDevice, selector: BySelector): UiObject2? {
+        if (android.os.Build.VERSION.SDK_INT >= 34) InstrumentationRegistry.getInstrumentation().uiAutomation.clearCache()
+        return device.findObject(selector)
+    }
+
     private fun findBriefControl(device: UiDevice, selector: BySelector): UiObject2 {
-        repeat(10) {
+        // The first drags can be consumed by the collapsing sky header, so allow more of them
+        // and check once more after the last one.
+        repeat(17) { attempt ->
             device.waitForIdle(500)
-            val row = device.findObject(selector)
+            val row = freshObject(device, selector)
             val bounds = row?.visibleBounds
             if (row != null && bounds != null && bounds.height() > 0 &&
                 bounds.centerY() in device.displayHeight / 5..device.displayHeight * 4 / 5
             ) return row
+            if (attempt == 16) return@repeat
             val start = if (bounds != null && bounds.centerY() < device.displayHeight / 5) {
                 device.displayHeight / 3
             } else device.displayHeight * 3 / 4
@@ -99,7 +109,7 @@ class VisualScenarioTest {
             val x = device.displayWidth / 2
             for (reverse in listOf(reverseFirst, !reverseFirst)) {
                 repeat(14) {
-                    val row = device.findObject(selector)
+                    val row = freshObject(device, selector)
                     if (row != null && row.visibleBounds.centerY() in middle / 3..middle * 5 / 3 &&
                         row.visibleBounds.height() > 0) return row
                     val start = if (reverse) middle * 2 / 3 else middle * 3 / 2
@@ -118,8 +128,18 @@ class VisualScenarioTest {
             assertTrue("Cuisine display capture $name", device.takeScreenshot(File(directory, "$name.png")))
         }
 
-        device.wait(Until.findObject(By.desc("Ouvrir mon briefing")), 10000).click()
-        click(text(R.string.food_brief_open))
+        val briefEntry = By.desc("Ouvrir mon briefing")
+        val briefOpened = By.desc("Personnaliser le brief")
+        fun openBrief() {
+            device.wait(Until.findObject(briefEntry), 10000).click()
+            assertTrue("Now Brief did not open", device.wait(Until.hasObject(briefOpened), 12000))
+        }
+        // Brief controls are reached with forward-only scrolls: a downward drag at the top
+        // of the feed hands the gesture back to the home pager and closes the Brief.
+        openBrief()
+        findBriefControl(device, text(R.string.food_brief_open))
+        captureStage("food_brief_recommendation")
+        findBriefControl(device, text(R.string.food_brief_open)).click()
         await(text(R.string.food_start_cooking))
         click(By.text("4"))
         find(By.textContains("300 g"))
@@ -142,14 +162,37 @@ class VisualScenarioTest {
         find(text(R.string.food_timers))
         captureStage("food_timers")
         assertTrue(fixture.completions.isEmpty())
+        // The active session leads the Brief feed; capture it, then resume from the card.
+        // Never back out of the app: stop at the Brief or reopen it from home.
+        for (attempt in 0 until 3) {
+            if (device.hasObject(briefOpened)) break
+            if (device.hasObject(briefEntry)) { openBrief(); break }
+            device.pressBack()
+            device.waitForIdle(500)
+            assertEquals("Back navigation left the app", context.packageName, device.currentPackageName)
+        }
+        assertTrue("Now Brief is not shown", device.hasObject(briefOpened))
+        findBriefControl(device, text(R.string.food_brief_resume))
+        captureStage("food_brief_active")
+        findBriefControl(device, text(R.string.food_brief_resume)).click()
+        await(By.text("Cuire le riz"))
         activity.recreate()
         await(By.text("Cuire le riz"))
         click(text(R.string.food_step_done))
+        // Completing the last step disables both actions while Room updates, then promotes
+        // « Terminer la recette » into the primary slot; click it only once that has settled.
+        val stepSettled = (0 until 20).any {
+            (freshObject(device, text(R.string.food_step_done)) == null).also { gone -> if (!gone) SystemClock.sleep(500) }
+        }
+        assertTrue("Last step did not complete", stepSettled)
+        device.waitForIdle()
         click(text(R.string.food_finish))
         find(text(R.string.food_consumed))
         captureStage("food_summary")
         assertTrue(fixture.completions.isEmpty())
-        click(text(R.string.food_confirm))
+        // A downward drag closes the sheet: click « Confirmer » where it is, or scroll forward only.
+        (freshObject(device, text(R.string.food_confirm))?.takeIf { it.visibleBounds.height() > 0 }
+            ?: findBriefControl(device, text(R.string.food_confirm))).click()
         await(text(R.string.food_succeeded))
         val completion = fixture.completions.single()
         assertEquals(4, completion.servingsMade)

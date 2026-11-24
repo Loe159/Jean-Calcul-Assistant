@@ -31,7 +31,8 @@ SCENARIOS = ('empty', 'message', 'reset', 'settings', 'dark', 'small_screen',
              'brief_swipe_isolation',
              'regression_fixture')
 
-ADDITIONAL_CAPTURES = {'food_cooking': ('food_recipe', 'food_timers', 'food_summary')}
+ADDITIONAL_CAPTURES = {'food_cooking': ('food_brief_recommendation', 'food_recipe', 'food_timers',
+                                        'food_brief_active', 'food_summary')}
 CAPTURE_NAMES = tuple(capture for scenario in SCENARIOS
                       for capture in (*ADDITIONAL_CAPTURES.get(scenario, ()), scenario))
 
