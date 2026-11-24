@@ -10,6 +10,7 @@ import io.github.mangi.eta.data.model.ModelSource
 import io.github.mangi.eta.data.model.ProviderAuthModes
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -22,7 +23,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [36])
 class EtaDatabaseMigrationTest {
     @Test
-    fun migration6To23PreservesDataAndMovesCompleteConversationContext() {
+    fun migration6To28PreservesDataAndMovesCompleteConversationContext() {
         val context = RuntimeEnvironment.getApplication() as Context
         val databaseName = "migration-${UUID.randomUUID()}.db"
         createVersion6Database(context, databaseName)
@@ -39,28 +40,7 @@ class EtaDatabaseMigrationTest {
         }
 
         val database = Room.databaseBuilder(context, EtaDatabase::class.java, databaseName)
-            .addMigrations(
-                EtaDatabase.MIGRATION_6_7,
-                EtaDatabase.MIGRATION_7_8,
-                EtaDatabase.MIGRATION_8_9,
-                EtaDatabase.MIGRATION_9_10,
-                EtaDatabase.MIGRATION_10_11,
-                EtaDatabase.MIGRATION_11_12,
-                EtaDatabase.MIGRATION_12_13,
-                EtaDatabase.MIGRATION_13_14,
-                EtaDatabase.MIGRATION_14_15,
-                EtaDatabase.MIGRATION_15_16,
-                migration16To17WithMcpData,
-                EtaDatabase.MIGRATION_17_18,
-                EtaDatabase.MIGRATION_18_19,
-                EtaDatabase.MIGRATION_19_20,
-                EtaDatabase.MIGRATION_20_21,
-                EtaDatabase.MIGRATION_21_22,
-                EtaDatabase.MIGRATION_22_23,
-                EtaDatabase.MIGRATION_23_24,
-                EtaDatabase.MIGRATION_24_25,
-                EtaDatabase.MIGRATION_25_26,
-            )
+            .addMigrations(*migrationsTo26(migration16To17WithMcpData), EtaDatabase.MIGRATION_26_27, FOOD_MIGRATION_27_28)
             .build()
         try {
             val result = runBlocking(Dispatchers.IO) {
@@ -144,6 +124,66 @@ class EtaDatabaseMigrationTest {
             context.deleteDatabase(databaseName)
         }
     }
+
+    @Test
+    @Config(application = android.app.Application::class)
+    fun registeredMigration26To28PreservesExistingDataAndCreatesFoodTables() {
+        val context = RuntimeEnvironment.getApplication() as Context
+        val name = "eta.db"
+        EtaDatabase.closeForTests()
+        context.deleteDatabase(name)
+        createVersion6Database(context, name)
+        val configuration = SupportSQLiteOpenHelper.Configuration.builder(context)
+            .name(name)
+            .callback(object : SupportSQLiteOpenHelper.Callback(26) {
+                override fun onCreate(db: SupportSQLiteDatabase) = error("Expected existing v6 fixture")
+
+                override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
+                    migrationsTo26(EtaDatabase.MIGRATION_16_17).forEach { it.migrate(db) }
+                }
+            })
+            .build()
+        FrameworkSQLiteOpenHelperFactory().create(configuration).use { helper ->
+            assertEquals(26, helper.writableDatabase.version)
+        }
+        try {
+            val database = EtaDatabase.get(context)
+            runBlocking {
+                assertEquals(28, database.openHelper.readableDatabase.version)
+                assertEquals("保留的结果", database.runtimeRunDao().runtimeResults().single().content)
+                val dao = database.foodDao()
+                dao.savePantry(FoodPantryEntity("test-pairing", "{}", 17L))
+                assertEquals(17L, dao.observePantry("test-pairing").first()?.fetchedAt)
+                assertEquals(emptyList<FoodOutboxEntity>(), dao.replayable("test-pairing"))
+            }
+        } finally {
+            EtaDatabase.closeForTests()
+            context.deleteDatabase(name)
+        }
+    }
+
+    private fun migrationsTo26(migration16To17: Migration): Array<Migration> = arrayOf(
+        EtaDatabase.MIGRATION_6_7,
+        EtaDatabase.MIGRATION_7_8,
+        EtaDatabase.MIGRATION_8_9,
+        EtaDatabase.MIGRATION_9_10,
+        EtaDatabase.MIGRATION_10_11,
+        EtaDatabase.MIGRATION_11_12,
+        EtaDatabase.MIGRATION_12_13,
+        EtaDatabase.MIGRATION_13_14,
+        EtaDatabase.MIGRATION_14_15,
+        EtaDatabase.MIGRATION_15_16,
+        migration16To17,
+        EtaDatabase.MIGRATION_17_18,
+        EtaDatabase.MIGRATION_18_19,
+        EtaDatabase.MIGRATION_19_20,
+        EtaDatabase.MIGRATION_20_21,
+        EtaDatabase.MIGRATION_21_22,
+        EtaDatabase.MIGRATION_22_23,
+        EtaDatabase.MIGRATION_23_24,
+        EtaDatabase.MIGRATION_24_25,
+        EtaDatabase.MIGRATION_25_26,
+    )
 
     private fun createVersion6Database(
         context: Context,

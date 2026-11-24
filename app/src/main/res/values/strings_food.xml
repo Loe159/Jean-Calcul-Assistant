@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="food_timer_channel">Minuteurs cuisine</string>
+    <string name="food_timer_finished">Minuteur terminé</string>
+    <string name="food_timer_add_minute">+1 min</string>
+    <string name="food_timer_stop">Arrêter</string>
+    <string name="food_cooking_in_progress">Cuisine en cours</string>
+    <string name="food_cooking_session">Session de cuisine</string>
+    <string name="food_cooking_session_unavailable">Session de cuisine introuvable</string>
+</resources>

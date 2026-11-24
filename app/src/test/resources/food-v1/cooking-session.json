@@ -1,0 +1,299 @@
+{
+  "id": "ses_8e643a03-1611-4725-a2f2-3faba452641f",
+  "recipeId": "rcp_clafoutis_courgette_chevre",
+  "recipeVersion": 1,
+  "recipeSnapshot": {
+    "id": "rcp_clafoutis_courgette_chevre",
+    "grocyRecipeId": null,
+    "version": 1,
+    "title": "Clafoutis salé aux courgettes et au chèvre",
+    "description": "Un clafoutis moelleux aux courgettes poêlées, au chèvre frais et au thym.",
+    "servings": 2,
+    "prepTimeMinutes": 15,
+    "cookTimeMinutes": 35,
+    "activeTimeMinutes": 20,
+    "difficulty": "EASY",
+    "mealTypes": [
+      "LUNCH",
+      "DINNER"
+    ],
+    "cuisine": "française",
+    "ingredients": [
+      {
+        "id": "ing_courgette",
+        "grocyProductId": 3,
+        "name": "courgettes",
+        "quantity": {
+          "amount": 250,
+          "unit": "g"
+        },
+        "scaling": "LINEAR",
+        "rounding": null,
+        "preparation": "en demi-rondelles",
+        "group": null,
+        "optional": false,
+        "substitutions": []
+      },
+      {
+        "id": "ing_eggs",
+        "grocyProductId": 5,
+        "name": "œufs",
+        "quantity": {
+          "amount": 2,
+          "unit": "piece"
+        },
+        "scaling": "LINEAR",
+        "rounding": null,
+        "preparation": null,
+        "group": null,
+        "optional": false,
+        "substitutions": []
+      },
+      {
+        "id": "ing_cream",
+        "grocyProductId": 8,
+        "name": "crème liquide",
+        "quantity": {
+          "amount": 100,
+          "unit": "ml"
+        },
+        "scaling": "LINEAR",
+        "rounding": null,
+        "preparation": null,
+        "group": null,
+        "optional": false,
+        "substitutions": [
+          {
+            "name": "lait entier",
+            "grocyProductId": 11,
+            "quantity": {
+              "amount": 100,
+              "unit": "ml"
+            },
+            "note": "Pour un appareil plus léger, ajoute une cuillère de farine."
+          }
+        ]
+      },
+      {
+        "id": "ing_flour",
+        "grocyProductId": 7,
+        "name": "farine de blé",
+        "quantity": {
+          "amount": 40,
+          "unit": "g"
+        },
+        "scaling": "LINEAR",
+        "rounding": null,
+        "preparation": null,
+        "group": null,
+        "optional": false,
+        "substitutions": []
+      },
+      {
+        "id": "ing_cheese",
+        "grocyProductId": 6,
+        "name": "chèvre frais",
+        "quantity": {
+          "amount": 80,
+          "unit": "g"
+        },
+        "scaling": "LINEAR",
+        "rounding": null,
+        "preparation": "émietté",
+        "group": null,
+        "optional": false,
+        "substitutions": []
+      },
+      {
+        "id": "ing_oil",
+        "grocyProductId": 10,
+        "name": "huile d’olive",
+        "quantity": {
+          "amount": 15,
+          "unit": "ml"
+        },
+        "scaling": "LINEAR",
+        "rounding": null,
+        "preparation": null,
+        "group": null,
+        "optional": false,
+        "substitutions": []
+      },
+      {
+        "id": "ing_salt",
+        "grocyProductId": null,
+        "name": "sel fin",
+        "quantity": {
+          "amount": null,
+          "unit": "pinch"
+        },
+        "scaling": "TO_TASTE",
+        "rounding": null,
+        "preparation": null,
+        "group": null,
+        "optional": false,
+        "substitutions": []
+      },
+      {
+        "id": "ing_thyme",
+        "grocyProductId": null,
+        "name": "thym séché",
+        "quantity": {
+          "amount": 1,
+          "unit": "pinch"
+        },
+        "scaling": "FIXED",
+        "rounding": null,
+        "preparation": null,
+        "group": null,
+        "optional": true,
+        "substitutions": []
+      }
+    ],
+    "steps": [
+      {
+        "id": "st_1",
+        "order": 1,
+        "title": "Préparer les courgettes",
+        "instruction": "Verse {{ing:ing_oil}} d’huile dans une poêle. Ajoute {{ing:ing_courgette}} de courgettes et fais-les revenir.",
+        "ingredientRefs": [
+          {
+            "ingredientId": "ing_oil",
+            "fraction": 0.5
+          },
+          {
+            "ingredientId": "ing_courgette",
+            "fraction": 1
+          }
+        ],
+        "durationSeconds": 480,
+        "temperature": null,
+        "timerSuggestion": null,
+        "equipment": [
+          "STOVE"
+        ],
+        "image": null,
+        "tips": []
+      },
+      {
+        "id": "st_2",
+        "order": 2,
+        "title": "Mélanger l’appareil",
+        "instruction": "Bats les œufs ({{ing:ing_eggs}} au total) avec {{ing:ing_cream}} de crème et {{ing:ing_flour}} de farine. Sale ({{ing:ing_salt}}).",
+        "ingredientRefs": [
+          {
+            "ingredientId": "ing_eggs",
+            "fraction": 1
+          },
+          {
+            "ingredientId": "ing_cream",
+            "fraction": 1
+          },
+          {
+            "ingredientId": "ing_flour",
+            "fraction": 1
+          },
+          {
+            "ingredientId": "ing_salt",
+            "fraction": 1
+          }
+        ],
+        "durationSeconds": 240,
+        "temperature": null,
+        "timerSuggestion": null,
+        "equipment": [],
+        "image": null,
+        "tips": []
+      },
+      {
+        "id": "st_3",
+        "order": 3,
+        "title": "Cuire le clafoutis",
+        "instruction": "Huile le plat avec {{ing:ing_oil}} d’huile. Répartis les courgettes et {{ing:ing_cheese}} de chèvre, puis verse l’appareil. Ajoute le thym si tu le souhaites et enfourne.",
+        "ingredientRefs": [
+          {
+            "ingredientId": "ing_oil",
+            "fraction": 0.5
+          },
+          {
+            "ingredientId": "ing_cheese",
+            "fraction": 1
+          },
+          {
+            "ingredientId": "ing_thyme",
+            "fraction": 1
+          }
+        ],
+        "durationSeconds": 1500,
+        "temperature": {
+          "value": 180,
+          "unit": "C",
+          "mode": "OVEN"
+        },
+        "timerSuggestion": {
+          "label": "Cuisson du clafoutis",
+          "durationSeconds": 1500
+        },
+        "equipment": [
+          "OVEN"
+        ],
+        "image": null,
+        "tips": [
+          "Le centre doit être pris et le dessus légèrement doré."
+        ]
+      }
+    ],
+    "equipment": [
+      "STOVE",
+      "OVEN"
+    ],
+    "tags": [
+      "plat végétarien",
+      "four"
+    ],
+    "source": {
+      "kind": "GENERATED",
+      "url": null,
+      "model": "homelab-local/recette-demo",
+      "parentRecipeId": null
+    },
+    "image": null,
+    "nutritionEstimate": null,
+    "allergenCheck": "NOT_GUARANTEED",
+    "createdAt": "2026-11-23T17:30:00Z",
+    "updatedAt": "2026-11-23T17:30:00Z"
+  },
+  "servings": 4,
+  "currentStepId": "st_3",
+  "completedStepIds": [
+    "st_1",
+    "st_2"
+  ],
+  "skippedStepIds": [],
+  "timers": [
+    {
+      "id": "tmr_clafoutis",
+      "label": "Cuisson du clafoutis",
+      "stepId": "st_3",
+      "durationSeconds": 1500,
+      "state": "RUNNING",
+      "endsAt": "2026-11-23T18:43:00Z",
+      "remainingSeconds": null
+    }
+  ],
+  "ingredientOverrides": [
+    {
+      "ingredientId": "ing_salt",
+      "quantity": {
+        "amount": 1.5,
+        "unit": "g"
+      }
+    }
+  ],
+  "status": "ACTIVE",
+  "startedAt": "2026-11-23T18:03:00Z",
+  "completedAt": null,
+  "stockConsumptionStatus": "NOT_REQUESTED",
+  "revision": 7,
+  "updatedAt": "2026-11-23T18:18:00Z"
+}

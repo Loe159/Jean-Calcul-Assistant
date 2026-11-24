@@ -12,6 +12,7 @@ import io.github.mangi.eta.agent.device.notifications.NotificationFilterDecision
 import io.github.mangi.eta.agent.device.notifications.NotificationUserFeedback
 import io.github.mangi.eta.agent.device.notifications.NotificationPersonalization
 import io.github.mangi.eta.agent.device.notifications.NotificationTopics
+import io.github.mangi.eta.food.timer.CookingTimerNotifications
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -72,6 +73,7 @@ internal class NotificationHistoryRepository(context: Context) {
         conversationTitle: String? = null,
         notificationTemplate: String? = null,
     ): Boolean {
+        if (CookingTimerNotifications.isOwnCookingNotification(appContext.packageName, packageName, channelId)) return false
         // A silent notification still belongs in the received history.
         if (key.isBlank() || packageName.isBlank()) return false
         var needsAnalysis = true

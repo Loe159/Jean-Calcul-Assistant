@@ -22,6 +22,8 @@ import io.github.mangi.eta.agent.device.notifications.NotificationFilterAction
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterMode
 import io.github.mangi.eta.agent.device.notifications.NotificationFilterSettings
 import org.junit.Assert.*
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
@@ -63,14 +65,24 @@ class VisualScenarioTest {
         shortcut.click()
     }
 
+    // Some devices deliver Compose accessibility updates late; drop UiAutomation's node cache so
+    // lookups see the screen as drawn rather than a previous frame of the hierarchy.
+    private fun freshObject(device: UiDevice, selector: BySelector): UiObject2? {
+        if (android.os.Build.VERSION.SDK_INT >= 34) InstrumentationRegistry.getInstrumentation().uiAutomation.clearCache()
+        return device.findObject(selector)
+    }
+
     private fun findBriefControl(device: UiDevice, selector: BySelector): UiObject2 {
-        repeat(10) {
+        // The first drags can be consumed by the collapsing sky header, so allow more of them
+        // and check once more after the last one.
+        repeat(17) { attempt ->
             device.waitForIdle(500)
-            val row = device.findObject(selector)
+            val row = freshObject(device, selector)
             val bounds = row?.visibleBounds
             if (row != null && bounds != null && bounds.height() > 0 &&
                 bounds.centerY() in device.displayHeight / 5..device.displayHeight * 4 / 5
             ) return row
+            if (attempt == 16) return@repeat
             val start = if (bounds != null && bounds.centerY() < device.displayHeight / 5) {
                 device.displayHeight / 3
             } else device.displayHeight * 3 / 4
@@ -83,6 +95,112 @@ class VisualScenarioTest {
         findBriefControl(device, By.textStartsWith("Tout voir")).click()
         assertTrue("The Notifications page opens in the briefing pane",
             device.wait(Until.hasObject(By.text("Regrouper par application")), 8000))
+    }
+
+    private fun runFoodScenario(
+        device: UiDevice,
+        context: android.content.Context,
+        activity: ActivityScenario<MainActivity>,
+        fixture: LocalFoodFixture,
+    ) {
+        fun text(id: Int) = By.text(context.getString(id))
+        fun find(selector: BySelector, reverseFirst: Boolean = false): UiObject2 {
+            val middle = device.displayHeight / 2
+            val x = device.displayWidth / 2
+            for (reverse in listOf(reverseFirst, !reverseFirst)) {
+                repeat(14) {
+                    val row = freshObject(device, selector)
+                    if (row != null && row.visibleBounds.centerY() in middle / 3..middle * 5 / 3 &&
+                        row.visibleBounds.height() > 0) return row
+                    val start = if (reverse) middle * 2 / 3 else middle * 3 / 2
+                    device.swipe(x, start, x, middle, 22)
+                    device.waitForIdle(350)
+                }
+            }
+            throw AssertionError("Cuisine control is not reachable: $selector")
+        }
+        fun click(selector: BySelector, reverseFirst: Boolean = false) = find(selector, reverseFirst).click()
+        fun await(selector: BySelector) = assertTrue(device.wait(Until.hasObject(selector), 10000))
+        fun captureStage(name: String) {
+            device.waitForIdle()
+            SystemClock.sleep(250)
+            val directory = File(context.filesDir, "e2e").apply { mkdirs() }
+            assertTrue("Cuisine display capture $name", device.takeScreenshot(File(directory, "$name.png")))
+        }
+
+        val briefEntry = By.desc("Ouvrir mon briefing")
+        val briefOpened = By.desc("Personnaliser le brief")
+        fun openBrief() {
+            device.wait(Until.findObject(briefEntry), 10000).click()
+            assertTrue("Now Brief did not open", device.wait(Until.hasObject(briefOpened), 12000))
+        }
+        // Brief controls are reached with forward-only scrolls: a downward drag at the top
+        // of the feed hands the gesture back to the home pager and closes the Brief.
+        openBrief()
+        findBriefControl(device, text(R.string.food_brief_open))
+        captureStage("food_brief_recommendation")
+        findBriefControl(device, text(R.string.food_brief_open)).click()
+        await(text(R.string.food_start_cooking))
+        click(text(R.string.food_portions))
+        checkNotNull(device.wait(Until.findObject(By.text("4")), 5000)).click()
+        find(By.textContains("300 g"))
+        captureStage("food_recipe")
+        assertTrue(fixture.completions.isEmpty())
+        click(text(R.string.food_start_cooking), reverseFirst = true)
+        await(By.text("Faire chauffer l’eau"))
+        click(By.textStartsWith("Démarrer le minuteur"))
+        click(text(R.string.food_step_done))
+        await(By.text("Cuire le riz"))
+        click(By.textStartsWith("Démarrer le minuteur"))
+        val repo = (context.applicationContext as io.github.mangi.eta.EtaApp).food.repository
+        val sessionId = runBlocking {
+            kotlinx.coroutines.withTimeout(5_000) { repo.activeSessions().first { it.isNotEmpty() }.single().id }
+        }
+        val timerCount = runBlocking {
+            kotlinx.coroutines.withTimeout(5_000) { repo.session(sessionId).first { (it?.timers?.size ?: 0) >= 2 }?.timers?.size }
+        }
+        assertEquals(2, timerCount)
+        find(text(R.string.food_timers))
+        captureStage("food_timers")
+        assertTrue(fixture.completions.isEmpty())
+        // The active session leads the Brief feed; capture it, then resume from the card.
+        // Never back out of the app: stop at the Brief or reopen it from home.
+        for (attempt in 0 until 3) {
+            if (device.hasObject(briefOpened)) break
+            if (device.hasObject(briefEntry)) { openBrief(); break }
+            device.pressBack()
+            device.waitForIdle(500)
+            assertEquals("Back navigation left the app", context.packageName, device.currentPackageName)
+        }
+        assertTrue("Now Brief is not shown", device.hasObject(briefOpened))
+        findBriefControl(device, text(R.string.food_brief_resume))
+        captureStage("food_brief_active")
+        findBriefControl(device, text(R.string.food_brief_resume)).click()
+        await(By.text("Cuire le riz"))
+        activity.recreate()
+        await(By.text("Cuire le riz"))
+        click(text(R.string.food_step_done))
+        // Completing the last step disables both actions while Room updates, then promotes
+        // « Terminer la recette » into the primary slot; click it only once that has settled.
+        val stepSettled = (0 until 20).any {
+            (freshObject(device, text(R.string.food_step_done)) == null).also { gone -> if (!gone) SystemClock.sleep(500) }
+        }
+        assertTrue("Last step did not complete", stepSettled)
+        device.waitForIdle()
+        click(text(R.string.food_finish))
+        find(text(R.string.food_consumed))
+        captureStage("food_summary")
+        assertTrue(fixture.completions.isEmpty())
+        // A downward drag closes the sheet: click « Confirmer » where it is, or scroll forward only.
+        (freshObject(device, text(R.string.food_confirm))?.takeIf { it.visibleBounds.height() > 0 }
+            ?: findBriefControl(device, text(R.string.food_confirm))).click()
+        await(text(R.string.food_succeeded))
+        val completion = fixture.completions.single()
+        assertEquals(4, completion.servingsMade)
+        assertEquals(300.0, completion.consumptions.single().quantity.amount, 0.0)
+        assertEquals(2, completion.session.timers.size)
+        assertTrue(fixture.feedback.any { it.action == io.github.mangi.eta.food.BriefFeedbackAction.OPENED })
+        assertTrue(fixture.feedback.any { it.action == io.github.mangi.eta.food.BriefFeedbackAction.COOKED })
     }
 
     @Before fun prepareSyntheticPermissions() {
@@ -99,6 +217,7 @@ class VisualScenarioTest {
         val context = instrumentation.targetContext
         val device = UiDevice.getInstance(instrumentation)
         val fixture = if (scenario in setOf("message", "reset")) LocalVllmFixture(context) else null
+        val foodFixture = if (scenario == "food_cooking") LocalFoodFixture(context) else null
         val improvements = if (scenario.startsWith("improvements_notifications") || scenario.endsWith("_notice"))
             io.github.mangi.eta.agent.development.DevelopmentStore(context).also {
                 it.connect("synthetic-token-for-isolated-visual-test-123")
@@ -417,6 +536,7 @@ class VisualScenarioTest {
                         assertTrue("Confirmed removals remain in the category history",
                             device.wait(Until.hasObject(marker), 5000))
                     }
+                    "food_cooking" -> runFoodScenario(device, context, activity, checkNotNull(foodFixture))
                     "brief_mastra" -> {
                         // Synthetic decisions as returned by the homelab; nothing is sent
                         // over the network and no real Android notification is touched.
@@ -540,6 +660,7 @@ class VisualScenarioTest {
                 context.getSystemService(android.app.NotificationManager::class.java).cancel(6202)
             }
             fixture?.close()
+            foodFixture?.close()
             improvements?.disconnect()
         }
     }

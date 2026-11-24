@@ -1,0 +1,25 @@
+{
+  "requestId": "req_1091b7b0-0468-4800-b900-0dbe4f816c22",
+  "mode": "FROM_PANTRY",
+  "prompt": "Un plat végétarien avec les courgettes et la crème à finir.",
+  "params": {
+    "servings": 4,
+    "maxTotalMinutes": 55,
+    "difficulty": "EASY",
+    "mealType": "DINNER",
+    "cuisine": "française",
+    "budget": "LOW",
+    "excludedIngredients": [
+      "fenouil"
+    ],
+    "allergies": [
+      "arachide"
+    ],
+    "equipment": [
+      "OVEN",
+      "STOVE"
+    ],
+    "prioritizePantry": true,
+    "useExpiringFirst": true
+  }
+}

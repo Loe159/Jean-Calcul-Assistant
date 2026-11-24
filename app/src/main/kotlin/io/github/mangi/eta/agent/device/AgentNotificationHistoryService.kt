@@ -17,6 +17,7 @@ import io.github.mangi.eta.agent.device.notifications.remote.MastraConnection
 import io.github.mangi.eta.agent.device.notifications.remote.MastraNotificationSync
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository
 import io.github.mangi.eta.data.repository.NotificationHistoryRepository.AndroidActionState
+import io.github.mangi.eta.food.timer.CookingTimerNotifications
 import java.util.concurrent.Executors
 
 /**
@@ -30,6 +31,7 @@ class AgentNotificationHistoryService : NotificationListenerService() {
     private val processed = LinkedHashMap<String, Long>()
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
+        if (isOwnCookingNotification(sbn)) return
         val snapshot = Snapshot.of(this, sbn)
         // SQLite work never runs on the listener's main thread.
         io.execute { if (record(snapshot)) MastraNotificationSync.request(applicationContext) }
@@ -38,7 +40,7 @@ class AgentNotificationHistoryService : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         connectedService = this
-        val active = activeNotifications.orEmpty().map { Snapshot.of(this, it) }
+        val active = activeNotifications.orEmpty().filterNot(::isOwnCookingNotification).map { Snapshot.of(this, it) }
         io.execute {
             // Replays of unchanged notifications keep their state and are not re-sent.
             val queued = active.count { record(it) }
@@ -68,6 +70,7 @@ class AgentNotificationHistoryService : NotificationListenerService() {
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification, rankingMap: RankingMap, reason: Int) {
+        if (isOwnCookingNotification(sbn)) return
         if (pending.remove(sbn.key) == sbn.postTime) {
             val state = if (reason == REASON_LISTENER_CANCEL) AndroidActionState.CONFIRMED else AndroidActionState.NONE
             io.execute {
@@ -92,6 +95,7 @@ class AgentNotificationHistoryService : NotificationListenerService() {
             return AndroidActionState.SKIPPED_NO_CONSENT
         val active = runCatching { activeNotifications }.getOrNull() ?: return AndroidActionState.FAILED
         val current = active.firstOrNull { it.key == target.key } ?: return AndroidActionState.SKIPPED_STALE
+        if (isOwnCookingNotification(current)) return AndroidActionState.SKIPPED_PROTECTED
         // A late decision never acts on a replaced or updated notification.
         if (current.packageName != target.packageName || current.postTime != target.postedAt ||
             NotificationProtection.fingerprint(current) != target.fingerprint) return AndroidActionState.SKIPPED_STALE
@@ -111,6 +115,9 @@ class AgentNotificationHistoryService : NotificationListenerService() {
             AndroidActionState.FAILED
         }
     }
+
+    private fun isOwnCookingNotification(sbn: StatusBarNotification): Boolean =
+        CookingTimerNotifications.isOwnCookingNotification(packageName, sbn.packageName, sbn.notification.channelId)
 
     private fun record(s: Snapshot): Boolean {
         val changed = repository.record(

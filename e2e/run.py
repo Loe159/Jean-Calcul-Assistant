@@ -27,9 +27,14 @@ SCENARIOS = ('empty', 'message', 'reset', 'settings', 'dark', 'small_screen',
              'notifications_no_confirmation', 'brief', 'brief_dark',
              'brief_large_text', 'brief_notifications', 'brief_archive', 'brief_archive_dark',
              'brief_archive_large_text', 'brief_archive_restore',
-             'brief_decisions', 'brief_mastra',
+             'brief_decisions', 'brief_mastra', 'food_cooking',
              'brief_swipe_isolation',
              'regression_fixture')
+
+ADDITIONAL_CAPTURES = {'food_cooking': ('food_brief_recommendation', 'food_recipe', 'food_timers',
+                                        'food_brief_active', 'food_summary')}
+CAPTURE_NAMES = tuple(capture for scenario in SCENARIOS
+                      for capture in (*ADDITIONAL_CAPTURES.get(scenario, ()), scenario))
 
 
 def redact(text):
@@ -103,7 +108,7 @@ def main():
               'budget_override': (args.authorization_note or 'Explicit user authorization, 2026-11-12') if args.attempt > 3 else None, 'created_utc': dt.datetime.now(dt.timezone.utc).isoformat(),
               'commit': '', 'working_tree_dirty': False, 'api': 35, 'serial': f'emulator-{args.port}',
               'technical': {'status': 'NOT_RUN'},
-              'captures': {s: {'status': 'NOT_RUN'} for s in SCENARIOS},
+              'captures': {s: {'status': 'NOT_RUN'} for s in CAPTURE_NAMES},
               'visual_review': {'status': 'NOT_RUN', 'reason': 'Images must be opened by the implementing agent'},
               'reference_comparison': {'status': 'NOT_RUN', 'reason': 'Pinned Eta references must be opened and compared by the agent'},
               'regression_detection': {'status': 'NOT_RUN'}}
@@ -366,7 +371,6 @@ def main():
                 shell('settings', 'put', 'system', 'font_scale', '2.0')
             if scenario.startswith('improvements_notifications'):
                 shell('pm', 'revoke', APP, 'android.permission.POST_NOTIFICATIONS')
-            remote = f'files/e2e/{scenario}.png'
             result = run(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
                 APP + '.VisualScenarioTest#capture', '-e', 'scenario', scenario, RUNNER],
                 scenario, timeout=120)
@@ -387,32 +391,34 @@ def main():
                         pass
                 save()
                 raise RuntimeError(f'Instrumentation failed for {scenario}; see logs/{scenario}.txt')
-            path = out / 'screenshots' / f'{scenario}.png'
-            transfer_log = []
-            data = b''
-            # Retry reads of the same immutable file, never a failed scenario.
-            for transfer_attempt in range(1, 4):
-                transfer = subprocess.run(adb + ['exec-out', 'run-as', APP, 'cat', remote],
-                    cwd=ROOT, env=env, capture_output=True, timeout=30)
-                valid = transfer.returncode == 0 and complete_png(transfer.stdout)
-                transfer_log.append(f'try={transfer_attempt} exit={transfer.returncode} '
-                    f'bytes={len(transfer.stdout)} complete_png={valid}\n' +
-                    redact(transfer.stderr.decode(errors='replace')))
-                (out / 'logs' / f'transfer-{scenario}.txt').write_text('\n'.join(transfer_log))
-                if valid:
-                    data = transfer.stdout
-                    break
-                if transfer_attempt < 3:
-                    time.sleep(0.5)
-            if not data:
-                report['captures'][scenario] = {'status': 'FAIL', 'evidence': f'logs/transfer-{scenario}.txt'}
-                raise RuntimeError(f'No complete PNG for {scenario}; see logs/transfer-{scenario}.txt')
-            path.write_bytes(data)
-            report['captures'][scenario] = {'status': 'PASS', 'path': f'screenshots/{scenario}.png',
-                'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'visual_status': 'NOT_RUN'}
-            save()
+            for capture in (*ADDITIONAL_CAPTURES.get(scenario, ()), scenario):
+                remote = f'files/e2e/{capture}.png'
+                path = out / 'screenshots' / f'{capture}.png'
+                transfer_log = []
+                data = b''
+                # Retry reads of the same immutable file, never a failed scenario.
+                for transfer_attempt in range(1, 4):
+                    transfer = subprocess.run(adb + ['exec-out', 'run-as', APP, 'cat', remote],
+                        cwd=ROOT, env=env, capture_output=True, timeout=30)
+                    valid = transfer.returncode == 0 and complete_png(transfer.stdout)
+                    transfer_log.append(f'try={transfer_attempt} exit={transfer.returncode} '
+                        f'bytes={len(transfer.stdout)} complete_png={valid}\n' +
+                        redact(transfer.stderr.decode(errors='replace')))
+                    (out / 'logs' / f'transfer-{capture}.txt').write_text('\n'.join(transfer_log))
+                    if valid:
+                        data = transfer.stdout
+                        break
+                    if transfer_attempt < 3:
+                        time.sleep(0.5)
+                if not data:
+                    report['captures'][capture] = {'status': 'FAIL', 'evidence': f'logs/transfer-{capture}.txt'}
+                    raise RuntimeError(f'No complete PNG for {capture}; see logs/transfer-{capture}.txt')
+                path.write_bytes(data)
+                report['captures'][capture] = {'status': 'PASS', 'path': f'screenshots/{capture}.png',
+                    'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'visual_status': 'NOT_RUN'}
+                save()
         review = {s: {'status': 'NOT_RUN', 'sha256': report['captures'][s]['sha256'],
-                      'observation': '', 'opened_with': ''} for s in SCENARIOS}
+                      'observation': '', 'opened_with': ''} for s in CAPTURE_NAMES}
         review['_reference_comparison'] = {'status': 'NOT_RUN', 'opened_with': '',
                                             'observation': '', 'reference_sha256': {}}
         (out / 'visual-review.json').write_text(json.dumps(review, indent=2) + '\n')

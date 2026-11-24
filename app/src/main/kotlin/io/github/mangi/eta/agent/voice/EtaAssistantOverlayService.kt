@@ -30,6 +30,8 @@ import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalUriHandler
+import io.github.mangi.eta.ui.components.NewTaskUriHandler
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -427,7 +429,12 @@ internal class EtaAssistantOverlayService : Service(), LifecycleOwner, SavedStat
             setViewTreeLifecycleOwner(this@EtaAssistantOverlayService)
             setViewTreeSavedStateRegistryOwner(this@EtaAssistantOverlayService)
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-            setContent(content)
+            // Links in the overlay open from a Service context.
+            setContent {
+                CompositionLocalProvider(LocalUriHandler provides NewTaskUriHandler(this@EtaAssistantOverlayService)) {
+                    content()
+                }
+            }
         }
 
     private fun registerSystemBackCallback(view: View) {

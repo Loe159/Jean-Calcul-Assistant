@@ -49,7 +49,10 @@ import io.github.mangi.eta.ui.components.coui.rememberPopupMaterialBlur
 import io.github.mangi.eta.ui.screens.home.brief.BriefCardId
 import io.github.mangi.eta.ui.screens.home.brief.BriefCustomization
 import io.github.mangi.eta.ui.screens.home.brief.BriefDemoData
+import io.github.mangi.eta.ui.navigation.AppRoute
+import io.github.mangi.eta.ui.screens.home.brief.cards.rememberFoodBriefExtensions
 import io.github.mangi.eta.ui.screens.home.brief.BriefFeedItem
+import io.github.mangi.eta.ui.screens.home.brief.briefRealContent
 import io.github.mangi.eta.ui.screens.home.brief.BriefHeader
 import io.github.mangi.eta.ui.screens.home.brief.BriefHeroKey
 import io.github.mangi.eta.ui.screens.home.brief.BriefMinibar
@@ -101,6 +104,7 @@ import kotlinx.coroutines.withContext
 internal data class NowBriefCardExtension(
     val id: String,
     val priority: Int = 100,
+    val beforeRealCards: Boolean = false,
     val content: @Composable () -> Unit,
 )
 
@@ -119,6 +123,7 @@ internal fun NowBriefScreen(
     extensions: List<NowBriefCardExtension> = emptyList(),
     summarySource: BriefSummarySource? = null,
     carSource: CarSource? = null,
+    onOpenFoodRoute: ((AppRoute) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
@@ -126,6 +131,7 @@ internal fun NowBriefScreen(
     val preferences = remember(context) { BriefVisibilityPreferences(context) }
     var hiddenCards by remember(preferences) { mutableStateOf(preferences.hiddenCards()) }
     val showNotifications = BriefCardId.NOTIFICATIONS !in hiddenCards
+    var foodCardsVisible by remember(preferences) { mutableStateOf(preferences.foodCardsVisible()) }
     var showCustomization by remember { mutableStateOf(false) }
     var previewsExpanded by remember(preferences) { mutableStateOf(preferences.previewsExpanded()) }
     val setPreviewsExpanded: (Boolean) -> Unit = { expanded ->
@@ -252,14 +258,14 @@ internal fun NowBriefScreen(
     val agenda = remember(deviceTime) { briefDemoAgenda(deviceTime) }
     val suggestions = remember(agenda) { briefDemoSuggestions(agenda) }
     val barSuggestion = remember(deviceTime, agenda) { briefBarSuggestion(deviceTime, agenda) }
-    val extensionsInOrder = remember(extensions) {
-        val reserved = BriefCardId.entries.map { it.key } + "header"
-        extensions.filter { it.id !in reserved }
-            .sortedWith(compareBy(NowBriefCardExtension::priority, NowBriefCardExtension::id))
-    }
+    val foodExtensions = if (onOpenFoodRoute != null) {
+        rememberFoodBriefExtensions(atDashboard, foodCardsVisible, motionAllowed && atDashboard, onOpenFoodRoute)
+    } else emptyList()
     // Real data first; demo cards only below the "Aperçus" fold, in their moment order.
     val realCards = cards.filterNot { it.isPreview(hasCarSession) }
     val previewCards = cards.filter { it.isPreview(hasCarSession) }
+    val realContent = briefRealContent<Pair<BriefCardId?, NowBriefCardExtension?>>(realCards, extensions + foodExtensions,
+        { card -> Pair(card, null) }, { extension -> Pair(null, extension) })
     val rows = buildList {
         fun addCard(card: BriefCardId, index: Int) {
             add(BriefFeedItem(card.key, "brief-card") {
@@ -337,16 +343,20 @@ internal fun NowBriefScreen(
                 }
             })
         }
-        realCards.forEachIndexed { index, card -> addCard(card, index) }
-        extensionsInOrder.forEachIndexed { index, extension ->
-            add(BriefFeedItem("extension:${extension.id}", "brief-extension") {
-                BriefReveal("extension:${extension.id}", active, motionAllowed, realCards.size + index) {
+        fun addExtension(extension: NowBriefCardExtension, index: Int) {
+            val key = "extension:${extension.id}"
+            add(BriefFeedItem(key, "brief-extension") {
+                BriefReveal(key, atDashboard, motionAllowed, index) {
                     Box(Modifier.padding(horizontal = 16.dp).padding(top = 8.dp)) { extension.content() }
                 }
             })
         }
+        realContent.forEachIndexed { index, (card, extension) ->
+            if (card != null) addCard(card, index)
+            if (extension != null) addExtension(extension, index)
+        }
         if (previewCards.isNotEmpty()) {
-            val sectionIndex = realCards.size + extensionsInOrder.size
+            val sectionIndex = realContent.size
             add(BriefFeedItem(BriefPreviewsKey, "brief-previews") {
                 BriefReveal(BriefPreviewsKey, atDashboard, motionAllowed, sectionIndex) {
                     BriefPreviewsSection(
@@ -366,6 +376,7 @@ internal fun NowBriefScreen(
     val minibarSpace = topInsets + with(density) { 72.dp.roundToPx() }
     var minibarHeight by remember { mutableIntStateOf(0) }
     var nowBarHeight by remember { mutableIntStateOf(0) }
+    val nowBarInset = if (previewsExpanded) nowBarHeight else 0
     val showMinibar by remember(listState, minibarSpace) {
         derivedStateOf {
             val info = listState.layoutInfo
@@ -417,7 +428,7 @@ internal fun NowBriefScreen(
                         .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
                     state = listState,
                     overscrollEffect = null,
-                    contentPadding = PaddingValues(bottom = with(density) { nowBarHeight.toDp() } + 16.dp),
+                    contentPadding = PaddingValues(bottom = with(density) { nowBarInset.toDp() } + 16.dp),
                 ) {
                     item(key = BriefHeroKey, contentType = "brief-hero") {
                         BriefHeader(
@@ -444,7 +455,8 @@ internal fun NowBriefScreen(
                 BriefMinibar(now, moment, onClose, onCustomize, Modifier.onSizeChanged { minibarHeight = it.height })
             }
             val suggestionCard = barSuggestion.card
-            CompositionLocalProvider(LocalMaterialBackdrop provides materialBackdrop) {
+            // The Now bar only carries demo agenda data, so it follows the « Afficher les aperçus » switch.
+            if (previewsExpanded) CompositionLocalProvider(LocalMaterialBackdrop provides materialBackdrop) {
                 BriefNowBar(
                     moment = moment,
                     suggestion = barSuggestion,
@@ -454,7 +466,7 @@ internal fun NowBriefScreen(
             }
             SnackbarHost(
                 snackbars,
-                Modifier.align(Alignment.BottomCenter).padding(bottom = with(density) { nowBarHeight.toDp() }),
+                Modifier.align(Alignment.BottomCenter).padding(bottom = with(density) { nowBarInset.toDp() }),
             )
         }
         actionDialogs()
@@ -462,6 +474,11 @@ internal fun NowBriefScreen(
             PeugeotLoginSheet(defaultCarSource) { showCarLogin = false }
         }
         BriefCustomization(
+            foodCardsVisible = foodCardsVisible.takeIf { onOpenFoodRoute != null },
+            onFoodCardsVisibilityChange = {
+                foodCardsVisible = it
+                preferences.setFoodCardsVisible(it)
+            },
             show = visible && showCustomization,
             hiddenCards = hiddenCards,
             hasCarSession = hasCarSession,

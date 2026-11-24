@@ -9,11 +9,13 @@ import io.github.mangi.eta.agent.device.notifications.remote.Interest
 import io.github.mangi.eta.agent.device.notifications.remote.Priority
 import io.github.mangi.eta.agent.device.notifications.remote.RemoteDecision
 import io.github.mangi.eta.agent.device.notifications.remote.Uncertainty
+import io.github.mangi.eta.food.timer.CookingTimerNotifications
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -35,6 +37,26 @@ class NotificationHistoryRepositoryTest {
     @After
     fun tearDown() {
         context.deleteDatabase("eta_notification_history.db")
+    }
+
+    @Test
+    fun ownCookingNotificationsNeverEnterHistoryOrRemoteDismissal() {
+        val time = System.currentTimeMillis()
+        for (channel in listOf(CookingTimerNotifications.TIMER_CHANNEL, CookingTimerNotifications.SESSION_CHANNEL)) {
+            assertFalse(repository.record(
+                channel, context.packageName, "Cuisine", "Minuteur", null, time,
+                channelId = channel, fingerprint = "fixture", queueForRemote = true,
+            ))
+            assertNull(repository.androidDismissalTarget(channel, time))
+        }
+        assertTrue(repository.recent().isEmpty())
+        assertTrue(repository.pendingRemote(50).isEmpty())
+        assertTrue(repository.record(
+            "external", "test.other.app", "Minuteur", "Prêt", null, time,
+            channelId = CookingTimerNotifications.TIMER_CHANNEL, fingerprint = "fixture", queueForRemote = true,
+        ))
+        assertEquals("external", repository.recent().single().key)
+        assertEquals(1, repository.pendingRemote(50).size)
     }
 
     @Test

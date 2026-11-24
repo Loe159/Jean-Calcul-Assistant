@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "products": [
+    {
+      "id": 3,
+      "name": "Courgettes",
+      "stockUnit": {
+        "grocyQuId": 1,
+        "name": "Gramme",
+        "unitCode": "g"
+      },
+      "locationId": 2,
+      "minStockAmount": 0
+    },
+    {
+      "id": 5,
+      "name": "Œufs",
+      "stockUnit": {
+        "grocyQuId": 3,
+        "name": "Pièce",
+        "unitCode": "piece"
+      },
+      "locationId": 2,
+      "minStockAmount": 4
+    },
+    {
+      "id": 6,
+      "name": "Chèvre frais",
+      "stockUnit": {
+        "grocyQuId": 1,
+        "name": "Gramme",
+        "unitCode": "g"
+      },
+      "locationId": 2,
+      "minStockAmount": 0
+    },
+    {
+      "id": 7,
+      "name": "Farine de blé",
+      "stockUnit": {
+        "grocyQuId": 1,
+        "name": "Gramme",
+        "unitCode": "g"
+      },
+      "locationId": 1,
+      "minStockAmount": 0
+    },
+    {
+      "id": 8,
+      "name": "Crème liquide",
+      "stockUnit": {
+        "grocyQuId": 2,
+        "name": "Millilitre",
+        "unitCode": "ml"
+      },
+      "locationId": 2,
+      "minStockAmount": 0
+    },
+    {
+      "id": 10,
+      "name": "Huile d’olive",
+      "stockUnit": {
+        "grocyQuId": 2,
+        "name": "Millilitre",
+        "unitCode": "ml"
+      },
+      "locationId": 1,
+      "minStockAmount": 0
+    },
+    {
+      "id": 11,
+      "name": "Lait entier",
+      "stockUnit": {
+        "grocyQuId": 2,
+        "name": "Millilitre",
+        "unitCode": "ml"
+      },
+      "locationId": 2,
+      "minStockAmount": 0
+    },
+    {
+      "id": 12,
+      "name": "Pois chiches cuits",
+      "stockUnit": {
+        "grocyQuId": 4,
+        "name": "Bocal maison",
+        "unitCode": null
+      },
+      "locationId": 1,
+      "minStockAmount": 1
+    }
+  ],
+  "locations": [
+    {
+      "id": 1,
+      "name": "Placard"
+    },
+    {
+      "id": 2,
+      "name": "Réfrigérateur"
+    }
+  ],
+  "quantityUnits": [
+    {
+      "id": 1,
+      "name": "Gramme",
+      "unitCode": "g"
+    },
+    {
+      "id": 2,
+      "name": "Millilitre",
+      "unitCode": "ml"
+    },
+    {
+      "id": 3,
+      "name": "Pièce",
+      "unitCode": "piece"
+    },
+    {
+      "id": 4,
+      "name": "Bocal maison",
+      "unitCode": null
+    }
+  ]
+}

@@ -26,6 +26,8 @@ import android.window.OnBackInvokedDispatcher
 import android.window.OnBackInvokedCallback
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalUriHandler
+import io.github.mangi.eta.ui.components.NewTaskUriHandler
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -1270,6 +1272,8 @@ internal class AgentRuntimeService : Service(), LifecycleOwner, SavedStateRegist
                         LocalSquircleEnabled provides false,
                         LocalCOUIMaterialEffectEnabled provides false,
                         LocalBlurEnabled provides false,
+                        // Links in the result card open from a Service context.
+                        LocalUriHandler provides NewTaskUriHandler(this@AgentRuntimeService),
                     ) {
                         content()
                     }

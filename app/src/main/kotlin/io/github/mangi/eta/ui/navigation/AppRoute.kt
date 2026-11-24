@@ -16,6 +16,24 @@ sealed interface AppRoute : NavKey {
     data object Terminal : AppRoute
 
     @Serializable
+    data object FoodHome : AppRoute
+
+    @Serializable
+    data class Inventory(val filter: String? = null) : AppRoute
+
+    @Serializable
+    data class RecipeDetail(val recipeId: String, val briefCardId: String? = null, val servings: Int? = null) : AppRoute
+
+    @Serializable
+    data class RecipeGenerate(val recipeId: String? = null, val servings: Int? = null) : AppRoute
+
+    @Serializable
+    data object FoodPreferences : AppRoute
+
+    @Serializable
+    data class CookingSession(val sessionId: String) : AppRoute
+
+    @Serializable
     data object Tools : AppRoute
 
     @Serializable

@@ -22,9 +22,13 @@ internal data class MainActivityLaunchRequests(
     val speechSettings: Boolean = false,
     val terminal: Boolean = false,
     val appImprovements: Boolean = false,
+    val cookingSessionId: String? = null,
 ) {
     fun accept(intent: Intent?): MainActivityLaunchRequests = when (intent?.action) {
         MainActivity.ACTION_APP_IMPROVEMENTS -> copy(appImprovements = true)
+        MainActivity.ACTION_OPEN_COOKING_SESSION -> copy(
+            cookingSessionId = intent.nonBlankExtra(MainActivity.EXTRA_COOKING_SESSION_ID),
+        )
         MainActivity.ACTION_OPEN_TERMINAL -> copy(terminal = true)
         ACTION_SPEECH_SETTINGS -> copy(speechSettings = true)
         MainActivity.ACTION_OPEN_CONVERSATION_ID -> copy(
@@ -64,6 +68,7 @@ internal data class MainActivityLaunchRequests(
             putBoolean("speech_settings", speechSettings)
             putBoolean("terminal", terminal)
             putBoolean("app_improvements", appImprovements)
+            putString("cooking_session_id", cookingSessionId)
         })
     }
 
@@ -98,6 +103,7 @@ internal data class MainActivityLaunchRequests(
                 speechSettings = saved.getBoolean("speech_settings"),
                 terminal = saved.getBoolean("terminal"),
                 appImprovements = saved.getBoolean("app_improvements"),
+                cookingSessionId = saved.getString("cooking_session_id"),
             )
         }
     }

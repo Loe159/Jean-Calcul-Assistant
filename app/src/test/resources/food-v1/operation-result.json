@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "operationId": "op_f5052c89-8873-4f74-b27d-3d759c1c9bfa",
+  "state": "PARTIAL",
+  "replayed": false,
+  "lines": [
+    {
+      "ingredientId": "ing_courgette",
+      "grocyProductId": 3,
+      "requested": {
+        "amount": 500,
+        "unit": "g"
+      },
+      "applied": {
+        "amount": 500,
+        "grocyQuId": 1
+      },
+      "transactionId": "6a23c0ffa0000",
+      "state": "SUCCEEDED",
+      "message": null
+    },
+    {
+      "ingredientId": "ing_eggs",
+      "grocyProductId": 5,
+      "requested": {
+        "amount": 4,
+        "unit": "piece"
+      },
+      "applied": {
+        "amount": 4,
+        "grocyQuId": 3
+      },
+      "transactionId": "6a23c0ffa0001",
+      "state": "SUCCEEDED",
+      "message": null
+    },
+    {
+      "ingredientId": "ing_cream",
+      "grocyProductId": 8,
+      "requested": {
+        "amount": 200,
+        "unit": "ml"
+      },
+      "applied": {
+        "amount": 120,
+        "grocyQuId": 2
+      },
+      "transactionId": "6a23c0ffa0002",
+      "state": "INSUFFICIENT_STOCK",
+      "message": "Seuls 120 ml étaient encore disponibles en stock."
+    },
+    {
+      "ingredientId": "ing_flour",
+      "grocyProductId": 7,
+      "requested": {
+        "amount": 80,
+        "unit": "g"
+      },
+      "applied": {
+        "amount": 80,
+        "grocyQuId": 1
+      },
+      "transactionId": "6a23c0ffa0003",
+      "state": "SUCCEEDED",
+      "message": null
+    },
+    {
+      "ingredientId": "ing_cheese",
+      "grocyProductId": 6,
+      "requested": {
+        "amount": 160,
+        "unit": "g"
+      },
+      "applied": {
+        "amount": 160,
+        "grocyQuId": 1
+      },
+      "transactionId": "6a23c0ffa0004",
+      "state": "SUCCEEDED",
+      "message": null
+    },
+    {
+      "ingredientId": "ing_oil",
+      "grocyProductId": 10,
+      "requested": {
+        "amount": 30,
+        "unit": "ml"
+      },
+      "applied": {
+        "amount": 30,
+        "grocyQuId": 2
+      },
+      "transactionId": "6a23c0ffa0005",
+      "state": "SUCCEEDED",
+      "message": null
+    }
+  ],
+  "leftoverProductId": 42
+}

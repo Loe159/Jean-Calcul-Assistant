@@ -115,6 +115,7 @@ internal fun CouiTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     showClearButton: Boolean = singleLine,
+    fieldModifier: Modifier = Modifier,
     trailingIcon: (@Composable () -> Unit)? = null,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
@@ -146,7 +147,7 @@ internal fun CouiTextField(
         TextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = fieldModifier.fillMaxWidth(),
             backgroundMode = TextFieldMode.Rectangle,
             label = placeholder.orEmpty(),
             enabled = enabled,
