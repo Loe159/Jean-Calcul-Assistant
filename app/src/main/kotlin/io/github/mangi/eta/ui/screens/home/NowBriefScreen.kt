@@ -376,6 +376,7 @@ internal fun NowBriefScreen(
     val minibarSpace = topInsets + with(density) { 72.dp.roundToPx() }
     var minibarHeight by remember { mutableIntStateOf(0) }
     var nowBarHeight by remember { mutableIntStateOf(0) }
+    val nowBarInset = if (previewsExpanded) nowBarHeight else 0
     val showMinibar by remember(listState, minibarSpace) {
         derivedStateOf {
             val info = listState.layoutInfo
@@ -427,7 +428,7 @@ internal fun NowBriefScreen(
                         .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
                     state = listState,
                     overscrollEffect = null,
-                    contentPadding = PaddingValues(bottom = with(density) { nowBarHeight.toDp() } + 16.dp),
+                    contentPadding = PaddingValues(bottom = with(density) { nowBarInset.toDp() } + 16.dp),
                 ) {
                     item(key = BriefHeroKey, contentType = "brief-hero") {
                         BriefHeader(
@@ -454,7 +455,8 @@ internal fun NowBriefScreen(
                 BriefMinibar(now, moment, onClose, onCustomize, Modifier.onSizeChanged { minibarHeight = it.height })
             }
             val suggestionCard = barSuggestion.card
-            CompositionLocalProvider(LocalMaterialBackdrop provides materialBackdrop) {
+            // The Now bar only carries demo agenda data, so it follows the « Afficher les aperçus » switch.
+            if (previewsExpanded) CompositionLocalProvider(LocalMaterialBackdrop provides materialBackdrop) {
                 BriefNowBar(
                     moment = moment,
                     suggestion = barSuggestion,
@@ -464,7 +466,7 @@ internal fun NowBriefScreen(
             }
             SnackbarHost(
                 snackbars,
-                Modifier.align(Alignment.BottomCenter).padding(bottom = with(density) { nowBarHeight.toDp() }),
+                Modifier.align(Alignment.BottomCenter).padding(bottom = with(density) { nowBarInset.toDp() }),
             )
         }
         actionDialogs()
