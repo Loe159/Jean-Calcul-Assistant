@@ -43,10 +43,27 @@ internal fun RecipeDefinition.portions(servings: Int, overrides: List<Ingredient
         IngredientPortion(ingredient, quantity)
     }
 
-internal fun RecipeDefinition.renderStep(step: RecipeStep, servings: Int) = FoodQuantities.renderStep(
+internal fun RecipeDefinition.renderStep(
+    step: RecipeStep,
+    servings: Int,
+    overrides: List<IngredientOverride> = emptyList(),
+    onQuantity: ((IntRange) -> Unit)? = null,
+) = FoodQuantities.renderStep(
     step.instruction, ingredients.map { ScalableIngredient(it.id, it.quantity, it.scaling, it.rounding) },
-    step.ingredientRefs, this.servings, servings,
+    step.ingredientRefs, this.servings, servings, overrides.associate { it.ingredientId to it.quantity }, onQuantity,
 )
+
+internal fun RecipeDefinition.stepPortions(
+    step: RecipeStep,
+    servings: Int,
+    overrides: List<IngredientOverride> = emptyList(),
+): List<IngredientPortion> {
+    val ingredientsById = portions(servings, overrides).associateBy { it.ingredient.id }
+    return step.ingredientRefs.mapNotNull { ref ->
+        val line = ingredientsById[ref.ingredientId] ?: return@mapNotNull null
+        line.copy(quantity = line.quantity.copy(amount = line.quantity.amount?.times(ref.fraction)))
+    }
+}
 
 internal data class CookingProgressState(
     val steps: List<RecipeStep>,

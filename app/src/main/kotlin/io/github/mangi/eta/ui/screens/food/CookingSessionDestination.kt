@@ -195,7 +195,9 @@ private fun ActiveCookingSession(session: CookingSession, onBack: () -> Unit) {
                 FoodHeading(currentStep.title)
                 Text(FoodQuantities.renderStep(session, currentStep),
                     style = if (largeText) COUITheme.textStyles.headlineM else COUITheme.textStyles.bodyXL)
-                StepIngredientList(stepPortions(session, currentStep))
+                StepIngredientList(
+                    session.recipeSnapshot.stepPortions(currentStep, session.servings, session.ingredientOverrides),
+                )
                 RecipePicture(currentStep.image)
                 currentStep.durationSeconds?.let { FoodSupporting(stringResource(R.string.food_minutes, (it + 59) / 60)) }
                 currentStep.temperature?.value?.let { FoodSupporting(stringResource(R.string.food_temperature, it.toString())) }
@@ -281,14 +283,6 @@ private fun CookingAssistant(session: CookingSession, onClose: () -> Unit) {
             }
         }
     }, onClose = onClose)
-}
-
-private fun stepPortions(session: CookingSession, step: RecipeStep): List<IngredientPortion> {
-    val ingredients = session.recipeSnapshot.portions(session.servings, session.ingredientOverrides).associateBy { it.ingredient.id }
-    return step.ingredientRefs.mapNotNull { ref ->
-        val line = ingredients[ref.ingredientId] ?: return@mapNotNull null
-        line.copy(quantity = line.quantity.copy(amount = line.quantity.amount?.times(ref.fraction)))
-    }
 }
 
 private tailrec fun Context.activity(): Activity? = when (this) {

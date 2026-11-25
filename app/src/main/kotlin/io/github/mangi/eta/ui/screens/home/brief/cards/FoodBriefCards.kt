@@ -30,6 +30,7 @@ import io.github.mangi.eta.ui.screens.food.components.RecipePicture
 import io.github.mangi.eta.ui.screens.food.components.TimerStack
 import io.github.mangi.eta.ui.screens.food.components.foodRuntime
 import io.github.mangi.eta.ui.screens.food.progress
+import io.github.mangi.eta.ui.screens.food.toActiveCookingUi
 import io.github.mangi.eta.ui.screens.home.NowBriefCardExtension
 import io.github.mangi.eta.ui.screens.home.brief.briefTintedLabel
 import io.github.suqi8.coui.kmp.basic.Card
@@ -114,10 +115,11 @@ private fun ActiveCookingCard(session: CookingSession, active: Boolean, motionAl
     val colors = COUITheme.colorScheme
     val styles = COUITheme.textStyles
     val progress = session.progress()
+    val cooking = session.toActiveCookingUi(progress)
     FoodBriefCard(R.string.food_cooking_in_progress, COUIIcons.Timer, colors.orange) {
-        FoodBriefTitle(session.recipeSnapshot.title)
+        FoodBriefTitle(cooking.title)
         Text(
-            stringResource(R.string.food_step_position, progress.index + 1, progress.steps.size),
+            stringResource(R.string.food_step_position, cooking.index + 1, cooking.count),
             style = styles.bodyM,
             color = colors.labelPrimary,
         )

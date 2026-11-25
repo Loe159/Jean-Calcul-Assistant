@@ -121,17 +121,26 @@ internal object FoodQuantities {
         baseServings: Int,
         targetServings: Int,
         overrides: Map<String, Quantity> = emptyMap(),
+        onQuantity: ((IntRange) -> Unit)? = null,
     ): String {
         val byId = ingredients.associateBy { it.id }
         val fractions = ingredientRefs.associate { it.ingredientId to it.fraction }
-        val rendered = marker.replace(instruction) { match ->
-            val id = match.groupValues[1]
-            val ingredient = requireNotNull(byId[id]) { "Unknown ingredient marker: $id" }
-            val fraction = requireNotNull(fractions[id]) { "Ingredient marker without reference: $id" }
-            require(fraction > 0 && fraction <= 1)
-            val exact = overrides[id] ?: exact(ingredient.quantity, baseServings, targetServings, ingredient.scaling)
-            val scaled = display(exact.copy(amount = exact.amount?.times(fraction)), ingredient.rounding)
-            formatFr(Quantity(scaled.displayAmount, scaled.unit), omitPieceUnit = true)
+        val rendered = buildString {
+            var cursor = 0
+            for (match in marker.findAll(instruction)) {
+                append(instruction, cursor, match.range.first)
+                val start = length
+                val id = match.groupValues[1]
+                val ingredient = requireNotNull(byId[id]) { "Unknown ingredient marker: $id" }
+                val fraction = requireNotNull(fractions[id]) { "Ingredient marker without reference: $id" }
+                require(fraction > 0 && fraction <= 1)
+                val exact = overrides[id] ?: exact(ingredient.quantity, baseServings, targetServings, ingredient.scaling)
+                val scaled = display(exact.copy(amount = exact.amount?.times(fraction)), ingredient.rounding)
+                append(formatFr(Quantity(scaled.displayAmount, scaled.unit), omitPieceUnit = true))
+                onQuantity?.invoke(start until length)
+                cursor = match.range.last + 1
+            }
+            append(instruction, cursor, instruction.length)
         }
         require("{{ing:" !in rendered) { "Malformed ingredient marker" }
         return rendered

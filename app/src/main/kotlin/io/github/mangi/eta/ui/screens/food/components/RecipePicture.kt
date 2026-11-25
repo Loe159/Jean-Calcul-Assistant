@@ -6,11 +6,18 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.food.RecipeImage
+import io.github.mangi.eta.R
+import io.github.suqi8.coui.kmp.basic.Icon
+import io.github.suqi8.coui.kmp.basic.Surface
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.theme.COUITheme
 import io.github.suqi8.coui.kmp.squircle.SquircleShape
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
@@ -19,18 +26,33 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
-private val recipeImages = OkHttpClient.Builder().callTimeout(8, TimeUnit.SECONDS).build()
+private val recipeImages by lazy { OkHttpClient.Builder().callTimeout(8, TimeUnit.SECONDS).build() }
 
 @Composable
-internal fun RecipePicture(image: RecipeImage?) {
-    if (image == null) return
-    val bitmap by produceState<Bitmap?>(null, image.url) {
+internal fun RecipePicture(
+    image: RecipeImage?,
+    modifier: Modifier = Modifier.fillMaxWidth().aspectRatio(1.8f).clip(SquircleShape(18.dp)),
+    placeholder: Boolean = false,
+    showLabel: Boolean = false,
+) {
+    val bitmap by produceState<Bitmap?>(null, image?.url) {
         value = null
-        value = withContext(Dispatchers.IO) { loadRecipePicture(image.url) }
+        value = image?.url?.let { withContext(Dispatchers.IO) { loadRecipePicture(it) } }
     }
-    bitmap?.let {
-        Image(it.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxWidth().aspectRatio(1.8f).clip(SquircleShape(18.dp)))
+    val picture = bitmap
+    if (picture != null) {
+        Image(picture.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Crop, modifier = modifier)
+    } else if (placeholder) {
+        val colors = COUITheme.colorScheme
+        Surface(modifier, color = colors.containerOrange) {
+            Box(contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    val ink = cuisineTint(colors.orange)
+                    Icon(CuisineIcons.Utensils, null, Modifier.size(if (showLabel) 36.dp else 24.dp), tint = ink)
+                    if (showLabel) Text(stringResource(R.string.food_no_photo), style = COUITheme.textStyles.bodyXS, color = ink)
+                }
+            }
+        }
     }
 }
 

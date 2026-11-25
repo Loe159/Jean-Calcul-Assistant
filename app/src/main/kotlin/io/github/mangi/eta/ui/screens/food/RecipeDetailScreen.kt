@@ -141,7 +141,7 @@ internal fun RecipeDetailScreen(
         val live = selectedAvailability?.value?.takeIf {
             it.servings == servings && it.recipeId == recipe.id && it.recipeVersion == recipe.version
         } ?: availability
-        RecipeHero(recipe, live)
+        RecipeOverview(recipe, live)
         if (recipe.allergenCheck == AllergenCheck.NOT_GUARANTEED) {
             FoodSupporting(stringResource(R.string.food_allergen_notice))
         }

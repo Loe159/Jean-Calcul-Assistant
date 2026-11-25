@@ -174,4 +174,132 @@
     <string-array name="food_meal_types"><item>Petit déjeuner</item><item>Déjeuner</item><item>Dîner</item><item>En-cas</item><item>Dessert</item></string-array>
     <string-array name="food_budgets"><item>Petit budget</item><item>Budget moyen</item><item>Tout budget</item></string-array>
     <string-array name="food_equipment_names"><item>Four</item><item>Plaque de cuisson</item><item>Micro-ondes</item><item>Friteuse à air</item><item>Blender</item><item>Batteur</item><item>Gril</item><item>Cuiseur vapeur</item><item>Autocuiseur</item><item>Bouilloire</item></string-array>
+
+    <string name="food_no_photo">Sans photo</string>
+    <string name="food_back">Retour</string>
+    <string name="food_saved_on_device">Enregistrée sur l’appareil</string>
+    <string name="food_saved_on_device_short">Recette locale</string>
+    <string name="food_recipe_unavailable">Recette indisponible</string>
+    <string name="food_recipe_load_failed">Le chargement a échoué</string>
+    <string name="food_recipe_empty_filters">Aucune recette ne correspond à ces filtres</string>
+    <string name="food_favorite">Favori</string>
+    <string name="food_available_short">Disponible</string>
+    <string name="food_all_available">Tout est disponible</string>
+    <string name="food_stock_unknown_short">Stock inconnu</string>
+    <string name="food_stock_unrecorded">Stock non renseigné</string>
+    <string name="food_checking_stock">Vérification du stock</string>
+    <string name="food_stock_unavailable">Stock indisponible</string>
+    <string name="food_stock_offline">Hors ligne, non vérifié</string>
+    <string name="food_stock_unverified">Non vérifié</string>
+    <string name="food_unverified_availability">%1$s · %2$s</string>
+    <plurals name="food_portion_count">
+        <item quantity="one">%d portion</item>
+        <item quantity="other">%d portions</item>
+    </plurals>
+    <plurals name="food_portion_word">
+        <item quantity="one">portion</item>
+        <item quantity="other">portions</item>
+    </plurals>
+    <plurals name="food_partial_short">
+        <item quantity="one">%d partiel</item>
+        <item quantity="other">%d partiels</item>
+    </plurals>
+    <plurals name="food_partial_ingredients">
+        <item quantity="one">%d ingrédient en quantité insuffisante</item>
+        <item quantity="other">%d ingrédients en quantité insuffisante</item>
+    </plurals>
+    <plurals name="food_missing_short">
+        <item quantity="one">Manque %d</item>
+        <item quantity="other">Manque %d</item>
+    </plurals>
+    <plurals name="food_missing_ingredients">
+        <item quantity="one">Il manque %d ingrédient</item>
+        <item quantity="other">Il manque %d ingrédients</item>
+    </plurals>
+    <string name="food_replaces">Remplace %1$s</string>
+    <string name="food_have_over_need">En stock (%1$s sur %2$s)</string>
+    <string name="food_not_in_stock">Pas en stock</string>
+    <string name="food_in_shopping">Dans les courses</string>
+    <string name="food_ingredient_partial">Partiel</string>
+    <string name="food_ingredient_missing">Manquant</string>
+    <string name="food_no_ingredients">Aucun ingrédient renseigné</string>
+    <string name="food_no_ingredients_detail">Cette recette n’a pas encore de liste d’ingrédients</string>
+    <string name="food_ingredient_list_error">Liste indisponible</string>
+    <string name="food_ingredient_list_error_detail">Le calcul des quantités a échoué</string>
+    <string name="food_for_portions">Pour %1$s</string>
+    <string name="food_count_in_stock">%1$d en stock</string>
+    <string name="food_ingredients_checked">%1$d sur %2$d sortis</string>
+    <string name="food_missing_in_shopping">Les ingrédients manquants sont dans votre liste de courses</string>
+    <plurals name="food_add_missing_to_shopping">
+        <item quantity="one">Ajouter %d ingrédient aux courses</item>
+        <item quantity="other">Ajouter %d ingrédients aux courses</item>
+    </plurals>
+    <string name="food_for_this_step">Pour cette étape</string>
+    <string name="food_how_to">Voir comment faire</string>
+    <string name="food_ask_assistant">Demander à l’assistant</string>
+    <string name="food_step_of_count">Étape %1$d sur %2$d</string>
+    <string name="food_step_number">Étape %1$d</string>
+    <string name="food_step_current">En cours</string>
+    <string name="food_step_upcoming">À venir</string>
+    <string name="food_previous_step_button">Précédent</string>
+    <string name="food_next_step_button">Suivant</string>
+    <string name="food_finish_short">Terminer</string>
+    <string name="food_timer_launch">Lancer %1$s</string>
+    <string name="food_timer_named_duration">Minuteur « %1$s » · %2$s</string>
+    <string name="food_timer_running">En cours</string>
+    <string name="food_timer_finished_short">Terminé</string>
+    <string name="food_timer_paused_short">En pause</string>
+    <string name="food_timer_cancelled">Arrêté</string>
+    <string name="food_timer_duration">%1$d min %2$d s</string>
+    <string name="food_timer_remaining_detail">Temps restant %1$s</string>
+    <plurals name="food_timer_seconds">
+        <item quantity="one">%d seconde</item>
+        <item quantity="other">%d secondes</item>
+    </plurals>
+    <string name="food_timers_expand">Afficher tous les minuteurs</string>
+    <string name="food_timers_collapse">Réduire les minuteurs</string>
+    <string name="food_timer_new">Nouveau minuteur</string>
+    <plurals name="food_timers_finished">
+        <item quantity="one">%d minuteur terminé</item>
+        <item quantity="other">%d minuteurs terminés</item>
+    </plurals>
+    <string name="food_banner_session">%1$s · %2$s</string>
+    <string name="food_banner_timer">%1$s · %2$s</string>
+    <string name="food_banner_timer_paused">%1$s en pause</string>
+    <string name="food_place_fridge">Frigo</string>
+    <string name="food_place_freezer">Congélateur</string>
+    <string name="food_place_pantry">Placard</string>
+    <string name="food_invalid_stock_quantity">Quantité invalide</string>
+    <string name="food_expiry_unknown">Date inconnue</string>
+    <string name="food_expiry_today">Aujourd’hui</string>
+    <string name="food_expiry_tomorrow">Demain</string>
+    <string name="food_expired_yesterday">Périmé hier</string>
+    <plurals name="food_expired_days">
+        <item quantity="one">Périmé depuis %d j</item>
+        <item quantity="other">Périmé depuis %d j</item>
+    </plurals>
+    <plurals name="food_expiry_days">
+        <item quantity="one">Dans %d j</item>
+        <item quantity="other">Dans %d j</item>
+    </plurals>
+    <plurals name="food_expiry_weeks">
+        <item quantity="one">Dans %d semaine</item>
+        <item quantity="other">Dans %d semaines</item>
+    </plurals>
+    <string name="food_expiry_months">Dans %d mois</string>
+    <string name="food_expiry_long">Longue conservation</string>
+    <string name="food_shopping_todo">À acheter</string>
+    <string name="food_shopping_in_basket">Dans le panier</string>
+    <string name="food_shopping_stocked">Ajouté au stock</string>
+    <string name="food_meal_add">Ajouter</string>
+    <string name="food_meal_replace">Remplacer</string>
+    <string name="food_meal_drop">Déposer ici</string>
+    <string name="food_meal_moving">En déplacement</string>
+    <string name="food_meal_moving_short">À déplacer</string>
+    <string name="food_meal_compact_metadata">%1$d min · %2$d p.</string>
+    <string name="food_meal_metadata">%1$s · %2$s</string>
+    <string-array name="food_meal_slot_types">
+        <item>Petit-déjeuner</item><item>Déjeuner</item><item>Dîner</item><item>Collation</item><item>Dessert</item>
+    </string-array>
+    <string name="food_assistant_unreachable">L’assistant est injoignable. Vos recettes enregistrées restent disponibles.</string>
 </resources>
