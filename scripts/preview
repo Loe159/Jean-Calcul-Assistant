@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Headless Compose previews: scripts/preview list [PATTERN] | scripts/preview render PATTERN|FQN...
+# Enters the project's `nix develop` shell (JDK 25, Android SDK, Android CLI) when needed.
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if ! command -v java >/dev/null 2>&1 || ! command -v python3 >/dev/null 2>&1; then
+  if [ -n "${JEANCALCUL_PREVIEW_IN_SHELL:-}" ]; then
+    echo "scripts/preview: java/python3 missing even inside nix develop" >&2
+    exit 1
+  fi
+  export JEANCALCUL_PREVIEW_IN_SHELL=1
+  exec nix develop "$root" --quiet -c "$0" "$@"
+fi
+exec python3 -I "$root/scripts/preview.py" "$@"

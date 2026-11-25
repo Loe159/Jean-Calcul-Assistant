@@ -17,7 +17,7 @@ Interface unique COUI 2.0. Pas d’environnement Linux/Kimi, personnages, sauveg
 
 ## Développement
 
-JDK25, SDK Android37 : `./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug`.
-APK distribué ARM64, Android13+. Identité : `fr.loevan.jeancalcul.v2`. Lire [AGENTS.md](AGENTS.md) et [la validation](docs/QUALITY.md).
+JDK25, SDK Android37 (via `nix develop`) : `nix develop -c ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug`. Aperçus d’interface sans émulateur : `scripts/preview render <Preview>`.
+APK distribué ARM64, Android13+. Identité : `fr.loevan.jeancalcul.v2`. Agents : lire [AGENTS.md](AGENTS.md). Design : [DESIGN.md](DESIGN.md).
 
 Licence GPL-3.0. Copyright amont © 2026 蛮吉 (Mangi-11) ; adaptations Jean-Calcul documentées dans la provenance.

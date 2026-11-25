@@ -7,6 +7,8 @@ libxposedApi = "102.0.0"
 libxposedService = "102.0.0"
 dexkit = "2.3.0"
 coui = "2.0.0"
+# Must match the androidx.compose.ui version COUI resolves (./gradlew :app:dependencies).
+composeUi = "1.11.2"
 materialIcons = "1.7.8"
 androidx-navigationevent = "1.2.0"
 androidx-lifecycle = "2.11.0"
@@ -39,6 +41,8 @@ coui-blur = { group = "io.github.suqi8.coui.kmp", name = "coui-blur-android", ve
 coui-ui = { group = "io.github.suqi8.coui.kmp", name = "coui-ui-android", version.ref = "coui" }
 coui-preference = { group = "io.github.suqi8.coui.kmp", name = "coui-preference-android", version.ref = "coui" }
 coui-nav = { group = "io.github.suqi8.coui.kmp", name = "coui-nav-android", version.ref = "coui" }
+compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview", version.ref = "composeUi" }
+compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling", version.ref = "composeUi" }
 coui-icons = { group = "io.github.suqi8.coui.kmp", name = "coui-icons-android", version.ref = "coui" }
 material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "materialIcons" }
 androidx-navigationevent = { group = "androidx.navigationevent", name = "navigationevent-compose", version.ref = "androidx-navigationevent" }

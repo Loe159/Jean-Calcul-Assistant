@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.R
 import io.github.mangi.eta.ui.model.PermissionHealthUiState
 import io.github.mangi.eta.ui.model.PermissionStatusUi
+import io.github.mangi.eta.ui.preview.CouiComponentPreviews
+import io.github.mangi.eta.ui.preview.CouiPreviewTheme
+import io.github.mangi.eta.ui.preview.FakeAgentUiStates
 import io.github.suqi8.coui.kmp.basic.Card
 import io.github.suqi8.coui.kmp.basic.Icon
 import io.github.suqi8.coui.kmp.basic.Text
@@ -127,3 +130,11 @@ private fun statusLabel(status: PermissionStatusUi): String = stringResource(whe
     PermissionStatusUi.Warning -> R.string.permission_status_warning
     PermissionStatusUi.Disabled -> R.string.permission_status_disabled
 })
+
+@CouiComponentPreviews
+@Composable
+private fun PermissionHealthCardPreview() {
+    CouiPreviewTheme(fullScreen = false) {
+        PermissionHealthCard(state = FakeAgentUiStates.permissionHealth, onOpenPermissions = {})
+    }
+}

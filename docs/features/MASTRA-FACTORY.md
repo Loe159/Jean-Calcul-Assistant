@@ -5,7 +5,7 @@ Factory est un service indépendant de l'APK. Brancher le dépôt
 
 - Activer l'intégration GitHub issues dans Factory (Work Intake).
 - Prendre uniquement les issues portant [V2], initialement #53-#57.
-- Faire lire `AGENTS.md`, `docs/PRODUCT.md`, `docs/QUALITY.md` et les skills.
+- Faire lire `AGENTS.md` (qui renvoie vers `PRODUCT.md`, `DESIGN.md` et les skills).
 - Coder sur branche de fonctionnalité puis créer une PR vers
   `feature/jean-calcul-v2-foundation`.
 - Exiger APK, résultats E2E et captures avant revue humaine.

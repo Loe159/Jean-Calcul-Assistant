@@ -1,7 +1,8 @@
 # Tester et voir Jean-Calcul avec un agent
 
-Lire `AGENTS.md`, `docs/QUALITY.md` et les skills `android-e2e` et
-`android-visual-review`. Aucune clé API vision n'est nécessaire : l'agent qui
+Lire `AGENTS.md`, `docs/agents/DEVICE.md` et la skill `device-check`. Pour un simple
+contrôle visuel, les previews headless (`scripts/preview`, `docs/agents/PREVIEWS.md`)
+sont plus rapides. Aucune clé API vision n'est nécessaire : l'agent qui
 implémente ouvre lui-même les PNG avec son outil vision natif.
 
 ## Préparer une fois

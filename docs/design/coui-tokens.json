@@ -1,0 +1,1426 @@
+{
+ "name": "COUI 2.0",
+ "version": 1,
+ "color": {
+  "themes": [
+   {
+    "id": "light",
+    "name": "Clair"
+   },
+   {
+    "id": "dark",
+    "name": "Sombre"
+   }
+  ],
+  "tokens": [
+   {
+    "name": "primary",
+    "value": {
+     "light": "#0080ff",
+     "dark": "#1a8cff"
+    },
+    "usage": "Couleur d'accent COUI : bouton principal, Switch/Checkbox/Radio cochés, piste active du Slider, Chip sélectionné, barre de progression. Texte `onPrimary` dessus."
+   },
+   {
+    "name": "onPrimary",
+    "value": {
+     "light": "#ffffff",
+     "dark": "#ffffff"
+    },
+    "usage": "Texte et icônes posés sur `primary` (bouton principal, Chip sélectionné) ; pouce du Switch et du Slider."
+   },
+   {
+    "name": "error",
+    "value": {
+     "light": "#db382c",
+     "dark": "#ff6c61"
+    },
+    "usage": "Erreur : texte d'aide d'un champ en erreur, action destructive d'un dialogue (Supprimer)."
+   },
+   {
+    "name": "onError",
+    "value": {
+     "light": "#ffffff",
+     "dark": "#ffffff"
+    },
+    "usage": "Texte posé sur `error`."
+   },
+   {
+    "name": "disabledOnPrimaryButton",
+    "value": {
+     "light": "#ffffff8a",
+     "dark": "#ffffff29"
+    },
+    "usage": "Text on disabled primary button (COUI `coui_button_main_disable_text`)."
+   },
+   {
+    "name": "secondaryVariant",
+    "value": {
+     "light": "#00000014",
+     "dark": "#ffffff26"
+    },
+    "usage": "Secondary variant."
+   },
+   {
+    "name": "disabledSecondaryVariant",
+    "value": {
+     "light": "#00000014",
+     "dark": "#ffffff1a"
+    },
+    "usage": "Disabled secondary variant."
+   },
+   {
+    "name": "secondaryContainer",
+    "value": {
+     "light": "#00000014",
+     "dark": "#ffffff26"
+    },
+    "usage": "Secondary container."
+   },
+   {
+    "name": "secondary",
+    "value": {
+     "light": "#0080ff26",
+     "dark": "#1a8cff40"
+    },
+    "usage": "`couiColorSecondary` (the theme color at 15% / 25%)."
+   },
+   {
+    "name": "surfaceContainerHighest",
+    "value": {
+     "light": "#ffffff",
+     "dark": "#1e1e1e"
+    },
+    "usage": "Highest surface container."
+   },
+   {
+    "name": "outline",
+    "value": {
+     "light": "#00000026",
+     "dark": "#ffffff26"
+    },
+    "usage": "Outlines/borders."
+   },
+   {
+    "name": "sliderBackground",
+    "value": {
+     "light": "#0000001f",
+     "dark": "#ffffff33"
+    },
+    "usage": "Piste inactive du Slider."
+   },
+   {
+    "name": "dialogButton",
+    "value": {
+     "light": "#00000014",
+     "dark": "#ffffff1a"
+    },
+    "usage": "Fond des boutons de la barre de dialogue et du Stepper."
+   },
+   {
+    "name": "dragHandle",
+    "value": {
+     "light": "#00000029",
+     "dark": "#ffffff40"
+    },
+    "usage": "Poignée de la bottom sheet, piste du Switch décoché."
+   },
+   {
+    "name": "secondaryButton",
+    "value": {
+     "light": "#ebebeb",
+     "dark": "#353535"
+    },
+    "usage": "Fond du bouton secondaire (Annuler)."
+   },
+   {
+    "name": "disabledSecondaryButton",
+    "value": {
+     "light": "#00000014",
+     "dark": "#ffffff1a"
+    },
+    "usage": "Disabled secondary button fill (COUI `couiColorContainer8`)."
+   },
+   {
+    "name": "disabledOnSecondaryButton",
+    "value": {
+     "light": "#00000042",
+     "dark": "#ffffff28"
+    },
+    "usage": "Disabled secondary button label (COUI `coui_btn_secondary_text_color_disable`)."
+   },
+   {
+    "name": "transparentButton",
+    "value": {
+     "light": "#ffffff33",
+     "dark": "#ffffff33"
+    },
+    "usage": "Transparent button fill (COUI `coui_button_translate_color`)."
+   },
+   {
+    "name": "onTransparentButton",
+    "value": {
+     "light": "#ffffff",
+     "dark": "#ffffff"
+    },
+    "usage": "Transparent button label."
+   },
+   {
+    "name": "disabledOnTransparentButton",
+    "value": {
+     "light": "#ffffff4d",
+     "dark": "#ffffff4d"
+    },
+    "usage": "Disabled transparent button label."
+   },
+   {
+    "name": "backgroundTop",
+    "value": {
+     "light": "#ffffff",
+     "dark": "#333333"
+    },
+    "usage": "Surface la plus haute : Snackbar, Tooltip, popup de liste."
+   },
+   {
+    "name": "primaryTextOnPopup",
+    "value": {
+     "light": "#0080ff",
+     "dark": "#5c9dff"
+    },
+    "usage": "Action accentuée sur surface flottante (action de Snackbar)."
+   },
+   {
+    "name": "press",
+    "value": {
+     "light": "#0000001f",
+     "dark": "#ffffff33"
+    },
+    "usage": "Calque de pression (12 % noir / 20 % blanc) dessiné par COUIIndication."
+   },
+   {
+    "name": "hover",
+    "value": {
+     "light": "#00000014",
+     "dark": "#ffffff26"
+    },
+    "usage": "Calque de survol."
+   },
+   {
+    "name": "focus",
+    "value": {
+     "light": "#0080ff1f",
+     "dark": "#1a8cff33"
+    },
+    "usage": "Ligne focalisée ou sélectionnée (calque teinté d'accent)."
+   },
+   {
+    "name": "disabledProgress",
+    "value": {
+     "light": "#e6e6e6",
+     "dark": "#262626"
+    },
+    "usage": "Disabled linear progress bar fill (COUI `coui_progressbar_color_disabled`)."
+   },
+   {
+    "name": "disabledProgressBackground",
+    "value": {
+     "light": "#00000008",
+     "dark": "#ffffff33"
+    },
+    "usage": "Disabled linear progress bar track (COUI `coui_progressbar_background_color_disabled`)."
+   },
+   {
+    "name": "disabledSliderThumb",
+    "value": {
+     "light": "#ffffff8a",
+     "dark": "#ffffff29"
+    },
+    "usage": "Thumb and on-progress key points of a disabled Slider (COUI `coui_seekbar_thumb_disable_color`)."
+   },
+   {
+    "name": "disabledSliderKeyPoint",
+    "value": {
+     "light": "#00000042",
+     "dark": "#ffffff29"
+    },
+    "usage": "Off-progress key points of a disabled Slider (COUI `coui_seekbar_inactive_mark_disable_color`)."
+   },
+   {
+    "name": "sliderThumbShadow",
+    "value": {
+     "light": "#0000001a",
+     "dark": "#00000040"
+    },
+    "usage": "Slider thumb shadow (COUI `coui_seekbar_thumb_shadow_color`)."
+   },
+   {
+    "name": "disabledTextFieldBorder",
+    "value": {
+     "light": "#00000019",
+     "dark": "#ffffff19"
+    },
+    "usage": "Border / underline of a disabled TextField (COUI `coui_textinput_stroke_color_disabled`)."
+   },
+   {
+    "name": "quarternaryNeutral",
+    "value": {
+     "light": "#00000014",
+     "dark": "#ffffff26"
+    },
+    "usage": "Faintest neutral, e.g. disabled Checkbox / RadioButton rings (COUI `couiColorQuarternaryNeutral`)."
+   },
+   {
+    "name": "container8",
+    "value": {
+     "light": "#00000014",
+     "dark": "#ffffff1a"
+    },
+    "usage": "Fond translucide du Chip non sélectionné."
+   },
+   {
+    "name": "disabledChipText",
+    "value": {
+     "light": "#00000042",
+     "dark": "#ffffff29"
+    },
+    "usage": "Label of a disabled unselected Chip (COUI `chip_unchecked_text_disable_color`)."
+   },
+   {
+    "name": "focusOutline",
+    "value": {
+     "light": "#0080ff66",
+     "dark": "#5c9dff66"
+    },
+    "usage": "Contour de focus clavier (Chip, ChipTab) : trait de 3 dp."
+   },
+   {
+    "name": "primaryText",
+    "value": {
+     "light": "#0080ff",
+     "dark": "#5c9dff"
+    },
+    "usage": "`couiColorPrimaryText` (also `couiColorOnSecondary`)."
+   },
+   {
+    "name": "labelTheme",
+    "value": {
+     "light": "#0080ff",
+     "dark": "#1a8cff"
+    },
+    "usage": "`couiColorLabelTheme`."
+   },
+   {
+    "name": "link",
+    "value": {
+     "light": "#0080ff",
+     "dark": "#1a8cff"
+    },
+    "usage": "Liens textuels (`LinkText`)."
+   },
+   {
+    "name": "disable",
+    "value": {
+     "light": "#0080ff4d",
+     "dark": "#1a8cff4d"
+    },
+    "usage": "Remplissage `primary` désactivé (bouton principal, Switch coché désactivé)."
+   },
+   {
+    "name": "containerTheme",
+    "value": {
+     "light": "#0080ff",
+     "dark": "#1a8cff"
+    },
+    "usage": "`couiColorContainerTheme`."
+   },
+   {
+    "name": "containerThemeHalftone",
+    "value": {
+     "light": "#0080ff26",
+     "dark": "#1a8cff40"
+    },
+    "usage": "`couiColorContainerThemeHalftone`."
+   },
+   {
+    "name": "textColorHighlight",
+    "value": {
+     "light": "#0080ff26",
+     "dark": "#1a8cff40"
+    },
+    "usage": "`android:textColorHighlight` (`?couiColorSecondary`)."
+   },
+   {
+    "name": "errorDisabled",
+    "value": {
+     "light": "#db382c4d",
+     "dark": "#ff6c614d"
+    },
+    "usage": "`couiColorErrorDisabled`."
+   },
+   {
+    "name": "errorTextBg",
+    "value": {
+     "light": "#e82a184d",
+     "dark": "#ea3939"
+    },
+    "usage": "`couiColorErrorTextBg`."
+   },
+   {
+    "name": "success",
+    "value": {
+     "light": "#00bd13",
+     "dark": "#24b232"
+    },
+    "usage": "Succès."
+   },
+   {
+    "name": "tips",
+    "value": {
+     "light": "#0080ff",
+     "dark": "#1a8cff"
+    },
+    "usage": "`couiColorTips`."
+   },
+   {
+    "name": "additional",
+    "value": {
+     "light": "#0080ff",
+     "dark": "#1a8cff"
+    },
+    "usage": "`couiColorAdditional`."
+   },
+   {
+    "name": "assist",
+    "value": {
+     "light": "#5c93e5",
+     "dark": "#5c93e5"
+    },
+    "usage": "`couiColorAssist`."
+   },
+   {
+    "name": "background",
+    "value": {
+     "light": "#ffffff",
+     "dark": "#000000"
+    },
+    "usage": "Fond de page sans cartes (écran plein, contenu direct)."
+   },
+   {
+    "name": "surface",
+    "value": {
+     "light": "#ffffff",
+     "dark": "#1e1e1e"
+    },
+    "usage": "Panneaux flottants : dialogue, bottom sheet, popup."
+   },
+   {
+    "name": "backgroundElevated",
+    "value": {
+     "light": "#ffffff",
+     "dark": "#1e1e1e"
+    },
+    "usage": "`couiColorBackgroundElevated`."
+   },
+   {
+    "name": "backgroundElevatedWithCard",
+    "value": {
+     "light": "#f0f1f2",
+     "dark": "#1e1e1e"
+    },
+    "usage": "`couiColorBackgroundElevatedWithCard`."
+   },
+   {
+    "name": "backgroundWithCard",
+    "value": {
+     "light": "#f0f1f2",
+     "dark": "#000000"
+    },
+    "usage": "Fond des pages à cartes (Scaffold) : gris clair #F0F1F2 / noir. Les cartes `card` blanches reposent dessus."
+   },
+   {
+    "name": "surfaceTop",
+    "value": {
+     "light": "#ffffff",
+     "dark": "#333333"
+    },
+    "usage": "`couiColorSurfaceTop`."
+   },
+   {
+    "name": "surfaceWithCard",
+    "value": {
+     "light": "#f0f1f2",
+     "dark": "#1e1e1e"
+    },
+    "usage": "`couiColorSurfaceWithCard`."
+   },
+   {
+    "name": "bar",
+    "value": {
+     "light": "#fafafa",
+     "dark": "#1e1e1e"
+    },
+    "usage": "Barres : barre de recherche, barre de navigation basse, barre flottante."
+   },
+   {
+    "name": "bottomBar",
+    "value": {
+     "light": "#fafafa",
+     "dark": "#1e1e1e"
+    },
+    "usage": "Barre d'outils basse."
+   },
+   {
+    "name": "card",
+    "value": {
+     "light": "#ffffff",
+     "dark": "#ffffff1a"
+    },
+    "usage": "Remplissage des cartes et des groupes de liste (`CardListGroup`) posés sur `backgroundWithCard`."
+   },
+   {
+    "name": "cardBackground",
+    "value": {
+     "light": "#ffffff",
+     "dark": "#ffffff1a"
+    },
+    "usage": "Remplissage par défaut du composant `Card`."
+   },
+   {
+    "name": "cardPressed",
+    "value": {
+     "light": "#e6e6e6",
+     "dark": "#ffffff33"
+    },
+    "usage": "Carte pressée (teinte d'état d'une carte cliquable)."
+   },
+   {
+    "name": "labelPrimary",
+    "value": {
+     "light": "#000000e6",
+     "dark": "#ffffffe6"
+    },
+    "usage": "Texte principal (titres, titres de ligne, libellés de bouton neutre) sur `background`, `backgroundWithCard`, `card`, `surface`."
+   },
+   {
+    "name": "labelPrimaryVariant",
+    "value": {
+     "light": "#000000b8",
+     "dark": "#ffffffb8"
+    },
+    "usage": "Texte principal atténué."
+   },
+   {
+    "name": "labelSecondary",
+    "value": {
+     "light": "#0000008a",
+     "dark": "#ffffff8a"
+    },
+    "usage": "Texte secondaire : résumés de ligne, en-têtes de section (`SmallTitle`), libellés de champ, icônes de recherche."
+   },
+   {
+    "name": "labelSecondaryVariant",
+    "value": {
+     "light": "#00000066",
+     "dark": "#ffffff66"
+    },
+    "usage": "Texte secondaire plus discret."
+   },
+   {
+    "name": "labelTertiary",
+    "value": {
+     "light": "#00000042",
+     "dark": "#ffffff4d"
+    },
+    "usage": "Texte tertiaire et indices : chevron de ligne, compteur de champ, anneau de Checkbox/Radio non coché, points du PageIndicator."
+   },
+   {
+    "name": "labelQuaternary",
+    "value": {
+     "light": "#00000014",
+     "dark": "#ffffff26"
+    },
+    "usage": "Trait ou texte le plus faible."
+   },
+   {
+    "name": "labelOnColor",
+    "value": {
+     "light": "#ffffff",
+     "dark": "#ffffff"
+    },
+    "usage": "Texte toujours blanc posé sur une couleur pleine."
+   },
+   {
+    "name": "disabledNeutral",
+    "value": {
+     "light": "#00000042",
+     "dark": "#ffffff4d"
+    },
+    "usage": "`couiColorDisabledNeutral`."
+   },
+   {
+    "name": "hintNeutral",
+    "value": {
+     "light": "#00000042",
+     "dark": "#ffffff4d"
+    },
+    "usage": "`couiColorHintNeutral`."
+   },
+   {
+    "name": "container4",
+    "value": {
+     "light": "#0000000a",
+     "dark": "#ffffff1a"
+    },
+    "usage": "Fond très léger : TopTips, ChipTab non sélectionné."
+   },
+   {
+    "name": "container12",
+    "value": {
+     "light": "#0000001f",
+     "dark": "#ffffff33"
+    },
+    "usage": "`couiColorContainer12`."
+   },
+   {
+    "name": "container16",
+    "value": {
+     "light": "#00000029",
+     "dark": "#ffffff40"
+    },
+    "usage": "`couiColorContainer16`."
+   },
+   {
+    "name": "containerSolid",
+    "value": {
+     "light": "#ebebeb",
+     "dark": "#262626"
+    },
+    "usage": "`couiColorContainerSolid`."
+   },
+   {
+    "name": "fillSolid",
+    "value": {
+     "light": "#ebebeb",
+     "dark": "#262626"
+    },
+    "usage": "`couiColorFillSolid`."
+   },
+   {
+    "name": "fillThin",
+    "value": {
+     "light": "#0000000a",
+     "dark": "#ffffff14"
+    },
+    "usage": "`couiColorFillThin`."
+   },
+   {
+    "name": "controls",
+    "value": {
+     "light": "#00000029",
+     "dark": "#ffffff40"
+    },
+    "usage": "`couiColorControls`."
+   },
+   {
+    "name": "divider",
+    "value": {
+     "light": "#0000001f",
+     "dark": "#ffffff33"
+    },
+    "usage": "Séparateurs 0,33 dp entre lignes, contour de champ non focalisé, piste de progression linéaire."
+   },
+   {
+    "name": "mask",
+    "value": {
+     "light": "#00000033",
+     "dark": "#00000099"
+    },
+    "usage": "Voile derrière dialogues et bottom sheets."
+   },
+   {
+    "name": "pressBackground",
+    "value": {
+     "light": "#00000014",
+     "dark": "#ffffff26"
+    },
+    "usage": "`couiColorPressBackground`."
+   },
+   {
+    "name": "ripplePressBackground",
+    "value": {
+     "light": "#b4b4b499",
+     "dark": "#ffffff80"
+    },
+    "usage": "`couiColorRipplePressBackground`."
+   },
+   {
+    "name": "red",
+    "value": {
+     "light": "#eb3b2f",
+     "dark": "#eb493d"
+    },
+    "usage": "Teinte red de la palette fixe (pastilles, icônes colorées, illustrations). Monet ne la modifie pas."
+   },
+   {
+    "name": "redVariant",
+    "value": {
+     "light": "#e56e65",
+     "dark": "#cc615a"
+    },
+    "usage": "Variante désaturée de `red`."
+   },
+   {
+    "name": "containerRed",
+    "value": {
+     "light": "#eedadc",
+     "dark": "#3a3030"
+    },
+    "usage": "Fond teinté opaque associé à `red` (conteneur d'icône, tag)."
+   },
+   {
+    "name": "orange",
+    "value": {
+     "light": "#ff7700",
+     "dark": "#f08222"
+    },
+    "usage": "Teinte orange de la palette fixe (pastilles, icônes colorées, illustrations). Monet ne la modifie pas."
+   },
+   {
+    "name": "orangeVariant",
+    "value": {
+     "light": "#e58f45",
+     "dark": "#cc7f3d"
+    },
+    "usage": "Variante désaturée de `orange`."
+   },
+   {
+    "name": "containerOrange",
+    "value": {
+     "light": "#fae7d6",
+     "dark": "#39332c"
+    },
+    "usage": "Fond teinté opaque associé à `orange` (conteneur d'icône, tag)."
+   },
+   {
+    "name": "yellow",
+    "value": {
+     "light": "#ffb200",
+     "dark": "#e5a100"
+    },
+    "usage": "Teinte yellow de la palette fixe (pastilles, icônes colorées, illustrations). Monet ne la modifie pas."
+   },
+   {
+    "name": "yellowVariant",
+    "value": {
+     "light": "#e5af2e",
+     "dark": "#c29427"
+    },
+    "usage": "Variante désaturée de `yellow`."
+   },
+   {
+    "name": "containerYellow",
+    "value": {
+     "light": "#f6e7c6",
+     "dark": "#373530"
+    },
+    "usage": "Fond teinté opaque associé à `yellow` (conteneur d'icône, tag)."
+   },
+   {
+    "name": "green",
+    "value": {
+     "light": "#00bd13",
+     "dark": "#24b232"
+    },
+    "usage": "Teinte green de la palette fixe (pastilles, icônes colorées, illustrations). Monet ne la modifie pas."
+   },
+   {
+    "name": "greenVariant",
+    "value": {
+     "light": "#4bbd57",
+     "dark": "#43a84e"
+    },
+    "usage": "Variante désaturée de `green`."
+   },
+   {
+    "name": "containerGreen",
+    "value": {
+     "light": "#badeca",
+     "dark": "#353e36"
+    },
+    "usage": "Fond teinté opaque associé à `green` (conteneur d'icône, tag)."
+   },
+   {
+    "name": "mint",
+    "value": {
+     "light": "#00cc88",
+     "dark": "#1ab883"
+    },
+    "usage": "Teinte mint de la palette fixe (pastilles, icônes colorées, illustrations). Monet ne la modifie pas."
+   },
+   {
+    "name": "mintVariant",
+    "value": {
+     "light": "#39bd91",
+     "dark": "#32a881"
+    },
+    "usage": "Variante désaturée de `mint`."
+   },
+   {
+    "name": "containerMint",
+    "value": {
+     "light": "#badedb",
+     "dark": "#394342"
+    },
+    "usage": "Fond teinté opaque associé à `mint` (conteneur d'icône, tag)."
+   },
+   {
+    "name": "cyan",
+    "value": {
+     "light": "#1dbacc",
+     "dark": "#25a9b8"
+    },
+    "usage": "Teinte cyan de la palette fixe (pastilles, icônes colorées, illustrations). Monet ne la modifie pas."
+   },
+   {
+    "name": "cyanVariant",
+    "value": {
+     "light": "#39afbd",
+     "dark": "#329da8"
+    },
+    "usage": "Variante désaturée de `cyan`."
+   },
+   {
+    "name": "containerCyan",
+    "value": {
+     "light": "#bedadd",
+     "dark": "#343e3d"
+    },
+    "usage": "Fond teinté opaque associé à `cyan` (conteneur d'icône, tag)."
+   },
+   {
+    "name": "azure",
+    "value": {
+     "light": "#00a1ff",
+     "dark": "#209de5"
+    },
+    "usage": "Teinte azure de la palette fixe (pastilles, icônes colorées, illustrations). Monet ne la modifie pas."
+   },
+   {
+    "name": "azureVariant",
+    "value": {
+     "light": "#45abe5",
+     "dark": "#3d98cc"
+    },
+    "usage": "Variante désaturée de `azure`."
+   },
+   {
+    "name": "containerAzure",
+    "value": {
+     "light": "#cee5eb",
+     "dark": "#373f42"
+    },
+    "usage": "Fond teinté opaque associé à `azure` (conteneur d'icône, tag)."
+   },
+   {
+    "name": "blue",
+    "value": {
+     "light": "#0080ff",
+     "dark": "#1a8cff"
+    },
+    "usage": "Teinte blue de la palette fixe (pastilles, icônes colorées, illustrations). Monet ne la modifie pas."
+   },
+   {
+    "name": "blueVariant",
+    "value": {
+     "light": "#5c93e5",
+     "dark": "#5c93e5"
+    },
+    "usage": "Variante désaturée de `blue`."
+   },
+   {
+    "name": "containerBlue",
+    "value": {
+     "light": "#c9dae4",
+     "dark": "#323739"
+    },
+    "usage": "Fond teinté opaque associé à `blue` (conteneur d'icône, tag)."
+   },
+   {
+    "name": "violet",
+    "value": {
+     "light": "#5a47ff",
+     "dark": "#7161ff"
+    },
+    "usage": "Teinte violet de la palette fixe (pastilles, icônes colorées, illustrations). Monet ne la modifie pas."
+   },
+   {
+    "name": "violetVariant",
+    "value": {
+     "light": "#7e73e5",
+     "dark": "#7e73e5"
+    },
+    "usage": "Variante désaturée de `violet`."
+   },
+   {
+    "name": "containerViolet",
+    "value": {
+     "light": "#d6d5ee",
+     "dark": "#3a3a43"
+    },
+    "usage": "Fond teinté opaque associé à `violet` (conteneur d'icône, tag)."
+   },
+   {
+    "name": "purple",
+    "value": {
+     "light": "#a723ff",
+     "dark": "#ac33ff"
+    },
+    "usage": "Teinte purple de la palette fixe (pastilles, icônes colorées, illustrations). Monet ne la modifie pas."
+   },
+   {
+    "name": "purpleVariant",
+    "value": {
+     "light": "#b873e5",
+     "dark": "#a466cc"
+    },
+    "usage": "Variante désaturée de `purple`."
+   },
+   {
+    "name": "containerPurple",
+    "value": {
+     "light": "#e0d6eb",
+     "dark": "#3a3540"
+    },
+    "usage": "Fond teinté opaque associé à `purple` (conteneur d'icône, tag)."
+   },
+   {
+    "name": "neutralButton",
+    "value": {
+     "light": "#0000000f",
+     "dark": "#ffffff4c"
+    },
+    "usage": "Fond du FAB secondaire (neutre)."
+   },
+   {
+    "name": "segmentTrack",
+    "value": {
+     "light": "#0000000f",
+     "dark": "#ffffff1f"
+    },
+    "usage": "Piste du SegmentButton (COUISegmentButtonLayout, constante composant)."
+   },
+   {
+    "name": "segmentIndicator",
+    "value": {
+     "light": "#ffffffb2",
+     "dark": "#ffffff33"
+    },
+    "usage": "Curseur du SegmentButton."
+   },
+   {
+    "name": "tabTrack",
+    "value": {
+     "light": "#0000000f",
+     "dark": "#ffffff19"
+    },
+    "usage": "Rail 2 dp sous les onglets TabRow."
+   },
+   {
+    "name": "chipTabStroke",
+    "value": {
+     "light": "#0000000a",
+     "dark": "#ffffff0a"
+    },
+    "usage": "Contour 0,6 dp du ChipTab sélectionné."
+   },
+   {
+    "name": "floatingBarFill",
+    "value": {
+     "light": "#f5f5f5d9",
+     "dark": "#2a2a2ad9"
+    },
+    "usage": "Remplissage de la barre de navigation flottante : approximation CSS du matériau flou COUI (calques #B3666666 color-dodge + #99F5F5F5 luminosity ; sombre #80666666 + #B3262626)."
+   }
+  ]
+ },
+ "type": {
+  "fonts": [],
+  "families": {
+   "sans": "\"OPPO Sans 4.0\", \"OPlusSans 3.0\", \"OPPO Sans\", Roboto, system-ui, sans-serif"
+  },
+  "groups": [
+   {
+    "name": "Display",
+    "family": "sans",
+    "styles": [
+     {
+      "name": "displayL",
+      "fontSize": "72px",
+      "lineHeight": "96.05px",
+      "fontWeight": 500,
+      "usage": "Chiffre ou titre héroïque (72)."
+     },
+     {
+      "name": "display",
+      "fontSize": "48px",
+      "lineHeight": "56.25px",
+      "fontWeight": 500,
+      "usage": "Grand chiffre (48)."
+     },
+     {
+      "name": "displayM",
+      "fontSize": "36px",
+      "lineHeight": "50.25px",
+      "fontWeight": 600,
+      "usage": "Titre d'écran d'accueil (36)."
+     },
+     {
+      "name": "displayS",
+      "fontSize": "32px",
+      "lineHeight": "46.21px",
+      "fontWeight": 600,
+      "usage": "Grand titre d'AppBar déplié (32 sp, cf. TopAppBar)."
+     },
+     {
+      "name": "displayXS",
+      "fontSize": "24px",
+      "lineHeight": "33.75px",
+      "fontWeight": 600,
+      "usage": "Titre d'AppBar replié (24)."
+     }
+    ]
+   },
+   {
+    "name": "Headline",
+    "family": "sans",
+    "styles": [
+     {
+      "name": "headlineL",
+      "fontSize": "28px",
+      "lineHeight": "40.18px",
+      "fontWeight": 500,
+      "usage": "Titre de section éditoriale (28)."
+     },
+     {
+      "name": "headlineM",
+      "fontSize": "20px",
+      "lineHeight": "27.73px",
+      "fontWeight": 500,
+      "usage": "Titre de carte importante (20)."
+     },
+     {
+      "name": "headlineS",
+      "fontSize": "18px",
+      "lineHeight": "24.11px",
+      "fontWeight": 550,
+      "usage": "Titre de dialogue et de bottom sheet (18, graisse 550)."
+     },
+     {
+      "name": "headlineXS",
+      "fontSize": "16px",
+      "lineHeight": "21.71px",
+      "fontWeight": 500,
+      "usage": "Titre de ligne de liste, titre d'EmptyState et de TopTips (16 medium)."
+     }
+    ]
+   },
+   {
+    "name": "Body",
+    "family": "sans",
+    "styles": [
+     {
+      "name": "bodyXL",
+      "fontSize": "16px",
+      "lineHeight": "21.71px",
+      "fontWeight": 400,
+      "usage": "Texte saisi dans TextField, libellé d'option de popup (16)."
+     },
+     {
+      "name": "bodyL",
+      "fontSize": "15px",
+      "lineHeight": "19.9px",
+      "fontWeight": 400,
+      "usage": "Texte courant long, champ de recherche (15)."
+     },
+     {
+      "name": "bodyM",
+      "fontSize": "14px",
+      "lineHeight": "20.09px",
+      "fontWeight": 400,
+      "usage": "Texte courant, Chip, Snackbar (14)."
+     },
+     {
+      "name": "bodyS",
+      "fontSize": "13px",
+      "lineHeight": "17.88px",
+      "fontWeight": 400,
+      "usage": "Résumé sous un titre de ligne, message de dialogue, TopTips (13)."
+     },
+     {
+      "name": "bodyXS",
+      "fontSize": "12px",
+      "lineHeight": "16.07px",
+      "fontWeight": 400,
+      "usage": "En-tête de section SmallTitle (en 500), sous-titre d'EmptyState (12)."
+     }
+    ]
+   },
+   {
+    "name": "Button",
+    "family": "sans",
+    "styles": [
+     {
+      "name": "buttonL",
+      "fontSize": "16px",
+      "lineHeight": "21.71px",
+      "fontWeight": 500,
+      "usage": "Libellé de bouton (16 medium) ; bouton de barre de dialogue."
+     },
+     {
+      "name": "buttonM",
+      "fontSize": "14px",
+      "lineHeight": "20.09px",
+      "fontWeight": 500,
+      "usage": "Bouton compact, SegmentButton, onglets ChipTab, action d'EmptyState (14 medium)."
+     },
+     {
+      "name": "buttonS",
+      "fontSize": "12px",
+      "lineHeight": "16.07px",
+      "fontWeight": 500,
+      "usage": "Petit bouton (12 medium)."
+     }
+    ]
+   },
+   {
+    "name": "Small",
+    "family": "sans",
+    "styles": [
+     {
+      "name": "description",
+      "fontSize": "12px",
+      "lineHeight": "16.07px",
+      "fontWeight": 500,
+      "usage": "Description courte accentuée (12 medium)."
+     },
+     {
+      "name": "caption",
+      "fontSize": "10px",
+      "lineHeight": "14.06px",
+      "fontWeight": 400,
+      "usage": "Légende, libellé de NavigationBar (10)."
+     },
+     {
+      "name": "tag",
+      "fontSize": "10px",
+      "lineHeight": "14.06px",
+      "fontWeight": 500,
+      "usage": "TagView, badge (10 medium)."
+     }
+    ]
+   }
+  ]
+ },
+ "spacing": {
+  "tokens": [
+   {
+    "name": "space-2",
+    "value": "2px",
+    "usage": "Écart minimal (ChipTab/SegmentButton mini, badge)."
+   },
+   {
+    "name": "space-4",
+    "value": "4px",
+    "usage": "Écart icône–texte (Chip), padding de SegmentButton, gap toolbar."
+   },
+   {
+    "name": "space-8",
+    "value": "8px",
+    "usage": "Gutter de grille compacte, padding vertical de SmallTitle, écart entre Chips."
+   },
+   {
+    "name": "space-10",
+    "value": "10px",
+    "usage": "Padding vertical d'une ligne de liste (BasicComponent)."
+   },
+   {
+    "name": "space-12",
+    "value": "12px",
+    "usage": "Padding horizontal des boutons et chips ; gutter grille étendue."
+   },
+   {
+    "name": "space-16",
+    "value": "16px",
+    "usage": "Marge latérale de page compacte (cartes), padding horizontal des lignes, padding de Snackbar."
+   },
+   {
+    "name": "space-24",
+    "value": "24px",
+    "usage": "Marge de page moyenne ; padding intérieur des dialogues ; titres d'AppBar."
+   },
+   {
+    "name": "space-32",
+    "value": "32px",
+    "usage": "Retrait des en-têtes de section (16 page + 16 carte)."
+   },
+   {
+    "name": "space-40",
+    "value": "40px",
+    "usage": "Marge de page étendue (≥ 840 dp)."
+   }
+  ]
+ },
+ "radius": {
+  "tokens": [
+   {
+    "name": "radius-xs",
+    "value": "4px",
+    "usage": "TagView, petits éléments."
+   },
+   {
+    "name": "radius-s",
+    "value": "8px",
+    "usage": "Indicateur de TabRow, médias de Tooltip."
+   },
+   {
+    "name": "radius-m",
+    "value": "12px",
+    "usage": "Base M."
+   },
+   {
+    "name": "radius-l",
+    "value": "16px",
+    "usage": "Snackbar, Chip (32 dp de haut ⇒ capsule)."
+   },
+   {
+    "name": "radius-xl",
+    "value": "20px",
+    "usage": "Base XL ; repli des cartes quand le lissage squircle est désactivé."
+   },
+   {
+    "name": "radius-xxl",
+    "value": "24px",
+    "usage": "Base XXL."
+   },
+   {
+    "name": "radius-xxxl",
+    "value": "28px",
+    "usage": "Popup de liste, TopTips multi-ligne."
+   },
+   {
+    "name": "radius-xxxxl",
+    "value": "32px",
+    "usage": "Base XXXXL ; repli des dialogues et bottom sheets."
+   },
+   {
+    "name": "radius-normal-xl",
+    "value": "24px",
+    "usage": "Cartes et CardListGroup : 24 dp, squircle poids 2,5 (COUI 17)."
+   },
+   {
+    "name": "radius-large-xxxxl",
+    "value": "45px",
+    "usage": "Dialogue et bottom sheet : 45 dp, squircle poids 3."
+   },
+   {
+    "name": "radius-textfield",
+    "value": "10px",
+    "usage": "TextField mode Rectangle."
+   },
+   {
+    "name": "radius-tooltip",
+    "value": "17px",
+    "usage": "Tooltip."
+   },
+   {
+    "name": "radius-full",
+    "value": "9999px",
+    "usage": "Capsule : boutons, Switch, Slider, SearchBar, barre de navigation flottante (COUI Full = 72 dp, rayon = moitié de la hauteur)."
+   }
+  ]
+ },
+ "shadow": {
+  "tokens": [
+   {
+    "name": "shadow-switch-thumb",
+    "value": "0 1.14px 2.29px #00000019",
+    "usage": "Pouce du Switch."
+   },
+   {
+    "name": "shadow-slider-thumb",
+    "value": {
+     "light": "0 2px 4px #0000001a",
+     "dark": "0 2px 4px #00000040"
+    },
+    "usage": "Pouce du Slider (`sliderThumbShadow`)."
+   },
+   {
+    "name": "shadow-snackbar",
+    "value": {
+     "light": "0 4px 26px #00000024",
+     "dark": "0 4px 26px #00000066"
+    },
+    "usage": "Snackbar (rayon 26 dp, alpha 0,14 / 0,40)."
+   },
+   {
+    "name": "shadow-tooltip",
+    "value": {
+     "light": "0 3.33px 26.66px #00000023",
+     "dark": "0 3.33px 26.66px #0000006e"
+    },
+    "usage": "Tooltip (alpha 0,137 / 0,43)."
+   },
+   {
+    "name": "shadow-popup",
+    "value": {
+     "light": "0 12px 48px #00000018, 0 0 4px #0000000a",
+     "dark": "0 8px 36px #00000096"
+    },
+    "usage": "Popup de liste et menus. Approximation CSS du modèle de lumière physique COUI (élévation 180 dp, alpha 48/255 ; sombre 36 dp, 150/255)."
+   },
+   {
+    "name": "shadow-floating-bar",
+    "value": {
+     "light": "0 8px 24px #0000001f",
+     "dark": "0 8px 24px #00000066"
+    },
+    "usage": "Barre de navigation flottante et FAB (élévation 24/60 dp). Approximation CSS."
+   },
+   {
+    "name": "shadow-chiptab",
+    "value": {
+     "light": "0 2px 8px #00000012",
+     "dark": "0 2px 8px #00000045"
+    },
+    "usage": "ChipTab sélectionné (approximation du modèle de lumière, alpha 34/255 ; sombre 68/255)."
+   },
+   {
+    "name": "shadow-segment-indicator",
+    "value": {
+     "light": "0 2px 1px #0000000d",
+     "dark": "0 2px 1px #00000014"
+    },
+    "usage": "Curseur blanc du SegmentButton."
+   }
+  ]
+ },
+ "easing": {
+  "note": "Courbes COUI (anim/COUIEasing.kt). Les ressorts sont détaillés dans la section Mouvement.",
+  "tokens": [
+   {
+    "name": "ease-move",
+    "value": "cubic-bezier(0.3, 0, 0.1, 1)",
+    "usage": "COUIMoveEaseEasing : entrées, déplacements, dialogue qui apparaît, coche de Checkbox/Radio, pagination."
+   },
+   {
+    "name": "ease-standard",
+    "value": "cubic-bezier(0.33, 0, 0.67, 1)",
+    "usage": "COUIEaseEasing : fondus, couleurs, indicateur de TabRow, sortie de Radio."
+   },
+   {
+    "name": "ease-in",
+    "value": "cubic-bezier(0, 0, 0.1, 1)",
+    "usage": "COUIInEaseEasing : apparition de la barre de navigation, champs."
+   },
+   {
+    "name": "ease-out",
+    "value": "cubic-bezier(0.3, 0, 1, 1)",
+    "usage": "COUIOutEaseEasing : sortie de dialogue, masquage de la barre de navigation."
+   },
+   {
+    "name": "ease-sin-out",
+    "value": "cubic-bezier(0.39, 0.575, 0.565, 1)",
+    "usage": "SinOutEasing (sin(πt/2)) : voile des popups. Approximation bézier."
+   },
+   {
+    "name": "ease-spring-critical",
+    "value": "cubic-bezier(0.25, 1, 0.5, 1)",
+    "usage": "Approximation CSS d'un ressort amorti critique (dampingRatio 1) : pression, calques d'état, Snackbar."
+   }
+  ]
+ },
+ "duration": {
+  "note": "Durées des tweens COUI et équivalents CSS des ressorts.",
+  "tokens": [
+   {
+    "name": "duration-press",
+    "value": "300ms",
+    "usage": "Ressort de pression : dampingRatio 1, raideur 438,65 (réponse 0,3 s). Calques press/hover, teinte des boutons et cartes."
+   },
+   {
+    "name": "duration-dialog-enter",
+    "value": "250ms",
+    "usage": "Entrée de dialogue (ease-move) ; sortie bas 250 ms."
+   },
+   {
+    "name": "duration-dialog-exit",
+    "value": "150ms",
+    "usage": "Sortie de dialogue centré (ease-out)."
+   },
+   {
+    "name": "duration-popup-dim-in",
+    "value": "300ms",
+    "usage": "Voile de popup à l'ouverture (ease-sin-out)."
+   },
+   {
+    "name": "duration-popup-dim-out",
+    "value": "150ms",
+    "usage": "Voile de popup à la fermeture."
+   },
+   {
+    "name": "duration-textfield-line",
+    "value": "250ms",
+    "usage": "Trait de focus du TextField (mode Line)."
+   },
+   {
+    "name": "duration-textfield-label",
+    "value": "200ms",
+    "usage": "Libellé flottant du TextField."
+   },
+   {
+    "name": "duration-text-color",
+    "value": "300ms",
+    "usage": "Couleur du texte de SegmentButton et TabRow."
+   },
+   {
+    "name": "duration-tab-indicator",
+    "value": "150ms",
+    "usage": "Indicateur de TabRow : 150 ms + 50 ms par onglet franchi, plafonné à 300 ms."
+   },
+   {
+    "name": "duration-checkbox-pop",
+    "value": "150ms",
+    "usage": "Demi-durée du rebond de Checkbox (échelle 1,08)."
+   },
+   {
+    "name": "duration-fab",
+    "value": "350ms",
+    "usage": "Apparition / masquage du FAB."
+   },
+   {
+    "name": "duration-badge-width",
+    "value": "517ms",
+    "usage": "Changement de largeur d'un badge numérique."
+   }
+  ]
+ },
+ "meta": {
+  "source": "github",
+  "repo": "suqi8/coui",
+  "ref": "main@df5883f",
+  "version": "coui 2.0.0 (ColorOS 17 / COUI 17)",
+  "paths": {
+   "tokens": [
+    "coui-ui/src/commonMain/kotlin/io/github/suqi8/coui/kmp/theme/Colors.kt",
+    "coui-ui/src/commonMain/kotlin/io/github/suqi8/coui/kmp/theme/TextStyles.kt",
+    "coui-ui/src/commonMain/kotlin/io/github/suqi8/coui/kmp/theme/COUIRoundCorner.kt",
+    "coui-ui/src/commonMain/kotlin/io/github/suqi8/coui/kmp/anim/COUIEasing.kt"
+   ],
+   "assets": [
+    "coui-icons/src/commonMain",
+    "coui-ui/src/commonMain/kotlin/io/github/suqi8/coui/kmp/icon/basic"
+   ]
+  },
+  "synced": "2026-11-19"
+ }
+}

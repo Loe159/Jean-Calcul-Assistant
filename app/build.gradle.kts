@@ -187,6 +187,9 @@ dependencies {
     implementation(libs.coui.preference)
     implementation(libs.coui.nav)
     implementation(libs.coui.icons)
+    // @Preview functions, rendered headlessly by `android preview render` (docs/agents/PREVIEWS.md).
+    implementation(libs.compose.ui.tooling.preview)
+    debugImplementation(libs.compose.ui.tooling)
     implementation(libs.material.icons.extended)
     implementation(libs.androidx.navigationevent)
     implementation(libs.androidx.lifecycle.runtime.compose)
