@@ -7,6 +7,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
 import io.github.mangi.eta.food.CookingStatus
+import io.github.mangi.eta.food.CuisineOperationKind
 import io.github.mangi.eta.food.StockConsumptionStatus
 import io.github.mangi.eta.food.TimerState
 
@@ -36,6 +37,36 @@ internal data class FoodAvailabilityEntity(
 
 @Entity(tableName = "food_pantry")
 internal data class FoodPantryEntity(@PrimaryKey val owner: String, val json: String, val fetchedAt: Long)
+
+@Entity(tableName = "food_shopping")
+internal data class FoodShoppingEntity(@PrimaryKey val owner: String, val json: String, val fetchedAt: Long)
+
+@Entity(tableName = "food_meal_weeks", primaryKeys = ["owner", "weekStart"])
+internal data class FoodMealWeekEntity(val owner: String, val weekStart: String, val json: String, val fetchedAt: Long)
+
+@Entity(tableName = "food_brief_cards_v2", primaryKeys = ["owner", "kinds"])
+internal data class FoodBriefCardsV2Entity(
+    val owner: String, val kinds: String, val json: String, val cachedAt: Long, val validUntilEpochMs: Long,
+)
+
+@Entity(
+    tableName = "food_cuisine_operations",
+    indices = [Index(value = ["operationId"], unique = true), Index(value = ["owner", "sequence"])],
+)
+internal data class FoodCuisineOperationEntity(
+    val operationId: String,
+    val owner: String,
+    val kind: CuisineOperationKind,
+    val target: String?,
+    val bodyJson: String,
+    val projectionJson: String?,
+    val state: FoodOutboxState = FoodOutboxState.PENDING,
+    val attempts: Int = 0,
+    val resultJson: String? = null,
+    val lastError: String? = null,
+    val awaitingRefresh: Boolean = false,
+    @PrimaryKey(autoGenerate = true) val sequence: Long = 0,
+)
 
 @Entity(tableName = "cooking_sessions")
 internal data class CookingSessionEntity(

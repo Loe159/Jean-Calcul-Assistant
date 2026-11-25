@@ -71,3 +71,33 @@ internal val FOOD_MIGRATION_27_28 = Migration(27, 28) { db ->
     db.execSQL("ALTER TABLE cooking_sessions ADD COLUMN briefCardId TEXT")
     db.execSQL("ALTER TABLE food_outbox ADD COLUMN resultJson TEXT")
 }
+
+internal val FOOD_MIGRATION_28_29 = Migration(28, 29) { db ->
+    db.execSQL("""
+        CREATE TABLE food_shopping (
+            owner TEXT NOT NULL PRIMARY KEY, json TEXT NOT NULL, fetchedAt INTEGER NOT NULL
+        )
+    """)
+    db.execSQL("""
+        CREATE TABLE food_meal_weeks (
+            owner TEXT NOT NULL, weekStart TEXT NOT NULL, json TEXT NOT NULL, fetchedAt INTEGER NOT NULL,
+            PRIMARY KEY(owner, weekStart)
+        )
+    """)
+    db.execSQL("""
+        CREATE TABLE food_brief_cards_v2 (
+            owner TEXT NOT NULL, kinds TEXT NOT NULL, json TEXT NOT NULL, cachedAt INTEGER NOT NULL,
+            validUntilEpochMs INTEGER NOT NULL, PRIMARY KEY(owner, kinds)
+        )
+    """)
+    db.execSQL("""
+        CREATE TABLE food_cuisine_operations (
+            operationId TEXT NOT NULL, owner TEXT NOT NULL, kind TEXT NOT NULL, target TEXT,
+            bodyJson TEXT NOT NULL, projectionJson TEXT, state TEXT NOT NULL, attempts INTEGER NOT NULL,
+            resultJson TEXT, lastError TEXT, awaitingRefresh INTEGER NOT NULL,
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL
+        )
+    """)
+    db.execSQL("CREATE UNIQUE INDEX index_food_cuisine_operations_operationId ON food_cuisine_operations(operationId)")
+    db.execSQL("CREATE INDEX index_food_cuisine_operations_owner_sequence ON food_cuisine_operations(owner, sequence)")
+}

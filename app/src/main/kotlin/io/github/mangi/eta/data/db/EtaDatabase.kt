@@ -34,8 +34,12 @@ import androidx.room.migration.Migration
         CookingTimerEntity::class,
         FoodOutboxEntity::class,
         FoodBriefCardsEntity::class,
+        FoodShoppingEntity::class,
+        FoodMealWeekEntity::class,
+        FoodBriefCardsV2Entity::class,
+        FoodCuisineOperationEntity::class,
     ],
-    version = 28,
+    version = 29,
     exportSchema = false,
 )
 internal abstract class EtaDatabase : RoomDatabase() {
@@ -81,6 +85,7 @@ internal abstract class EtaDatabase : RoomDatabase() {
                         MIGRATION_25_26,
                         MIGRATION_26_27,
                         FOOD_MIGRATION_27_28,
+                        FOOD_MIGRATION_28_29,
                     )
                     .addCallback(object : Callback() {
                         override fun onCreate(db: androidx.sqlite.db.SupportSQLiteDatabase) { createTextChunkCleanup(db) }

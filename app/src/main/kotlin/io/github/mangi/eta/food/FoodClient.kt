@@ -23,6 +23,52 @@ internal class FoodClient(
     suspend fun consumePantryItem(productId: Long, request: PantryConsumeRequest): OperationResult =
         send("POST", "/pantry/items/$productId/consume", request)
 
+    suspend fun patchPantryEntry(entryId: Long, request: PantryEntryPatchRequest): PantryEntryResult =
+        writeCuisine(CuisineOperationKind.PANTRY_ENTRY_PATCH, entryId.toString(), request)
+
+    suspend fun shopping(): ShoppingResponse = get("/shopping")
+
+    suspend fun addShoppingItem(request: ShoppingAddRequest): ShoppingOperationResult =
+        writeCuisine(CuisineOperationKind.SHOPPING_ADD, null, request)
+
+    suspend fun patchShoppingItem(itemId: Long, request: ShoppingPatchRequest): ShoppingOperationResult =
+        writeCuisine(CuisineOperationKind.SHOPPING_PATCH, itemId.toString(), request)
+
+    suspend fun deleteShoppingItem(itemId: Long, request: ShoppingDeleteRequest): ShoppingOperationResult =
+        writeCuisine(CuisineOperationKind.SHOPPING_DELETE, itemId.toString(), request)
+
+    suspend fun addRecipeShoppingItems(recipeId: String, request: RecipeShoppingRequest): ShoppingOperationResult =
+        writeCuisine(CuisineOperationKind.RECIPE_SHOPPING, recipeId, request)
+
+    suspend fun undoShopping(request: ShoppingUndoRequest): ShoppingOperationResult =
+        writeCuisine(CuisineOperationKind.SHOPPING_UNDO, null, request)
+
+    suspend fun putAway(request: PutAwayRequest): ShoppingOperationResult =
+        send("POST", "/shopping/put-away", request)
+
+    suspend fun mealWeek(weekStart: String): MealWeek = get(weekPath(weekStart))
+
+    suspend fun putMealSlot(slot: MealSlotKey, request: PlanningPutRequest): PlanningWriteResult =
+        send("PUT", slotPath(slot), request)
+
+    suspend fun deleteMealSlot(slot: MealSlotKey, request: PlanningDeleteRequest): PlanningWriteResult =
+        send("DELETE", slotPath(slot), request)
+
+    suspend fun moveMealSlot(request: PlanningMoveRequest): PlanningWriteResult =
+        send("POST", "/planning/move", request)
+
+    suspend fun previewMealWeek(weekStart: String, request: GeneratePreviewRequest): GeneratePreviewResult =
+        send("POST", "${weekPath(weekStart)}/generate", request)
+
+    suspend fun applyMealWeek(weekStart: String, request: GenerateApplyRequest): PlanningWriteResult =
+        send("POST", "${weekPath(weekStart)}/generate", request)
+
+    suspend fun planningShoppingSummary(weekStart: String): ShoppingSummary =
+        get("${weekPath(weekStart)}/shopping-summary")
+
+    suspend fun addPlanningShoppingItems(weekStart: String, request: PlanningShoppingRequest): ShoppingOperationResult =
+        send("POST", "${weekPath(weekStart)}/shopping-items", request)
+
     suspend fun recipes(): RecipeListResponse = get("/recipes")
     suspend fun recipe(id: String): RecipeDetailResponse = get(recipePath(id))
     suspend fun createRecipe(request: CreateRecipeRequest): RecipeWriteResponse = send("POST", "/recipes", request)
@@ -65,8 +111,35 @@ internal class FoodClient(
 
     suspend fun briefCards(): BriefCardsResponse = get("/brief/cards")
 
+    suspend fun briefCardsV2(request: BriefCardsRequest): BriefCardsV2Response =
+        send("POST", "/brief/cards", request)
+
     suspend fun briefFeedback(request: BriefFeedbackRequest) {
         raw("POST", "/brief/feedback", FoodContract.json.encodeToString(request))
+    }
+
+    suspend fun replayCuisine(kind: CuisineOperationKind, target: String?, body: String): CuisineOperationResult =
+        when (kind) {
+            CuisineOperationKind.PANTRY_ENTRY_PATCH -> cuisineRequest<PantryEntryResult>(kind, target, body)
+            else -> cuisineRequest<ShoppingOperationResult>(kind, target, body)
+        }
+
+    private suspend inline fun <reified T : CuisineOperationResult, reified R> writeCuisine(
+        kind: CuisineOperationKind, target: String?, body: R,
+    ): T = cuisineRequest(kind, target, FoodContract.json.encodeToString(body))
+
+    private suspend inline fun <reified T : CuisineOperationResult> cuisineRequest(
+        kind: CuisineOperationKind, target: String?, body: String,
+    ): T {
+        val path = when (kind) {
+            CuisineOperationKind.SHOPPING_ADD -> "/shopping/items"
+            CuisineOperationKind.SHOPPING_PATCH, CuisineOperationKind.SHOPPING_DELETE ->
+                "/shopping/items/${segment(requireNotNull(target))}"
+            CuisineOperationKind.RECIPE_SHOPPING -> "${recipePath(requireNotNull(target))}/shopping-items"
+            CuisineOperationKind.SHOPPING_UNDO -> "/shopping/undo"
+            CuisineOperationKind.PANTRY_ENTRY_PATCH -> "/pantry/entries/${segment(requireNotNull(target))}"
+        }
+        return decode(kind.method, path, body)
     }
 
     private suspend inline fun <reified T : FoodResponse> get(path: String): T = decode("GET", path)
@@ -99,6 +172,8 @@ internal class FoodClient(
         fun completionPath(sessionId: String) = "$BASE_PATH/cooking-sessions/${segment(sessionId)}/complete"
 
         private fun recipePath(id: String) = "/recipes/${segment(id)}"
+        private fun weekPath(weekStart: String) = "/planning/weeks/${segment(weekStart)}"
+        private fun slotPath(slot: MealSlotKey) = "/planning/slots/${segment(slot.date)}/${segment(slot.meal.name)}"
 
         private fun segment(value: String): String {
             require(value.isNotBlank() && value != "." && value != "..")

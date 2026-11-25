@@ -1,0 +1,25 @@
+{
+  "operationId": "op_10000000-0000-4000-8000-000000000004",
+  "lines": [
+    {
+      "itemId": 20,
+      "expectedRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "quantity": {
+        "amount": 250,
+        "grocyQuId": 1
+      },
+      "locationId": 1,
+      "bestBeforeDate": null
+    },
+    {
+      "itemId": 21,
+      "expectedRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "quantity": {
+        "amount": 1,
+        "grocyQuId": 3
+      },
+      "locationId": 1,
+      "bestBeforeDate": null
+    }
+  ]
+}

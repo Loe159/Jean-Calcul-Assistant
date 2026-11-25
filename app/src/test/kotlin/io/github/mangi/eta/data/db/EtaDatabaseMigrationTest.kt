@@ -8,6 +8,12 @@ import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import io.github.mangi.eta.data.model.ModelSource
 import io.github.mangi.eta.data.model.ProviderAuthModes
+import io.github.mangi.eta.food.CompleteRequest
+import io.github.mangi.eta.food.CuisineOperationKind
+import io.github.mangi.eta.food.FoodClient
+import io.github.mangi.eta.food.FoodContract
+import io.github.mangi.eta.food.StockConsumptionStatus
+import io.github.mangi.eta.food.foodFixture
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -23,7 +29,7 @@ import org.robolectric.annotation.Config
 @Config(sdk = [36])
 class EtaDatabaseMigrationTest {
     @Test
-    fun migration6To28PreservesDataAndMovesCompleteConversationContext() {
+    fun migration6To29PreservesDataAndMovesCompleteConversationContext() {
         val context = RuntimeEnvironment.getApplication() as Context
         val databaseName = "migration-${UUID.randomUUID()}.db"
         createVersion6Database(context, databaseName)
@@ -40,7 +46,10 @@ class EtaDatabaseMigrationTest {
         }
 
         val database = Room.databaseBuilder(context, EtaDatabase::class.java, databaseName)
-            .addMigrations(*migrationsTo26(migration16To17WithMcpData), EtaDatabase.MIGRATION_26_27, FOOD_MIGRATION_27_28)
+            .addMigrations(
+                *migrationsTo26(migration16To17WithMcpData), EtaDatabase.MIGRATION_26_27, FOOD_MIGRATION_27_28,
+                FOOD_MIGRATION_28_29,
+            )
             .build()
         try {
             val result = runBlocking(Dispatchers.IO) {
@@ -127,34 +136,82 @@ class EtaDatabaseMigrationTest {
 
     @Test
     @Config(application = android.app.Application::class)
-    fun registeredMigration26To28PreservesExistingDataAndCreatesFoodTables() {
+    fun registeredMigration28To29PreservesPendingCompletionAndCreatesCuisineTables() {
         val context = RuntimeEnvironment.getApplication() as Context
         val name = "eta.db"
+        val body = foodFixture("complete-request")
+        val completion = FoodContract.json.decodeFromString<CompleteRequest>(body)
+        val sessionId = completion.session.id
+        val endpoint = FoodClient.completionPath(sessionId)
         EtaDatabase.closeForTests()
         context.deleteDatabase(name)
         createVersion6Database(context, name)
         val configuration = SupportSQLiteOpenHelper.Configuration.builder(context)
             .name(name)
-            .callback(object : SupportSQLiteOpenHelper.Callback(26) {
+            .callback(object : SupportSQLiteOpenHelper.Callback(28) {
                 override fun onCreate(db: SupportSQLiteDatabase) = error("Expected existing v6 fixture")
 
                 override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
                     migrationsTo26(EtaDatabase.MIGRATION_16_17).forEach { it.migrate(db) }
+                    EtaDatabase.MIGRATION_26_27.migrate(db)
+                    FOOD_MIGRATION_27_28.migrate(db)
+                    db.execSQL(
+                        """
+                        INSERT INTO cooking_sessions (id, owner, recipeSnapshotJson, servings, currentStepId,
+                            completedStepIdsJson, skippedStepIdsJson, overridesJson, status, startedAt, completedAt,
+                            stockConsumptionStatus, revision, updatedAt, localProposalsJson, briefCardId)
+                        VALUES (?, 'test-pairing', ?, 2, NULL, '[]', '[]', '[]', 'COMPLETED', 10, 12,
+                            'PENDING', 2, 12, '[]', 'fixture-card')
+                        """,
+                        arrayOf(sessionId, FoodContract.json.encodeToString(completion.session.recipeSnapshot)),
+                    )
+                    db.execSQL(
+                        """
+                        INSERT INTO food_outbox (operationId, sessionId, kind, endpoint, bodyJson, state, attempts,
+                            lastError, createdAt, updatedAt)
+                        VALUES (?, ?, 'COMPLETE_SESSION', ?, ?, 'PENDING', 0, NULL, 12, 12)
+                        """,
+                        arrayOf(completion.operationId, sessionId, endpoint, body),
+                    )
                 }
             })
             .build()
         FrameworkSQLiteOpenHelperFactory().create(configuration).use { helper ->
-            assertEquals(26, helper.writableDatabase.version)
+            assertEquals(28, helper.writableDatabase.version)
         }
         try {
             val database = EtaDatabase.get(context)
             runBlocking {
-                assertEquals(28, database.openHelper.readableDatabase.version)
+                assertEquals(29, database.openHelper.readableDatabase.version)
                 assertEquals("保留的结果", database.runtimeRunDao().runtimeResults().single().content)
                 val dao = database.foodDao()
                 dao.savePantry(FoodPantryEntity("test-pairing", "{}", 17L))
                 assertEquals(17L, dao.observePantry("test-pairing").first()?.fetchedAt)
-                assertEquals(emptyList<FoodOutboxEntity>(), dao.replayable("test-pairing"))
+                val pending = dao.replayable("test-pairing").single()
+                assertEquals(completion.operationId, pending.operationId)
+                assertEquals(endpoint, pending.endpoint)
+                assertEquals(FoodOutboxState.PENDING, pending.state)
+                assertEquals(body, pending.bodyJson)
+                val session = checkNotNull(dao.session(sessionId))
+                assertEquals(StockConsumptionStatus.PENDING, session.stockConsumptionStatus)
+                assertEquals("fixture-card", session.briefCardId)
+
+                val owner = "test-pairing"
+                val shopping = FoodShoppingEntity(owner, foodFixture("shopping"), 20)
+                dao.saveShopping(shopping)
+                assertEquals(shopping, dao.shopping(owner))
+                val week = FoodMealWeekEntity(owner, "2026-11-23", foodFixture("meal-week"), 21)
+                dao.saveMealWeeks(listOf(week))
+                assertEquals(week, dao.observeMealWeek(owner, week.weekStart).first())
+                val brief = FoodBriefCardsV2Entity(owner, "MEAL_PLANNED", foodFixture("brief-cards-v2"), 22, 23)
+                dao.saveBriefCardsV2(brief)
+                assertEquals(brief, dao.observeBriefCardsV2(owner, brief.kinds).first())
+                assertEquals(emptyList<FoodCuisineOperationEntity>(), dao.pendingCuisineOperations(owner))
+                dao.insertCuisineOperation(FoodCuisineOperationEntity(
+                    "fixture-shopping", owner, CuisineOperationKind.SHOPPING_ADD, null, "{}", null,
+                ))
+                assertEquals("fixture-shopping", dao.pendingCuisineOperations(owner).single().operationId)
+                assertEquals(pending, dao.replayable(owner).single())
             }
         } finally {
             EtaDatabase.closeForTests()

@@ -174,6 +174,7 @@ internal data class RecipeSummary(
     val tags: List<String>,
     val image: RecipeImage?,
     val favorite: Boolean,
+    val lastCookedAt: String? = null,
 )
 
 @Serializable

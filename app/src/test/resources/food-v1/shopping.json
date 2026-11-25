@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "listId": 2,
+  "revision": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "updatedAt": "2026-11-25T16:00:00Z",
+  "aisles": [
+    {
+      "id": 5,
+      "name": "Légumes"
+    },
+    {
+      "id": null,
+      "name": "Autres"
+    }
+  ],
+  "items": [
+    {
+      "id": 20,
+      "grocyProductId": 3,
+      "name": "Courgettes",
+      "quantity": {
+        "amount": 250,
+        "grocyQuId": 1,
+        "unitCode": "g",
+        "unitName": "Gramme"
+      },
+      "aisleId": 5,
+      "state": "IN_BASKET",
+      "origins": [
+        {
+          "contributionId": "op_10000000-0000-4000-8000-000000000001:0",
+          "quantity": {
+            "amount": 250,
+            "grocyQuId": 1
+          },
+          "origin": {
+            "kind": "MEAL_SLOT",
+            "recipeId": "rcp_clafoutis_courgette_chevre",
+            "recipeVersion": 1,
+            "ingredientId": "ing_courgette",
+            "slot": {
+              "date": "2026-11-25",
+              "meal": "DINNER"
+            }
+          }
+        }
+      ],
+      "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "id": 21,
+      "grocyProductId": null,
+      "name": "Serviettes",
+      "quantity": {
+        "amount": 1,
+        "grocyQuId": 3,
+        "unitCode": "piece",
+        "unitName": "Pièce"
+      },
+      "aisleId": null,
+      "state": "IN_BASKET",
+      "origins": [],
+      "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "id": 22,
+      "grocyProductId": 3,
+      "name": "Courgettes",
+      "quantity": {
+        "amount": 250,
+        "grocyQuId": 1,
+        "unitCode": "g",
+        "unitName": "Gramme"
+      },
+      "aisleId": 5,
+      "state": "STOCKED",
+      "origins": [],
+      "revision": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    }
+  ]
+}

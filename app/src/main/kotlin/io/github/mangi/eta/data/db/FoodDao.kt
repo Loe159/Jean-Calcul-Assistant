@@ -16,6 +16,55 @@ internal interface FoodDao {
     @Upsert suspend fun saveAvailability(availability: FoodAvailabilityEntity)
     @Upsert suspend fun savePantry(pantry: FoodPantryEntity)
     @Upsert suspend fun saveBriefCards(cards: FoodBriefCardsEntity)
+    @Upsert suspend fun saveShopping(shopping: FoodShoppingEntity)
+    @Upsert suspend fun saveMealWeeks(weeks: List<FoodMealWeekEntity>)
+    @Upsert suspend fun saveBriefCardsV2(cards: FoodBriefCardsV2Entity)
+
+    @Query("SELECT * FROM food_shopping WHERE owner = :owner")
+    suspend fun shopping(owner: String): FoodShoppingEntity?
+
+    @Query("SELECT * FROM food_meal_weeks WHERE owner = :owner AND weekStart = :weekStart")
+    fun observeMealWeek(owner: String, weekStart: String): Flow<FoodMealWeekEntity?>
+
+    @Query("SELECT * FROM food_brief_cards_v2 WHERE owner = :owner AND kinds = :kinds")
+    fun observeBriefCardsV2(owner: String, kinds: String): Flow<FoodBriefCardsV2Entity?>
+
+    @Query("SELECT * FROM food_brief_cards_v2 WHERE owner = :owner")
+    suspend fun briefCardsV2(owner: String): List<FoodBriefCardsV2Entity>
+
+    @Query("SELECT * FROM food_pantry WHERE owner = :owner")
+    suspend fun pantry(owner: String): FoodPantryEntity?
+
+    @Query("SELECT * FROM food_recipes WHERE owner = :owner AND id = :id AND version = :version")
+    suspend fun recipeVersion(owner: String, id: String, version: Int): FoodRecipeEntity?
+
+    @Query("""
+        SELECT * FROM food_availability WHERE owner = :owner AND recipeId = :id AND version = :version
+        ORDER BY cachedAt DESC, servings LIMIT 1
+    """)
+    suspend fun latestAvailability(owner: String, id: String, version: Int): FoodAvailabilityEntity?
+
+    @Insert suspend fun insertCuisineOperation(operation: FoodCuisineOperationEntity)
+    @Update suspend fun updateCuisineOperation(operation: FoodCuisineOperationEntity)
+
+    @Query("SELECT * FROM food_cuisine_operations WHERE operationId = :operationId")
+    suspend fun cuisineOperation(operationId: String): FoodCuisineOperationEntity?
+
+    @Query("SELECT * FROM food_cuisine_operations WHERE owner = :owner AND operationId = :operationId")
+    fun observeCuisineOperation(owner: String, operationId: String): Flow<FoodCuisineOperationEntity?>
+
+    @Query("""
+        SELECT * FROM food_cuisine_operations WHERE owner = :owner
+        AND (state IN ('PENDING', 'SENT', 'UNCERTAIN') OR awaitingRefresh)
+        ORDER BY sequence
+    """)
+    suspend fun pendingCuisineOperations(owner: String): List<FoodCuisineOperationEntity>
+
+    @Query("""
+        UPDATE food_cuisine_operations SET awaitingRefresh = 0
+        WHERE owner = :owner AND awaitingRefresh AND (kind = 'PANTRY_ENTRY_PATCH') = :pantry
+    """)
+    suspend fun clearCuisineRefresh(owner: String, pantry: Boolean)
 
     @Query("SELECT * FROM food_recipes WHERE owner = :owner AND id = :id ORDER BY version DESC LIMIT 1")
     fun observeRecipe(owner: String, id: String): Flow<FoodRecipeEntity?>

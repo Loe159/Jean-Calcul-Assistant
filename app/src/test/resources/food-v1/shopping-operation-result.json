@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "operationId": "op_10000000-0000-4000-8000-000000000001",
+  "state": "SUCCEEDED",
+  "replayed": false,
+  "lines": [
+    {
+      "itemId": 20,
+      "contributionId": "op_10000000-0000-4000-8000-000000000001:0",
+      "ingredientId": "ing_courgette",
+      "transactionId": null,
+      "state": "APPLIED",
+      "message": null
+    }
+  ]
+}

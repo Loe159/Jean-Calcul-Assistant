@@ -21,11 +21,16 @@ L’ouverture envoie `OPENED` et route vers la recette ou le garde-manger filtr�
 
 - Le code métier vit dans `io.github.mangi.eta.food`, un paquet fonctionnel de `:app`. Les entités, le DAO et la migration restent dans `data/db`, avec les autres schémas Room. `EtaApp` fournit les dépendances communes à l’activité, aux receivers et au job.
 - `FoodClient` couvre les routes signées de `/mobile/v1/food`. Il réutilise `MastraConnection` et `MastraSignedTransport` avec le client Notifications. Le transport signe le chemin encodé et le corps exact, refuse les query strings et désactive les redirections. Les délais sont de 10 secondes par requête et 30 secondes pour l’assistant.
+- Courses utilise `GET /shopping`, `POST /shopping/items`, `PATCH|DELETE /shopping/items/{id}`, `POST /shopping/undo`, `POST /shopping/put-away` et `POST /recipes/{id}/shopping-items`.
+- Planning lit `GET /planning/weeks/{weekStart}` et écrit avec `PUT|DELETE /planning/slots/{date}/{meal}` et `POST /planning/move`. Sous la route de semaine, `POST /generate` accepte `PREVIEW` et `APPLY`. `GET /shopping-summary` fournit le jeton de stock et de panier à transmettre à `POST /shopping-items`.
+- Les lots enrichis portent un `entryId`, une révision et un `locationKind` quand Mastra les fournit. `PATCH /pantry/entries/{entryId}` couvre quantité, emplacement et péremption. Une date omise conserve la péremption, une date `null` l’efface. `POST /brief/cards` sélectionne les types demandés, dont `MEAL_PLANNED` et `SHOPPING_LIST`. Le GET historique reste disponible.
 - Le décodeur accepte les champs inconnus et rejette les valeurs d’énumération inconnues. Le retour de feedback Brief attend un accusé de réception HTTP. Les fixtures sont copiées telles quelles et les calculs Kotlin exécutent tous les cas partagés. [Contrat Cuisine v1](https://github.com/Loe159/homelab-ai/blob/feat/food-module/docs/food-contract.md), [schémas Zod](https://github.com/Loe159/homelab-ai/tree/feat/food-module/src/mastra/food/schemas)
 
 ## Données hors ligne et sessions
 
 Room expose les recettes versionnées, l’index et les métadonnées de bibliothèque, les disponibilités, le garde-manger et les cartes Brief sous forme de `Flow`. Chaque cache est rattaché à l’origine Mastra et à l’identifiant d’appareil de l’appairage. Le résultat du rafraîchissement distingue `NOT_PAIRED`, `OFFLINE`, `SERVER_ERROR`, `GROCY_UNAVAILABLE` et `AI_DISABLED`. Les données en cache gardent leur date de récupération, et les stocks gardent leur `stockAsOf`. Les cartes Brief expirent à `validUntil`.
+
+La migration 28 → 29 ajoute le cache Courses, le cache Planning par lundi ISO et le cache Brief v2 par ensemble de types. Les trois sont datés et partitionnés par appairage. Le cache Brief v2 a sa propre table. La lecture des Courses et des lots applique les opérations locales au dernier relevé disponible. Les articles ajoutés localement ont une clé provisoire jusqu’à l’arrivée du relevé suivant.
 
 La disponibilité hors ligne utilise le dernier stock connu pour la même version de recette. Elle recalcule les quantités exactes et les manques dans l’unité de la recette. Un stock inconnu reste inconnu et un ingrédient sans produit lié reste neutre. Les étapes affichent les fractions des quantités mises à l’échelle. Une quantité redéfinie pendant la session s’applique à la session entière, puis se répartit entre les étapes.
 
@@ -34,6 +39,8 @@ Une session fige le JSON de la recette dès sa création. Les changements de por
 ## Fin de recette et rejeu
 
 La confirmation enregistre en une transaction la session terminée, l’état `PENDING` et la ligne d’outbox avec un `operationId` unique. Chaque tentative poste les mêmes octets. Android tente l’envoi immédiatement et un `JobService` persistant exige le réseau et applique un délai de reprise exponentiel. Une réponse incertaine ou une réponse perdue laisse l’opération en file pour réconciliation par Mastra. Les états `SUCCEEDED`, `PARTIAL` et `FAILED` terminent le rejeu. Une opération associée à un appairage attend cet appairage avant tout envoi. Les opérations créées sans appairage sont associées au premier appareil utilisé pour l’envoi.
+
+La file `food_cuisine_operations` conserve séparément les ajouts, l’état panier, les éditions, suppressions et annulations Courses, l’ajout des ingrédients manquants d’une recette et l’édition des lots. Elle exige un appairage connu et conserve le corps JSON signé, l’état, le résultat par opération et le nombre de tentatives. Le même job rejoue les réponses incertaines et recharge les relevés à réconcilier. Après une réponse définitive, un échec de lecture relance seulement la lecture. Le rangement et les écritures Planning, y compris l’ajout des manquants d’une semaine, sont réservés à une connexion active. L’appelant conserve le même `operationId` et le même corps pour réessayer.
 
 ## Minuteurs et notifications
 

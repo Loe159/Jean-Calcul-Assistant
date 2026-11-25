@@ -12,6 +12,7 @@ import java.time.ZoneOffset
 import java.util.Base64
 import java.util.Collections
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
@@ -286,11 +287,224 @@ class FoodRepositoryTest {
         assertEquals(OperationLineState.NEEDS_CONVERSION, resumed.completionResult(id).first()?.lines?.single()?.state)
     }
 
-    private fun repository(scope: CoroutineScope, server: Interceptor = Interceptor { throw IOException() }): FoodRepository {
+    @Test
+    fun basketProjectsImmediatelyAndReplaysVerbatimOnlyForTheMatchingPairing() = runBlocking {
+        pairing = paired
+        val confirmed = FoodContract.decode<ShoppingResponse>(foodFixture("shopping"))
+        val line = confirmed.items.first()
+        val before = confirmed.copy(items = listOf(line.copy(state = ShoppingItemState.TODO)))
+        val after = confirmed.copy(items = listOf(line.copy(revision = "confirmed")))
+        val bodies = Collections.synchronizedList(mutableListOf<String>())
+        val writes = AtomicInteger()
+        val refreshFails = AtomicBoolean(false)
+        val request = FoodContract.json.decodeFromString<ShoppingPatchRequest>(foodFixture("shopping-patch-request"))
+            .copy(expectedRevision = line.revision)
+        val server = Interceptor { chain ->
+            val wire = chain.request()
+            if (wire.method == "GET") {
+                if (refreshFails.get()) throw IOException("refresh unavailable")
+                chain.response(200, FoodContract.json.encodeToString(if (writes.get() >= 3) after else before))
+            } else {
+                assertEquals("PATCH", wire.method)
+                assertTrue(wire.url.encodedPath.endsWith("/shopping/items/${line.id}"))
+                bodies += Buffer().also { wire.body!!.writeTo(it) }.readUtf8()
+                when (writes.incrementAndGet()) {
+                    1 -> throw IOException("ack lost")
+                    2 -> chain.response(200, shoppingResult(request.operationId, OperationState.UNCERTAIN))
+                    else -> {
+                        refreshFails.set(true)
+                        chain.response(200, shoppingResult(request.operationId, OperationState.SUCCEEDED))
+                    }
+                }
+            }
+        }
+        var repository = repository(this, server)
+        assertEquals(FoodResult.Success(before), repository.refreshShopping())
+        assertEquals(FoodResult.Success(request.operationId), repository.setShoppingBasketState(
+            line.id, request.operationId, line.revision, ShoppingBasketState.IN_BASKET,
+        ))
+        assertEquals(ShoppingItemState.IN_BASKET, repository.shopping().first()!!.items.single().state)
+        assertEquals(ShoppingItemState.TODO, repository.shopping().first()!!.cache!!.value.items.single().state)
+        withTimeout(5_000) { repository.cuisineOperation(request.operationId).first { it?.state == FoodOutboxState.UNCERTAIN } }
+
+        repository = repository(this, server)
+        pairing = paired.copy(deviceId = "jc_other")
+        pairingChanges.value++
+        assertNull(repository.shopping().first()!!.cache)
+        assertNull(repository.cuisineOperation(request.operationId).first())
+        assertFalse(repository.replayOutbox())
+        assertEquals(1, writes.get())
+
+        pairing = paired
+        pairingChanges.value++
+        assertTrue(repository.replayOutbox())
+        val uncertain = repository.cuisineOperation(request.operationId).first()!!
+        assertEquals(OperationState.UNCERTAIN, (uncertain.result as ShoppingOperationResult).state)
+        assertEquals(2, uncertain.attempts)
+        assertTrue(repository.replayOutbox())
+        assertTrue(repository.cuisineOperation(request.operationId).first()!!.awaitingRefresh)
+        assertEquals(ShoppingItemState.IN_BASKET, repository.shopping().first()!!.items.single().state)
+
+        refreshFails.set(false)
+        assertFalse(repository.replayOutbox())
+        assertEquals(after.items, repository.shopping().first()!!.items)
+        val done = repository.cuisineOperation(request.operationId).first()!!
+        assertEquals(FoodOutboxState.DONE, done.state)
+        assertFalse(done.awaitingRefresh)
+        val frozenBody = FoodContract.json.encodeToString(request)
+        assertEquals(List(3) { frozenBody }, bodies)
+        assertEquals(FoodResult.Failure(FoodError.SERVER_ERROR, "OPERATION_CONFLICT"), repository.deleteShoppingItem(
+            line.id, ShoppingDeleteRequest(request.operationId, line.revision),
+        ))
+    }
+
+    @Test
+    fun undoOfAnOfflineAddWaitsForItsSourceAndRollsBackOnConflict() = runBlocking {
+        val calls = Collections.synchronizedList(mutableListOf<String>())
+        val addId = UUID.randomUUID().toString()
+        val undoId = UUID.randomUUID().toString()
+        val add = ShoppingAddRequest(addId, ShoppingAddItem.FreeText("Article fictif", ShoppingQuantity(1.0, 3)))
+        val response = FoodContract.decode<ShoppingResponse>(foodFixture("shopping"))
+        val newLine = response.items[1].copy(
+            state = ShoppingItemState.TODO, name = "Article fictif",
+            origins = listOf(ShoppingContribution("$addId:0", ShoppingQuantity(1.0, 3), ShoppingOrigin.Manual)),
+        )
+        val tries = AtomicInteger()
+        val server = Interceptor { chain ->
+            val path = chain.request().url.encodedPath
+            when {
+                path.endsWith("/items") -> {
+                    calls += "add"
+                    if (tries.getAndIncrement() == 0) chain.response(200, shoppingResult(addId, OperationState.UNCERTAIN))
+                    else chain.response(200, shoppingResult(addId, OperationState.SUCCEEDED))
+                }
+                path.endsWith("/undo") -> {
+                    calls += "undo"
+                    chain.response(409, """{"error":"REVISION_CONFLICT","message":"Conflit"}""")
+                }
+                else -> chain.response(200, FoodContract.json.encodeToString(response.copy(items = listOf(newLine))))
+            }
+        }
+        var repository = repository(this, server, cachePairing = { paired })
+        assertEquals(FoodResult.Success(addId), repository.addShoppingItem(add))
+        val draft = repository.shopping().first()!!.items.single()
+        assertTrue(draft.id < 0)
+        assertEquals("Article fictif", draft.name)
+        assertEquals(FoodResult.Success(undoId), repository.undoShopping(ShoppingUndoRequest(undoId, addId)))
+        assertTrue(repository.shopping().first()!!.items.isEmpty())
+
+        database.close()
+        openDatabase()
+        repository = repository(this, server, cachePairing = { paired })
+        assertTrue(repository.shopping().first()!!.items.isEmpty())
+        pairing = paired
+        assertTrue(repository.replayOutbox())
+        assertEquals(listOf("add"), calls)
+        assertEquals(FoodOutboxState.PENDING, repository.cuisineOperation(undoId).first()!!.state)
+        assertFalse(repository.replayOutbox())
+        assertEquals(listOf("add", "add", "undo"), calls)
+        assertEquals("REVISION_CONFLICT", repository.cuisineOperation(undoId).first()!!.lastError)
+        assertEquals(listOf(newLine), repository.shopping().first()!!.items)
+    }
+
+    @Test
+    fun pantryLotPatchProjectsAndThenUsesTheServerRevision() = runBlocking {
+        pairing = paired
+        val pantry = FoodContract.decode<PantryResponse>(foodFixture("pantry"))
+        val request = FoodContract.json.decodeFromString<PantryEntryPatchRequest>(foodFixture("pantry-entry-patch-request"))
+        val response = FoodContract.decode<PantryEntryResult>(foodFixture("pantry-entry-result"))
+        val changed = checkNotNull(response.entry)
+        val applied = AtomicBoolean(false)
+        val repository = repository(this, Interceptor { chain ->
+            if (chain.request().method == "PATCH") {
+                assertTrue(chain.request().url.encodedPath.endsWith("/pantry/entries/31"))
+                val wire = Buffer().also { chain.request().body!!.writeTo(it) }.readUtf8()
+                assertEquals(request, FoodContract.json.decodeFromString<PantryEntryPatchRequest>(wire))
+                if (!applied.get()) throw IOException()
+                chain.response(200, foodFixture("pantry-entry-result"))
+            } else {
+                val updated = pantry.items.first().copy(bestBeforeDate = null, batches = listOf(changed))
+                val result = if (applied.get()) pantry.copy(items = listOf(updated) + pantry.items.drop(1)) else pantry
+                chain.response(200, FoodContract.json.encodeToString(result))
+            }
+        })
+        assertEquals(FoodResult.Success(pantry), repository.refreshPantry())
+        assertEquals(FoodResult.Success(request.operationId), repository.patchPantryEntry(31, request))
+        val projected = repository.pantry().first()!!.value.items.first().batches.single()
+        assertNull(projected.bestBeforeDate)
+        assertEquals(request.expectedRevision, projected.revision)
+        withTimeout(5_000) { repository.cuisineOperation(request.operationId).first { it?.state == FoodOutboxState.UNCERTAIN } }
+        applied.set(true)
+        assertFalse(repository.replayOutbox())
+        assertEquals(changed, repository.pantry().first()!!.value.items.first().batches.single())
+        assertEquals(response, repository.cuisineOperation(request.operationId).first()!!.result)
+    }
+
+    @Test
+    fun planningAndPutAwayReturnOfflineThenUseTheSameRequestOnRetry() = runBlocking {
+        pairing = paired
+        val week = FoodContract.decode<MealWeek>(foodFixture("meal-week"))
+        val request = FoodContract.json.decodeFromString<PlanningPutRequest>(foodFixture("planning-put-request"))
+        val putAway = FoodContract.json.decodeFromString<PutAwayRequest>(foodFixture("put-away-request"))
+        val offline = AtomicBoolean(true)
+        val bodies = Collections.synchronizedList(mutableListOf<Pair<String, String>>())
+        val repository = repository(this, Interceptor { chain ->
+            val wire = chain.request()
+            val path = wire.url.encodedPath
+            if (wire.method != "GET") bodies += path to Buffer().also { wire.body!!.writeTo(it) }.readUtf8()
+            if (offline.get()) throw IOException("offline")
+            when {
+                path.contains("/slots/") -> chain.response(200, foodFixture("planning-write-result"))
+                path.endsWith("/put-away") -> chain.response(200, shoppingResult(putAway.operationId, OperationState.PARTIAL))
+                path.endsWith("/shopping") -> chain.response(200, foodFixture("shopping"))
+                path.endsWith("/pantry") -> chain.response(200, foodFixture("pantry"))
+                else -> chain.response(200, foodFixture("meal-week"))
+            }
+        })
+        val slot = week.slots.single().key
+        assertEquals(FoodResult.Failure(FoodError.OFFLINE), repository.putMealSlot(slot, request))
+        assertEquals(FoodResult.Failure(FoodError.OFFLINE), repository.putAway(putAway))
+        assertFalse(repository.hasPendingSync())
+        assertNull(repository.mealWeek(week.weekStart).first())
+        assertNull(repository.shopping().first()!!.cache)
+        offline.set(false)
+        assertTrue(repository.putMealSlot(slot, request) is FoodResult.Success)
+        assertEquals(week, repository.mealWeek(week.weekStart).first()!!.value)
+        assertTrue(repository.putAway(putAway) is FoodResult.Success)
+        assertNotNull(repository.shopping().first()!!.cache)
+        assertNotNull(repository.pantry().first())
+        assertEquals(bodies.take(2), bodies.drop(2))
+    }
+
+    @Test
+    fun briefV2CachesOnlyTheRequestedKindsAndLeavesTheHistoricalCacheReadable() = runBlocking {
+        pairing = paired
+        val repository = repository(this, Interceptor { chain ->
+            if (chain.request().method == "GET") chain.response(200, foodFixture("brief-cards"))
+            else chain.response(200, foodFixture("brief-cards-v2"))
+        })
+        val kinds = setOf(BriefCardKind.MEAL_PLANNED, BriefCardKind.SHOPPING_LIST)
+        assertTrue(repository.refreshBriefCards() is FoodResult.Success)
+        assertTrue(repository.refreshBriefCardsV2(kinds) is FoodResult.Success)
+        val legacy = repository.briefCards().first()
+        assertNotNull(legacy)
+        val modern = repository.briefCardsV2(kinds).first()!!.value.cards
+        assertEquals(2, modern.size)
+        assertNull(repository.briefCardsV2().first())
+        repository.briefFeedback(BriefFeedbackRequest("fixture-event", modern.first().id, BriefFeedbackAction.DISMISSED))
+        assertEquals(listOf(modern.last()), repository.briefCardsV2(kinds).first()!!.value.cards)
+        assertEquals(legacy, repository.briefCards().first())
+    }
+
+    private fun repository(
+        scope: CoroutineScope,
+        server: Interceptor = Interceptor { throw IOException() },
+        cachePairing: () -> MastraPairing? = { pairing },
+    ): FoodRepository {
         val http = OkHttpClient.Builder().addInterceptor(server).build()
         return FoodRepository(
             database, { pairing }, pairingChanges, scope, { scheduled.incrementAndGet() }, clock,
-            clientFor = { FoodClient(it, http) },
+            clientFor = { FoodClient(it, http) }, cachePairing = cachePairing,
         )
     }
 
@@ -300,4 +514,7 @@ class FoodRepositoryTest {
 
     private fun result(id: String, state: OperationState) =
         FoodContract.json.encodeToString(OperationResult(1, id, state, false, emptyList()))
+
+    private fun shoppingResult(id: String, state: OperationState) =
+        FoodContract.json.encodeToString(ShoppingOperationResult(1, id, false, state, emptyList()))
 }

@@ -1,0 +1,19 @@
+{
+  "operationId": "op_10000000-0000-4000-8000-000000000013",
+  "lines": [
+    {
+      "itemId": 21,
+      "expectedRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "quantity": {
+        "amount": 1,
+        "grocyQuId": 3
+      },
+      "locationId": 1,
+      "bestBeforeDate": null,
+      "newProduct": {
+        "name": "Pommes témoins",
+        "stockQuId": 3
+      }
+    }
+  ]
+}

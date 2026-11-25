@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "operationId": "op_10000000-0000-4000-8000-000000000011",
+  "replayed": false,
+  "state": "SUCCEEDED",
+  "entry": {
+    "stockEntryId": "6a23c0ffee003",
+    "amount": 640,
+    "bestBeforeDate": null,
+    "locationId": 2,
+    "opened": false,
+    "entryId": 31,
+    "locationKind": "FRIDGE",
+    "revision": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  }
+}

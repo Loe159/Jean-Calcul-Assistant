@@ -1,0 +1,12 @@
+{
+  "operationId": "op_10000000-0000-4000-8000-000000000001",
+  "recipeVersion": 1,
+  "servings": 2,
+  "ingredientIds": [
+    "ing_courgette"
+  ],
+  "mealSlot": {
+    "date": "2026-11-25",
+    "meal": "DINNER"
+  }
+}

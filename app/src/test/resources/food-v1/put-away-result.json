@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "operationId": "op_10000000-0000-4000-8000-000000000004",
+  "state": "PARTIAL",
+  "replayed": true,
+  "lines": [
+    {
+      "itemId": 20,
+      "contributionId": null,
+      "ingredientId": null,
+      "transactionId": "synthetic-purchase-1",
+      "state": "APPLIED",
+      "message": null
+    },
+    {
+      "itemId": 21,
+      "contributionId": null,
+      "ingredientId": null,
+      "transactionId": null,
+      "state": "NEEDS_PRODUCT",
+      "message": null
+    }
+  ]
+}
