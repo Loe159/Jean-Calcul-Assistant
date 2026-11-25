@@ -2,6 +2,7 @@ package io.github.mangi.eta.ui.screens.food.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -20,6 +21,8 @@ import io.github.mangi.eta.food.FoodQuantities
 import io.github.mangi.eta.ui.screens.food.ShoppingItemStatus
 import io.github.mangi.eta.ui.screens.food.ShoppingItemUi
 import io.github.suqi8.coui.kmp.basic.*
+import io.github.suqi8.coui.kmp.icon.COUIIcons
+import io.github.suqi8.coui.kmp.icon.extended.Edit
 import io.github.suqi8.coui.kmp.preference.CheckboxLocation
 import io.github.suqi8.coui.kmp.preference.CheckboxPreference
 import io.github.suqi8.coui.kmp.theme.COUITheme
@@ -33,6 +36,7 @@ internal fun ShoppingItemRow(
     enabled: Boolean = true,
     loading: Boolean = false,
     pressed: Boolean = false,
+    onEdit: (() -> Unit)? = null,
 ) {
     val height = if (storeMode) 84.dp else 68.dp
     if (loading) {
@@ -40,7 +44,7 @@ internal fun ShoppingItemRow(
         return
     }
     val colors = COUITheme.colorScheme
-    val quantity = FoodQuantities.formatFr(item.quantity)
+    val quantity = item.quantityLabel ?: FoodQuantities.formatFr(item.quantity)
     val split = LocalDensity.current.fontScale <= 1.3f
     val title = if (split) item.title else stringResource(R.string.food_consumed_amount, item.title, quantity)
     val status = stringResource(when (item.status) {
@@ -54,9 +58,13 @@ internal fun ShoppingItemRow(
         item.status == ShoppingItemStatus.IN_BASKET -> colors.labelSecondary
         else -> colors.labelPrimary
     }
+    val editLabel = stringResource(R.string.food_shopping_edit, item.title)
     val quantitySlot: @Composable RowScope.() -> Unit = {
-        if (split) Text(quantity, style = if (storeMode) COUITheme.textStyles.headlineS else COUITheme.textStyles.headlineXS,
+        if (split) Text(quantity, Modifier.align(Alignment.CenterVertically), style = if (storeMode) COUITheme.textStyles.headlineS else COUITheme.textStyles.headlineXS,
             color = ink)
+        if (onEdit != null && !storeMode && item.status != ShoppingItemStatus.STOCKED) {
+            CuisineIconButton(COUIIcons.Edit, editLabel, onEdit, enabled = enabled, ink = colors.labelSecondary)
+        }
     }
     if (item.status == ShoppingItemStatus.STOCKED) {
         BasicComponent(

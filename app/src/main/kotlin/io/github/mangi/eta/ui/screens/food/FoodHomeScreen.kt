@@ -1,11 +1,14 @@
 package io.github.mangi.eta.ui.screens.food
 
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -18,6 +21,8 @@ import io.github.mangi.eta.ui.components.coui.CouiChipTabs
 import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
 import io.github.mangi.eta.ui.navigation.AppRoute
 import io.github.mangi.eta.ui.screens.food.components.*
+import io.github.suqi8.coui.kmp.basic.SnackbarHost
+import io.github.suqi8.coui.kmp.basic.SnackbarHostState
 import io.github.suqi8.coui.kmp.icon.COUIIcons
 import io.github.suqi8.coui.kmp.icon.extended.Add
 import io.github.suqi8.coui.kmp.icon.extended.Settings
@@ -34,6 +39,8 @@ internal fun FoodHomeScreen(onBack: () -> Unit, onOpen: (AppRoute) -> Unit) {
         onOpen = onOpen, onTab = { tab = it }, onMoreFilters = { filtersSheet = true },
     )
     val pantry = if (tab == CuisineTab.PANTRY) inventoryPageSlots(expiringInitially = false) else null
+    val snackbars = remember { SnackbarHostState() }
+    val shopping = if (tab == CuisineTab.SHOPPING) rememberShoppingTab(snackbars) else null
     NavigationBackHandler(
         rememberNavigationEventState(NavigationEventInfo.None),
         isBackEnabled = tab != CuisineTab.RECIPES,
@@ -46,15 +53,21 @@ internal fun FoodHomeScreen(onBack: () -> Unit, onOpen: (AppRoute) -> Unit) {
         onBack = { if (tab != CuisineTab.RECIPES) tab = CuisineTab.RECIPES else onBack() },
         onCreate = { onOpen(AppRoute.RecipeGenerate()) },
         onPreferences = { onOpen(AppRoute.FoodPreferences) },
+        bottomAction = shopping?.takeIf { it.state.inBasket > 0 }?.let { holder ->
+            { ShoppingBottomAction(holder.state, holder.actions.onPutAway) }
+        },
         overlay = {
             if (filtersSheet) RecipeFiltersSheet(recipes.state.filters, recipes.actions.onFilters) { filtersSheet = false }
             pantry?.overlay?.invoke()
+            shopping?.overlay?.invoke()
+            Box(Modifier.fillMaxSize()) { SnackbarHost(snackbars, Modifier.align(Alignment.BottomCenter)) }
         },
     ) { current ->
         when (current) {
             CuisineTab.RECIPES -> RecipesTabContent(recipes.state, recipes.actions)
             CuisineTab.PANTRY -> pantry?.content?.invoke()
-            CuisineTab.SHOPPING, CuisineTab.PLANNING -> CuisineMessage(
+            CuisineTab.SHOPPING -> shopping?.let { ShoppingTabContent(it.state, it.actions) }
+            CuisineTab.PLANNING -> CuisineMessage(
                 stringResource(R.string.food_tab_coming), icon = CuisineIcons.Utensils,
             )
         }
@@ -69,6 +82,7 @@ internal fun CuisineHomeScreen(
     onBack: () -> Unit,
     onCreate: () -> Unit,
     onPreferences: () -> Unit,
+    bottomAction: (@Composable () -> Unit)? = null,
     overlay: @Composable () -> Unit = {},
     content: @Composable ColumnScope.(CuisineTab) -> Unit,
 ) {
@@ -88,6 +102,7 @@ internal fun CuisineHomeScreen(
         },
         overlay = overlay,
         scrollState = scrolls.getValue(tab),
+        bottomAction = bottomAction,
     ) {
         FoodSupporting(today.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRANCE))
             .replaceFirstChar { it.titlecase(Locale.FRANCE) })

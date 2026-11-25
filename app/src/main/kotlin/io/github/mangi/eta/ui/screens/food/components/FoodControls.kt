@@ -2,6 +2,7 @@ package io.github.mangi.eta.ui.screens.food.components
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -60,12 +61,24 @@ internal fun FoodPage(
     overlay: @Composable () -> Unit = {},
     scrollState: ScrollState = rememberScrollState(),
     compactTitle: Boolean = false,
+    bottomAction: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val dock = LocalCookingDock.current
+    // A page action (e.g. « Ranger au stock ») sits above the active-cooking banner, both outside the scroll.
+    val bottomBar: (@Composable () -> Unit)? = if (bottomAction == null) dock else {
+        {
+            Column(Modifier.fillMaxWidth()) {
+                Box(Modifier.fillMaxWidth().background(COUITheme.colorScheme.backgroundWithCard)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)) { bottomAction() }
+                if (dock != null) dock() else Spacer(Modifier.navigationBarsPadding())
+            }
+        }
+    }
     CouiScaffoldPage(
         title = title, onBack = onBack, actions = actions, overlay = overlay,
         scrollState = scrollState, compactTitle = compactTitle,
-        bottomBar = LocalCookingDock.current,
+        bottomBar = bottomBar,
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp), content = content)

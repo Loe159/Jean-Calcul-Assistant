@@ -135,6 +135,8 @@ internal data class ShoppingItemUi(
     val quantity: Quantity,
     val status: ShoppingItemStatus,
     val origin: String? = null,
+    /** Shown instead of [quantity] when Grocy's unit has no code (« 2 sachets »). */
+    val quantityLabel: String? = null,
 )
 
 internal enum class MealSlotMove { NONE, SOURCE, TARGET }

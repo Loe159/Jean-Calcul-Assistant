@@ -250,12 +250,14 @@ internal fun RecipeHero(
     val favoriteLabel = stringResource(if (isFavorite) R.string.food_remove_favorite else R.string.food_add_favorite)
     val backLabel = stringResource(R.string.food_back)
     Box(modifier.fillMaxWidth().heightIn(min = 300.dp)) {
-        RecipePicture(recipe.image, Modifier.matchParentSize(), placeholder = true, showLabel = true)
+        // At large font scales the title block rises over the placeholder label: keep only its icon.
+        RecipePicture(recipe.image, Modifier.matchParentSize(), placeholder = true,
+            showLabel = LocalDensity.current.fontScale <= 1.3f)
         Box(Modifier.fillMaxWidth().height(80.dp).align(Alignment.TopCenter).background(
             Brush.verticalGradient(listOf(scrim.copy(alpha = 0.34f), scrim.copy(alpha = 0f))),
         ))
         Column(Modifier.fillMaxWidth().heightIn(min = 300.dp)) {
-            Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 CuisineNeutralFocus {
                     IconButton(
                         onClick = onBack,

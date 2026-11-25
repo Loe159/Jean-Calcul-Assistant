@@ -102,3 +102,70 @@ private fun CuisineRecipesFiltersSheetPreview() {
         }
     }
 }
+
+private object ShoppingPreviewData {
+    private val aisles = listOf(ShoppingAisle(1, "Fruits et légumes"), ShoppingAisle(2, "Crèmerie"), ShoppingAisle(null, "Autres"))
+    private var nextId = 1L
+    private fun item(name: String, amount: Double, unit: UnitCode, aisle: Long?, state: ShoppingItemState,
+        origin: ShoppingOrigin = ShoppingOrigin.Manual, product: Long? = nextId) = ShoppingItem(
+        nextId++, product, name, ShoppingLineQuantity(amount, 1, unit, unit.name.lowercase()), aisle, state,
+        listOf(ShoppingContribution("c$nextId", ShoppingQuantity(amount, 1), origin)), "r$nextId",
+    )
+    private val thursday = ShoppingOrigin.MealSlot(CuisineHomePreviewData.salad.id, 1, "tomato", MealSlotKey("2026-11-26", Meal.LUNCH))
+    private val pasta = ShoppingOrigin.Recipe(CuisineHomePreviewData.pasta.id, 1, "basil")
+    private val items = listOf(
+        item("Tomates cerises", 300.0, UnitCode.G, 1, ShoppingItemState.TODO, thursday),
+        item("Basilic frais", 1.0, UnitCode.BUNCH, 1, ShoppingItemState.TODO, pasta),
+        item("Pommes", 1.0, UnitCode.KG, 1, ShoppingItemState.IN_BASKET),
+        item("Carottes", 1.0, UnitCode.KG, 1, ShoppingItemState.STOCKED),
+        item("Parmesan râpé", 40.0, UnitCode.G, 2, ShoppingItemState.TODO, pasta),
+        item("Yaourts nature", 4.0, UnitCode.PIECE, 2, ShoppingItemState.IN_BASKET),
+        item("Serviettes", 1.0, UnitCode.PACK, null, ShoppingItemState.TODO, product = null),
+    )
+    private val projection = projectShopping(items, aisles)
+    private val titles = mapOf(
+        CuisineHomePreviewData.salad.id to CuisineHomePreviewData.salad.title,
+        CuisineHomePreviewData.pasta.id to "Pâtes tomate",
+    )
+
+    fun state(storeMode: Boolean = false): ShoppingTabUi {
+        val (groups, stocked) = projection.toTabUi(titles, "", storeMode)
+        return ShoppingTabUi(CuisineContentState.READY, groups = groups, stocked = stocked,
+            inBasket = projection.inBasketCount, total = projection.remainingCount + projection.inBasketCount, storeMode = storeMode)
+    }
+    val empty = ShoppingTabUi(CuisineContentState.READY)
+    val actions = ShoppingTabActions({}, {}, { _, _ -> }, {}, {}, {}, {})
+}
+
+@Composable
+private fun ShoppingPreview(state: ShoppingTabUi, overlay: @Composable () -> Unit = {}) {
+    CouiPreviewTheme {
+        CuisineHomeScreen(
+            CuisineTab.SHOPPING, {}, CuisineHomePreviewData.today, {}, {}, {},
+            bottomAction = if (state.inBasket > 0) ({ ShoppingBottomAction(state) {} }) else null,
+            overlay = overlay,
+        ) { ShoppingTabContent(state, ShoppingPreviewData.actions) }
+    }
+}
+
+@CouiPhonePreviews
+@CouiStressPreviews
+@Composable
+private fun CuisineShoppingPreview() = ShoppingPreview(ShoppingPreviewData.state())
+
+@CouiPhonePreviews
+@Composable
+private fun CuisineShoppingStorePreview() = ShoppingPreview(ShoppingPreviewData.state(storeMode = true))
+
+@CouiPhonePreviews
+@Composable
+private fun CuisineShoppingEmptyPreview() = ShoppingPreview(ShoppingPreviewData.empty)
+
+@CouiPhonePreviews
+@Composable
+private fun CuisineShoppingPutAwayPreview() {
+    val state = ShoppingPreviewData.state()
+    ShoppingPreview(state) {
+        PutAwaySheet(state.basketRows, { "Réfrigérateur" }, busy = false, error = null, onClose = {}, onConfirm = {})
+    }
+}

@@ -388,4 +388,84 @@
     </plurals>
     <string name="food_shopping_remaining">articles à acheter</string>
     <string name="food_tab_coming">Bientôt disponible</string>
+
+    <!-- Recipe page -->
+    <string name="food_total_time">Durée totale</string>
+    <string name="food_active_time">Temps actif</string>
+    <string name="food_recipe_for">Recette pour %1$s</string>
+    <string name="food_partial_line">%1$s : %2$s en stock sur %3$s</string>
+    <plurals name="food_missing_line">
+        <item quantity="one">Manque : %1$s</item>
+        <item quantity="many">Manquent : %1$s</item>
+        <item quantity="other">Manquent : %1$s</item>
+    </plurals>
+    <plurals name="food_step_count">
+        <item quantity="one">%1$d étape</item>
+        <item quantity="many">%1$d étapes</item>
+        <item quantity="other">%1$d étapes</item>
+    </plurals>
+    <string name="food_adapt_short">Adapter</string>
+    <string name="food_plan_short">Planifier</string>
+    <string name="food_more_options">Options</string>
+    <string name="food_resume_cooking">Reprendre la cuisson</string>
+    <plurals name="food_added_to_shopping">
+        <item quantity="one">%1$d ingrédient ajouté aux courses</item>
+        <item quantity="many">%1$d ingrédients ajoutés aux courses</item>
+        <item quantity="other">%1$d ingrédients ajoutés aux courses</item>
+    </plurals>
+    <string name="food_undo">Annuler</string>
+    <string name="food_added_to_planning">Recette ajoutée au planning</string>
+    <string name="food_plan_title">Planifier la recette</string>
+    <string name="food_plan_day">Jour</string>
+    <string name="food_plan_meal">Repas</string>
+    <string name="food_meal_lunch">Déjeuner</string>
+    <string name="food_meal_dinner">Dîner</string>
+    <string name="food_plan_servings">Pour %1$s</string>
+    <string name="food_plan_replaces">Remplace « %1$s »</string>
+    <string name="food_plan_confirm">Ajouter au planning</string>
+    <string name="food_today">Aujourd’hui</string>
+    <string name="food_tomorrow">Demain</string>
+
+    <!-- Courses -->
+    <string name="food_no_results">Aucun résultat</string>
+    <string name="food_later">Plus tard</string>
+    <string name="food_quantity_in">Quantité %1$s</string>
+    <string name="food_shopping_edit">Modifier %1$s</string>
+    <string name="food_shopping_edit_title">Modifier l’article</string>
+    <string name="food_shopping_remove">Retirer de la liste</string>
+    <string name="food_shopping_offline">Liste disponible hors connexion, les changements partiront au retour du réseau</string>
+    <string name="food_shopping_unavailable">Liste de courses indisponible</string>
+    <string name="food_shopping_empty">Votre liste est vide</string>
+    <string name="food_shopping_empty_detail">Ajoutez un article ci-dessus, ou depuis une recette avec « Ajouter les manquants aux courses »</string>
+    <string name="food_aisle_other">Autres</string>
+    <string name="food_shopping_stocked_group">Ajoutés au stock</string>
+    <string name="food_items_in_basket">articles dans le panier</string>
+    <string name="food_basket_progress">%1$d sur %2$d dans le panier</string>
+    <plurals name="food_left_to_find">
+        <item quantity="one">%1$d à trouver</item>
+        <item quantity="many">%1$d à trouver</item>
+        <item quantity="other">%1$d à trouver</item>
+    </plurals>
+    <string name="food_all_in_basket">Tout est dans le panier</string>
+    <string name="food_store_mode">Mode magasin</string>
+    <string name="food_shopping_add_hint">Ajouter ou chercher un article</string>
+    <string name="food_shopping_add_named">Ajouter « %1$s »</string>
+    <string name="food_origin_recipe">Pour « %1$s »</string>
+    <string name="food_origin_dinner">Pour le dîner de %1$s</string>
+    <string name="food_origin_lunch">Pour le déjeuner de %1$s</string>
+    <string name="food_finish_shopping">Terminer les courses</string>
+    <plurals name="food_put_away_count">
+        <item quantity="one">Ranger %1$d article au stock</item>
+        <item quantity="many">Ranger %1$d articles au stock</item>
+        <item quantity="other">Ranger %1$d articles au stock</item>
+    </plurals>
+    <string name="food_put_away_title">Ranger les courses</string>
+    <plurals name="food_put_away_detail">
+        <item quantity="one">Cet article va être ajouté à votre stock. Rien n’est modifié avant votre confirmation.</item>
+        <item quantity="many">Ces %1$d articles vont être ajoutés à votre stock. Rien n’est modifié avant votre confirmation.</item>
+        <item quantity="other">Ces %1$d articles vont être ajoutés à votre stock. Rien n’est modifié avant votre confirmation.</item>
+    </plurals>
+    <string name="food_put_away_needs_product">À associer à un produit avant de le ranger</string>
+    <string name="food_put_away_partial">Une partie des articles n’a pas pu être rangée</string>
+    <string name="food_put_away_done">Courses rangées dans le stock</string>
 </resources>
