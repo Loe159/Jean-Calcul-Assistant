@@ -38,9 +38,12 @@ internal fun FoodHomeScreen(onBack: () -> Unit, onOpen: (AppRoute) -> Unit) {
     val recipes = rememberRecipesTab(
         onOpen = onOpen, onTab = { tab = it }, onMoreFilters = { filtersSheet = true },
     )
-    val pantry = if (tab == CuisineTab.PANTRY) inventoryPageSlots(expiringInitially = false) else null
+    val pantry = if (tab == CuisineTab.PANTRY) inventoryPageSlots(expiringInitially = false, onFindRecipe = { tab = CuisineTab.RECIPES }) else null
     val snackbars = remember { SnackbarHostState() }
     val shopping = if (tab == CuisineTab.SHOPPING) rememberShoppingTab(snackbars) else null
+    val planning = if (tab == CuisineTab.PLANNING) rememberPlanningTab(
+        onOpenRecipe = { id, servings -> onOpen(AppRoute.RecipeDetail(id, servings = servings)) }, snackbars = snackbars,
+    ) else null
     NavigationBackHandler(
         rememberNavigationEventState(NavigationEventInfo.None),
         isBackEnabled = tab != CuisineTab.RECIPES,
@@ -60,6 +63,7 @@ internal fun FoodHomeScreen(onBack: () -> Unit, onOpen: (AppRoute) -> Unit) {
             if (filtersSheet) RecipeFiltersSheet(recipes.state.filters, recipes.actions.onFilters) { filtersSheet = false }
             pantry?.overlay?.invoke()
             shopping?.overlay?.invoke()
+            planning?.overlay?.invoke()
             Box(Modifier.fillMaxSize()) { SnackbarHost(snackbars, Modifier.align(Alignment.BottomCenter)) }
         },
     ) { current ->
@@ -67,9 +71,7 @@ internal fun FoodHomeScreen(onBack: () -> Unit, onOpen: (AppRoute) -> Unit) {
             CuisineTab.RECIPES -> RecipesTabContent(recipes.state, recipes.actions)
             CuisineTab.PANTRY -> pantry?.content?.invoke()
             CuisineTab.SHOPPING -> shopping?.let { ShoppingTabContent(it.state, it.actions) }
-            CuisineTab.PLANNING -> CuisineMessage(
-                stringResource(R.string.food_tab_coming), icon = CuisineIcons.Utensils,
-            )
+            CuisineTab.PLANNING -> planning?.let { PlanningTabContent(it.state, it.actions) }
         }
     }
 }

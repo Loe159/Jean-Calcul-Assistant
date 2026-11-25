@@ -169,3 +169,98 @@ private fun CuisineShoppingPutAwayPreview() {
         PutAwaySheet(state.basketRows, { "Réfrigérateur" }, busy = false, error = null, onClose = {}, onConfirm = {})
     }
 }
+
+private object PlanningPreviewData {
+    private val d = CuisineHomePreviewData
+    private fun slot(day: Int, meal: Meal, recipe: RecipeSummary, servings: Int = 2) =
+        MealSlot(d.today.minusDays(1).plusDays(day.toLong()).toString(), meal, recipe.id, 1, servings, recipe)
+    private val week = MealWeek(1, "2026-11-23", "Europe/Paris", "r1", listOf(
+        slot(0, Meal.DINNER, d.gratin), slot(1, Meal.DINNER, d.pasta), slot(2, Meal.DINNER, d.curry, 4),
+        slot(3, Meal.LUNCH, d.salad), slot(5, Meal.DINNER, d.soup, 4),
+    ))
+    private val now = java.time.LocalDateTime.of(2026, 11, 24, 18, 40).atZone(java.time.ZoneId.of("Europe/Paris")).toInstant()
+    private val summary = ShoppingSummary(1, "2026-11-23", "r1", "t1", "2026-11-24T17:00:00Z", listOf(
+        ShoppingSummaryItem(1, "Basilic frais", 1, UnitCode.BUNCH, 1.0, 0.0, 1.0),
+        ShoppingSummaryItem(2, "Lentilles vertes", 1, UnitCode.G, 250.0, 0.0, 250.0),
+        ShoppingSummaryItem(3, "Lait de coco", 1, UnitCode.CL, 40.0, 0.0, 40.0),
+        ShoppingSummaryItem(4, "Feta", 1, UnitCode.G, 200.0, 0.0, 200.0),
+    ), emptyList())
+    val state = PlanningTabUi(LocalDate.parse("2026-11-23"), week.project(now), d.today, CuisineContentState.READY, summary = summary)
+    val moving = state.copy(moving = MealSlotKey("2026-11-24", Meal.DINNER))
+    val empty = PlanningTabUi(LocalDate.parse("2026-11-23"), week.copy(slots = emptyList()).project(now), d.today, CuisineContentState.READY)
+    val preview = GeneratePreviewResult(1, "2026-11-23", "Europe/Paris", "r1", listOf(
+        slot(2, Meal.LUNCH, d.omelette), slot(4, Meal.DINNER, d.salad),
+    ), "p1", "2026-11-24T19:10:00Z")
+    val actions = PlanningTabActions({}, {}, {}, {}, {}, {})
+}
+
+@Composable
+private fun PlanningPreview(state: PlanningTabUi, overlay: @Composable () -> Unit = {}) {
+    CouiPreviewTheme {
+        CuisineHomeScreen(CuisineTab.PLANNING, {}, CuisineHomePreviewData.today, {}, {}, {}, overlay = overlay) {
+            PlanningTabContent(state, PlanningPreviewData.actions)
+        }
+    }
+}
+
+@CouiPhonePreviews
+@CouiStressPreviews
+@Composable
+private fun CuisinePlanningPreview() = PlanningPreview(PlanningPreviewData.state)
+
+@CouiPhonePreviews
+@Composable
+private fun CuisinePlanningMovingPreview() = PlanningPreview(PlanningPreviewData.moving)
+
+@CouiPhonePreviews
+@Composable
+private fun CuisinePlanningEmptyPreview() = PlanningPreview(PlanningPreviewData.empty)
+
+@CouiPhonePreviews
+@Composable
+private fun CuisinePlanningGeneratePreview() = PlanningPreview(PlanningPreviewData.state) {
+    GeneratePreviewSheet(PlanningPreviewData.preview, null, false, {}, {})
+}
+
+private object PantryPreviewData {
+    private val grams = StockUnit(1, "g", UnitCode.G)
+    private val pieces = StockUnit(2, "pièce", UnitCode.PIECE)
+    private var id = 0L
+    private fun product(name: String, amount: Double, unit: StockUnit, location: Long, days: Long?, kind: LocationKind?) = PantryItem(
+        ++id, name, name.lowercase(), amount, 0.0, unit, location,
+        days?.let { CuisineHomePreviewData.today.plusDays(it).toString() },
+        if (days != null && days <= 2) PantryStatus.DUE_SOON else PantryStatus.AVAILABLE, 0.0, StockConfidence.CONFIRMED,
+        listOf(PantryBatch("s$id", amount, days?.let { CuisineHomePreviewData.today.plusDays(it).toString() }, location, false,
+            locationKind = kind)),
+    )
+    val pantry = PantryResponse(1, "2026-11-24T17:40:00Z",
+        listOf(PantryLocation(1, "Réfrigérateur"), PantryLocation(2, "Congélateur"), PantryLocation(3, "Placard")),
+        listOf(
+            product("Courgettes", 3.0, pieces, 1, 1, LocationKind.FRIDGE),
+            product("Épinards", 150.0, grams, 1, 1, LocationKind.FRIDGE),
+            product("Feta", 200.0, grams, 1, 5, LocationKind.FRIDGE),
+            product("Potimarron", 1.0, pieces, 3, 2, LocationKind.PANTRY),
+            product("Petits pois", 500.0, grams, 2, 120, LocationKind.FREEZER),
+            product("Spaghettis", 500.0, grams, 3, 300, LocationKind.PANTRY),
+            product("Lentilles vertes", 250.0, grams, 3, null, null),
+        ))
+    val empty = pantry.copy(items = emptyList())
+}
+
+@Composable
+private fun PantryPreview(pantry: PantryResponse?, soonOnly: Boolean = false) {
+    CouiPreviewTheme {
+        CuisineHomeScreen(CuisineTab.PANTRY, {}, CuisineHomePreviewData.today, {}, {}, {}) {
+            InventoryContent(pantry, CuisineHomePreviewData.today, null, null, soonOnly, "", {}, {}, {}, {}, {}, {}, onFindRecipe = {})
+        }
+    }
+}
+
+@CouiPhonePreviews
+@CouiStressPreviews
+@Composable
+private fun CuisinePantryPreview() = PantryPreview(PantryPreviewData.pantry)
+
+@CouiPhonePreviews
+@Composable
+private fun CuisinePantryEmptyPreview() = PantryPreview(PantryPreviewData.empty)

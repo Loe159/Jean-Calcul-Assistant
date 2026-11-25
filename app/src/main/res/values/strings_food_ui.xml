@@ -387,7 +387,6 @@
         <item quantity="other">%1$d à consommer bientôt</item>
     </plurals>
     <string name="food_shopping_remaining">articles à acheter</string>
-    <string name="food_tab_coming">Bientôt disponible</string>
 
     <!-- Recipe page -->
     <string name="food_total_time">Durée totale</string>
@@ -468,4 +467,50 @@
     <string name="food_put_away_needs_product">À associer à un produit avant de le ranger</string>
     <string name="food_put_away_partial">Une partie des articles n’a pas pu être rangée</string>
     <string name="food_put_away_done">Courses rangées dans le stock</string>
+
+    <!-- Planning -->
+    <string name="food_planning_unavailable">Planning indisponible</string>
+    <string name="food_move_hint">Choisissez un créneau pour « %1$s »</string>
+    <string name="food_nothing_planned_week">Aucun repas prévu</string>
+    <string name="food_nothing_planned_detail">Planifiez vos repas de la semaine : les courses se calculent toutes seules</string>
+    <string name="food_previous_week">Semaine précédente</string>
+    <string name="food_next_week">Semaine suivante</string>
+    <string name="food_week_of">Semaine du %1$s</string>
+    <plurals name="food_meals_planned">
+        <item quantity="one">%1$d repas prévu</item>
+        <item quantity="many">%1$d repas prévus</item>
+        <item quantity="other">%1$d repas prévus</item>
+    </plurals>
+    <string name="food_generate_planning">Générer mon planning</string>
+    <string name="food_week_shopping_complete">Courses déjà complètes</string>
+    <string name="food_week_nothing_to_add">Rien à ajouter pour cette semaine</string>
+    <plurals name="food_week_to_buy">
+        <item quantity="one">%1$d article à acheter</item>
+        <item quantity="many">%1$d articles à acheter</item>
+        <item quantity="other">%1$d articles à acheter</item>
+    </plurals>
+    <string name="food_add">Ajouter</string>
+    <string name="food_cook_now">Cuisiner maintenant</string>
+    <string name="food_open_recipe">Voir la recette</string>
+    <string name="food_move_meal">Déplacer</string>
+    <string name="food_move_meal_detail">Choisissez ensuite un autre créneau</string>
+    <string name="food_replace_meal">Remplacer par une autre recette</string>
+    <string name="food_remove_meal">Retirer du planning</string>
+    <string name="food_pick_recipe">Choisir une recette</string>
+    <string name="food_generate_nothing">Tous les créneaux à venir sont déjà remplis</string>
+    <string name="food_generate_detail">Ces repas rempliront les créneaux vides à venir. Rien n’est modifié avant « Appliquer ».</string>
+    <string name="food_generate_apply">Appliquer</string>
+    <string name="food_week_added_to_shopping">Articles de la semaine ajoutés aux courses</string>
+
+    <!-- Frigo -->
+    <string name="food_pantry_search">Chercher un produit</string>
+    <string name="food_pantry_unavailable">Stock indisponible</string>
+    <string name="food_pantry_empty">Votre frigo est vide</string>
+    <string name="food_pantry_empty_detail">Ajoutez vos premiers produits : Jean-Calcul pourra dire ce que vous pouvez cuisiner et ce qui expire bientôt</string>
+    <string name="food_place_all">Tous %1$d</string>
+    <string name="food_place_count">%1$s · %2$d</string>
+    <string name="food_place_other">Autres</string>
+    <string name="food_use_soon_title">À consommer bientôt</string>
+    <string name="food_find_recipe">Trouver une recette</string>
+    <string name="food_in_days">dans %1$d j</string>
 </resources>
