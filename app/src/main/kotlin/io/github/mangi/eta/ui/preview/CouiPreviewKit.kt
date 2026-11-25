@@ -6,8 +6,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigationevent.NavigationEventDispatcher
+import androidx.navigationevent.NavigationEventDispatcherOwner
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import io.github.mangi.eta.data.model.AppearanceSettings
 import io.github.mangi.eta.ui.app.AgentAppTheme
 import io.github.suqi8.coui.kmp.theme.COUITheme
@@ -93,13 +98,21 @@ fun CouiPreviewTheme(
     appearance: AppearanceSettings = AppearanceSettings(),
     content: @Composable () -> Unit,
 ) {
-    AgentAppTheme(appearance = appearance, applyInterfaceScale = false) {
-        Box(
-            modifier = Modifier
-                .then(if (fullScreen) Modifier.fillMaxSize() else Modifier.fillMaxWidth())
-                .background(COUITheme.colorScheme.backgroundWithCard),
-        ) {
-            content()
+    // Layoutlib has no Activity: give back handlers (search bars, tabs, sheets) a dispatcher to register on.
+    val backOwner = remember {
+        object : NavigationEventDispatcherOwner {
+            override val navigationEventDispatcher = NavigationEventDispatcher()
+        }
+    }
+    CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides backOwner) {
+        AgentAppTheme(appearance = appearance, applyInterfaceScale = false) {
+            Box(
+                modifier = Modifier
+                    .then(if (fullScreen) Modifier.fillMaxSize() else Modifier.fillMaxWidth())
+                    .background(COUITheme.colorScheme.backgroundWithCard),
+            ) {
+                content()
+            }
         }
     }
 }

@@ -1,174 +1,192 @@
 package io.github.mangi.eta.ui.screens.food
 
-import androidx.navigationevent.NavigationEventInfo
-import androidx.navigationevent.compose.NavigationBackHandler
-import androidx.navigationevent.compose.rememberNavigationEventState
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import io.github.mangi.eta.R
 import io.github.mangi.eta.food.*
-import io.github.mangi.eta.ui.components.ListEmptyState
 import io.github.mangi.eta.ui.components.coui.CouiChipTabs
-import io.github.mangi.eta.ui.components.coui.CouiSearchBarBox
 import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
 import io.github.mangi.eta.ui.navigation.AppRoute
 import io.github.mangi.eta.ui.screens.food.components.*
-import io.github.suqi8.coui.kmp.basic.CardListGroup
 import io.github.suqi8.coui.kmp.icon.COUIIcons
+import io.github.suqi8.coui.kmp.icon.extended.Add
 import io.github.suqi8.coui.kmp.icon.extended.Settings
-import io.github.suqi8.coui.kmp.preference.ArrowPreference
-import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
+/** Cuisine page: four internal tabs (docs/design/cuisine.md); back from another tab returns to Recettes. */
 @Composable
 internal fun FoodHomeScreen(onBack: () -> Unit, onOpen: (AppRoute) -> Unit) {
-    var pantry by rememberSaveable { mutableStateOf(false) }
-    val recipes = stringResource(R.string.food_recipes)
-    val inventory = stringResource(R.string.food_inventory)
-    val slots = if (pantry) {
-        inventoryPageSlots(expiringInitially = false)
-    } else {
-        recipeLibraryPageSlots(
-            onGenerate = { onOpen(AppRoute.RecipeGenerate()) },
-            onRecipe = { id, servings -> onOpen(AppRoute.RecipeDetail(id, servings = servings)) },
-        )
-    }
+    var tab by rememberSaveable { mutableStateOf(CuisineTab.RECIPES) }
+    var filtersSheet by rememberSaveable { mutableStateOf(false) }
+    val recipes = rememberRecipesTab(
+        onOpen = onOpen, onTab = { tab = it }, onMoreFilters = { filtersSheet = true },
+    )
+    val pantry = if (tab == CuisineTab.PANTRY) inventoryPageSlots(expiringInitially = false) else null
     NavigationBackHandler(
         rememberNavigationEventState(NavigationEventInfo.None),
-        isBackEnabled = pantry,
-        onBackCompleted = { pantry = false },
+        isBackEnabled = tab != CuisineTab.RECIPES,
+        onBackCompleted = { tab = CuisineTab.RECIPES },
     )
-    FoodPage(stringResource(R.string.food_home), { if (pantry) pantry = false else onBack() }, actions = {
-        CouiTopAppBarIconButton(
-            COUIIcons.Settings, stringResource(R.string.food_preferences), { onOpen(AppRoute.FoodPreferences) },
-            Modifier.size(48.dp),
-        )
-    }, overlay = slots.overlay) {
-        CouiChipTabs(listOf(false to recipes, true to inventory), pantry, { pantry = it })
-        slots.content()
-    }
-}
-
-@Composable
-private fun recipeLibraryPageSlots(onGenerate: () -> Unit, onRecipe: (String, Int?) -> Unit): FoodPageSlots {
-    val repo = foodRuntime().repository
-    val scope = rememberCoroutineScope()
-    val cached by remember(repo) { repo.recipes() }.collectAsState(initial = null)
-    var query by rememberSaveable { mutableStateOf("") }
-    var refresh by remember { mutableIntStateOf(0) }
-    var libraryError by remember { mutableStateOf<FoodResult.Failure?>(null) }
-    var suggestions by remember { mutableStateOf<List<RecipeSuggestion>?>(null) }
-    var suggestionError by remember { mutableStateOf<FoodResult.Failure?>(null) }
-    var suggesting by remember { mutableStateOf(false) }
-    var showSuggestions by remember { mutableStateOf(false) }
-    var params by remember { mutableStateOf(defaultGenerationParams()) }
-
-    LaunchedEffect(repo, refresh) { libraryError = repo.refreshRecipes() as? FoodResult.Failure }
-
-    fun suggest() {
-        if (suggesting) return
-        showSuggestions = true
-        suggesting = true
-        suggestionError = null
-        scope.launch {
-            val declared = (repo.preferences() as? FoodResult.Success)?.value?.declared
-            params = defaultGenerationParams(declared?.defaultServings ?: 2)
-            when (val result = repo.suggest(SuggestRequest(SuggestMode.FROM_PANTRY, params))) {
-                is FoodResult.Success -> suggestions = result.value.suggestions
-                is FoodResult.Failure -> suggestionError = result
-            }
-            suggesting = false
-        }
-    }
-
-    return FoodPageSlots(
-        content = {
-            FoodAction(R.string.food_generate, primary = true, onClick = onGenerate)
-            FoodAction(R.string.food_suggest, enabled = !suggesting, onClick = ::suggest)
-            FoodErrorText(libraryError)
-            if (libraryError != null) FoodAction(R.string.food_retry) { refresh++ }
-            CouiSearchBarBox(query, { query = it }, stringResource(R.string.food_search))
-            val recipes = cached?.value?.recipes.orEmpty()
-                .filter { it.title.contains(query.trim(), ignoreCase = true) || it.tags.any { tag -> tag.contains(query.trim(), ignoreCase = true) } }
-                .sortedWith(compareByDescending<RecipeSummary> { it.favorite }.thenBy { it.title.lowercase() })
-
-            if (cached == null && libraryError == null) FoodLoading()
-            if (cached != null && recipes.isEmpty()) ListEmptyState(stringResource(R.string.food_no_recipes))
-            if (recipes.isNotEmpty()) {
-                CardListGroup {
-                    recipes.forEach { recipe ->
-                        item {
-                            ArrowPreference(
-                                title = recipe.title,
-                                summary = stringResource(R.string.food_minutes, recipe.prepTimeMinutes + recipe.cookTimeMinutes),
-                                onClick = { onRecipe(recipe.id, null) },
-                            )
-                        }
-                    }
-                }
-            }
-        },
+    CuisineHomeScreen(
+        tab = tab,
+        onTab = { tab = it },
+        today = LocalDate.now(),
+        onBack = { if (tab != CuisineTab.RECIPES) tab = CuisineTab.RECIPES else onBack() },
+        onCreate = { onOpen(AppRoute.RecipeGenerate()) },
+        onPreferences = { onOpen(AppRoute.FoodPreferences) },
         overlay = {
-            if (showSuggestions) {
-                FoodLazySheet(stringResource(R.string.food_suggest), { showSuggestions = false }) {
-                    if (suggestionError != null || suggesting) item {
-                        FoodErrorText(suggestionError)
-                        if (suggesting) FoodLoading()
-                        else FoodAction(R.string.food_retry, onClick = ::suggest)
-                    }
-                    val suggestionsByCategory = suggestions?.groupBy { it.availability.category }?.toSortedMap()
-                    if (!suggesting && suggestionsByCategory?.isEmpty() == true) item {
-                        ListEmptyState(stringResource(R.string.food_no_recipes))
-                    }
-                    if (!suggestionsByCategory.isNullOrEmpty()) item {
-                        FoodSupporting(stringResource(R.string.food_suggestion_stock))
-                    }
-                    suggestionsByCategory?.forEach { (category, results) ->
-                        item(key = category.name) { FoodHeading(stringResource(category.label())) }
-                        items(results, key = { it.recipe.id }) { suggestion ->
-                            SuggestionRow(suggestion, params.servings) {
-                                showSuggestions = false
-                                onRecipe(suggestion.recipe.id, params.servings)
-                            }
-                        }
-                    }
-                }
-            }
+            if (filtersSheet) RecipeFiltersSheet(recipes.state.filters, recipes.actions.onFilters) { filtersSheet = false }
+            pantry?.overlay?.invoke()
         },
-    )
+    ) { current ->
+        when (current) {
+            CuisineTab.RECIPES -> RecipesTabContent(recipes.state, recipes.actions)
+            CuisineTab.PANTRY -> pantry?.content?.invoke()
+            CuisineTab.SHOPPING, CuisineTab.PLANNING -> CuisineMessage(
+                stringResource(R.string.food_tab_coming), icon = CuisineIcons.Utensils,
+            )
+        }
+    }
 }
 
 @Composable
-private fun SuggestionRow(suggestion: RecipeSuggestion, servings: Int, onOpen: () -> Unit) {
+internal fun CuisineHomeScreen(
+    tab: CuisineTab,
+    onTab: (CuisineTab) -> Unit,
+    today: LocalDate,
+    onBack: () -> Unit,
+    onCreate: () -> Unit,
+    onPreferences: () -> Unit,
+    overlay: @Composable () -> Unit = {},
+    content: @Composable ColumnScope.(CuisineTab) -> Unit,
+) {
+    // One scroll position per tab, kept while switching (docs/design/cuisine.md, navigation rules).
+    val scrolls: Map<CuisineTab, ScrollState> = CuisineTab.entries.associateWith { rememberScrollState() }
+    val labels = listOf(
+        CuisineTab.RECIPES to stringResource(R.string.food_tab_recipes),
+        CuisineTab.PANTRY to stringResource(R.string.food_tab_pantry),
+        CuisineTab.SHOPPING to stringResource(R.string.food_tab_shopping),
+        CuisineTab.PLANNING to stringResource(R.string.food_tab_planning),
+    )
+    FoodPage(
+        stringResource(R.string.food_home), onBack,
+        actions = {
+            CouiTopAppBarIconButton(COUIIcons.Add, stringResource(R.string.food_generate), onCreate, Modifier.size(48.dp))
+            CouiTopAppBarIconButton(COUIIcons.Settings, stringResource(R.string.food_preferences), onPreferences, Modifier.size(48.dp))
+        },
+        overlay = overlay,
+        scrollState = scrolls.getValue(tab),
+    ) {
+        FoodSupporting(today.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.FRANCE))
+            .replaceFirstChar { it.titlecase(Locale.FRANCE) })
+        CouiChipTabs(labels, tab, onTab)
+        content(tab)
+    }
+}
+
+internal class RecipesTabHolder(val state: RecipesTabUi, val actions: RecipesTabActions)
+
+@Composable
+private fun rememberRecipesTab(
+    onOpen: (AppRoute) -> Unit,
+    onTab: (CuisineTab) -> Unit,
+    onMoreFilters: () -> Unit,
+): RecipesTabHolder {
     val repo = foodRuntime().repository
-    val id = suggestion.recipe.id
-    val detail by remember(repo, id) { repo.recipe(id) }.collectAsState(initial = null)
-    LaunchedEffect(id, servings) {
-        if (suggestion.availability.missingCount == 0) return@LaunchedEffect
-        val recipe = detail?.value ?: (repo.refreshRecipe(id) as? FoodResult.Success)?.value?.recipe
-        if (recipe != null) repo.refreshAvailability(recipe, servings)
+    val today = remember { LocalDate.now() }
+    val monday = mondayOf(today).toString()
+
+    var query by rememberSaveable { mutableStateOf("") }
+    var maxMinutes by rememberSaveable { mutableStateOf<Int?>(null) }
+    var difficulty by rememberSaveable { mutableStateOf<Difficulty?>(null) }
+    var favoritesOnly by rememberSaveable { mutableStateOf(false) }
+    val filters = RecipeFilters(maxMinutes, difficulty, favoritesOnly)
+
+    val library by remember(repo) { repo.recipes() }.collectAsState(initial = null)
+    val pantry by remember(repo) { repo.pantry() }.collectAsState(initial = null)
+    val shopping by remember(repo) { repo.shopping() }.collectAsState(initial = null)
+    val week by remember(repo, monday) { repo.mealWeek(monday) }.collectAsState(initial = null)
+
+    var libraryRefresh by remember { mutableIntStateOf(0) }
+    var libraryFailure by remember { mutableStateOf<FoodResult.Failure?>(null) }
+    var libraryLoaded by remember { mutableStateOf(false) }
+    LaunchedEffect(repo, libraryRefresh) {
+        libraryFailure = repo.refreshRecipes() as? FoodResult.Failure
+        libraryLoaded = true
     }
-    FoodSection {
-        FoodHeading(suggestion.recipe.title)
-        val recipe = detail?.value
-        if (recipe != null) {
-            val cache by remember(recipe, servings) { repo.availability(recipe, servings) }.collectAsState(initial = null)
-            val availability = cache?.value
-            if (availability != null) {
-                FoodSupporting(stringResource(R.string.food_stock_as_of, stockDate(availability.stockAsOf)))
-                val names = recipe.ingredients.associate { it.id to it.name }
-                availability.items.filter { it.missing != null }.forEach {
-                    names[it.ingredientId]?.let { name -> FoodSupporting(name) }
-                    IngredientAvailability(it)
-                }
-            } else FoodSupporting(stringResource(R.string.food_stock_unknown))
-        } else if (suggestion.availability.missingCount > 0) {
-            FoodSupporting(stringResource(R.string.food_stock_unknown))
+    LaunchedEffect(repo, monday) {
+        repo.refreshPantry()
+        repo.refreshShopping()
+        repo.refreshMealWeek(monday)
+    }
+
+    var suggestionsRefresh by remember { mutableIntStateOf(0) }
+    var suggestions by remember { mutableStateOf<List<RecipeSuggestion>?>(null) }
+    var suggestionFailure by remember { mutableStateOf<FoodResult.Failure?>(null) }
+    LaunchedEffect(repo, suggestionsRefresh) {
+        suggestionFailure = null
+        val servings = (repo.preferences() as? FoodResult.Success)?.value?.declared?.defaultServings ?: 2
+        when (val result = repo.suggest(SuggestRequest(SuggestMode.FROM_PANTRY, defaultGenerationParams(servings)))) {
+            is FoodResult.Success -> suggestions = result.value.suggestions
+            is FoodResult.Failure -> suggestionFailure = result
         }
-        FoodAction(R.string.food_brief_open, onClick = onOpen)
     }
+
+    val intent = parseRecipeIntent(query)
+    val recipes = library?.value?.recipes.orEmpty()
+    val (stockCount, expiring) = pantry?.value?.shortcutCounts() ?: (null to 0)
+    val remaining = shopping?.let { snapshot ->
+        snapshot.cache?.value?.let { projectShopping(snapshot.items, it.aisles).remainingCount }
+    }
+    val state = RecipesTabUi(
+        shortcuts = CuisineShortcutsUi(
+            stockCount = stockCount, expiringCount = expiring, shoppingRemaining = remaining,
+            tonight = week?.value?.tonight(today), planningKnown = week != null,
+        ),
+        query = query,
+        filters = filters,
+        suggestionsState = when {
+            suggestions != null -> CuisineContentState.READY
+            suggestionFailure != null -> CuisineContentState.ERROR
+            else -> CuisineContentState.LOADING
+        },
+        suggestionsError = suggestionFailure?.let { stringResource(it.error.label()) },
+        sections = suggestions.orEmpty().toSections(intent, filters),
+        library = recipes.filter { it.matches(intent, filters) }.libraryOrder(),
+        libraryState = when {
+            library != null -> CuisineContentState.READY
+            libraryFailure != null -> CuisineContentState.ERROR
+            libraryLoaded -> CuisineContentState.EMPTY
+            else -> CuisineContentState.LOADING
+        },
+        libraryError = libraryFailure?.let { stringResource(it.error.label()) },
+        offline = library != null && libraryFailure != null,
+    )
+    val actions = RecipesTabActions(
+        onQuery = { query = it },
+        onFilters = {
+            maxMinutes = it.maxMinutes
+            difficulty = it.difficulty
+            favoritesOnly = it.favoritesOnly
+        },
+        onMoreFilters = onMoreFilters,
+        onRecipe = { id, servings -> onOpen(AppRoute.RecipeDetail(id, servings = servings)) },
+        onTab = onTab,
+        onCreate = { onOpen(AppRoute.RecipeGenerate()) },
+        onRetrySuggestions = { suggestionsRefresh++ },
+        onRetryLibrary = { libraryRefresh++ },
+    )
+    return RecipesTabHolder(state, actions)
 }

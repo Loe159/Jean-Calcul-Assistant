@@ -120,7 +120,7 @@ internal fun stockDate(value: String): String = runCatching {
 internal fun RecipeCard(
     recipe: RecipeCardUi?,
     variant: RecipeCardVariant,
-    availability: RecipeAvailabilityUi,
+    availability: RecipeAvailabilityUi?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     state: CuisineContentState = CuisineContentState.READY,
@@ -135,7 +135,7 @@ internal fun RecipeCard(
         requireNotNull(recipe).title,
         stringResource(R.string.food_minutes, recipe.totalMinutes),
         portionLabel(recipe.portions),
-        availabilityText(availability, compact = false),
+        availability?.let { availabilityText(it, compact = false) },
         if (recipe.favorite) stringResource(R.string.food_favorite) else null,
     ).filterNotNull().joinToString(" · ") else null
     Card(
@@ -170,7 +170,7 @@ internal fun RecipeCard(
                 RecipeCardLayout(variant, { imageModifier ->
                     Box(imageModifier.clearAndSetSemantics {}) {
                         RecipePicture(item.image, Modifier.matchParentSize(), placeholder = true, showLabel = variant == RecipeCardVariant.L)
-                        if (availability.verification == StockVerification.OFFLINE && variant == RecipeCardVariant.L) {
+                        if (availability?.verification == StockVerification.OFFLINE && variant == RecipeCardVariant.L) {
                             val labelId = if (largeFont) R.string.food_saved_on_device_short else R.string.food_saved_on_device
                             CuisineBadge(stringResource(labelId), Modifier.padding(8.dp), CuisineIcons.Offline)
                         }
@@ -211,7 +211,7 @@ private fun RecipeCardLayout(
 }
 
 @Composable
-private fun RecipeCardDetails(recipe: RecipeCardUi, variant: RecipeCardVariant, availability: RecipeAvailabilityUi) {
+private fun RecipeCardDetails(recipe: RecipeCardUi, variant: RecipeCardVariant, availability: RecipeAvailabilityUi?) {
     val styles = COUITheme.textStyles
     val colors = COUITheme.colorScheme
     val large = variant == RecipeCardVariant.L
@@ -231,7 +231,7 @@ private fun RecipeCardDetails(recipe: RecipeCardUi, variant: RecipeCardVariant, 
             if (!compact) FoodSupporting(portionLabel(recipe.portions))
             FoodSupporting(stringArrayResource(R.array.food_difficulties)[recipe.difficulty.ordinal])
         }
-        AvailabilityChip(availability, compact = !large)
+        if (availability != null) AvailabilityChip(availability, compact = !large)
     }
 }
 

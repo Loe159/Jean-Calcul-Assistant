@@ -343,4 +343,49 @@
     <string name="food_history_failed">Échec de la synchronisation de l’historique</string>
     <string name="food_favorite_recipe">Dans les favoris</string>
     <string name="food_cook_later">Refaire plus tard</string>
+
+    <!-- Cuisine page: tabs and Recettes -->
+    <string name="food_tab_recipes">Recettes</string>
+    <string name="food_tab_pantry">Frigo</string>
+    <string name="food_tab_shopping">Courses</string>
+    <string name="food_tab_planning">Planning</string>
+    <string name="food_recipe_search_hint">Rechercher, ex. « 20 min pâtes »</string>
+    <string name="food_intent_minutes">Recettes de %1$d min au plus</string>
+    <string name="food_tonight">Pour ce soir</string>
+    <string name="food_tonight_short">Ce soir</string>
+    <string name="food_planned_dinner">Prévu au dîner · %1$s</string>
+    <string name="food_planned_lunch">Prévu au déjeuner · %1$s</string>
+    <string name="food_nothing_planned">Rien de prévu</string>
+    <string name="food_with_what_i_have">Avec ce que j’ai</string>
+    <string name="food_nothing_ready">Aucune recette n’est faisable avec le stock connu</string>
+    <string name="food_suggestions_unavailable">Suggestions indisponibles</string>
+    <string name="food_use_soon">À cuisiner bientôt</string>
+    <string name="food_uses_expiring">À finir : %1$s</string>
+    <string name="food_all_recipes">Toutes les recettes</string>
+    <plurals name="food_recipe_results">
+        <item quantity="one">%1$d résultat</item>
+        <item quantity="many">%1$d résultats</item>
+        <item quantity="other">%1$d résultats</item>
+    </plurals>
+    <string name="food_library_offline">Recettes enregistrées sur l’appareil</string>
+    <string name="food_library_unavailable">Bibliothèque indisponible</string>
+    <string name="food_library_empty">Créez une recette ou demandez une idée à l’assistant</string>
+    <string name="food_filter_max_minutes">≤ %1$d min</string>
+    <string name="food_filter_easy">Facile</string>
+    <string name="food_favorites">Favoris</string>
+    <string name="food_favorites_only">Favoris uniquement</string>
+    <string name="food_more_filters">Filtres</string>
+    <string name="food_filter_duration">Durée totale</string>
+    <string name="food_filter_any">Toutes</string>
+    <string name="food_filter_reset">Effacer les filtres</string>
+    <string name="food_filter_apply">Afficher les recettes</string>
+    <string name="food_value_unknown">—</string>
+    <string name="food_products_in_stock">produits en stock</string>
+    <plurals name="food_expiring_count">
+        <item quantity="one">%1$d à consommer bientôt</item>
+        <item quantity="many">%1$d à consommer bientôt</item>
+        <item quantity="other">%1$d à consommer bientôt</item>
+    </plurals>
+    <string name="food_shopping_remaining">articles à acheter</string>
+    <string name="food_tab_coming">Bientôt disponible</string>
 </resources>
