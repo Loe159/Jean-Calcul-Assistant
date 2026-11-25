@@ -1,0 +1,13 @@
+{
+  "operationId": "op_10000000-0000-4000-8000-000000000008",
+  "expectedRevision": "plan-4",
+  "from": {
+    "date": "2026-11-25",
+    "meal": "DINNER"
+  },
+  "to": {
+    "date": "2026-11-26",
+    "meal": "LUNCH"
+  },
+  "mode": "MOVE"
+}

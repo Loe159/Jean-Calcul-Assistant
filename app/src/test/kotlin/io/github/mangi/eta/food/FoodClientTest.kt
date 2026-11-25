@@ -79,6 +79,73 @@ class FoodClientTest {
         assertEquals(503, error.status)
         assertTrue(!error.permanent)
     }
+
+    @Test
+    fun cuisineRoutesSignEncodedPathsAndFrozenBodies() = runBlocking {
+        val week = "/planning/weeks/2026-11-23"
+        val slot = "/planning/slots/2026-11-25/DINNER"
+        val responses = mutableMapOf(
+            "GET /shopping" to "shopping",
+            "POST /shopping/items" to "shopping-operation-result",
+            "PATCH /shopping/items/20" to "shopping-operation-result",
+            "DELETE /shopping/items/20" to "shopping-operation-result",
+            "POST /shopping/undo" to "shopping-undo-result",
+            "POST /shopping/put-away" to "put-away-result",
+            "POST /recipes/r%C3%A9cette%2Ftest%20%3F/shopping-items" to "shopping-operation-result",
+            "PATCH /pantry/entries/31" to "pantry-entry-result",
+            "GET $week" to "meal-week",
+            "PUT $slot" to "planning-write-result",
+            "DELETE $slot" to "planning-write-result",
+            "POST /planning/move" to "planning-write-result",
+            "POST $week/generate PREVIEW" to "generate-preview-result",
+            "POST $week/generate APPLY" to "generate-apply-result",
+            "GET $week/shopping-summary" to "shopping-summary",
+            "POST $week/shopping-items" to "shopping-operation-result",
+            "POST /brief/cards" to "brief-cards-v2",
+        )
+        val frozenRecipeBody = foodFixture("recipe-shopping-request")
+        val http = OkHttpClient.Builder().addInterceptor { chain ->
+            val request = chain.request()
+            val path = request.url.encodedPath
+            val body = Buffer().also { request.body?.writeTo(it) }.readUtf8()
+            assertEquals(null, request.url.encodedQuery)
+            assertEquals(
+                MastraSignedTransport.sign(secret, request.method, path, "1234", request.header("X-JC-Nonce")!!, body),
+                request.header("X-JC-Signature"),
+            )
+            val shortPath = path.removePrefix("/mobile/v1/food")
+            val mode = if (shortPath.endsWith("/generate")) {
+                if (body.contains("\"PREVIEW\"")) " PREVIEW" else " APPLY"
+            } else ""
+            if (shortPath.startsWith("/recipes/")) assertEquals(frozenRecipeBody, body)
+            if (request.method == "DELETE") assertTrue(body.contains("\"expectedRevision\""))
+            chain.response(200, foodFixture(checkNotNull(responses.remove("${request.method} $shortPath$mode"))))
+        }.build()
+        val client = FoodClient(pairing, http) { 1234 }
+        val day = MealSlotKey("2026-11-25", Meal.DINNER)
+        val monday = "2026-11-23"
+        client.shopping()
+        client.addShoppingItem(requestFixture("shopping-add-request"))
+        client.patchShoppingItem(20, requestFixture("shopping-patch-request"))
+        client.deleteShoppingItem(20, requestFixture("shopping-delete-request"))
+        client.undoShopping(requestFixture("shopping-undo-request"))
+        client.putAway(requestFixture("put-away-request"))
+        client.replayCuisine(CuisineOperationKind.RECIPE_SHOPPING, "récette/test ?", frozenRecipeBody)
+        client.patchPantryEntry(31, requestFixture("pantry-entry-patch-request"))
+        client.mealWeek(monday)
+        client.putMealSlot(day, requestFixture("planning-put-request"))
+        client.deleteMealSlot(day, requestFixture("planning-delete-request"))
+        client.moveMealSlot(requestFixture("planning-move-request"))
+        client.previewMealWeek(monday, requestFixture("generate-preview-request"))
+        client.applyMealWeek(monday, requestFixture("generate-apply-request"))
+        client.planningShoppingSummary(monday)
+        client.addPlanningShoppingItems(monday, requestFixture("planning-shopping-request"))
+        client.briefCardsV2(requestFixture("brief-cards-v2-request"))
+        assertTrue(responses.isEmpty())
+    }
+
+    private inline fun <reified T> requestFixture(name: String): T =
+        FoodContract.json.decodeFromString(foodFixture(name))
 }
 
 internal fun Interceptor.Chain.response(code: Int, body: String): Response = Response.Builder()

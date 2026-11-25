@@ -9,6 +9,9 @@ import io.github.mangi.eta.data.db.CookingTimerEntity
 import io.github.mangi.eta.data.db.EtaDatabase
 import io.github.mangi.eta.data.db.FoodAvailabilityEntity
 import io.github.mangi.eta.data.db.FoodBriefCardsEntity
+import io.github.mangi.eta.data.db.FoodBriefCardsV2Entity
+import io.github.mangi.eta.data.db.FoodCuisineOperationEntity
+import io.github.mangi.eta.data.db.FoodMealWeekEntity
 import io.github.mangi.eta.data.db.FoodOutboxEntity
 import io.github.mangi.eta.data.db.FoodOutboxKind
 import io.github.mangi.eta.data.db.FoodOutboxState
@@ -16,9 +19,11 @@ import io.github.mangi.eta.data.db.FoodPantryEntity
 import io.github.mangi.eta.data.db.FoodRecipeEntity
 import io.github.mangi.eta.data.db.FoodRecipeIndexEntity
 import io.github.mangi.eta.data.db.FoodRecipeLibraryEntity
+import io.github.mangi.eta.data.db.FoodShoppingEntity
 import java.io.IOException
 import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -87,21 +92,36 @@ internal class FoodRepository(
             }
         }
 
-    fun pantry(): Flow<FoodCache<PantryResponse>?> = observeCache(dao::observePantry) { row ->
-        FoodCache(FoodContract.decode(row.json), row.fetchedAt)
+    fun pantry(): Flow<FoodCache<PantryResponse>?> = observeCuisineCache("food_pantry") { owner, pending ->
+        dao.pantry(owner)?.let { row ->
+            val pantry = FoodContract.decode<PantryResponse>(row.json)
+            val projected = projectPendingPantry(pantry, pending, LocalDate.now(clock))
+            FoodCache(projected, row.fetchedAt)
+        }
     }
 
-    fun briefCards(): Flow<FoodCache<BriefCardsResponse>?> =
-        cacheOwner.flatMapLatest { owner ->
-            if (owner == null) flowOf(null) else dao.observeBriefCards(owner).transformLatest { row ->
-                val remainingMs = (row?.validUntilEpochMs ?: 0) - clock.millis()
-                if (row != null && remainingMs > 0) {
-                    emit(FoodCache(FoodContract.decode<BriefCardsResponse>(row.json), row.cachedAt))
-                    delay(remainingMs)
-                }
-                emit(null)
-            }
+    fun shopping(): Flow<ShoppingSnapshot?> = observeCuisineCache("food_shopping") { owner, pending ->
+        val cache = dao.shopping(owner)?.let { FoodCache(FoodContract.decode<ShoppingResponse>(it.json), it.fetchedAt) }
+        projectPendingShopping(cache, pending)
+    }
+
+    fun mealWeek(weekStart: String): Flow<FoodCache<MealWeek>?> =
+        observeCache({ dao.observeMealWeek(it, weekStart) }) { FoodCache(FoodContract.decode(it.json), it.fetchedAt) }
+
+    fun cuisineOperation(operationId: String): Flow<CuisineOperationStatus?> = cacheOwner.flatMapLatest { owner ->
+        if (owner == null) flowOf(null) else dao.observeCuisineOperation(owner, operationId).map { it?.toStatus() }
+    }
+
+    fun briefCards(): Flow<FoodCache<BriefCardsResponse>?> = observeExpiringCache(
+        dao::observeBriefCards, FoodBriefCardsEntity::validUntilEpochMs,
+    ) { FoodCache(FoodContract.decode(it.json), it.cachedAt) }
+
+    fun briefCardsV2(kinds: Set<BriefCardKind> = BriefCardKind.entries.toSet()): Flow<FoodCache<BriefCardsV2Response>?> {
+        val key = briefKindsKey(kinds)
+        return observeExpiringCache({ dao.observeBriefCardsV2(it, key) }, FoodBriefCardsV2Entity::validUntilEpochMs) {
+            FoodCache(FoodContract.decode(it.json), it.cachedAt)
         }
+    }
 
     suspend fun refreshRecipes(): FoodResult<RecipeListResponse> = refresh { owner, client ->
         client.recipes().also { dao.saveRecipeIndex(FoodRecipeIndexEntity(owner, json.encodeToString(it), clock.millis())) }
@@ -189,6 +209,13 @@ internal class FoodRepository(
                     val remaining = cached.cards.filterNot { it.id == request.cardId }
                     dao.saveBriefCards(row.copy(json = json.encodeToString(cached.copy(cards = remaining))))
                 }
+                for (row in dao.briefCardsV2(cachedOwner)) {
+                    val cached = FoodContract.decode<BriefCardsV2Response>(row.json)
+                    val remaining = cached.cards.filterNot { it.id == request.cardId }
+                    if (remaining != cached.cards) {
+                        dao.saveBriefCardsV2(row.copy(json = json.encodeToString(cached.copy(cards = remaining))))
+                    }
+                }
             }
         }
         return remote { owner, client ->
@@ -217,8 +244,100 @@ internal class FoodRepository(
     }
 
     suspend fun refreshPantry(): FoodResult<PantryResponse> = refresh { owner, client ->
-        client.pantry().also { dao.savePantry(FoodPantryEntity(owner, json.encodeToString(it), clock.millis())) }
+        fetchPantry(owner, client)
     }
+
+    suspend fun refreshShopping(): FoodResult<ShoppingResponse> = refresh(::fetchShopping)
+
+    suspend fun refreshMealWeek(weekStart: String): FoodResult<MealWeek> = refresh { owner, client ->
+        client.mealWeek(weekStart).also { week ->
+            if (week.weekStart != weekStart) throw SerializationException("Unexpected meal week")
+            saveMealWeeks(owner, listOf(week))
+        }
+    }
+
+    suspend fun refreshBriefCardsV2(kinds: Set<BriefCardKind> = BriefCardKind.entries.toSet()): FoodResult<BriefCardsV2Response> =
+        refresh { owner, client ->
+            client.briefCardsV2(BriefCardsRequest(kinds.sorted())).also {
+                dao.saveBriefCardsV2(FoodBriefCardsV2Entity(
+                    owner, briefKindsKey(kinds), json.encodeToString(it), clock.millis(), Instant.parse(it.validUntil).toEpochMilli(),
+                ))
+            }
+        }
+
+    suspend fun addShoppingItem(request: ShoppingAddRequest, product: CatalogProduct? = null): FoodResult<String> =
+        enqueueCuisine(request.operationId, CuisineOperationKind.SHOPPING_ADD, null, json.encodeToString(request)) { owner ->
+            val draft = request.draft(cachedShopping(owner), cachedPantry(owner), product)
+            draft?.let { json.encodeToString(listOf(it)) }
+        }
+
+    suspend fun setShoppingBasketState(
+        itemId: Long, operationId: String, expectedRevision: String, state: ShoppingBasketState,
+    ): FoodResult<String> = patchShoppingItem(itemId, ShoppingPatchRequest(operationId, expectedRevision, ShoppingPatch(state = state)))
+
+    suspend fun patchShoppingItem(itemId: Long, request: ShoppingPatchRequest): FoodResult<String> {
+        require(itemId > 0)
+        return enqueueCuisine(request.operationId, CuisineOperationKind.SHOPPING_PATCH, itemId.toString(), json.encodeToString(request))
+    }
+
+    suspend fun deleteShoppingItem(itemId: Long, request: ShoppingDeleteRequest): FoodResult<String> {
+        require(itemId > 0)
+        return enqueueCuisine(request.operationId, CuisineOperationKind.SHOPPING_DELETE, itemId.toString(), json.encodeToString(request))
+    }
+
+    suspend fun addRecipeShoppingItems(recipeId: String, request: RecipeShoppingRequest): FoodResult<String> {
+        require(recipeId.isNotBlank() && recipeId != "." && recipeId != "..")
+        return enqueueCuisine(request.operationId, CuisineOperationKind.RECIPE_SHOPPING, recipeId, json.encodeToString(request)) { owner ->
+            val recipe = dao.recipeVersion(owner, recipeId, request.recipeVersion)?.let { json.decodeFromString<RecipeDefinition>(it.json) }
+            val availability = dao.latestAvailability(owner, recipeId, request.recipeVersion)
+                ?.let { FoodContract.decode<Availability>(it.json) }
+            val pantry = cachedPantry(owner)
+            if (recipe == null || availability == null || pantry == null) null
+            else json.encodeToString(request.drafts(recipe, availability, pantry, cachedShopping(owner)))
+        }
+    }
+
+    suspend fun undoShopping(request: ShoppingUndoRequest): FoodResult<String> =
+        enqueueCuisine(request.operationId, CuisineOperationKind.SHOPPING_UNDO, null, json.encodeToString(request))
+
+    suspend fun patchPantryEntry(entryId: Long, request: PantryEntryPatchRequest): FoodResult<String> {
+        require(entryId > 0)
+        return enqueueCuisine(request.operationId, CuisineOperationKind.PANTRY_ENTRY_PATCH, entryId.toString(), json.encodeToString(request))
+    }
+
+    suspend fun putAway(request: PutAwayRequest): FoodResult<ShoppingOperationResult> = refresh { owner, client ->
+        client.putAway(request).also {
+            checkOperationId(request.operationId, it.operationId)
+            runRemote { fetchShopping(owner, client) }
+            runRemote { fetchPantry(owner, client) }
+        }
+    }
+
+    suspend fun putMealSlot(slot: MealSlotKey, request: PlanningPutRequest): FoodResult<PlanningWriteResult> =
+        writePlanning(request.operationId) { it.putMealSlot(slot, request) }
+
+    suspend fun deleteMealSlot(slot: MealSlotKey, request: PlanningDeleteRequest): FoodResult<PlanningWriteResult> =
+        writePlanning(request.operationId) { it.deleteMealSlot(slot, request) }
+
+    suspend fun moveMealSlot(request: PlanningMoveRequest): FoodResult<PlanningWriteResult> =
+        writePlanning(request.operationId) { it.moveMealSlot(request) }
+
+    suspend fun previewMealWeek(weekStart: String, request: GeneratePreviewRequest): FoodResult<GeneratePreviewResult> =
+        remote { _, client -> client.previewMealWeek(weekStart, request) }
+
+    suspend fun applyMealWeek(weekStart: String, request: GenerateApplyRequest): FoodResult<PlanningWriteResult> =
+        writePlanning(request.operationId) { it.applyMealWeek(weekStart, request) }
+
+    suspend fun planningShoppingSummary(weekStart: String): FoodResult<ShoppingSummary> =
+        remote { _, client -> client.planningShoppingSummary(weekStart) }
+
+    suspend fun addPlanningShoppingItems(weekStart: String, request: PlanningShoppingRequest): FoodResult<ShoppingOperationResult> =
+        refresh { owner, client ->
+            client.addPlanningShoppingItems(weekStart, request).also {
+                checkOperationId(request.operationId, it.operationId)
+                runRemote { fetchShopping(owner, client) }
+            }
+        }
 
     suspend fun refreshBriefCards(): FoodResult<BriefCardsResponse> = refresh { owner, client ->
         client.briefCards().also {
@@ -415,12 +534,98 @@ internal class FoodRepository(
         return operationId
     }
 
-    suspend fun hasPendingSync(): Boolean = pairing()?.let { dao.replayable(it.foodOwner()).isNotEmpty() } ?: false
+    suspend fun hasPendingSync(): Boolean {
+        val owner = pairing()?.foodOwner() ?: return false
+        return dao.replayable(owner).isNotEmpty() || dao.pendingCuisineOperations(owner).isNotEmpty()
+    }
 
     suspend fun replayOutbox(): Boolean = replayMutex.withLock {
         val owner = pairing()?.foodOwner() ?: return@withLock false
         for (row in dao.replayable(owner)) sendCompletion(row.operationId)
+        syncCuisine(owner, retry = true)
         hasPendingSync()
+    }
+
+    private suspend fun enqueueCuisine(
+        operationId: String,
+        kind: CuisineOperationKind,
+        target: String?,
+        body: String,
+        projection: suspend (String) -> String? = { null },
+    ): FoodResult<String> {
+        val owner = cachePairing()?.foodOwner() ?: return FoodResult.Failure(FoodError.NOT_PAIRED)
+        val saved = database.withTransaction {
+            val previous = dao.cuisineOperation(operationId)
+            if (previous == null) {
+                dao.insertCuisineOperation(FoodCuisineOperationEntity(operationId, owner, kind, target, body, projection(owner)))
+                true
+            } else {
+                previous.owner == owner && previous.kind == kind && previous.target == target && previous.bodyJson == body
+            }
+        }
+        if (!saved) return FoodResult.Failure(FoodError.SERVER_ERROR, "OPERATION_CONFLICT")
+        if (pairing()?.foodOwner() == owner) {
+            scheduleSync()
+            scope.launch { replayMutex.withLock { syncCuisine(owner, retry = false) } }
+        }
+        return FoodResult.Success(operationId)
+    }
+
+    private suspend fun syncCuisine(owner: String, retry: Boolean) = refreshMutex.withLock {
+        for (row in dao.pendingCuisineOperations(owner)) {
+            if (row.state !in cuisineReplayableStates || (!retry && row.state != FoodOutboxState.PENDING)) continue
+            val current = pairing()?.takeIf { it.foodOwner() == owner } ?: return@withLock
+            if (row.kind == CuisineOperationKind.SHOPPING_UNDO) {
+                val sourceId = json.decodeFromString<ShoppingUndoRequest>(row.bodyJson).sourceOperationId
+                val source = dao.cuisineOperation(sourceId)
+                if (source?.owner == owner && source.sequence < row.sequence && source.state in cuisineReplayableStates) continue
+            }
+            sendCuisine(clientFor(current), row)
+        }
+
+        val waiting = dao.pendingCuisineOperations(owner).filter { it.awaitingRefresh }
+        if (waiting.isNotEmpty()) {
+            val current = pairing()?.takeIf { it.foodOwner() == owner } ?: return@withLock
+            val client = clientFor(current)
+            if (waiting.any { it.kind.isPantry }) runRemote { fetchPantry(owner, client) }
+            if (waiting.any { !it.kind.isPantry }) runRemote { fetchShopping(owner, client) }
+        }
+    }
+
+    private suspend fun sendCuisine(client: FoodClient, row: FoodCuisineOperationEntity) {
+        val claimed = row.copy(state = FoodOutboxState.SENT, attempts = row.attempts + 1)
+        dao.updateCuisineOperation(claimed)
+        val updated = try {
+            val result = client.replayCuisine(claimed.kind, claimed.target, claimed.bodyJson)
+            checkOperationId(claimed.operationId, result.operationId)
+            when (result) {
+                is ShoppingOperationResult -> claimed.copy(
+                    state = result.state.outboxState(), resultJson = json.encodeToString(result),
+                )
+                is PantryEntryResult -> claimed.copy(
+                    state = when (result.state) {
+                        PantryEntryState.SUCCEEDED -> FoodOutboxState.DONE
+                        PantryEntryState.UNCERTAIN -> FoodOutboxState.UNCERTAIN
+                    },
+                    resultJson = json.encodeToString(result),
+                )
+            }.copy(lastError = null, awaitingRefresh = true)
+        } catch (error: MastraHttpException) {
+            val terminal = error.permanent && error.code != "GROCY_UNAVAILABLE"
+            claimed.copy(
+                state = if (terminal) FoodOutboxState.FAILED else FoodOutboxState.UNCERTAIN,
+                lastError = error.code ?: "HTTP_${error.status}",
+                awaitingRefresh = claimed.awaitingRefresh || terminal,
+            )
+        } catch (_: IOException) {
+            claimed.copy(state = FoodOutboxState.UNCERTAIN, lastError = FoodError.OFFLINE.name)
+        } catch (_: SerializationException) {
+            claimed.copy(state = FoodOutboxState.UNCERTAIN, lastError = FoodError.SERVER_ERROR.name)
+        } catch (_: IllegalArgumentException) {
+            // An invalid local path is deterministic. Leave the server untouched and remove the projection.
+            claimed.copy(state = FoodOutboxState.FAILED, lastError = "INVALID_REQUEST")
+        }
+        dao.updateCuisineOperation(updated)
     }
 
     private suspend fun sendCompletion(operationId: String) {
@@ -463,17 +668,79 @@ internal class FoodRepository(
                 }
             }
         }
-        val outboxState = when (state) {
-            OperationState.SUCCEEDED, OperationState.PARTIAL -> FoodOutboxState.DONE
-            OperationState.FAILED -> FoodOutboxState.FAILED
-            OperationState.UNCERTAIN -> FoodOutboxState.UNCERTAIN
-        }
         database.withTransaction {
             val now = clock.millis()
             val session = checkNotNull(dao.session(claimed.sessionId))
             dao.updateSession(session.nextRevision(now).copy(stockConsumptionStatus = StockConsumptionStatus.valueOf(state.name)))
-            dao.updateOutbox(claimed.copy(state = outboxState, lastError = error, updatedAt = now,
+            dao.updateOutbox(claimed.copy(state = state.outboxState(), lastError = error, updatedAt = now,
                 resultJson = operationResult?.let { json.encodeToString(it) } ?: claimed.resultJson))
+        }
+    }
+
+    private suspend fun fetchShopping(owner: String, client: FoodClient): ShoppingResponse =
+        client.shopping().also { result ->
+            database.withTransaction {
+                dao.saveShopping(FoodShoppingEntity(owner, json.encodeToString(result), clock.millis()))
+                dao.clearCuisineRefresh(owner, pantry = false)
+            }
+        }
+
+    private suspend fun fetchPantry(owner: String, client: FoodClient): PantryResponse =
+        client.pantry().also { result ->
+            database.withTransaction {
+                dao.savePantry(FoodPantryEntity(owner, json.encodeToString(result), clock.millis()))
+                dao.clearCuisineRefresh(owner, pantry = true)
+            }
+        }
+
+    private suspend fun cachedShopping(owner: String): ShoppingResponse? =
+        dao.shopping(owner)?.let { FoodContract.decode(it.json) }
+
+    private suspend fun cachedPantry(owner: String): PantryResponse? =
+        dao.pantry(owner)?.let { FoodContract.decode(it.json) }
+
+    private suspend fun saveMealWeeks(owner: String, weeks: List<MealWeek>) {
+        val fetchedAt = clock.millis()
+        dao.saveMealWeeks(weeks.map { FoodMealWeekEntity(owner, it.weekStart, json.encodeToString(it), fetchedAt) })
+    }
+
+    private suspend fun writePlanning(
+        operationId: String, write: suspend (FoodClient) -> PlanningWriteResult,
+    ): FoodResult<PlanningWriteResult> = refresh { owner, client ->
+        write(client).also { result ->
+            checkOperationId(operationId, result.operationId)
+            if (result.replayed) {
+                // A replay acknowledges an earlier write and can contain older week revisions.
+                val fresh = result.weeks.mapNotNull { week ->
+                    (runRemote { client.mealWeek(week.weekStart) } as? FoodResult.Success)?.value
+                        ?.takeIf { it.weekStart == week.weekStart }
+                }
+                saveMealWeeks(owner, fresh)
+            } else saveMealWeeks(owner, result.weeks)
+        }
+    }
+
+    private fun <T> observeCuisineCache(
+        table: String, decode: suspend (String, List<FoodCuisineOperationEntity>) -> T,
+    ): Flow<T?> = cacheOwner.flatMapLatest { owner ->
+        if (owner == null) flowOf(null) else database.invalidationTracker.createFlow(table, "food_cuisine_operations").map {
+            database.withTransaction {
+                val operations = dao.pendingCuisineOperations(owner).filter { it.state != FoodOutboxState.FAILED }
+                decode(owner, operations)
+            }
+        }.distinctUntilChanged()
+    }
+
+    private fun <E, T> observeExpiringCache(
+        query: (String) -> Flow<E?>, validUntil: (E) -> Long, decode: (E) -> FoodCache<T>,
+    ): Flow<FoodCache<T>?> = cacheOwner.flatMapLatest { owner ->
+        if (owner == null) flowOf(null) else query(owner).transformLatest { row ->
+            val remainingMs = (row?.let(validUntil) ?: 0) - clock.millis()
+            if (row != null && remainingMs > 0) {
+                emit(decode(row))
+                delay(remainingMs)
+            }
+            emit(null)
         }
     }
 
@@ -511,6 +778,18 @@ internal class FoodRepository(
     private companion object {
         val replayableStates = setOf(FoodOutboxState.PENDING, FoodOutboxState.SENT, FoodOutboxState.UNCERTAIN)
     }
+}
+
+private fun briefKindsKey(kinds: Set<BriefCardKind>): String = kinds.sorted().joinToString(",") { it.name }
+
+private fun checkOperationId(expected: String, actual: String) {
+    if (expected != actual) throw SerializationException("Unexpected operation ID")
+}
+
+private fun OperationState.outboxState(): FoodOutboxState = when (this) {
+    OperationState.SUCCEEDED, OperationState.PARTIAL -> FoodOutboxState.DONE
+    OperationState.FAILED -> FoodOutboxState.FAILED
+    OperationState.UNCERTAIN -> FoodOutboxState.UNCERTAIN
 }
 
 private fun MastraPairing.foodOwner(): String = MastraSignedTransport.sha256("$baseUrl\n$deviceId")

@@ -9,6 +9,14 @@
     {
       "id": 2,
       "name": "Réfrigérateur"
+    },
+    {
+      "id": 3,
+      "name": "Congélateur"
+    },
+    {
+      "id": 4,
+      "name": "Cellier"
     }
   ],
   "items": [
@@ -34,7 +42,10 @@
           "amount": 640,
           "bestBeforeDate": "2026-11-25",
           "locationId": 2,
-          "opened": false
+          "opened": false,
+          "entryId": 31,
+          "locationKind": "FRIDGE",
+          "revision": "1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f"
         }
       ]
     },
@@ -59,8 +70,11 @@
           "stockEntryId": "6a23c0ffee005",
           "amount": 6,
           "bestBeforeDate": "2026-12-03",
-          "locationId": 2,
-          "opened": false
+          "locationId": 3,
+          "opened": false,
+          "entryId": 32,
+          "locationKind": "FREEZER",
+          "revision": "2020202020202020202020202020202020202020202020202020202020202020"
         }
       ]
     },
@@ -85,8 +99,11 @@
           "stockEntryId": "6a23c0ffee006",
           "amount": 180,
           "bestBeforeDate": "2026-11-30",
-          "locationId": 2,
-          "opened": false
+          "locationId": 1,
+          "opened": false,
+          "entryId": 33,
+          "locationKind": "PANTRY",
+          "revision": "2121212121212121212121212121212121212121212121212121212121212121"
         }
       ]
     },
@@ -111,8 +128,11 @@
           "stockEntryId": "6a23c0ffee007",
           "amount": 750,
           "bestBeforeDate": "2027-03-20",
-          "locationId": 1,
-          "opened": true
+          "locationId": 4,
+          "opened": true,
+          "entryId": 34,
+          "locationKind": "OTHER",
+          "revision": "2222222222222222222222222222222222222222222222222222222222222222"
         }
       ]
     },
@@ -138,7 +158,10 @@
           "amount": 120,
           "bestBeforeDate": "2026-11-24",
           "locationId": 2,
-          "opened": true
+          "opened": true,
+          "entryId": 35,
+          "locationKind": "FRIDGE",
+          "revision": "2323232323232323232323232323232323232323232323232323232323232323"
         }
       ]
     },
@@ -163,8 +186,11 @@
           "stockEntryId": "6a23c0ffee010",
           "amount": 350,
           "bestBeforeDate": "2027-04-08",
-          "locationId": 1,
-          "opened": true
+          "locationId": 3,
+          "opened": true,
+          "entryId": 36,
+          "locationKind": "FREEZER",
+          "revision": "2424242424242424242424242424242424242424242424242424242424242424"
         }
       ]
     },
@@ -189,8 +215,11 @@
           "stockEntryId": "6a23c0ffee011",
           "amount": 500,
           "bestBeforeDate": "2026-11-29",
-          "locationId": 2,
-          "opened": false
+          "locationId": 1,
+          "opened": false,
+          "entryId": 37,
+          "locationKind": "PANTRY",
+          "revision": "2525252525252525252525252525252525252525252525252525252525252525"
         }
       ]
     },

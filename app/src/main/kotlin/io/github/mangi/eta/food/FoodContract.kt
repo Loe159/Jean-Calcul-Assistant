@@ -11,6 +11,10 @@ internal interface FoodResponse {
     val schemaVersion: Int
 }
 
+internal sealed interface CuisineOperationResult : FoodResponse {
+    val operationId: String
+}
+
 internal object FoodContract {
     val json = Json { ignoreUnknownKeys = true }
 
@@ -142,12 +146,7 @@ internal data class Preferences(
 @Serializable
 @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 @JsonClassDiscriminator("kind")
-internal sealed interface BriefCard {
-    val id: String
-    val priority: Int
-    val title: String
-    val subtitle: String
-
+internal sealed interface BriefCard : BriefCardV2 {
     @Serializable @SerialName("RECIPE_RECOMMENDATION")
     data class RecipeRecommendation(
         override val id: String,
@@ -185,6 +184,53 @@ internal data class BriefCardsResponse(
     val generatedAt: String,
     val validUntil: String,
     val cards: List<BriefCard>,
+) : FoodResponse
+
+@Serializable internal enum class BriefCardKind { RECIPE_RECOMMENDATION, EXPIRING_PRODUCTS, MEAL_PLANNED, SHOPPING_LIST }
+
+@Serializable internal data class BriefCardsRequest(val kinds: List<BriefCardKind>)
+
+@Serializable
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+@JsonClassDiscriminator("kind")
+internal sealed interface BriefCardV2 {
+    val id: String
+    val priority: Int
+    val title: String
+    val subtitle: String
+
+    @Serializable @SerialName("MEAL_PLANNED")
+    data class MealPlanned(
+        override val id: String,
+        override val priority: Int,
+        override val title: String,
+        override val subtitle: String,
+        val slot: MealSlotKey,
+        val recipeId: String,
+        val recipeVersion: Int,
+        val servings: Int,
+        val scheduledAt: String,
+    ) : BriefCardV2
+
+    @Serializable @SerialName("SHOPPING_LIST")
+    data class ShoppingList(
+        override val id: String,
+        override val priority: Int,
+        override val title: String,
+        override val subtitle: String,
+        val listId: Long,
+        val remainingCount: Int,
+        val inBasketCount: Int,
+        val previewNames: List<String>,
+    ) : BriefCardV2
+}
+
+@Serializable
+internal data class BriefCardsV2Response(
+    override val schemaVersion: Int,
+    val generatedAt: String,
+    val validUntil: String,
+    val cards: List<BriefCardV2>,
 ) : FoodResponse
 
 @Serializable internal enum class BriefFeedbackAction { OPENED, DISMISSED, COOKED }

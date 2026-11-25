@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "weekStart": "2026-11-23",
+  "revision": "plan-4",
+  "summaryToken": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "stockAsOf": "2026-11-25T16:00:00Z",
+  "items": [
+    {
+      "grocyProductId": 3,
+      "name": "Courgettes",
+      "grocyQuId": 1,
+      "unitCode": "g",
+      "missing": 500,
+      "alreadyListed": 250,
+      "toBuy": 250
+    }
+  ],
+  "warnings": [
+    {
+      "slot": {
+        "date": "2026-11-25",
+        "meal": "DINNER"
+      },
+      "ingredientId": "ing_cream",
+      "grocyProductId": 8,
+      "reason": "NO_CONVERSION"
+    }
+  ]
+}

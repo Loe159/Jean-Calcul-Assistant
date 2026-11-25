@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-25T16:00:00Z",
+  "validUntil": "2026-11-25T16:30:00Z",
+  "cards": [
+    {
+      "id": "meal_2026-11-25_DINNER_synthetic_1",
+      "kind": "MEAL_PLANNED",
+      "priority": 100,
+      "title": "Clafoutis salé aux courgettes et au chèvre",
+      "subtitle": "Dîner prévu",
+      "slot": {
+        "date": "2026-11-25",
+        "meal": "DINNER"
+      },
+      "recipeId": "rcp_clafoutis_courgette_chevre",
+      "recipeVersion": 1,
+      "servings": 2,
+      "scheduledAt": "2026-11-25T19:00:00+01:00"
+    },
+    {
+      "id": "shopping_2_2026-11-25",
+      "kind": "SHOPPING_LIST",
+      "priority": 60,
+      "title": "Liste de courses",
+      "subtitle": "0 à acheter · 2 dans le panier",
+      "listId": 2,
+      "remainingCount": 0,
+      "inBasketCount": 2,
+      "previewNames": [
+        "Courgettes",
+        "Serviettes"
+      ]
+    }
+  ]
+}

@@ -1,6 +1,16 @@
 package io.github.mangi.eta.food
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 
 @Serializable internal enum class AvailabilityStatus { AVAILABLE, PARTIAL, MISSING, UNKNOWN, NOT_TRACKED, OPTIONAL_MISSING }
 
@@ -38,6 +48,7 @@ internal data class Availability(
 
 @Serializable internal enum class PantryStatus { AVAILABLE, DUE_SOON, EXPIRED, OUT_OF_STOCK, BELOW_MIN }
 @Serializable internal enum class StockConfidence { CONFIRMED, ESTIMATED }
+@Serializable internal enum class LocationKind { FRIDGE, FREEZER, PANTRY, OTHER }
 @Serializable internal data class StockUnit(val grocyQuId: Long, val name: String, val unitCode: UnitCode?)
 @Serializable internal data class PantryLocation(val id: Long, val name: String)
 
@@ -48,6 +59,9 @@ internal data class PantryBatch(
     val bestBeforeDate: String?,
     val locationId: Long,
     val opened: Boolean,
+    val entryId: Long? = null,
+    val revision: String? = null,
+    val locationKind: LocationKind? = null,
 )
 
 @Serializable
@@ -118,3 +132,50 @@ internal data class PantryConsumeRequest(
     val unit: UnitCode,
     val spoiled: Boolean? = null,
 )
+
+@Serializable(with = PantryDatePatchSerializer::class)
+internal sealed interface PantryDatePatch {
+    data object Unchanged : PantryDatePatch
+    data object Clear : PantryDatePatch
+    data class Set(val date: String) : PantryDatePatch
+}
+
+internal object PantryDatePatchSerializer : KSerializer<PantryDatePatch> {
+    override val descriptor: SerialDescriptor = JsonElement.serializer().descriptor
+
+    override fun serialize(encoder: Encoder, value: PantryDatePatch) {
+        (encoder as JsonEncoder).encodeJsonElement(when (value) {
+            PantryDatePatch.Unchanged -> throw SerializationException("An unchanged date must be omitted")
+            PantryDatePatch.Clear -> JsonNull
+            is PantryDatePatch.Set -> JsonPrimitive(value.date)
+        })
+    }
+
+    override fun deserialize(decoder: Decoder): PantryDatePatch =
+        when (val value = (decoder as JsonDecoder).decodeJsonElement()) {
+            JsonNull -> PantryDatePatch.Clear
+            is JsonPrimitive -> if (value.isString) PantryDatePatch.Set(value.content)
+                else throw SerializationException("Expected a pantry date")
+            else -> throw SerializationException("Expected a pantry date")
+        }
+}
+
+@Serializable
+internal data class PantryEntryPatchRequest(
+    val operationId: String,
+    val expectedRevision: String,
+    val amount: Double? = null,
+    val bestBeforeDate: PantryDatePatch = PantryDatePatch.Unchanged,
+    val locationId: Long? = null,
+)
+
+@Serializable internal enum class PantryEntryState { SUCCEEDED, UNCERTAIN }
+
+@Serializable
+internal data class PantryEntryResult(
+    override val schemaVersion: Int,
+    override val operationId: String,
+    val replayed: Boolean,
+    val state: PantryEntryState,
+    val entry: PantryBatch?,
+) : CuisineOperationResult

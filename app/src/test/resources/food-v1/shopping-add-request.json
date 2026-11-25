@@ -1,0 +1,11 @@
+{
+  "operationId": "op_10000000-0000-4000-8000-000000000002",
+  "item": {
+    "kind": "PRODUCT",
+    "grocyProductId": 3,
+    "quantity": {
+      "amount": 250,
+      "grocyQuId": 1
+    }
+  }
+}

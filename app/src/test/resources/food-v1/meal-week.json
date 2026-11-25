@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "weekStart": "2026-11-23",
+  "timeZone": "Europe/Paris",
+  "revision": "plan-4",
+  "slots": [
+    {
+      "date": "2026-11-25",
+      "meal": "DINNER",
+      "recipeId": "rcp_clafoutis_courgette_chevre",
+      "recipeVersion": 1,
+      "servings": 2,
+      "recipe": {
+        "id": "rcp_clafoutis_courgette_chevre",
+        "version": 1,
+        "title": "Clafoutis salé aux courgettes et au chèvre",
+        "description": "Un clafoutis moelleux aux courgettes poêlées, au chèvre frais et au thym.",
+        "servings": 2,
+        "prepTimeMinutes": 15,
+        "cookTimeMinutes": 35,
+        "difficulty": "EASY",
+        "mealTypes": [
+          "LUNCH",
+          "DINNER"
+        ],
+        "cuisine": "française",
+        "tags": [
+          "plat végétarien",
+          "four"
+        ],
+        "image": null,
+        "favorite": false,
+        "lastCookedAt": "2026-11-20T18:45:00Z"
+      }
+    }
+  ]
+}

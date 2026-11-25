@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "operationId": "op_10000000-0000-4000-8000-000000000009",
+  "replayed": false,
+  "weeks": [
+    {
+      "schemaVersion": 1,
+      "weekStart": "2026-11-23",
+      "timeZone": "Europe/Paris",
+      "revision": "plan-5",
+      "slots": [
+        {
+          "date": "2026-11-25",
+          "meal": "DINNER",
+          "recipeId": "rcp_clafoutis_courgette_chevre",
+          "recipeVersion": 1,
+          "servings": 2,
+          "recipe": {
+            "id": "rcp_clafoutis_courgette_chevre",
+            "version": 1,
+            "title": "Clafoutis salé aux courgettes et au chèvre",
+            "description": "Un clafoutis moelleux aux courgettes poêlées, au chèvre frais et au thym.",
+            "servings": 2,
+            "prepTimeMinutes": 15,
+            "cookTimeMinutes": 35,
+            "difficulty": "EASY",
+            "mealTypes": [
+              "LUNCH",
+              "DINNER"
+            ],
+            "cuisine": "française",
+            "tags": [
+              "plat végétarien",
+              "four"
+            ],
+            "image": null,
+            "favorite": false,
+            "lastCookedAt": "2026-11-20T18:45:00Z"
+          }
+        },
+        {
+          "date": "2026-11-26",
+          "meal": "LUNCH",
+          "recipeId": "rcp_clafoutis_courgette_chevre",
+          "recipeVersion": 1,
+          "servings": 2,
+          "recipe": {
+            "id": "rcp_clafoutis_courgette_chevre",
+            "version": 1,
+            "title": "Clafoutis salé aux courgettes et au chèvre",
+            "description": "Un clafoutis moelleux aux courgettes poêlées, au chèvre frais et au thym.",
+            "servings": 2,
+            "prepTimeMinutes": 15,
+            "cookTimeMinutes": 35,
+            "difficulty": "EASY",
+            "mealTypes": [
+              "LUNCH",
+              "DINNER"
+            ],
+            "cuisine": "française",
+            "tags": [
+              "plat végétarien",
+              "four"
+            ],
+            "image": null,
+            "favorite": false,
+            "lastCookedAt": "2026-11-20T18:45:00Z"
+          }
+        }
+      ]
+    }
+  ]
+}
