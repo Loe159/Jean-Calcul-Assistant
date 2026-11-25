@@ -302,4 +302,45 @@
         <item>Petit-déjeuner</item><item>Déjeuner</item><item>Dîner</item><item>Collation</item><item>Dessert</item>
     </string-array>
     <string name="food_assistant_unreachable">L’assistant est injoignable. Vos recettes enregistrées restent disponibles.</string>
+    <string name="food_minimize_cooking">Réduire la cuisine</string>
+    <string name="food_timer_count">Minuteurs (%1$d)</string>
+    <string name="food_timer_named_finished">%1$s · terminé</string>
+    <string name="food_text_normal">Texte normal</string>
+    <string name="food_text_large">Texte grand</string>
+    <string name="food_custom_timer">Minuteur</string>
+    <string name="food_check_out_ingredients">Cochez les ingrédients que vous avez sortis.</string>
+    <string name="food_choose_step">Sélectionnez une étape pour y revenir. Votre progression est conservée.</string>
+    <string name="food_numbered_step">%1$d. %2$s</string>
+    <string name="food_return_to_step">Retour à l’étape</string>
+    <string name="food_reset_quantity">Rétablir la quantité</string>
+    <string name="food_cooking_conflict">Une cuisine est en cours</string>
+    <string name="food_resume_current_recipe">Reprendre la recette en cours</string>
+    <string name="food_replace_cooking">Remplacer la cuisine en cours</string>
+    <string name="food_replace_cooking_confirm">Abandonner et commencer</string>
+    <string name="food_replace_cooking_detail">Les minuteurs de la cuisson en cours seront arrêtés et cette recette sera abandonnée.</string>
+    <string name="food_abandon_cooking">Abandonner la cuisson</string>
+    <string name="food_abandon_cooking_question">Abandonner la cuisson ?</string>
+    <string name="food_abandon_cooking_detail">Les minuteurs de cette cuisson seront arrêtés.</string>
+    <string name="food_recipe_completed">Recette terminée</string>
+    <string name="food_saved_rating">Note · %1$d/5</string>
+    <plurals name="food_servings_prepared">
+        <item quantity="one">%d portion réalisée</item>
+        <item quantity="other">%d portions réalisées</item>
+    </plurals>
+    <string name="food_completion_steps_time">%1$d étapes · %2$d min prévues</string>
+    <string name="food_stock_update_question">Mettre à jour le stock ?</string>
+    <string name="food_stock_update_before_confirmation">Vérifiez les quantités avant de mettre à jour votre stock.</string>
+    <string name="food_stock_before_after">Stock estimé · %1$s → %2$s</string>
+    <string name="food_stock_estimate_unavailable">Estimation du stock indisponible</string>
+    <string name="food_positive_consumption">Saisissez une quantité supérieure à zéro.</string>
+    <string name="food_stock_update">Mettre à jour le stock</string>
+    <string name="food_finish_without_stock">Terminer sans modifier le stock</string>
+    <string name="food_completion_replay">État de l’enregistrement</string>
+    <string name="food_stock_unchanged">Stock inchangé</string>
+    <string name="food_history_recorded">Recette enregistrée dans l’historique</string>
+    <string name="food_history_pending">Historique en attente de synchronisation</string>
+    <string name="food_history_partial">Historique partiellement synchronisé</string>
+    <string name="food_history_failed">Échec de la synchronisation de l’historique</string>
+    <string name="food_favorite_recipe">Dans les favoris</string>
+    <string name="food_cook_later">Refaire plus tard</string>
 </resources>

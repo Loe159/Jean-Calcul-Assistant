@@ -1,5 +1,8 @@
 package io.github.mangi.eta.ui.screens.food
 
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.*
@@ -34,7 +37,12 @@ internal fun FoodHomeScreen(onBack: () -> Unit, onOpen: (AppRoute) -> Unit) {
             onRecipe = { id, servings -> onOpen(AppRoute.RecipeDetail(id, servings = servings)) },
         )
     }
-    FoodPage(stringResource(R.string.food_home), onBack, actions = {
+    NavigationBackHandler(
+        rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled = pantry,
+        onBackCompleted = { pantry = false },
+    )
+    FoodPage(stringResource(R.string.food_home), { if (pantry) pantry = false else onBack() }, actions = {
         CouiTopAppBarIconButton(
             COUIIcons.Settings, stringResource(R.string.food_preferences), { onOpen(AppRoute.FoodPreferences) },
             Modifier.size(48.dp),

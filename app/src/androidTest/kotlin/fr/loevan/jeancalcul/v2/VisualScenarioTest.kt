@@ -148,10 +148,10 @@ class VisualScenarioTest {
         assertTrue(fixture.completions.isEmpty())
         click(text(R.string.food_start_cooking), reverseFirst = true)
         await(By.text("Faire chauffer l’eau"))
-        click(By.textStartsWith("Démarrer le minuteur"))
-        click(text(R.string.food_step_done))
+        click(By.textStartsWith("Lancer "))
+        device.wait(Until.findObject(text(R.string.food_next_step_button)), 5000).click()
         await(By.text("Cuire le riz"))
-        click(By.textStartsWith("Démarrer le minuteur"))
+        click(By.textStartsWith("Lancer "))
         val repo = (context.applicationContext as io.github.mangi.eta.EtaApp).food.repository
         val sessionId = runBlocking {
             kotlinx.coroutines.withTimeout(5_000) { repo.activeSessions().first { it.isNotEmpty() }.single().id }
@@ -160,7 +160,7 @@ class VisualScenarioTest {
             kotlinx.coroutines.withTimeout(5_000) { repo.session(sessionId).first { (it?.timers?.size ?: 0) >= 2 }?.timers?.size }
         }
         assertEquals(2, timerCount)
-        find(text(R.string.food_timers))
+        await(By.desc(context.getString(R.string.food_timer_count, 2)))
         captureStage("food_timers")
         assertTrue(fixture.completions.isEmpty())
         // The active session leads the Brief feed; capture it, then resume from the card.
@@ -179,26 +179,17 @@ class VisualScenarioTest {
         await(By.text("Cuire le riz"))
         activity.recreate()
         await(By.text("Cuire le riz"))
-        click(text(R.string.food_step_done))
-        // Completing the last step disables both actions while Room updates, then promotes
-        // « Terminer la recette » into the primary slot; click it only once that has settled.
-        val stepSettled = (0 until 20).any {
-            (freshObject(device, text(R.string.food_step_done)) == null).also { gone -> if (!gone) SystemClock.sleep(500) }
-        }
-        assertTrue("Last step did not complete", stepSettled)
-        device.waitForIdle()
-        click(text(R.string.food_finish))
+        device.wait(Until.findObject(text(R.string.food_finish_short)), 5000).click()
         find(text(R.string.food_consumed))
         captureStage("food_summary")
         assertTrue(fixture.completions.isEmpty())
-        // A downward drag closes the sheet: click « Confirmer » where it is, or scroll forward only.
-        (freshObject(device, text(R.string.food_confirm))?.takeIf { it.visibleBounds.height() > 0 }
-            ?: findBriefControl(device, text(R.string.food_confirm))).click()
+        click(text(R.string.food_stock_update))
         await(text(R.string.food_succeeded))
         val completion = fixture.completions.single()
         assertEquals(4, completion.servingsMade)
         assertEquals(300.0, completion.consumptions.single().quantity.amount, 0.0)
         assertEquals(2, completion.session.timers.size)
+        assertTrue(completion.session.timers.all { it.state == io.github.mangi.eta.food.TimerState.CANCELLED })
         assertTrue(fixture.feedback.any { it.action == io.github.mangi.eta.food.BriefFeedbackAction.OPENED })
         assertTrue(fixture.feedback.any { it.action == io.github.mangi.eta.food.BriefFeedbackAction.COOKED })
     }

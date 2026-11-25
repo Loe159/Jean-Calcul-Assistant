@@ -176,7 +176,7 @@ internal fun RecipeCard(
                         }
                         if (item.favorite && variant == RecipeCardVariant.S) {
                             Icon(COUIIcons.FavoritesFill, null, Modifier.align(Alignment.TopEnd).padding(8.dp).size(20.dp),
-                                tint = cuisineTint(COUITheme.colorScheme.red))
+                                tint = COUITheme.colorScheme.red)
                         }
                     }
                 }) {
@@ -248,6 +248,7 @@ internal fun RecipeHero(
     // Derive a stable dark veil from the corresponding COUI neutral in each mode.
     val scrim = if (COUITheme.isDark) colors.backgroundWithCard else colors.labelPrimary.copy(alpha = 1f)
     val favoriteLabel = stringResource(if (isFavorite) R.string.food_remove_favorite else R.string.food_add_favorite)
+    val backLabel = stringResource(R.string.food_back)
     Box(modifier.fillMaxWidth().heightIn(min = 300.dp)) {
         RecipePicture(recipe.image, Modifier.matchParentSize(), placeholder = true, showLabel = true)
         Box(Modifier.fillMaxWidth().height(80.dp).align(Alignment.TopCenter).background(
@@ -255,22 +256,30 @@ internal fun RecipeHero(
         ))
         Column(Modifier.fillMaxWidth().heightIn(min = 300.dp)) {
             Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                CuisineIconButton(COUIIcons.Back, stringResource(R.string.food_back), onBack,
-                    fill = scrim.copy(alpha = 0.72f), ink = colors.onPrimary)
-                IconButton(
-                    onClick = { onFavorite(!isFavorite) },
-                    modifier = Modifier.size(48.dp).semantics {
-                        contentDescription = favoriteLabel
-                        role = Role.Button
-                        toggleableState = ToggleableState(isFavorite)
-                    },
-                    material = false, backgroundColor = scrim.copy(alpha = 0.72f), cornerRadius = 24.dp,
-                    minHeight = 48.dp, minWidth = 48.dp,
-                ) {
-                    Icon(
-                        if (isFavorite) COUIIcons.FavoritesFill else COUIIcons.Favorites, null,
-                        tint = if (isFavorite) colors.redVariant else colors.onPrimary,
-                    )
+                CuisineNeutralFocus {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.size(48.dp).semantics { contentDescription = backLabel },
+                        material = false, backgroundColor = scrim.copy(alpha = 0.72f), cornerRadius = 24.dp,
+                        minHeight = 48.dp, minWidth = 48.dp,
+                    ) {
+                        Icon(COUIIcons.Back, null, tint = colors.onPrimary)
+                    }
+                    IconButton(
+                        onClick = { onFavorite(!isFavorite) },
+                        modifier = Modifier.size(48.dp).semantics {
+                            contentDescription = favoriteLabel
+                            role = Role.Button
+                            toggleableState = ToggleableState(isFavorite)
+                        },
+                        material = false, backgroundColor = scrim.copy(alpha = 0.72f), cornerRadius = 24.dp,
+                        minHeight = 48.dp, minWidth = 48.dp,
+                    ) {
+                        Icon(
+                            if (isFavorite) COUIIcons.FavoritesFill else COUIIcons.Favorites, null,
+                            tint = if (isFavorite) colors.redVariant else colors.onPrimary,
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(104.dp))
@@ -433,7 +442,7 @@ internal fun IngredientRow(
         ingredient.inShoppingList -> Triple(R.string.food_in_shopping, CuisineIcons.Cart, colors.containerGreen)
         ingredient.status == AvailabilityStatus.PARTIAL -> Triple(R.string.food_ingredient_partial, CuisineIcons.Warning, colors.containerYellow)
         ingredient.status in listOf(AvailabilityStatus.MISSING, AvailabilityStatus.OPTIONAL_MISSING) ->
-            Triple(R.string.food_ingredient_missing, CuisineIcons.Basket, colors.containerOrange)
+            Triple(R.string.food_ingredient_missing, CuisineIcons.Basket, colors.containerRed)
         else -> null
     }
     val quantityInk = when {
@@ -466,7 +475,7 @@ internal fun IngredientRow(
                 val tint = when (label) {
                     R.string.food_in_shopping -> colors.green
                     R.string.food_ingredient_partial -> colors.yellow
-                    else -> colors.orange
+                    else -> colors.red
                 }
                 CuisineBadge(stringResource(label), icon = icon,
                     ink = if (ingredient.enabled) cuisineTint(tint) else colors.disabledNeutral,
@@ -483,6 +492,7 @@ internal fun IngredientChecklist(
     modifier: Modifier = Modifier,
     onAddMissing: (() -> Unit)? = null,
     onRetry: (() -> Unit)? = null,
+    showStock: Boolean = true,
 ) {
     val state = if (model.state == CuisineContentState.READY && model.ingredients.isEmpty()) CuisineContentState.EMPTY else model.state
     Card(modifier.fillMaxWidth()) {
@@ -511,7 +521,7 @@ internal fun IngredientChecklist(
                 Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     FoodSupporting(stringResource(R.string.food_for_portions, portions))
-                    if (model.stockKnown && tracked > 0) {
+                    if (showStock && model.stockKnown && tracked > 0) {
                         Row(Modifier.fillMaxWidth().clearAndSetSemantics {}, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                             listOf(available to colors.green, partial to colors.orange, missing to colors.red)
                                 .filter { it.first > 0 }
@@ -526,13 +536,13 @@ internal fun IngredientChecklist(
                             if (missing > 0) pluralStringResource(R.plurals.food_missing_short, missing, missing) else null,
                         ).joinToString(" · ")
                         FoodSupporting(summary)
-                    } else if (!model.stockKnown) {
+                    } else if (showStock && !model.stockKnown) {
                         AvailabilityChip(RecipeAvailabilityUi())
                     }
                 }
                 CardListGroup {
                     all.forEach { row ->
-                        item { IngredientRow(row, { onToggle(row.id, it) }, showStock = model.stockKnown) }
+                        item { IngredientRow(row, { onToggle(row.id, it) }, showStock = showStock && model.stockKnown) }
                     }
                 }
                 Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

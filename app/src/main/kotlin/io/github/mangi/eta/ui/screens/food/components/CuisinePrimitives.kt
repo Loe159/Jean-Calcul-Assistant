@@ -1,5 +1,8 @@
 package io.github.mangi.eta.ui.screens.food.components
 
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.runtime.CompositionLocalProvider
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,6 +24,7 @@ import io.github.mangi.eta.R
 import io.github.suqi8.coui.kmp.basic.*
 import io.github.suqi8.coui.kmp.squircle.SquircleShape
 import io.github.suqi8.coui.kmp.theme.COUITheme
+import io.github.suqi8.coui.kmp.utils.COUIIndication
 
 // Cuisine glyphs absent from COUIIcons, drawn on its 24 dp grid.
 internal object CuisineIcons {
@@ -84,14 +88,27 @@ internal fun CuisineIconButton(
     enabled: Boolean = true,
     fill: Color = Color.Unspecified,
     ink: Color = COUITheme.colorScheme.labelPrimary,
+    neutralFocus: Boolean = false,
 ) {
-    IconButton(
-        onClick, modifier.size(size).semantics { contentDescription = label },
-        enabled = enabled, material = false, backgroundColor = fill, cornerRadius = size / 2,
-        minHeight = size, minWidth = size,
-    ) {
-        Icon(icon, null, Modifier.size(22.dp), tint = if (enabled) ink else COUITheme.colorScheme.disabledNeutral)
+    val button: @Composable () -> Unit = {
+        IconButton(
+            onClick, modifier.size(size).semantics { contentDescription = label },
+            enabled = enabled, material = false, backgroundColor = fill, cornerRadius = size / 2,
+            minHeight = size, minWidth = size,
+        ) {
+            Icon(icon, null, Modifier.size(22.dp), tint = if (enabled) ink else COUITheme.colorScheme.disabledNeutral)
+        }
     }
+    if (neutralFocus) CuisineNeutralFocus(button) else button()
+}
+
+@Composable
+internal fun CuisineNeutralFocus(content: @Composable () -> Unit) {
+    val colors = COUITheme.colorScheme
+    val indication = COUIIndication(
+        color = colors.press, pressColor = colors.press, hoverColor = colors.press, focusColor = colors.press,
+    )
+    CompositionLocalProvider(LocalIndication provides indication, content = content)
 }
 
 @Composable

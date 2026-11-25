@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
@@ -183,6 +184,7 @@ internal fun CouiScaffold(
     titleMotionProgress: Float = 1f,
     actions: @Composable RowScope.() -> Unit = {},
     floatingAction: (@Composable () -> Unit)? = null,
+    bottomBar: (@Composable () -> Unit)? = null,
     content: @Composable (
         contentPadding: PaddingValues,
         rawPadding: PaddingValues,
@@ -202,6 +204,7 @@ internal fun CouiScaffold(
             .then(imePadding)
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = containerColor,
+        bottomBar = { bottomBar?.invoke() },
         topBar = {
             CouiPageTopBar(
                 title = title,
@@ -258,6 +261,7 @@ internal fun CouiScaffoldPage(
     actions: @Composable RowScope.() -> Unit = {},
     floatingAction: (@Composable () -> Unit)? = null,
     overlay: @Composable () -> Unit = {},
+    bottomBar: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     CouiScaffold(
@@ -267,6 +271,7 @@ internal fun CouiScaffoldPage(
         compactTitle = compactTitle,
         actions = actions,
         floatingAction = floatingAction,
+        bottomBar = bottomBar,
     ) { padding, _, connection, sidePadding ->
         Column(
             modifier = Modifier
@@ -274,6 +279,7 @@ internal fun CouiScaffoldPage(
                 .couiPageScroll(connection)
                 .verticalScroll(scrollState, overscrollEffect = null)
                 .padding(padding)
+                .then(if (bottomBar != null) Modifier.consumeWindowInsets(padding) else Modifier)
                 .padding(horizontal = sidePadding)
                 .padding(top = 12.dp),
         ) {

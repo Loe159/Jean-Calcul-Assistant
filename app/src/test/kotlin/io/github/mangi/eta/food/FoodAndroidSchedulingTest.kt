@@ -14,6 +14,7 @@ import io.github.mangi.eta.food.timer.CookingTimerNotifications
 import io.github.mangi.eta.food.timer.CookingTimerReceiver
 import io.github.mangi.eta.food.timer.CookingTimerScheduler
 import io.github.mangi.eta.ui.MainActivityLaunchRequests
+import io.github.mangi.eta.ui.screens.food.activeTimers
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
@@ -70,7 +71,7 @@ class FoodAndroidSchedulingTest {
     @Suppress("DEPRECATION")
     fun timersAreIndependentAndOnlyRunningTimersAreRestored() = runBlocking {
         val repository = FoodRepository(database, { null }, MutableStateFlow(0L), this, {}, clock)
-        val session = repository.startSession(recipeFixture())
+        val session = (repository.startSession(recipeFixture()) as CookingStart.Open).sessionId
         var manager = manager()
         val first = manager.start(session, "st_1", "Courgettes", 120)
         val second = manager.start(session, null, "Four", 180)
@@ -130,10 +131,37 @@ class FoodAndroidSchedulingTest {
 
     @Test
     @Suppress("DEPRECATION")
+    fun replacementCancelsRunningAlarmAndFinishedAlertTogether() = runBlocking {
+        val manager = manager()
+        val repository = FoodRepository(database, { null }, MutableStateFlow(0L), this, {}, clock,
+            clearCancelledTimers = manager::clearCancelled)
+        val recipe = recipeFixture()
+        val id = (repository.startSession(recipe) as CookingStart.Open).sessionId
+        val short = manager.start(id, null, "Eau", 60)
+        val long = manager.start(id, null, "Four", 180)
+        clock.advance(60_000)
+        manager.alarmDelivered(short)
+        val timers = repository.session(id).first()?.activeTimers().orEmpty().associateBy { it.id }
+        assertEquals(TimerState.FINISHED, timers[short]?.state)
+        assertEquals(TimerState.RUNNING, timers[long]?.state)
+        assertEquals(1, shadowOf(alarms).scheduledAlarms.size)
+        assertEquals(1, shadowOf(notifications).allNotifications.size)
+
+        repository.startSession(recipe.copy(id = "recipe_other"), replacingSessionId = id)
+        manager.addTime(short, 1)
+        manager.alarmDelivered(long)
+        assertEquals(CookingStatus.ABANDONED, repository.session(id).first()?.status)
+        assertTrue(repository.session(id).first()?.timers.orEmpty().all { it.state == TimerState.CANCELLED })
+        assertTrue(shadowOf(alarms).scheduledAlarms.isEmpty())
+        assertTrue(shadowOf(notifications).allNotifications.isEmpty())
+    }
+
+    @Test
+    @Suppress("DEPRECATION")
     fun inexactEarlyDeliveryNeverFinishesTimerAndOverdueTimerFinishesAfterReboot() = runBlocking {
         ShadowAlarmManager.setCanScheduleExactAlarms(false)
         val repository = FoodRepository(database, { null }, MutableStateFlow(0L), this, {}, clock)
-        val session = repository.startSession(recipeFixture())
+        val session = (repository.startSession(recipeFixture()) as CookingStart.Open).sessionId
         val manager = manager()
         val id = manager.start(session, null, "Four", 120)
         assertFalse(manager.exactAlarmsAvailable.value)

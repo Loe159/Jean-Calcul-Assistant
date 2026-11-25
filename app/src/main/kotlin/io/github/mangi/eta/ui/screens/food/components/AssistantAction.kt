@@ -37,14 +37,14 @@ internal fun AssistantAction(
         if (working) FoodLoading()
         FoodErrorText(error)
         answer?.let { response ->
-            Text(response.answer)
+            AssistantSuggestion(response.answer, emptyList(), {})
             response.proposals.filterNot { it.id in applied }.forEach { proposal ->
-                FoodSection {
-                    Text(proposal.summary)
-                    FoodAction(R.string.food_apply, enabled = !working) {
-                        if (proposal.impact == ProposalImpact.MAJOR) confirmId = proposal.id else onApply(proposal)
-                    }
+                val actions = if (working) emptyList() else {
+                    listOf(AssistantSuggestionAction(proposal.id, stringResource(R.string.food_apply)))
                 }
+                AssistantSuggestion(proposal.summary, actions, compact = true, onAction = {
+                    if (proposal.impact == ProposalImpact.MAJOR) confirmId = proposal.id else onApply(proposal)
+                })
             }
         }
     }

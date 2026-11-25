@@ -43,6 +43,11 @@ internal sealed interface FoodResult<out T> {
 
 internal data class FoodCache<out T>(val value: T, val cachedAt: Long)
 
+internal sealed interface CookingStart {
+    data class Open(val sessionId: String) : CookingStart
+    data class Conflict(val session: CookingSession) : CookingStart
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 internal class FoodRepository(
     private val database: EtaDatabase,
@@ -53,6 +58,7 @@ internal class FoodRepository(
     private val clock: Clock = Clock.systemUTC(),
     private val clientFor: (MastraPairing) -> FoodClient = { FoodClient(it) },
     private val cachePairing: () -> MastraPairing? = pairing,
+    private val clearCancelledTimers: suspend (List<String>) -> Unit = {},
 ) {
     private val dao = database.foodDao()
     private val json = FoodContract.json
@@ -247,10 +253,51 @@ internal class FoodRepository(
     fun completionResult(id: String): Flow<OperationResult?> =
         dao.observeSessionOutbox(id).map { it?.resultJson?.let { body -> FoodContract.decode<OperationResult>(body) } }
 
+    fun completionRequest(id: String): Flow<CompleteRequest?> =
+        dao.observeSessionOutbox(id).map { it?.bodyJson?.let { body -> json.decodeFromString<CompleteRequest>(body) } }
+            .distinctUntilChanged()
+
     fun activeSessions(): Flow<List<CookingSessionEntity>> = dao.observeActiveSessions()
 
-    suspend fun startSession(recipe: RecipeDefinition, servings: Int = recipe.servings, briefCardId: String? = null): String {
+    fun activeSession(): Flow<CookingSession?> = activeSessions().map { it.firstOrNull()?.id }
+        .distinctUntilChanged().flatMapLatest { id -> if (id == null) flowOf(null) else session(id) }
+
+    suspend fun startSession(
+        recipe: RecipeDefinition,
+        servings: Int = recipe.servings,
+        briefCardId: String? = null,
+        replacingSessionId: String? = null,
+    ): CookingStart {
         require(servings > 0)
+        val cancelled = mutableListOf<String>()
+        val abandoned = mutableListOf<String>()
+        var inserted: String? = null
+        val result = database.withTransaction {
+            val active = dao.activeSessions()
+            val current = active.firstOrNull()
+            if (current != null) {
+                val session = current.toContract(dao.timers(current.id)).withLocalProposals(current.localProposalsJson)
+                if (session.recipeId == recipe.id) return@withTransaction CookingStart.Open(session.id)
+                if (session.id != replacingSessionId) return@withTransaction CookingStart.Conflict(session)
+            }
+            val now = clock.millis()
+            // Also retire any older active rows left by versions that allowed several sessions.
+            for (row in active) {
+                cancelled += cancelSessionTimers(row.id)
+                dao.updateSession(row.nextRevision(now).copy(status = CookingStatus.ABANDONED))
+                abandoned += row.id
+            }
+            val id = insertSession(recipe, servings, briefCardId)
+            inserted = id
+            CookingStart.Open(id)
+        }
+        if (cancelled.isNotEmpty()) clearCancelledTimers(cancelled)
+        abandoned.forEach(::syncSession)
+        inserted?.let(::syncSession)
+        return result
+    }
+
+    private suspend fun insertSession(recipe: RecipeDefinition, servings: Int, briefCardId: String?): String {
         val now = clock.millis()
         val id = "ses_${UUID.randomUUID()}"
         dao.insertSession(
@@ -272,8 +319,24 @@ internal class FoodRepository(
                 briefCardId = briefCardId,
             ),
         )
-        syncSession(id)
         return id
+    }
+
+    private suspend fun cancelSessionTimers(id: String): List<String> =
+        dao.timers(id).filter { it.state != TimerState.CANCELLED }.map {
+            dao.updateTimer(it.copy(state = TimerState.CANCELLED, endsAtEpochMs = null, remainingMs = null))
+            it.id
+        }
+
+    suspend fun abandonSession(id: String) {
+        val cancelled = database.withTransaction {
+            val row = dao.session(id) ?: return@withTransaction null
+            if (row.status != CookingStatus.ACTIVE) return@withTransaction null
+            dao.updateSession(row.nextRevision(clock.millis()).copy(status = CookingStatus.ABANDONED))
+            cancelSessionTimers(id)
+        } ?: return
+        if (cancelled.isNotEmpty()) clearCancelledTimers(cancelled)
+        syncSession(id)
     }
 
     suspend fun nextStep(id: String) = mutate(id) { row, recipe ->
@@ -363,7 +426,7 @@ internal class FoodRepository(
             val owner = currentPairing.foodOwner()
             val snapshot = database.withTransaction {
                 val row = dao.session(id) ?: return@withTransaction null
-                if (row.status != CookingStatus.ACTIVE || row.owner != null && row.owner != owner) {
+                if (row.status == CookingStatus.COMPLETED || row.owner != null && row.owner != owner) {
                     return@withTransaction null
                 }
                 if (row.owner == null) dao.updateSession(row.copy(owner = owner))
@@ -381,6 +444,7 @@ internal class FoodRepository(
         consumptions: List<CompleteConsumption>,
         leftovers: Leftovers?,
     ): String? {
+        val cancelled = mutableListOf<String>()
         val (operationId, created) = database.withTransaction {
             val row = requireNotNull(dao.session(id))
             val previous = dao.sessionOutbox(id)
@@ -398,6 +462,7 @@ internal class FoodRepository(
                 stockConsumptionStatus = StockConsumptionStatus.PENDING,
             )
             val operationId = "op_${UUID.randomUUID()}"
+            cancelled += cancelSessionTimers(id)
             val body = CompleteRequest(operationId, completed.toContract(dao.timers(id)), servingsMade, rating, consumptions, leftovers)
             dao.updateSession(completed)
             dao.insertOutbox(
@@ -412,6 +477,7 @@ internal class FoodRepository(
             scheduleSync()
             scope.launch { replayMutex.withLock { sendCompletion(operationId) } }
         }
+        if (cancelled.isNotEmpty()) clearCancelledTimers(cancelled)
         return operationId
     }
 

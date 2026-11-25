@@ -34,6 +34,7 @@ Run through this list before showing any UI change. Upstream items come from the
 - **Interface scale.** `AgentAppTheme` can rewrite display density (interface scale setting); previews use `applyInterfaceScale = false`. Check that dialogs/popups (separate windows) still match on device.
 - **IME.** The chat input uses the Foundation `TextFieldState` field inside the bottom slot with `imePadding`; do not reintroduce `value/onValueChange` fields there (they pan the whole window).
 - **Fixed-size bar titles.** COUI keeps toolbar/page title sizes in dp by design; body text must still follow the font scale.
+- **Blue rim around the first button in a preview.** Layoutlib gives initial focus to the first focusable element, and COUI `Button`/`IconButton` draw `couiFocusStroke` when focused, whatever the `LocalIndication`. A touch-mode device never shows it. Do not restyle the button to hide it.
 
 ## Code style (Compose rules)
 - `modifier: Modifier = Modifier` right after the required parameters, applied to the root; one root emitter per composable.

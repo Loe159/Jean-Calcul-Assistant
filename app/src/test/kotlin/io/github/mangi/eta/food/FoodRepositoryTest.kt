@@ -14,6 +14,8 @@ import java.util.Collections
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -54,10 +56,55 @@ class FoodRepositoryTest {
     }
 
     @Test
+    fun simultaneousStartsOpenOneSessionAndReplacementRequiresTheCurrentId() = runBlocking {
+        val recipe = recipeFixture()
+        val other = recipe.copy(id = "recipe_other")
+        val third = recipe.copy(id = "recipe_third")
+        val repository = repository(this)
+        val starts = List(4) { async { repository.startSession(recipe, servings = 4) } }.awaitAll()
+        val original = (starts.first() as CookingStart.Open).sessionId
+        assertTrue(starts.all { it == CookingStart.Open(original) })
+        repository.completeStep(original)
+        assertEquals(CookingStart.Open(original), repository.startSession(recipe, servings = 2))
+        val conflict = repository.startSession(other) as CookingStart.Conflict
+        assertEquals(original, conflict.session.id)
+        assertEquals("st_2", conflict.session.currentStepId)
+        assertEquals(4, conflict.session.servings)
+        assertEquals(listOf(original), repository.activeSessions().first().map { it.id })
+
+        val replacement = (repository.startSession(other, replacingSessionId = original) as CookingStart.Open).sessionId
+        val staleConfirmation = repository.startSession(third, replacingSessionId = original) as CookingStart.Conflict
+        assertEquals(replacement, staleConfirmation.session.id)
+        assertEquals(CookingStatus.ABANDONED, repository.session(original).first()?.status)
+        assertEquals(replacement, repository.activeSession().first()?.id)
+    }
+
+    @Test
+    fun completionWithoutStockFreezesServingsAndRatingAndReplaysHistory() = runBlocking {
+        val repository = repository(this, Interceptor { chain ->
+            val input = FoodContract.json.decodeFromString<CompleteRequest>(Buffer().also { chain.request().body?.writeTo(it) }.readUtf8())
+            assertTrue(chain.request().url.encodedPath.endsWith("/complete"))
+            assertEquals(3, input.servingsMade)
+            assertEquals(4, input.rating)
+            assertTrue(input.consumptions.isEmpty())
+            assertNull(input.leftovers)
+            chain.response(200, result(input.operationId, OperationState.SUCCEEDED))
+        })
+        val id = (repository.startSession(recipeFixture()) as CookingStart.Open).sessionId
+        val operation = repository.completeSession(id, 3, 4, emptyList(), null)
+        assertEquals(StockConsumptionStatus.PENDING, repository.session(id).first()?.stockConsumptionStatus)
+        assertEquals(operation, repository.completionRequest(id).first()?.operationId)
+        assertTrue(repository.activeSessions().first().isEmpty())
+        pairing = paired
+        assertFalse(repository.replayOutbox())
+        assertEquals(StockConsumptionStatus.SUCCEEDED, repository.session(id).first()?.stockConsumptionStatus)
+    }
+
+    @Test
     fun sessionResumesFromDiskWithFrozenRecipeAndStepOutcomes() = runBlocking {
         var repository = repository(this)
         val recipe = recipeFixture()
-        val id = repository.startSession(recipe)
+        val id = (repository.startSession(recipe) as CookingStart.Open).sessionId
         repository.nextStep(id)
         assertEquals("st_2", repository.session(id).first()?.currentStepId)
         repository.previousStep(id)
@@ -112,7 +159,7 @@ class FoodRepositoryTest {
             }
         }
         var repository = repository(this, server)
-        val id = repository.startSession(recipeFixture())
+        val id = (repository.startSession(recipeFixture()) as CookingStart.Open).sessionId
         val operationId = checkNotNull(repository.completeSession(id, 4, null, emptyList(), null))
         withTimeout(5_000) {
             while (database.foodDao().outbox(operationId)?.state != FoodOutboxState.UNCERTAIN) delay(10)
@@ -172,7 +219,7 @@ class FoodRepositoryTest {
         assertEquals(FoodResult.Failure(FoodError.OFFLINE), repository.refreshPantry())
         assertEquals(cached, repository.pantry().first())
 
-        val id = repository.startSession(recipeFixture())
+        val id = (repository.startSession(recipeFixture()) as CookingStart.Open).sessionId
         pairing = null
         val op = checkNotNull(repository.completeSession(id, 2, null, emptyList(), null))
         assertEquals(FoodOutboxState.PENDING, database.foodDao().outbox(op)?.state)
@@ -187,7 +234,7 @@ class FoodRepositoryTest {
     fun assistantChangesPersistOnlyInTheActiveSession() = runBlocking {
         val recipe = recipeFixture()
         var repository = repository(this)
-        val id = repository.startSession(recipe, servings = 4)
+        val id = (repository.startSession(recipe, servings = 4) as CookingStart.Open).sessionId
         val replacement = AssistantProposal.ReplaceIngredient(
             "replace", "Remplacer les courgettes", ProposalImpact.MAJOR,
             ReplacementPatch("ing_courgette", "aubergines", MeasuredQuantity(400.0, UnitCode.G), 42L),
@@ -228,7 +275,7 @@ class FoodRepositoryTest {
                 OperationLineState.NEEDS_CONVERSION, "Conversion manquante")
             chain.response(200, json.encodeToString(OperationResult(1, input.operationId, OperationState.PARTIAL, false, listOf(line))))
         })
-        val id = repository.startSession(recipeFixture(), 4)
+        val id = (repository.startSession(recipeFixture(), 4) as CookingStart.Open).sessionId
         assertNull(repository.completionResult(id).first())
         repository.completeSession(id, 4, 5, emptyList(), null)
         withTimeout(5_000) { repository.completionResult(id).first { it != null } }

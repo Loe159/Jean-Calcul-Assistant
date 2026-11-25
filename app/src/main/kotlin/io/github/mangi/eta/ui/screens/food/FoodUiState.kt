@@ -86,7 +86,7 @@ internal fun CookingSession.progress(): CookingProgressState {
     return CookingProgressState(steps, steps.indexOfFirst { it.id == currentStepId }.coerceAtLeast(0), steps.size - pending.size, remaining)
 }
 
-internal fun CookingSession.activeTimers() = timers.filter { it.state == TimerState.RUNNING || it.state == TimerState.PAUSED }
+internal fun CookingSession.activeTimers() = timers.filterNot { it.state == TimerState.CANCELLED }
 
 internal fun CookingTimer.secondsLeft(nowMillis: Long): Long = when (state) {
     TimerState.PAUSED -> remainingSeconds ?: 0
@@ -97,11 +97,3 @@ internal fun CookingTimer.secondsLeft(nowMillis: Long): Long = when (state) {
 internal fun String.amountOrNull() = trim().replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() }
 internal fun String.listValues() = split(',').map(String::trim).filter(String::isNotEmpty).distinct()
 internal fun String.dateOrNull() = runCatching { java.time.LocalDate.parse(this).toString() }.getOrNull()
-
-internal fun CookingSession.completionLines(amounts: Map<String, Double> = emptyMap()): List<CompleteConsumption> =
-    recipeSnapshot.portions(servings, ingredientOverrides).mapNotNull { (ingredient, quantity) ->
-        val productId = ingredient.grocyProductId ?: return@mapNotNull null
-        val amount = amounts[ingredient.id] ?: quantity.amount ?: return@mapNotNull null
-        if (amount <= 0) return@mapNotNull null
-        CompleteConsumption(ingredient.id, productId, MeasuredQuantity(amount, quantity.unit))
-    }

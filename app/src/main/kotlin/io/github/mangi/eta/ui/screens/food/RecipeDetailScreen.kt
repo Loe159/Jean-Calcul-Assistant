@@ -41,6 +41,9 @@ internal fun RecipeDetailScreen(
     var selectedServings by rememberSaveable(recipeId) { mutableStateOf(initialServings) }
     var sheet by rememberSaveable { mutableStateOf<RecipeSheet?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var conflictId by rememberSaveable(recipeId) { mutableStateOf<String?>(null) }
+    var confirmReplace by rememberSaveable(recipeId) { mutableStateOf(false) }
+    val activeSession by remember(repo) { repo.activeSession() }.collectAsState(initial = null)
     val recipe = cache?.value
     val servings = selectedServings ?: recipe?.servings?.coerceIn(1, 12) ?: 2
 
@@ -64,7 +67,43 @@ internal fun RecipeDetailScreen(
         }
     }
 
+    fun start(replacing: String? = null) {
+        val target = recipe ?: return
+        if (busy) return
+        busy = true
+        scope.launch {
+            try {
+                when (val result = repo.startSession(target, servings, briefCardId, replacing)) {
+                    is CookingStart.Open -> {
+                        conflictId = null
+                        confirmReplace = false
+                        onOpen(AppRoute.CookingSession(result.sessionId))
+                    }
+                    is CookingStart.Conflict -> {
+                        conflictId = result.session.id
+                        confirmReplace = false
+                    }
+                }
+            } finally {
+                busy = false
+            }
+        }
+    }
+
     val overlay: @Composable () -> Unit = {
+        val conflict = activeSession?.takeIf { it.id == conflictId && it.status == CookingStatus.ACTIVE }
+        if (conflict != null) {
+            CookingConflictSheet(conflict.toActiveCookingUi(), onResume = {
+                conflictId = null
+                onOpen(AppRoute.CookingSession(conflict.id))
+            }, onReplace = { confirmReplace = true }, onClose = {
+                if (!busy) conflictId = null
+            }, busy = busy)
+            if (confirmReplace) {
+                AbandonCookingDialog(replacing = true, busy = busy, onDismiss = { confirmReplace = false },
+                    onConfirm = { start(conflict.id) })
+            }
+        }
         when (sheet) {
             RecipeSheet.OPTIONS -> FoodSheet(stringResource(R.string.food_options), { sheet = null }) {
                 FoodAction(R.string.food_duplicate, enabled = !busy) {
@@ -147,14 +186,7 @@ internal fun RecipeDetailScreen(
         }
         CardListGroup { item { PortionSelector(servings) { selectedServings = it } } }
         FoodAction(R.string.food_start_cooking, primary = true, enabled = !busy && recipe.steps.isNotEmpty()) {
-            if (!busy) {
-                busy = true
-                scope.launch {
-                    val id = repo.startSession(recipe, servings, briefCardId)
-                    onOpen(AppRoute.CookingSession(id))
-                    busy = false
-                }
-            }
+            start()
         }
         CardListGroup {
             item {

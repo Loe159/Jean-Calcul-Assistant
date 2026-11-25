@@ -63,6 +63,9 @@ internal interface FoodDao {
     @Query("SELECT * FROM cooking_sessions WHERE status = 'ACTIVE' ORDER BY startedAt DESC, id")
     fun observeActiveSessions(): Flow<List<CookingSessionEntity>>
 
+    @Query("SELECT * FROM cooking_sessions WHERE status = 'ACTIVE' ORDER BY startedAt DESC, id")
+    suspend fun activeSessions(): List<CookingSessionEntity>
+
     @Insert suspend fun insertTimer(timer: CookingTimerEntity)
     @Update suspend fun updateTimer(timer: CookingTimerEntity)
 

@@ -13,10 +13,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.DpSize
@@ -33,6 +36,8 @@ import io.github.suqi8.coui.kmp.icon.COUIIcons
 import io.github.suqi8.coui.kmp.icon.basic.Close
 import io.github.suqi8.coui.kmp.overlay.OverlayBottomSheet
 import io.github.suqi8.coui.kmp.theme.COUITheme
+import io.github.suqi8.coui.kmp.utils.CouiHapticEffect
+import io.github.suqi8.coui.kmp.utils.rememberCouiHaptic
 
 @Composable
 internal fun foodRuntime() = (LocalContext.current.applicationContext as EtaApp).food
@@ -41,6 +46,11 @@ internal class FoodPageSlots(
     val content: @Composable () -> Unit,
     val overlay: @Composable () -> Unit,
 )
+
+// Layoutlib captures before COUI's overlay entrance has finished.
+internal val LocalFoodSheetPreview = compositionLocalOf<
+    (@Composable (String, () -> Unit, @Composable () -> Unit) -> Unit)?
+    > { null }
 
 @Composable
 internal fun FoodPage(
@@ -55,6 +65,7 @@ internal fun FoodPage(
     CouiScaffoldPage(
         title = title, onBack = onBack, actions = actions, overlay = overlay,
         scrollState = scrollState, compactTitle = compactTitle,
+        bottomBar = LocalCookingDock.current,
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
@@ -72,6 +83,25 @@ internal fun FoodSection(content: @Composable ColumnScope.() -> Unit) {
 internal fun FoodHeading(text: String) = Text(
     text, modifier = Modifier.semantics { heading() }, style = COUITheme.textStyles.headlineXS,
 )
+
+@Composable
+internal fun FoodSwitchRow(title: String, checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
+    val haptic = rememberCouiHaptic()
+    BasicComponent(
+        modifier = Modifier.semantics { toggleableState = ToggleableState(checked) },
+        role = Role.Switch,
+        enabled = enabled,
+        endActions = { Switch(checked = checked, onCheckedChange = null, enabled = enabled) },
+        onClick = {
+            haptic(CouiHapticEffect.Switch)
+            onChange(!checked)
+        },
+    ) {
+        Box(Modifier.heightIn(min = 56.dp), contentAlignment = Alignment.CenterStart) {
+            Text(title, style = COUITheme.textStyles.headlineXS)
+        }
+    }
+}
 
 @Composable
 internal fun FoodSupporting(text: String) = Text(
@@ -188,6 +218,11 @@ internal fun FoodLazySheet(title: String, onClose: () -> Unit, content: LazyList
 
 @Composable
 private fun FoodSheetContainer(title: String, onClose: () -> Unit, content: @Composable () -> Unit) {
+    val preview = LocalFoodSheetPreview.current
+    if (preview != null) {
+        preview(title, onClose, content)
+        return
+    }
     OverlayBottomSheet(
         show = true, title = title, onDismissRequest = onClose, showDragHandle = true,
         startAction = { CouiTopAppBarIconButton(COUIIcons.Basic.Close, stringResource(R.string.food_close), onClose) },

@@ -11,34 +11,34 @@ import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import io.github.mangi.eta.R
 import io.github.mangi.eta.food.*
 import io.github.mangi.eta.ui.components.ListEmptyState
-import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
 import io.github.mangi.eta.ui.screens.food.components.*
-import io.github.suqi8.coui.kmp.basic.CardListGroup
-import io.github.suqi8.coui.kmp.basic.Text
-import io.github.suqi8.coui.kmp.icon.COUIIcons
-import io.github.suqi8.coui.kmp.icon.extended.More
-import io.github.suqi8.coui.kmp.preference.ArrowPreference
-import io.github.suqi8.coui.kmp.preference.SwitchPreference
-import io.github.suqi8.coui.kmp.theme.COUITheme
+import java.time.Instant
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun CookingSessionDestination(sessionId: String, onBack: () -> Unit) {
+internal fun CookingSessionDestination(
+    sessionId: String,
+    onBack: () -> Unit,
+    onCookLater: (String) -> Unit = {},
+) {
     val repo = foodRuntime().repository
     var current by remember(sessionId) { mutableStateOf<CookingSession?>(null) }
     var loaded by remember(sessionId) { mutableStateOf(false) }
+    var showFinish by rememberSaveable(sessionId) { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     LaunchedEffect(repo, sessionId) {
         repo.session(sessionId).collect {
             current = it
@@ -47,36 +47,47 @@ internal fun CookingSessionDestination(sessionId: String, onBack: () -> Unit) {
     }
     val session = current
     when {
-        session == null -> FoodPage(stringResource(R.string.food_cooking_session), onBack) {
-            if (loaded) ListEmptyState(stringResource(R.string.food_cooking_session_unavailable)) else FoodLoading()
-        }
-        session.status == CookingStatus.COMPLETED -> {
-            val result by remember(repo, sessionId) { repo.completionResult(sessionId) }.collectAsState(initial = null)
-            FoodPage(stringResource(R.string.food_completion), onBack) { CompletionStatus(session, result) }
-        }
-        session.status == CookingStatus.ACTIVE -> ActiveCookingSession(session, onBack)
-        else -> FoodPage(stringResource(R.string.food_cooking_session), onBack) {
-            ListEmptyState(stringResource(R.string.food_cooking_session_unavailable))
-        }
+        session == null || session.status == CookingStatus.ABANDONED ->
+            FoodPage(stringResource(R.string.food_cooking_session), onBack) {
+                if (loaded) ListEmptyState(stringResource(R.string.food_cooking_session_unavailable)) else FoodLoading()
+            }
+        showFinish || session.status == CookingStatus.COMPLETED ->
+            CookingCompletionDestination(session, onBack, onCookLater)
+        else -> ActiveCookingSession(session, onBack, onFinish = { showFinish = true }, onAbandon = {
+            scope.launch {
+                repo.abandonSession(session.id)
+                onBack()
+            }
+        })
     }
 }
 
-private enum class CookingSheet { INGREDIENTS, OVERVIEW, ASSISTANT, OPTIONS, COMPLETION }
-
 @Composable
-private fun ActiveCookingSession(session: CookingSession, onBack: () -> Unit) {
+private fun ActiveCookingSession(session: CookingSession, onBack: () -> Unit, onFinish: () -> Unit, onAbandon: () -> Unit) {
     val runtime = foodRuntime()
     val repo = runtime.repository
     val manager = runtime.timers
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val exact by manager.exactAlarmsAvailable.collectAsState()
-    val progress = session.progress()
+    val progress = remember(session) { session.progress() }
     val currentStep = progress.step
+    val recipe = session.recipeSnapshot
+    val step = remember(session, currentStep) {
+        currentStep?.let { recipe.toCookingStepUi(it, progress.index + 1, session.servings, session.ingredientOverrides) }
+    }
+    val checkedKey = "checked:${session.id}"
+    var checked by remember(session.id) {
+        mutableStateOf(runtime.cookingPreferences.getStringSet(checkedKey, emptySet()).orEmpty().toSet())
+    }
     var sheet by rememberSaveable { mutableStateOf<CookingSheet?>(null) }
+    var ingredientId by rememberSaveable { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var largeText by rememberSaveable { mutableStateOf(false) }
-    var keepAwake by rememberSaveable { mutableStateOf(false) }
+    var drawerExpanded by rememberSaveable { mutableStateOf(false) }
+    val textKey = "large-text:${session.id}"
+    val awakeKey = "keep-awake:${session.id}"
+    var largeText by remember(session.id) { mutableStateOf(runtime.cookingPreferences.getBoolean(textKey, false)) }
+    var keepAwake by remember(session.id) { mutableStateOf(runtime.cookingPreferences.getBoolean(awakeKey, false)) }
     var permissionAsked by rememberSaveable { mutableStateOf(false) }
     var notificationsDenied by remember { mutableStateOf(false) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -91,8 +102,17 @@ private fun ActiveCookingSession(session: CookingSession, onBack: () -> Unit) {
             if (!wasAwake) window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
-    LifecycleResumeEffect(manager) {
-        val refresh = scope.launch { manager.reschedule() }
+    LifecycleResumeEffect(manager, session.id) {
+        val refresh = scope.launch {
+            manager.reschedule()
+            repo.session(session.id).collectLatest { current ->
+                val running = current?.timers.orEmpty().filter { it.state == TimerState.RUNNING }
+                val next = running.minByOrNull { it.endsAt.orEmpty() } ?: return@collectLatest
+                val deadline = next.endsAt?.let { Instant.parse(it).toEpochMilli() } ?: return@collectLatest
+                delay((deadline - System.currentTimeMillis()).coerceAtLeast(0))
+                runtime.launch { manager.alarmDelivered(next.id) }
+            }
+        }
         onPauseOrDispose { refresh.cancel() }
     }
 
@@ -108,148 +128,133 @@ private fun ActiveCookingSession(session: CookingSession, onBack: () -> Unit) {
         }
     }
 
-    val scroll = rememberScrollState()
-    LaunchedEffect(currentStep?.id) { scroll.scrollTo(0) }
-    val overlay: @Composable () -> Unit = {
-        val closeSheet = { sheet = null }
-        when (sheet) {
-            CookingSheet.INGREDIENTS -> FoodSheet(stringResource(R.string.food_ingredients), closeSheet) {
-                IngredientChecklist(session.recipeSnapshot.portions(session.servings, session.ingredientOverrides), showStock = false)
+    fun startTimer(stepId: String?, label: String, seconds: Int) {
+        runAction {
+            if (context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                if (!permissionAsked) {
+                    permissionAsked = true
+                    permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else notificationsDenied = true
             }
-            CookingSheet.OVERVIEW -> FoodSheet(stringResource(R.string.food_steps), closeSheet) {
-                CardListGroup {
-                    progress.steps.forEachIndexed { index, step ->
-                        item {
-                            val position = stringResource(R.string.food_step_position, index + 1, progress.steps.size)
-                            val status = when (step.id) {
-                                in session.skippedStepIds -> stringResource(R.string.food_step_skipped)
-                                in session.completedStepIds -> stringResource(R.string.food_step_done)
-                                else -> null
-                            }
-                            ArrowPreference(
-                                title = step.title,
-                                summary = listOfNotNull(position, status).joinToString(" · "),
-                                enabled = !busy,
-                                onClick = {
-                                    runAction { repo.jumpToStep(session.id, step.id) }
-                                    closeSheet()
-                                },
-                            )
-                        }
-                    }
-                }
-            }
-            CookingSheet.ASSISTANT -> CookingAssistant(session, closeSheet)
-            CookingSheet.OPTIONS -> FoodSheet(stringResource(R.string.food_cooking_options), closeSheet) {
-                CardListGroup {
-                    item {
-                        SwitchPreference(title = stringResource(R.string.food_keep_awake), checked = keepAwake, onCheckedChange = { keepAwake = it })
-                    }
-                    item {
-                        SwitchPreference(title = stringResource(R.string.food_large_text), checked = largeText, onCheckedChange = { largeText = it })
-                    }
-                    if (currentStep != null) item {
-                        ArrowPreference(
-                            title = stringResource(R.string.food_step_skip),
-                            enabled = !busy,
-                            onClick = {
-                                runAction { repo.skipStep(session.id) }
-                                closeSheet()
-                            },
-                        )
-                    }
-                }
-            }
-            CookingSheet.COMPLETION -> {
-                val stock by remember(repo) { repo.pantry() }.collectAsState(initial = null)
-                LaunchedEffect(repo) { repo.refreshPantry() }
-                FoodSheet(stringResource(R.string.food_completion), { if (!busy) closeSheet() }) {
-                    RecipeCompletion(session, stock?.value?.locations.orEmpty(), busy) { draft ->
-                        runAction {
-                            repo.completeSession(session.id, draft.servingsMade, draft.rating, draft.consumptions, draft.leftovers)
-                            closeSheet()
-                        }
-                    }
-                }
-            }
-            null -> Unit
+            manager.start(session.id, stepId, label, seconds)
         }
     }
 
-    FoodPage(
-        session.recipeSnapshot.title, onBack, scrollState = scroll, compactTitle = true, overlay = overlay,
-        actions = {
-            CouiTopAppBarIconButton(
-                COUIIcons.More, stringResource(R.string.food_cooking_options), { sheet = CookingSheet.OPTIONS },
-                Modifier.size(48.dp),
-            )
+    val closeSheet = { sheet = null }
+    NavigationBackHandler(
+        rememberNavigationEventState(NavigationEventInfo.None),
+        isBackEnabled = sheet != null,
+        onBackCompleted = closeSheet,
+    )
+    val now = rememberCookingClock(session)
+    val stepsById = remember(progress.steps) { progress.steps.mapIndexed { index, value -> value.id to index + 1 }.toMap() }
+    val timers = session.activeTimers().map { it.toTimerUi(now, stepsById[it.stepId]) }
+    val state = CookingScreenState(
+        title = recipe.title, index = progress.index, count = progress.steps.size, step = step,
+        completed = progress.steps.indices.filterTo(mutableSetOf()) {
+            progress.steps[it].id in session.completedStepIds
         },
+        timers = timers,
+        drawerExpanded = drawerExpanded,
+        largeText = largeText,
+        busy = busy,
+        exactAlarms = exact,
+        notificationsDenied = notificationsDenied,
+        stepTimer = timers.lastOrNull { it.stepNumber == progress.index + 1 },
+    )
+    val customTimerLabel = stringResource(R.string.food_custom_timer)
+    CookingScreen(
+        state = state, onMinimize = onBack,
+        onPrevious = { if (progress.index > 0) runAction { repo.previousStep(session.id) } },
+        onNext = {
+            if (currentStep != null) runAction {
+                repo.completeStep(session.id)
+                if (state.advanceToFinish()) onFinish()
+            }
+        },
+        onSheet = { sheet = it },
+        onIngredient = { ingredientId = it; sheet = CookingSheet.INGREDIENT },
+        onTimerDrawer = { drawerExpanded = it },
+        onStartTimer = {
+            currentStep?.timerSuggestion?.let { startTimer(currentStep.id, it.label, it.durationSeconds) }
+        },
+        onNewTimer = { startTimer(null, customTimerLabel, it * 60) },
+        onTextSize = {
+            largeText = !largeText
+            runtime.cookingPreferences.edit().putBoolean(textKey, largeText).apply()
+        },
+        onAllowExact = {
+            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}"))
+            runCatching { context.startActivity(intent) }
+        },
+        timerActions = TimerActions(
+            pause = { scope.launch { manager.pause(it) } },
+            resume = { scope.launch { manager.resume(it) } },
+            add = { id, minutes -> scope.launch { manager.addTime(id, minutes) } },
+            cancel = { scope.launch { manager.cancel(it) } },
+        ),
     ) {
-        if (currentStep != null) {
-            CookingProgress(
-                progress, busy,
-                onPrevious = { runAction { repo.previousStep(session.id) } },
-                onNext = { runAction { repo.nextStep(session.id) } },
+        when (sheet) {
+            CookingSheet.INGREDIENTS -> CookingIngredientsSheet(
+                IngredientChecklistUi(
+                    recipe.portions(session.servings, session.ingredientOverrides).map { portion ->
+                        IngredientRowUi(portion, checked = portion.ingredient.id in checked)
+                    }, session.servings, stockKnown = false,
+                ),
+                onToggle = { id, enabled ->
+                    checked = if (enabled) checked + id else checked - id
+                    runtime.cookingPreferences.edit().putStringSet(checkedKey, checked).apply()
+                },
+                onClose = closeSheet,
             )
-            FoodSection {
-                FoodHeading(currentStep.title)
-                Text(FoodQuantities.renderStep(session, currentStep),
-                    style = if (largeText) COUITheme.textStyles.headlineM else COUITheme.textStyles.bodyXL)
-                StepIngredientList(
-                    session.recipeSnapshot.stepPortions(currentStep, session.servings, session.ingredientOverrides),
-                )
-                RecipePicture(currentStep.image)
-                currentStep.durationSeconds?.let { FoodSupporting(stringResource(R.string.food_minutes, (it + 59) / 60)) }
-                currentStep.temperature?.value?.let { FoodSupporting(stringResource(R.string.food_temperature, it.toString())) }
-                currentStep.tips.forEach { FoodSupporting(it) }
-                currentStep.timerSuggestion?.let { suggestion ->
-                    FoodButton(
-                        stringResource(R.string.food_timer_start, stringResource(R.string.food_minutes, (suggestion.durationSeconds + 59) / 60)),
-                        enabled = !busy, onClick = {
-                            if (context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                                if (!permissionAsked && session.timers.isEmpty()) {
-                                    permissionAsked = true
-                                    permission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                } else notificationsDenied = true
-                            }
-                            runAction { manager.start(session.id, currentStep.id, suggestion.label, suggestion.durationSeconds) }
-                        },
-                    )
-                }
-            }
-            StepActions(
-                progress, busy, progress.finished == progress.steps.size,
-                onDone = { runAction { repo.completeStep(session.id) } },
-                onFinish = { sheet = CookingSheet.COMPLETION },
+            CookingSheet.STEPS -> CookingStepsSheet(
+                progress, session.completedStepIds.toSet(), session.skippedStepIds.toSet(),
+                onStep = { id -> runAction { repo.jumpToStep(session.id, id); closeSheet() } },
+                onClose = closeSheet,
             )
-        }
-        val timers = session.activeTimers()
-        if (timers.isNotEmpty()) {
-            FoodSection {
-                TimerStack(timers, TimerActions(
-                    pause = { scope.launch { manager.pause(it) } },
-                    resume = { scope.launch { manager.resume(it) } },
-                    add = { id, minutes -> scope.launch { manager.addTime(id, minutes) } },
-                    cancel = { scope.launch { manager.cancel(it) } },
-                ))
-            }
-        }
-        if (!exact) {
-            FoodSection {
-                FoodSupporting(stringResource(R.string.food_exact_alarms))
-                FoodAction(R.string.food_allow_exact) {
-                    val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}"))
-                    runCatching { context.startActivity(intent) }
+            CookingSheet.HOW_TO -> currentStep?.let { CookingHowToSheet(it, closeSheet) }
+            CookingSheet.ASSISTANT -> CookingAssistant(session, closeSheet)
+            CookingSheet.OPTIONS -> CookingOptionsSheet(
+                keepAwake, session.servings, busy, onAwake = {
+                    keepAwake = it
+                    runtime.cookingPreferences.edit().putBoolean(awakeKey, it).apply()
+                },
+                onServings = { runAction { repo.setServings(session.id, it) } },
+                onSkip = {
+                    runAction {
+                        repo.skipStep(session.id)
+                        closeSheet()
+                        if (state.advanceToFinish()) onFinish()
+                    }
+                },
+                onStop = { sheet = CookingSheet.STOP }, onClose = closeSheet,
+            )
+            CookingSheet.INGREDIENT -> recipe.portions(session.servings, session.ingredientOverrides)
+                .firstOrNull { it.ingredient.id == ingredientId }?.let { portion ->
+                    CookingIngredientSheet(portion, busy, onApply = { quantity ->
+                        runAction { repo.setIngredientOverride(session.id, portion.ingredient.id, quantity); closeSheet() }
+                    }, onClose = closeSheet)
                 }
-            }
-        }
-        if (notificationsDenied) FoodSupporting(stringResource(R.string.food_notifications_denied))
-        CardListGroup {
-            item { ArrowPreference(title = stringResource(R.string.food_ingredients), onClick = { sheet = CookingSheet.INGREDIENTS }) }
-            item { ArrowPreference(title = stringResource(R.string.food_steps), onClick = { sheet = CookingSheet.OVERVIEW }) }
-            item { ArrowPreference(title = stringResource(R.string.food_assistant), onClick = { sheet = CookingSheet.ASSISTANT }) }
+            CookingSheet.STOP -> AbandonCookingDialog(
+                replacing = false, busy = busy, onDismiss = closeSheet,
+                onConfirm = { if (!busy) { busy = true; onAbandon() } },
+            )
+            null -> Unit
         }
     }
+}
+
+@Composable
+internal fun rememberCookingClock(session: CookingSession?): Long {
+    val ticking = session?.timers?.any { it.state == TimerState.RUNNING } == true
+    val now by produceState(System.currentTimeMillis(), ticking) {
+        value = System.currentTimeMillis()
+        if (ticking) while (true) {
+            delay(250)
+            value = System.currentTimeMillis()
+        }
+    }
+    return now
 }
 
 @Composable
@@ -266,20 +271,26 @@ private fun CookingAssistant(session: CookingSession, onClose: () -> Unit) {
         error = null
         applied = emptyList()
         scope.launch {
-            when (val response = repo.assistant(AssistantRequest(requestId(), question, session))) {
-                is FoodResult.Success -> answer = response.value
-                is FoodResult.Failure -> error = response
+            try {
+                when (val response = repo.assistant(AssistantRequest(requestId(), question, session))) {
+                    is FoodResult.Success -> answer = response.value
+                    is FoodResult.Failure -> error = response
+                }
+            } finally {
+                working = false
             }
-            working = false
         }
     }, onApply = { proposal ->
         val response = answer
         if (response != null && !working) {
             working = true
             scope.launch {
-                repo.applyProposal(session.id, response.requestId, proposal)
-                applied = applied + proposal.id
-                working = false
+                try {
+                    repo.applyProposal(session.id, response.requestId, proposal)
+                    applied = applied + proposal.id
+                } finally {
+                    working = false
+                }
             }
         }
     }, onClose = onClose)

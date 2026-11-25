@@ -70,6 +70,8 @@ Rules:
 
 Layoutlib renders a single frame: no animation, no haptics, no real blur backdrop sampling (material blur may fall back to its opaque version), no IME, no system bars or insets of a real window, no predictive back. Those need the device pass in `docs/agents/DEVICE.md`. Say which one produced your evidence.
 
+The Cuisine sheet previews present the production sheet content in its host page with a static COUI surface. Layoutlib captures the native sheet before its entrance finishes.
+
 ## Troubleshooting
 
 - `android: command not found`: you are outside `nix develop`; use `scripts/preview`, or `nix develop -c android …`. Inside the devShell the Nix SDK also ships a legacy `android` tool; the flake puts the CLI first on `PATH`.

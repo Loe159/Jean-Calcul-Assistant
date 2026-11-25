@@ -18,7 +18,7 @@ internal class FoodRuntime(private val context: Context, private val scope: Coro
     private val database = EtaDatabase.get(context)
     private val clock = Clock.systemUTC()
     private val notifications = CookingTimerNotifications(context)
-    val repository = FoodRepository(
+    val repository: FoodRepository = FoodRepository(
         database,
         pairing = { MastraConnection.loadEnabled(context) },
         cachePairing = { MastraConnection.load(context) },
@@ -26,10 +26,14 @@ internal class FoodRuntime(private val context: Context, private val scope: Coro
         scope = scope,
         scheduleSync = { FoodSyncJob.request(context) },
         clock = clock,
+        clearCancelledTimers = { timers.clearCancelled(it) },
     )
-    val timers = CookingTimerManager(
-        database, CookingTimerScheduler(context, clock), notifications, clock, repository::syncSession,
-    )
+    val timers: CookingTimerManager by lazy {
+        CookingTimerManager(
+            database, CookingTimerScheduler(context, clock), notifications, clock, repository::syncSession,
+        )
+    }
+    val cookingPreferences = context.getSharedPreferences("food_cooking", Context.MODE_PRIVATE)
 
     fun start() {
         launch {

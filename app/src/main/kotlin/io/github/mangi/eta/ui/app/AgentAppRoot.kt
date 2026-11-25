@@ -79,6 +79,7 @@ import io.github.mangi.eta.ui.screens.food.FoodPreferencesScreen
 import io.github.mangi.eta.ui.screens.food.InventoryScreen
 import io.github.mangi.eta.ui.screens.food.RecipeDetailScreen
 import io.github.mangi.eta.ui.screens.food.RecipeGenerateScreen
+import io.github.mangi.eta.ui.screens.food.components.WithCookingDock
 import io.github.mangi.eta.ui.screens.backup.DataBackupScreen
 import io.github.mangi.eta.ui.screens.browser.AgentBrowserActivity
 import io.github.mangi.eta.agent.browser.BrowserSessionRegistry
@@ -502,23 +503,33 @@ fun AgentAppRoot(
                 }
             }
             entry<AppRoute.FoodHome>(swipeDismiss = swipeDismiss) {
-                FoodHomeScreen(onBack = ::popRoute, onOpen = { pushRoute(it) })
+                WithCookingDock(onResume = { pushRoute(AppRoute.CookingSession(it)) }) {
+                    FoodHomeScreen(onBack = ::popRoute, onOpen = { pushRoute(it) })
+                }
             }
             entry<AppRoute.Inventory>(swipeDismiss = swipeDismiss) { route ->
-                InventoryScreen(route.filter, onBack = ::popRoute)
+                WithCookingDock(onResume = { pushRoute(AppRoute.CookingSession(it)) }) {
+                    InventoryScreen(route.filter, onBack = ::popRoute)
+                }
             }
             entry<AppRoute.RecipeDetail>(swipeDismiss = swipeDismiss) { route ->
-                RecipeDetailScreen(route.recipeId, route.briefCardId, route.servings, onBack = ::popRoute, onOpen = { pushRoute(it) })
+                WithCookingDock(onResume = { pushRoute(AppRoute.CookingSession(it)) }) {
+                    RecipeDetailScreen(route.recipeId, route.briefCardId, route.servings, onBack = ::popRoute, onOpen = { pushRoute(it) })
+                }
             }
             entry<AppRoute.RecipeGenerate>(swipeDismiss = swipeDismiss) { route ->
-                RecipeGenerateScreen(route.recipeId, route.servings, onBack = ::popRoute) {
-                    pushRoute(AppRoute.RecipeDetail(it))
+                WithCookingDock(onResume = { pushRoute(AppRoute.CookingSession(it)) }) {
+                    RecipeGenerateScreen(route.recipeId, route.servings, onBack = ::popRoute) {
+                        pushRoute(AppRoute.RecipeDetail(it))
+                    }
                 }
             }
             entry<AppRoute.FoodPreferences>(swipeDismiss = swipeDismiss) {
-                FoodPreferencesScreen(onBack = ::popRoute)
+                WithCookingDock(onResume = { pushRoute(AppRoute.CookingSession(it)) }) {
+                    FoodPreferencesScreen(onBack = ::popRoute)
+                }
             }
-            entry<AppRoute.CookingSession>(swipeDismiss = swipeDismiss) { route ->
+            entry<AppRoute.CookingSession>(swipeDismiss = NavSwipeDirection.None) { route ->
                 CookingSessionDestination(route.sessionId, onBack = ::popRoute)
             }
             entry<AppRoute.Terminal>(swipeDismiss = swipeDismiss) {

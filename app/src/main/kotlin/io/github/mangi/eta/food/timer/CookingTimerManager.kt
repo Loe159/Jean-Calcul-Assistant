@@ -91,6 +91,13 @@ internal class CookingTimerManager(
         reconcile(id, allowEarlyWindow = false)
     }
 
+    suspend fun clearCancelled(ids: List<String>) = mutex.withLock {
+        ids.forEach { id ->
+            scheduler.cancel(id)
+            notifications.clearTimer(id)
+        }
+    }
+
     private suspend fun reconcile(id: String, allowEarlyWindow: Boolean) {
         val timer = dao.timer(id) ?: return
         if (timer.state != TimerState.RUNNING) return
@@ -126,12 +133,13 @@ internal class CookingTimerManager(
         transform: (CookingTimerEntity, Long) -> CookingTimerEntity,
     ): CookingTimerEntity? = database.withTransaction {
         val timer = dao.timer(id) ?: return@withTransaction null
+        val session = checkNotNull(dao.session(timer.sessionId))
+        if (session.status != CookingStatus.ACTIVE) return@withTransaction null
         val now = clock.millis()
         val updated = transform(timer, now)
         if (updated == timer) return@withTransaction null
         dao.updateTimer(updated)
-        val session = checkNotNull(dao.session(timer.sessionId))
-        if (session.status == CookingStatus.ACTIVE) dao.updateSession(session.nextRevision(now))
+        dao.updateSession(session.nextRevision(now))
         updated
     }
 }

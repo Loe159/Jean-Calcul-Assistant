@@ -1,14 +1,18 @@
 package io.github.mangi.eta.ui.screens.food.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.R
@@ -52,7 +56,7 @@ internal fun CookingTimerChip(
             horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically,
         ) {
             TimerRing(timer, 24.dp)
-            if (!compact) Text(timer.label, style = COUITheme.textStyles.bodyS, modifier = Modifier.weight(1f, fill = false))
+            if (!compact) Text(timer.label, style = COUITheme.textStyles.bodyS, modifier = Modifier.widthIn(max = 144.dp))
             Text(if (alarm) timer.statusLabel() else timerClock(timer.secondsLeft),
                 style = COUITheme.textStyles.headlineXS.copy(fontWeight = FontWeight.SemiBold))
         }
@@ -91,25 +95,41 @@ internal fun TimerDrawer(
     onExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     onNewTimer: ((Int) -> Unit)? = null,
+    minControlHeight: Dp = 48.dp,
 ) {
     val visible = timers.filterNot { it.state == TimerState.CANCELLED }
-    if (visible.isEmpty()) return
+    if (visible.isEmpty() && !expanded) return
     val alarms = visible.count { it.state == TimerState.FINISHED }
     val colors = COUITheme.colorScheme
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Top) {
-            FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                visible.forEach { timer ->
-                    key(timer.id) { CookingTimerChip(timer, { onExpandedChange(true) }) }
-                }
+    val largeText = LocalDensity.current.fontScale > 1.3f
+    val chips: @Composable () -> Unit = {
+        visible.forEach { timer ->
+            key(timer.id) {
+                CookingTimerChip(timer, { onExpandedChange(true) }, Modifier.heightIn(min = minControlHeight))
             }
-            CuisineIconButton(
-                if (expanded) CuisineIcons.ChevronUp else CuisineIcons.ChevronDown,
-                stringResource(if (expanded) R.string.food_timers_collapse else R.string.food_timers_expand),
-                { onExpandedChange(!expanded) },
-                fill = colors.container8,
-            )
+        }
+    }
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (visible.isNotEmpty()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (largeText) {
+                    FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        chips()
+                    }
+                } else {
+                    Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        chips()
+                    }
+                }
+                CuisineIconButton(
+                    if (expanded) CuisineIcons.ChevronUp else CuisineIcons.ChevronDown,
+                    stringResource(if (expanded) R.string.food_timers_collapse else R.string.food_timers_expand),
+                    { onExpandedChange(!expanded) },
+                    fill = colors.container8, size = minControlHeight,
+                )
+            }
         }
         if (expanded) {
             Card {
@@ -120,14 +140,14 @@ internal fun TimerDrawer(
                     )
                 }
                 CardListGroup {
-                    visible.forEach { timer -> item { TimerDrawerRow(timer, actions) } }
+                    visible.forEach { timer -> item { TimerDrawerRow(timer, actions, minControlHeight) } }
                 }
                 if (onNewTimer != null) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         FoodSupporting(stringResource(R.string.food_timer_new))
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             listOf(1, 5, 10).forEach { minutes ->
-                                TimerControl(stringResource(R.string.food_minutes, minutes), { onNewTimer(minutes) })
+                                TimerControl(stringResource(R.string.food_minutes, minutes), { onNewTimer(minutes) }, minHeight = minControlHeight)
                             }
                         }
                     }
@@ -138,7 +158,7 @@ internal fun TimerDrawer(
 }
 
 @Composable
-private fun TimerDrawerRow(timer: CookingTimerUi, actions: TimerActions) {
+private fun TimerDrawerRow(timer: CookingTimerUi, actions: TimerActions, minControlHeight: Dp) {
     val paused = timer.state == TimerState.PAUSED
     val alarm = timer.state == TimerState.FINISHED
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -162,22 +182,22 @@ private fun TimerDrawerRow(timer: CookingTimerUi, actions: TimerActions) {
             if (!alarm) {
                 TimerControl(
                     stringResource(if (paused) R.string.food_brief_resume else R.string.food_timer_pause),
-                    { if (paused) actions.resume(timer.id) else actions.pause(timer.id) },
+                    { if (paused) actions.resume(timer.id) else actions.pause(timer.id) }, minHeight = minControlHeight,
                 )
             }
-            TimerControl(stringResource(R.string.food_timer_plus, 1), { actions.add(timer.id, 1) })
-            if (!alarm) TimerControl(stringResource(R.string.food_timer_plus, 5), { actions.add(timer.id, 5) })
+            TimerControl(stringResource(R.string.food_timer_plus, 1), { actions.add(timer.id, 1) }, minHeight = minControlHeight)
+            if (!alarm) TimerControl(stringResource(R.string.food_timer_plus, 5), { actions.add(timer.id, 5) }, minHeight = minControlHeight)
             TimerControl(
                 stringResource(R.string.food_timer_cancel), { actions.cancel(timer.id) },
-                Modifier.semantics { role = Role.Button },
+                Modifier.semantics { role = Role.Button }, minHeight = minControlHeight,
             )
         }
     }
 }
 
 @Composable
-private fun TimerControl(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Button(onClick, modifier, minWidth = 48.dp, minHeight = 48.dp,
+private fun TimerControl(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, minHeight: Dp = 48.dp) {
+    Button(onClick, modifier, minWidth = 48.dp, minHeight = minHeight,
         insideMargin = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
         Text(label, style = COUITheme.textStyles.buttonM)
     }
@@ -205,7 +225,8 @@ internal fun ActiveCookingBanner(
         })
     } ?: session.stepTitle
     val resume = stringResource(R.string.food_brief_resume)
-    val talkBack = listOfNotNull(session.title, step, nextTimer?.accessibleLabel() ?: detail, resume).joinToString(" · ")
+    val talkBack = listOfNotNull(stringResource(R.string.food_cooking_in_progress),
+        session.title, step, nextTimer?.accessibleLabel() ?: detail, resume).joinToString(" · ")
     val ink = if (alarm) colors.orange else colors.green
     Card(
         modifier.fillMaxWidth().heightIn(min = 64.dp).semantics {
@@ -230,8 +251,12 @@ internal fun ActiveCookingBanner(
                 Icon(if (alarm) COUIIcons.Alarm else CuisineIcons.Pot, null, Modifier.size(21.dp), tint = cuisineTint(ink))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, style = COUITheme.textStyles.headlineXS)
-                if (detail != null) FoodSupporting(detail)
+                // The banner docks over every Cuisine page: keep it compact at large font scales.
+                Text(title, style = COUITheme.textStyles.headlineXS, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (detail != null) Text(
+                    detail, style = COUITheme.textStyles.bodyS, color = colors.labelSecondary,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
             }
             CuisineBadge(resume, icon = COUIIcons.Play, ink = cuisineTint(colors.primary),
                 fill = colors.primary.copy(alpha = 0.14f), compact = true)

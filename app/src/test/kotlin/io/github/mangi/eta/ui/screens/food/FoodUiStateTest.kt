@@ -2,7 +2,9 @@ package io.github.mangi.eta.ui.screens.food
 
 import io.github.mangi.eta.R
 import io.github.mangi.eta.food.*
+import io.github.mangi.eta.ui.screens.food.components.CompletionForm
 import io.github.mangi.eta.ui.screens.food.components.availabilityLabel
+import io.github.mangi.eta.ui.screens.food.components.completionRows
 import io.github.mangi.eta.ui.screens.home.NowBriefCardExtension
 import io.github.mangi.eta.ui.screens.home.brief.BriefCardId
 import io.github.mangi.eta.ui.screens.home.brief.briefRealContent
@@ -38,32 +40,49 @@ class FoodUiStateTest {
         val second = steps[1].id
         val running = CookingTimer("t1", "Four", first, 480, TimerState.RUNNING, "2026-11-23T18:08:00Z", null)
         val paused = CookingTimer("t2", "Riz", second, 360, TimerState.PAUSED, null, 130)
+        val finished = paused.copy(id = "t4", state = TimerState.FINISHED, remainingSeconds = null)
         val timerState = session.copy(
             currentStepId = second,
             completedStepIds = listOf(first),
             skippedStepIds = emptyList(),
-            timers = listOf(running, paused, running.copy(id = "t3", state = TimerState.CANCELLED)),
+            timers = listOf(running, paused, running.copy(id = "t3", state = TimerState.CANCELLED), finished),
         )
         assertEquals(second, timerState.progress().step?.id)
         assertEquals(1, timerState.progress().finished)
-        assertEquals(listOf(running, paused), timerState.activeTimers())
+        assertEquals(listOf(running, paused, finished), timerState.activeTimers())
         val now = Instant.parse("2026-11-23T18:01:00.100Z").toEpochMilli()
         assertEquals(420L, running.secondsLeft(now))
         assertEquals(0L, running.secondsLeft(now + 900_000))
         assertEquals(130L, paused.secondsLeft(now + 900_000))
     }
 
+    @Test fun backFromCompletionPreservesServingsAndRatingWithoutUsingStockEdits() {
+        val rows = session.completionRows(null, amounts = mapOf("ing_eggs" to "3,5"),
+            selections = session.recipeSnapshot.ingredients.associate { it.id to (it.id == "ing_eggs") })
+        val form = CompletionForm("4", "5", rows, "1", "2026-11-28", 1, listOf(PantryLocation(1, "Frigo")))
+        val confirmed = checkNotNull(form.stockDraft())
+        assertEquals(1, confirmed.leftovers?.servings)
+        assertEquals(3.5, confirmed.consumptions.single().quantity.amount, 0.0)
+        val back = form.exitDraft(session.servings)
+        assertEquals(4, back.servingsMade)
+        assertEquals(5, back.rating)
+        assertTrue(back.consumptions.isEmpty())
+        assertNull(back.leftovers)
+        assertEquals(back, form.copy(leftovers = "invalide").exitDraft(session.servings))
+    }
+
     @Test fun completionDefaultsToExactPortionsAndEditsOnlyAffectConfirmedLines() {
         val changed = session.copy(
             servings = 4, ingredientOverrides = listOf(IngredientOverride("ing_eggs", Quantity(3.0, UnitCode.PIECE))),
         )
-        val lines = changed.completionLines()
+        val lines = changed.completionRows(null).mapNotNull { it.consumption() }
         assertEquals(MeasuredQuantity(500.0, UnitCode.G), lines.single { it.ingredientId == "ing_courgette" }.quantity)
         assertEquals(MeasuredQuantity(3.0, UnitCode.PIECE), lines.single { it.ingredientId == "ing_eggs" }.quantity)
-        val edited = changed.completionLines(mapOf("ing_courgette" to 350.0, "ing_eggs" to 0.0))
+        val edited = changed.completionRows(null, mapOf("ing_courgette" to "350"), mapOf("ing_eggs" to false))
+            .mapNotNull { it.consumption() }
         assertEquals(MeasuredQuantity(350.0, UnitCode.G), edited.single { it.ingredientId == "ing_courgette" }.quantity)
         assertFalse(edited.any { it.ingredientId == "ing_eggs" })
-        assertEquals(lines, changed.completionLines())
+        assertEquals(lines, changed.completionRows(null).mapNotNull { it.consumption() })
     }
 
     @Test fun activeCookingPrecedesRealCardsEvenWhenServerCacheIsAbsent() {

@@ -48,15 +48,9 @@ import java.time.format.DateTimeParseException
 import java.time.format.FormatStyle
 import java.util.Locale
 import java.util.UUID
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlin.math.roundToInt
 
-@OptIn(ExperimentalCoroutinesApi::class)
 @Composable
 internal fun rememberFoodBriefExtensions(
     active: Boolean,
@@ -66,10 +60,7 @@ internal fun rememberFoodBriefExtensions(
 ): List<NowBriefCardExtension> {
     val runtime = foodRuntime()
     val repo = runtime.repository
-    val session by remember(repo) {
-        repo.activeSessions().map { it.firstOrNull()?.id }.distinctUntilChanged()
-            .flatMapLatest { id -> if (id == null) flowOf(null) else repo.session(id) }
-    }.collectAsState(initial = null)
+    val session by remember(repo) { repo.activeSession() }.collectAsState(initial = null)
     val cache by remember(repo) { repo.briefCards() }.collectAsState(initial = null)
     var dismissed by remember(cache?.value?.generatedAt) { mutableStateOf(emptySet<String>()) }
     LaunchedEffect(repo, active, showRecommendations, cache?.value?.validUntil) {
