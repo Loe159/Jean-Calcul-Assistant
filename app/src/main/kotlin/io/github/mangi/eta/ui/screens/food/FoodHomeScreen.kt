@@ -32,8 +32,10 @@ import java.util.Locale
 
 /** Cuisine page: four internal tabs (docs/design/cuisine.md); back from another tab returns to Recettes. */
 @Composable
-internal fun FoodHomeScreen(onBack: () -> Unit, onOpen: (AppRoute) -> Unit) {
-    var tab by rememberSaveable { mutableStateOf(CuisineTab.RECIPES) }
+internal fun FoodHomeScreen(onBack: () -> Unit, onOpen: (AppRoute) -> Unit, initialTab: String? = null) {
+    var tab by rememberSaveable {
+        mutableStateOf(CuisineTab.entries.firstOrNull { it.name == initialTab } ?: CuisineTab.RECIPES)
+    }
     var filtersSheet by rememberSaveable { mutableStateOf(false) }
     val recipes = rememberRecipesTab(
         onOpen = onOpen, onTab = { tab = it }, onMoreFilters = { filtersSheet = true },

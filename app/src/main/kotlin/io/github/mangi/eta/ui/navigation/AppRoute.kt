@@ -16,7 +16,8 @@ sealed interface AppRoute : NavKey {
     data object Terminal : AppRoute
 
     @Serializable
-    data object FoodHome : AppRoute
+    /** [tab] is a [io.github.mangi.eta.ui.screens.food.CuisineTab] name; null opens Recettes. */
+    data class FoodHome(val tab: String? = null) : AppRoute
 
     @Serializable
     data class Inventory(val filter: String? = null) : AppRoute

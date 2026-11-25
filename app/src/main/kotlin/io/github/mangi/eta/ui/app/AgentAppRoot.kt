@@ -390,7 +390,7 @@ fun AgentAppRoot(
             onOpenCharacters = { pushRoute(AppRoute.Characters) },
             onOpenPermissions = { pushRoute(AppRoute.Permissions) },
             onOpenSettings = { pushRoute(AppRoute.Settings) },
-            onOpenFoodHome = { pushRoute(AppRoute.FoodHome) },
+            onOpenFoodHome = { pushRoute(AppRoute.FoodHome()) },
             onOpenFoodRoute = { pushRoute(it, restoreConversationPaneOnBack = false) },
             onOpenNotifications = { pushRoute(AppRoute.IntelligentNotifications) },
             onOpenModelProviders = { pushRoute(AppRoute.ModelProviders) },
@@ -502,9 +502,9 @@ fun AgentAppRoot(
                     if (backStack.isEmpty()) backStack.add(AppRoute.Home)
                 }
             }
-            entry<AppRoute.FoodHome>(swipeDismiss = swipeDismiss) {
+            entry<AppRoute.FoodHome>(swipeDismiss = swipeDismiss) { route ->
                 WithCookingDock(onResume = { pushRoute(AppRoute.CookingSession(it)) }) {
-                    FoodHomeScreen(onBack = ::popRoute, onOpen = { pushRoute(it) })
+                    FoodHomeScreen(onBack = ::popRoute, onOpen = { pushRoute(it) }, initialTab = route.tab)
                 }
             }
             entry<AppRoute.Inventory>(swipeDismiss = swipeDismiss) { route ->

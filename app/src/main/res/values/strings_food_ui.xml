@@ -513,4 +513,8 @@
     <string name="food_use_soon_title">À consommer bientôt</string>
     <string name="food_find_recipe">Trouver une recette</string>
     <string name="food_in_days">dans %1$d j</string>
+
+    <!-- Brief -->
+    <string name="food_brief_meal_planned">Repas prévu</string>
+    <string name="food_brief_view_list">Voir la liste</string>
 </resources>

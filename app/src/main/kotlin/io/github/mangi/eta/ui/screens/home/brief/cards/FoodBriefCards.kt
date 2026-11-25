@@ -3,6 +3,7 @@ package io.github.mangi.eta.ui.screens.home.brief.cards
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -23,7 +24,11 @@ import io.github.mangi.eta.R
 import io.github.mangi.eta.food.*
 import io.github.mangi.eta.ui.components.coui.CouiTopAppBarIconButton
 import io.github.mangi.eta.ui.navigation.AppRoute
+import io.github.mangi.eta.ui.screens.food.CuisineTab
 import io.github.mangi.eta.ui.screens.food.ExpiringInventoryFilter
+import io.github.mangi.eta.ui.screens.food.components.CuisineBadge
+import io.github.mangi.eta.ui.screens.food.components.CuisineIcons
+import io.github.mangi.eta.ui.screens.food.components.portionLabel
 import io.github.mangi.eta.ui.screens.food.activeTimers
 import io.github.mangi.eta.ui.screens.food.components.FoodAction
 import io.github.mangi.eta.ui.screens.food.components.RecipePicture
@@ -42,7 +47,9 @@ import io.github.suqi8.coui.kmp.icon.extended.Months
 import io.github.suqi8.coui.kmp.icon.extended.Notes
 import io.github.suqi8.coui.kmp.icon.extended.Timer
 import io.github.suqi8.coui.kmp.theme.COUITheme
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.time.format.FormatStyle
@@ -61,38 +68,41 @@ internal fun rememberFoodBriefExtensions(
     val runtime = foodRuntime()
     val repo = runtime.repository
     val session by remember(repo) { repo.activeSession() }.collectAsState(initial = null)
-    val cache by remember(repo) { repo.briefCards() }.collectAsState(initial = null)
-    var dismissed by remember(cache?.value?.generatedAt) { mutableStateOf(emptySet<String>()) }
-    LaunchedEffect(repo, active, showRecommendations, cache?.value?.validUntil) {
-        if (active && showRecommendations && cache == null) {
+    // Opt-in v2 cards (planned meal, shopping list); the historical route stays the fallback for an older server.
+    val cacheV2 by remember(repo) { repo.briefCardsV2() }.collectAsState(initial = null)
+    val cacheV1 by remember(repo) { repo.briefCards() }.collectAsState(initial = null)
+    val response = cacheV2?.value ?: cacheV1?.value?.let { BriefCardsV2Response(it.schemaVersion, it.generatedAt, it.validUntil, it.cards) }
+    var dismissed by remember(response?.generatedAt) { mutableStateOf(emptySet<String>()) }
+    LaunchedEffect(repo, active, showRecommendations, response?.validUntil) {
+        if (active && showRecommendations && cacheV2 == null) {
             // Allow the Room flow to emit its cached value before requesting a refresh.
             delay(300)
-            repo.refreshBriefCards()
+            if (repo.refreshBriefCardsV2() is FoodResult.Failure && cacheV1 == null) repo.refreshBriefCards()
         }
     }
 
     fun feedback(cardId: String, action: BriefFeedbackAction) {
         runtime.launch { repo.briefFeedback(BriefFeedbackRequest(UUID.randomUUID().toString(), cardId, action)) }
     }
-    return buildList {
-        session?.takeIf { it.status == CookingStatus.ACTIVE }?.let { current ->
-            add(NowBriefCardExtension("food-active", priority = 0, beforeRealCards = true) {
-                ActiveCookingCard(current, active, motionAllowed) { onOpen(AppRoute.CookingSession(current.id)) }
-            })
-        }
-        foodBriefServerCards(cache?.value, dismissed, showRecommendations).forEachIndexed { index, card ->
-            add(NowBriefCardExtension("food:${card.id}", priority = 40 + index) {
-                FoodServerCard(card, onOpen = {
-                    feedback(card.id, BriefFeedbackAction.OPENED)
-                    onOpen(when (card) {
-                        is BriefCard.RecipeRecommendation -> AppRoute.RecipeDetail(card.recipeId, briefCardId = card.id)
-                        is BriefCard.ExpiringProducts -> AppRoute.Inventory(ExpiringInventoryFilter)
+    val visible = response?.takeIf { showRecommendations }?.let { it.copy(cards = it.cards.filterNot { card -> card.id in dismissed }) }
+    val selected = selectCuisineBriefCards(session, visible, Instant.now(), ZoneId.systemDefault())
+    return selected.mapIndexed { index, selection ->
+        when (selection) {
+            is CuisineBriefCard.ActiveSession -> NowBriefCardExtension("food-active", priority = 0, beforeRealCards = true) {
+                ActiveCookingCard(selection.session, active, motionAllowed) { onOpen(AppRoute.CookingSession(selection.session.id)) }
+            }
+            is CuisineBriefCard.Server -> {
+                val card = selection.card
+                NowBriefCardExtension("food:${card.id}", priority = 40 + index) {
+                    FoodServerCard(card, onOpen = { route ->
+                        feedback(card.id, BriefFeedbackAction.OPENED)
+                        onOpen(route)
+                    }, onDismiss = {
+                        dismissed = dismissed + card.id
+                        feedback(card.id, BriefFeedbackAction.DISMISSED)
                     })
-                }, onDismiss = {
-                    dismissed = dismissed + card.id
-                    feedback(card.id, BriefFeedbackAction.DISMISSED)
-                })
-            })
+                }
+            }
         }
     }
 }
@@ -129,7 +139,7 @@ private fun ActiveCookingCard(session: CookingSession, active: Boolean, motionAl
 }
 
 @Composable
-private fun FoodServerCard(card: BriefCard, onOpen: () -> Unit, onDismiss: () -> Unit) {
+private fun FoodServerCard(card: BriefCardV2, onOpen: (AppRoute) -> Unit, onDismiss: () -> Unit) {
     val colors = COUITheme.colorScheme
     when (card) {
         is BriefCard.RecipeRecommendation ->
@@ -153,16 +163,51 @@ private fun FoodServerCard(card: BriefCard, onOpen: () -> Unit, onDismiss: () ->
                     style = COUITheme.textStyles.bodyXS,
                     color = colors.labelSecondary,
                 )
-                FoodAction(R.string.food_brief_open, primary = true, onClick = onOpen)
+                FoodAction(R.string.food_brief_open, primary = true) {
+                    onOpen(AppRoute.RecipeDetail(card.recipeId, briefCardId = card.id))
+                }
             }
         is BriefCard.ExpiringProducts ->
             FoodBriefCard(R.string.food_brief_expiring, COUIIcons.Months, colors.orange, onDismiss) {
                 FoodBriefTitle(card.title)
                 if (card.products.isNotEmpty()) ExpiringProductList(card.products)
-                FoodAction(R.string.food_filter_expiring, primary = true, onClick = onOpen)
+                FoodAction(R.string.food_filter_expiring, primary = true) { onOpen(AppRoute.Inventory(ExpiringInventoryFilter)) }
+            }
+        is BriefCardV2.MealPlanned ->
+            FoodBriefCard(R.string.food_brief_meal_planned, COUIIcons.Months, colors.blue, onDismiss) {
+                FoodBriefTitle(card.title)
+                Text(
+                    listOfNotNull(card.subtitle.takeIf { it.isNotBlank() }, briefMealTime(card.scheduledAt),
+                        portionLabel(card.servings)).joinToString(" · "),
+                    style = COUITheme.textStyles.bodyS, color = colors.labelSecondary,
+                )
+                FoodAction(R.string.food_open_recipe, primary = true) {
+                    onOpen(AppRoute.RecipeDetail(card.recipeId, briefCardId = card.id, servings = card.servings))
+                }
+                FoodAction(R.string.food_tab_planning) { onOpen(AppRoute.FoodHome(CuisineTab.PLANNING.name)) }
+            }
+        is BriefCardV2.ShoppingList ->
+            FoodBriefCard(R.string.food_tab_shopping, CuisineIcons.Cart, colors.green, onDismiss) {
+                FoodBriefTitle(card.title)
+                if (card.subtitle.isNotBlank()) {
+                    Text(card.subtitle, style = COUITheme.textStyles.bodyS, color = colors.labelSecondary)
+                }
+                if (card.previewNames.isNotEmpty()) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        card.previewNames.take(5).forEach { CuisineBadge(it, compact = true) }
+                    }
+                }
+                FoodAction(R.string.food_brief_view_list, primary = true) { onOpen(AppRoute.FoodHome(CuisineTab.SHOPPING.name)) }
             }
     }
 }
+
+private val briefMealTimeFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.FRANCE)
+
+/** « 19:30 » in the phone's zone; the server already says which day in the title or subtitle. */
+private fun briefMealTime(instant: String): String? = runCatching {
+    Instant.parse(instant).atZone(ZoneId.systemDefault()).format(briefMealTimeFormat)
+}.getOrNull()
 
 @Composable
 private fun FoodBriefCard(
@@ -230,4 +275,21 @@ private fun briefBestBeforeDate(date: String): String = try {
     LocalDate.parse(date).format(briefExpiryDateFormat)
 } catch (_: DateTimeParseException) {
     date
+}
+
+@io.github.mangi.eta.ui.preview.CouiComponentPreviews
+@Composable
+private fun FoodBriefCardsV2Preview() {
+    io.github.mangi.eta.ui.preview.CouiPreviewTheme(fullScreen = false) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            FoodServerCard(BriefCardV2.MealPlanned(
+                "preview-meal", 80, "Pâtes à la tomate et au basilic", "Ce soir", MealSlotKey("2026-11-24", Meal.DINNER),
+                "preview-pasta", 1, 2, "2026-11-24T18:30:00Z",
+            ), {}, {})
+            FoodServerCard(BriefCardV2.ShoppingList(
+                "preview-shopping", 60, "7 articles à acheter", "2 déjà dans le panier", 1, 7, 2,
+                listOf("Tomates cerises", "Basilic frais", "Parmesan râpé"),
+            ), {}, {})
+        }
+    }
 }
