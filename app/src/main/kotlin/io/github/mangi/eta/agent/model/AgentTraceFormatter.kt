@@ -55,7 +55,11 @@ internal class AgentTraceFormatter {
             AgentSubagentToolCatalog.TOOL_NAME -> summarizeSubagentArguments(toolCall.argumentsJson)
             AgentSubagentToolCatalog.PROFILE_TOOL_NAME -> summarizeSubagentProfileArguments(toolCall.argumentsJson)
             AgentConversationToolCatalog.READ_HISTORY -> "Read conversation history"
-            "ask_majordome" -> "Ask the Majordome"
+            "ask_majordome" -> when (runCatching { JSONObject(toolCall.argumentsJson).optString("decision") }.getOrNull()) {
+                "approve" -> "Approve the Majordome action"
+                "decline" -> "Decline the Majordome action"
+                else -> "Ask the Majordome"
+            }
             "memory_get", "character_memory_get", "memory_write", "character_memory_write" ->
                 AgentPersonalResultFormatter.summarizeArguments(toolCall.name, toolCall.argumentsJson) ?: "Memory"
             "skills_list" -> "List skills"
@@ -274,7 +278,7 @@ internal class AgentTraceFormatter {
             AgentConversationToolCatalog.READ_HISTORY -> "History page read"
             "ask_majordome" -> when (json?.optString("status")) {
                 "COMPLETED" -> "Majordome answered"
-                "APPROVAL_REQUIRED" -> "Majordome action needs approval"
+                "APPROVAL_REQUIRED" -> "Waiting for your approval"
                 else -> "Majordome unavailable"
             }
             "observe_screen" -> if (result.images.isNotEmpty()) "Screen captured" else "Screen inspected"
