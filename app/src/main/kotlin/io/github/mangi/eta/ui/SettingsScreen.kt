@@ -328,6 +328,8 @@ private fun SettingsPageContent(
         title = stringResource(R.string.ui_set_up_7debf9),
         onBack = onBack,
     ) {
+        // Check for updates is here: host the update dialog in this page's Scaffold.
+        io.github.mangi.eta.ui.components.PreviewUpdateDialog()
         PreferenceCategory(title = stringResource(R.string.settings_llm_providers))
         Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
             CardListGroup {

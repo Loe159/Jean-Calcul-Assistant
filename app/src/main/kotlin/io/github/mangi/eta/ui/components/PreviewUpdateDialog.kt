@@ -8,6 +8,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import io.github.mangi.eta.data.update.PreviewUpdateInstaller
+import io.github.mangi.eta.data.update.PreviewUpdateState
 import io.github.mangi.eta.data.update.PreviewUpdates
 import io.github.mangi.eta.ui.components.coui.CouiConfirmDialog
 
@@ -29,6 +30,23 @@ internal fun PreviewUpdateDialog() {
     }
     if (state.update == null && state.error == null) return
     if (state.downloading && state.automatic) return
+    PreviewUpdateDialogView(
+        state = state,
+        onConfirm = {
+            when {
+                state.error != null -> PreviewUpdates.dismiss()
+                state.file == null -> PreviewUpdates.download(context)
+                !context.packageManager.canRequestPackageInstalls() -> permission.launch(PreviewUpdateInstaller.permissionIntent(context))
+                else -> installReadyUpdate()
+            }
+        },
+        onDismissRequest = { PreviewUpdates.dismiss() },
+    )
+}
+
+/** Stateless update dialog. Must be composed inside a COUI Scaffold, whose dialog host renders it. */
+@Composable
+internal fun PreviewUpdateDialogView(state: PreviewUpdateState, onConfirm: () -> Unit, onDismissRequest: () -> Unit) {
     CouiConfirmDialog(
         visible = true,
         title = if (state.error != null) "Update unavailable" else "Jean-Calcul update",
@@ -45,14 +63,27 @@ internal fun PreviewUpdateDialog() {
         },
         confirmEnabled = !state.downloading,
         cancelEnabled = !state.downloading,
-        onConfirm = {
-            when {
-                state.error != null -> PreviewUpdates.dismiss()
-                state.file == null -> PreviewUpdates.download(context)
-                !context.packageManager.canRequestPackageInstalls() -> permission.launch(PreviewUpdateInstaller.permissionIntent(context))
-                else -> installReadyUpdate()
-            }
-        },
-        onDismissRequest = { PreviewUpdates.dismiss() },
+        onConfirm = onConfirm,
+        onDismissRequest = onDismissRequest,
     )
+}
+
+@io.github.mangi.eta.ui.preview.CouiPhonePreviews
+@Composable
+private fun PreviewUpdateDialogPreview() {
+    io.github.mangi.eta.ui.preview.CouiPreviewTheme {
+        io.github.mangi.eta.ui.components.coui.CouiScaffoldPage(title = "Settings", onBack = {}) {
+            PreviewUpdateDialogView(
+                state = PreviewUpdateState(
+                    update = io.github.mangi.eta.data.update.PreviewUpdate(
+                        versionCode = 2030020301, versionName = "2.0.0-preview.2030020301-debug",
+                        apkUrl = "", sha256 = "", size = 0,
+                    ),
+                    file = java.io.File("update.apk"),
+                ),
+                onConfirm = {},
+                onDismissRequest = {},
+            )
+        }
+    }
 }

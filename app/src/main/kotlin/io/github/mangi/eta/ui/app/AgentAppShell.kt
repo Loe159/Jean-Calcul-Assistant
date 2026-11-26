@@ -175,6 +175,9 @@ internal fun AgentAppShell(
             Box(modifier = Modifier.fillMaxSize()) {
                 content(padding)
             }
+            // COUI dialogs render through the dialog host of an enclosing Scaffold: composed outside one (as it was
+            // in MainActivity), the update dialog never appeared. Only the current route hosts it.
+            if (isCurrentRoute) io.github.mangi.eta.ui.components.PreviewUpdateDialog()
         }
     }
 

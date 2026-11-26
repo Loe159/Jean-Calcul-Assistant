@@ -74,6 +74,7 @@ internal fun AppImprovementsScreen(onBack: () -> Unit) {
     }
     LaunchedEffect(status) { proposal = store.proposal() }
     CouiScaffoldPage(title = "App improvements", onBack = onBack, compactTitle = true) {
+        io.github.mangi.eta.ui.components.PreviewUpdateDialog()
         PreferenceSection(title = "Improve Jean-Calcul") {
             CardListGroup {
                 item {
