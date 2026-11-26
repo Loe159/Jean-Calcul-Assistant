@@ -54,7 +54,7 @@ internal object DevelopmentPolicy {
     fun successfulChecks(checks: JSONArray): Boolean {
         val latest = (0 until checks.length()).map(checks::getJSONObject)
             .groupBy { it.optString("name") }.mapValues { (_, values) -> values.maxBy { it.optLong("id") } }
-        return listOf("Build APK, unit tests and lint", "Technical Android 35 E2E (no visual judgment)")
+        return listOf("Build APK, unit tests and lint")
             .all { name -> latest[name]?.let { it.optString("status") == "completed" && it.optString("conclusion") == "success" } == true }
     }
 

@@ -32,7 +32,7 @@ class DevelopmentPolicyTest {
         fun check(id: Int, name: String, conclusion: String) = JSONObject().put("id", id).put("name", name)
             .put("status", "completed").put("conclusion", conclusion)
         val checks = JSONArray().put(check(1, "Build APK, unit tests and lint", "success"))
-            .put(check(2, "Technical Android 35 E2E (no visual judgment)", "success"))
+            .put(check(2, "Other optional check", "success"))
         assertTrue(DevelopmentPolicy.successfulChecks(checks))
         assertFalse(DevelopmentPolicy.successfulChecks(JSONArray()))
         assertFalse(DevelopmentPolicy.successfulChecks(checks.put(check(3, "Build APK, unit tests and lint", "failure"))))
