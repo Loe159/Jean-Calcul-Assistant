@@ -107,6 +107,26 @@ internal data class CatalogResponse(
     val quantityUnits: List<CatalogQuantityUnit>,
 ) : FoodResponse
 
+@Serializable internal enum class BarcodeSuggestionSource { OPEN_FOOD_FACTS }
+
+@Serializable
+internal data class BarcodeSuggestion(
+    val name: String,
+    val brand: String?,
+    val quantityLabel: String?,
+    val unit: UnitCode?,
+    val imageUrl: String?,
+    val source: BarcodeSuggestionSource,
+)
+
+@Serializable
+internal data class BarcodeLookupResponse(
+    override val schemaVersion: Int,
+    val barcode: String,
+    val product: CatalogProduct?,
+    val suggestion: BarcodeSuggestion?,
+) : FoodResponse
+
 @Serializable internal data class NewPantryProduct(val name: String, val unit: UnitCode, val locationId: Long)
 
 @Serializable
@@ -119,9 +139,11 @@ internal data class PantryAddRequest(
     val locationId: Long? = null,
     val bestBeforeDate: String? = null,
     val estimated: Boolean? = null,
+    val barcode: String? = null,
 ) {
     init {
         require((grocyProductId == null) != (newProduct == null))
+        require(barcode == null || barcode.isFoodBarcode())
     }
 }
 

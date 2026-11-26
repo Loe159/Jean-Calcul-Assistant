@@ -90,7 +90,7 @@ private fun PreviewCooking(
 }
 
 @Composable
-private fun OpenFoodSheetPreview(title: String, onClose: () -> Unit, content: @Composable () -> Unit) {
+internal fun OpenFoodSheetPreview(title: String, onClose: () -> Unit, content: @Composable () -> Unit) {
     val colors = COUITheme.colorScheme
     BoxWithConstraints(Modifier.fillMaxSize().background(colors.mask), contentAlignment = Alignment.BottomCenter) {
         Surface(

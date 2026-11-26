@@ -251,7 +251,7 @@ private object PantryPreviewData {
 private fun PantryPreview(pantry: PantryResponse?, soonOnly: Boolean = false) {
     CouiPreviewTheme {
         CuisineHomeScreen(CuisineTab.PANTRY, {}, CuisineHomePreviewData.today, {}, {}, {}) {
-            InventoryContent(pantry, CuisineHomePreviewData.today, null, null, soonOnly, "", {}, {}, {}, {}, {}, {}, onFindRecipe = {})
+            InventoryContent(pantry, CuisineHomePreviewData.today, null, null, soonOnly, "", {}, {}, {}, {}, {}, {}, onFindRecipe = {}, onScan = {})
         }
     }
 }

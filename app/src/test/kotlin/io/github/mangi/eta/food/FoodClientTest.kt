@@ -70,6 +70,36 @@ class FoodClientTest {
     }
 
     @Test
+    fun barcodeLookupSignsGetAndPantryWriteDecodesConflict() = runBlocking {
+        val code = "2001234000017"
+        val seen = mutableListOf<String>()
+        val http = OkHttpClient.Builder().addInterceptor { chain ->
+            val request = chain.request()
+            val body = Buffer().also { request.body?.writeTo(it) }.readUtf8()
+            val path = request.url.encodedPath
+            assertEquals(null, request.url.encodedQuery)
+            assertEquals(
+                MastraSignedTransport.sign(secret, request.method, path, "1234", request.header("X-JC-Nonce")!!, body),
+                request.header("X-JC-Signature"),
+            )
+            seen += "${request.method} $path"
+            if (request.method == "GET") {
+                assertTrue(body.isEmpty())
+                chain.response(200, """{"schemaVersion":1,"barcode":"$code","product":null,"suggestion":null}""")
+            } else {
+                assertEquals(code, FoodContract.json.decodeFromString<PantryAddRequest>(body).barcode)
+                chain.response(200, """{"schemaVersion":1,"operationId":"op_demo","state":"FAILED","replayed":false,"lines":[],"code":"BARCODE_CONFLICT"}""")
+            }
+        }.build()
+        val client = FoodClient(pairing, http) { 1234 }
+        assertEquals(code, client.barcode(code).barcode)
+        val operation = client.addPantryItem(PantryAddRequest("op_demo", 1.0, UnitCode.PIECE, grocyProductId = 31, barcode = code))
+        assertEquals(OperationState.FAILED, operation.state)
+        assertEquals(BarcodeConflictCode, operation.code)
+        assertEquals(listOf("GET /mobile/v1/food/barcodes/$code", "POST /mobile/v1/food/pantry/items"), seen)
+    }
+
+    @Test
     fun mapsSignedApiErrorsToSharedHttpException() {
         val http = OkHttpClient.Builder().addInterceptor {
             it.response(503, "{\"error\":\"AI_DISABLED\",\"message\":\"Désactivée\"}")
