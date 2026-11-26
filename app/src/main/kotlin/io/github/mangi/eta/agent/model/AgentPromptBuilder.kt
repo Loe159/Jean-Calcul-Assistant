@@ -57,6 +57,7 @@ internal object AgentPromptBuilder {
                     "Currently configured model: ${JSONObject.quote(config.model)}. Use this configured model name when asked which model is in use." +
                     "Model names may be provider aliases. Do not infer unverified deployment versions, knowledge cutoffs or capabilities. Historical identities do not override the current configuration.\n" +
                     "Answer everyday questions and operate this Android phone. Answer directly when device context is unnecessary." +
+                    "When ask_majordome is available, send household requests (recipes, fridge or cupboard stock, shopping list, meal planning, homelab agenda) to it instead of operating apps; do not look for these data on the phone." +
                     "Call get_current_context before using real current time, relative dates or location. Fictional time and place follow the story." +
                     "Complete the user's requested task. When real phone context materially helps the user's goal, " +
                     "proactively use exposed read-only tools for evidence rather than guessing, giving templates, asking the user to enumerate sources or repeatedly requesting authorization." +

@@ -18,6 +18,8 @@ import io.github.mangi.eta.agent.roleplay.CharacterMemoryTools
 import io.github.mangi.eta.agent.roleplay.RoleplayRunContext
 import io.github.mangi.eta.agent.subagent.AgentSubagentToolCatalog
 import io.github.mangi.eta.agent.subagent.SubagentExecutor
+import io.github.mangi.eta.agent.majordome.MajordomeTool
+import io.github.mangi.eta.agent.majordome.MajordomeToolExecutor
 import io.github.mangi.eta.agent.mcp.McpRunSnapshot
 import io.github.mangi.eta.agent.mcp.McpToolExecutor
 import io.github.mangi.eta.agent.mcp.RoutingToolExecutor
@@ -308,7 +310,12 @@ internal class AgentRuntimeRunExecutor(
                 developmentStore.context()?.optString("screen").orEmpty().ifBlank { request.appDevelopmentScreen }, developmentAllowed,
                 ensureActive = { runController.throwIfCancelled() },
             ) else null
+            val majordome = MajordomeToolExecutor(browserKey, pairing = { io.github.mangi.eta.agent.device.notifications.remote.MastraConnection.loadEnabled(appContext) })
+            val majordomeAllowed = {
+                request.operation == AgentRuntimeWire.OP_CHAT && Prefs.isToolEnabled(MajordomeTool.NAME) && majordome.available()
+            }
             val runTools = JSONArray(mcpTools.toString()).also { tools ->
+                if (majordomeAllowed()) tools.put(MajordomeTool.schema())
                 if (developmentAllowed) tools.put(io.github.mangi.eta.agent.development.DevelopmentTools.schema())
                 if (subagentAllowed()) AgentSubagentToolCatalog.appendSchemas(tools)
                 if (historyTool != null) tools.put(AgentConversationToolCatalog.schema())
@@ -324,7 +331,14 @@ internal class AgentRuntimeRunExecutor(
                 }
             }
             val runToolExecutor = AgentModelClient.ToolExecutor { call ->
-                if (call.name == io.github.mangi.eta.agent.development.DevelopmentPolicy.TOOL) {
+                if (call.name == MajordomeTool.NAME) {
+                    if (majordomeAllowed()) {
+                        runController.throwIfCancelled()
+                        majordome.execute(call)
+                    } else {
+                        AgentModelClient.ToolResult(MajordomeTool.notPaired().toString())
+                    }
+                } else if (call.name == io.github.mangi.eta.agent.development.DevelopmentPolicy.TOOL) {
                     developmentTools?.execute(call) ?: AgentModelClient.ToolResult(
                         io.github.mangi.eta.agent.development.DevelopmentPolicy.status(false, "App improvements are disabled for this request").toString(),
                     )

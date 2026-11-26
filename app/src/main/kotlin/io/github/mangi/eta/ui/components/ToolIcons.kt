@@ -45,6 +45,7 @@ import androidx.compose.material.icons.rounded.OpenWith
 import androidx.compose.material.icons.rounded.Phone
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Psychology
+import androidx.compose.material.icons.rounded.RoomService
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.ScreenshotMonitor
 import androidx.compose.material.icons.rounded.Search
@@ -89,6 +90,7 @@ internal fun iconForTool(toolId: String): ImageVector = when (toolId) {
     "mcp_call", "MCP tools" -> Icons.Rounded.Extension
     "memory_get", "memory_write", "character_memory_get", "character_memory_write" ->
         Icons.Rounded.Psychology
+    "ask_majordome" -> Icons.Rounded.RoomService
     "release_gui" -> Icons.Rounded.Smartphone
     "present_to_user" -> Icons.AutoMirrored.Rounded.OpenInNew
     "press_key" -> Icons.Rounded.KeyboardCommandKey

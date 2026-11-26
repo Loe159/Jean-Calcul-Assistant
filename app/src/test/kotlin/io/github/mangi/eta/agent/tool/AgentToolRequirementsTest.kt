@@ -14,8 +14,10 @@ class AgentToolRequirementsTest {
     @Test
     fun everyRegisteredToolHasExactlyOneRequirement() {
         val tools = catalog(root = true)
+        // Run-scoped: appended by AgentRuntimeRunExecutor only when the homelab is paired.
+        val runScoped = setOf(io.github.mangi.eta.agent.majordome.MajordomeTool.NAME)
         val executionOnly = setOf("input_text", "replace_text", "clear_text", "paste_text")
-        assertEquals(AgentToolRequirements.toolNames - executionOnly, tools.names())
+        assertEquals(AgentToolRequirements.toolNames - executionOnly - runScoped, tools.names())
         executionOnly.forEach { name -> assertFalse("$name 仅保留执行兼容，不再向模型暴露", name in tools.names()) }
         assertEquals(tools.length(), tools.names().size)
         assertFalse(tools.toString().contains("rootRequirement"))

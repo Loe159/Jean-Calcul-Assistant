@@ -439,6 +439,7 @@
   <string name="ui_deep_thinking_enabled_by_default_c032d6">Reasoning enabled by default</string>
   <string name="tool_tap_area">Tap area</string>
   <string name="tool_current_context">Time and location</string>
+  <string name="tool_ask_majordome">Ask the Majordome</string>
   <string name="tool_memory_get">Read memory</string>
   <string name="tool_memory_write">Update memory</string>
   <string name="tool_set_alarm">Set alarm</string>
@@ -838,6 +839,9 @@
   <string name="tool_ui_read_system_time_and_recent_location_b9f4ae">Read system time and recent location</string>
   <string name="tool_ui_read_system_settings_d455ce">Read system settings</string>
   <string name="tool_ui_read_networking_method_and_current_wi_fi_status_68016a">Read networking method and current Wi‑Fi status</string>
+  <string name="tool_ui_ask_majordome">Ask the Majordome</string>
+  <string name="tool_ui_ask_majordome_description">Delegate cooking, stock, shopping, meal planning and homelab agenda requests to the homelab Majordome. Requires homelab pairing.</string>
+  <string name="state_homelab">Homelab</string>
   <string name="tool_ui_read_memory_979135">Read memory</string>
   <string name="tool_ui_read_notification_7fdc09">Read notification</string>
   <string name="tool_ui_read_lock_screen_do_not_disturb_audio_output_and_9260b8">Read lock screen, do not disturb, audio output and external screen status</string>

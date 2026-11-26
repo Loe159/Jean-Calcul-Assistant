@@ -11,6 +11,7 @@ One Android module `app`, Kotlin + Jetpack Compose. Internal namespace `io.githu
 - `agent/voice`, `agent/auth`, `agent/mcp`, `agent/skill`, `agent/subagent`, `agent/terminal` — upstream engines kept for the selected blocks.
 - `agent/device/notifications` — notification listening and Mastra decisions. See `docs/features/MASTRA-NOTIFICATIONS.md`.
 - `agent/development` — in-app self-improvement (Power capture → PR → preview APK). See `docs/features/SELF-IMPROVEMENT.md`.
+- `agent/majordome` — delegation of household requests to the homelab Majordome (`ask_majordome`). See `docs/features/MAJORDOME.md`.
 - `data/` — Room, DataStore, encrypted secrets. Upstream compatibility tables/types are not exposed features. `data/car/` feeds the Brief car card (`docs/features/NOW-BRIEF-CAR.md`).
 - `food/` — Mastra client, local cooking sessions, Room caches, Android timers (`docs/features/FOOD.md`).
 - `product/JeanCalculProfile.kt` — immutable selection: filters providers and catalogs, refuses excluded tool calls.

@@ -125,6 +125,13 @@ internal fun buildToolsState(context: Context): AgentToolsUiState =
                 ),
             ),
             ToolGroupUi(
+                id = "homelab",
+                title = context.getString(R.string.state_homelab),
+                tools = listOf(
+                    ToolItemUi("ask_majordome", context.getString(R.string.tool_ui_ask_majordome), context.getString(R.string.tool_ui_ask_majordome_description)),
+                ),
+            ),
+            ToolGroupUi(
                 id = "memory",
                 title = context.getString(R.string.state_memory_b55ff5),
                 tools = listOf(

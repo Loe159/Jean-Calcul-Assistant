@@ -10,7 +10,7 @@ Personal Android assistant (Kotlin, Jetpack Compose, single `app` module) derive
 | **Anything visible on screen** | skill `coui-ui` → `DESIGN.md`, `docs/design/` |
 | Look at a composable | skill `compose-preview` → `docs/agents/PREVIEWS.md` |
 | Emulator / phone checks | skill `device-check` → `docs/agents/DEVICE.md` |
-| A feature (Brief, food, notifications, car, self-improvement, updates) | `docs/features/` |
+| A feature (Brief, food, Majordome, notifications, car, self-improvement, updates) | `docs/features/` |
 | Scope questions | `docs/eta/SELECTION.md`, `product/JeanCalculProfile.kt` |
 
 Skills live in `.agents/skills/` (`.claude/skills` points there). The design process is **impeccable** (`impeccable` skill: `shape`, `critique`, `polish`, `audit`…), with the COUI override described in `coui-ui`.

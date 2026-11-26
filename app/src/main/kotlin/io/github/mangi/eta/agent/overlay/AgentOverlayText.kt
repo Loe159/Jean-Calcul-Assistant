@@ -96,6 +96,7 @@ internal fun toolDisplayNameResource(name: String): Int? = when (name) {
     "read_file" -> R.string.tool_read_file
     "write_file" -> R.string.tool_write_file
     "list_directory" -> R.string.tool_list_directory
+    "ask_majordome" -> R.string.tool_ask_majordome
     "memory_get" -> R.string.tool_memory_get
     "memory_write" -> R.string.tool_memory_write
     "set_alarm" -> R.string.tool_set_alarm
