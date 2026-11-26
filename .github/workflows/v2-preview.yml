@@ -47,6 +47,16 @@ jobs:
           echo "code=$code" >> "$GITHUB_OUTPUT"
       - name: Check English product text
         run: python3 scripts/check-product-text.py
+      # Robolectric's native runtime bundles SQLite 3.32.2 (no json_valid, no DROP COLUMN). Local Nix JDKs already
+      # link a recent libsqlite3 whose symbols take precedence, so tests pass there and failed here since 2026-11-20.
+      # Preload the runner's libsqlite3 so CI runs the same SQLite generation as local builds.
+      - name: Use the runner's SQLite for Robolectric
+        run: |
+          lib=/usr/lib/x86_64-linux-gnu/libsqlite3.so.0
+          version=$(LD_PRELOAD=$lib python3 -c 'import sqlite3; print(sqlite3.sqlite_version)')
+          echo "Runner SQLite $version"
+          python3 -c "import sys; v=tuple(map(int, '$version'.split('.'))); sys.exit(0 if v >= (3, 38, 0) else 1)"
+          echo "LD_PRELOAD=$lib" >> "$GITHUB_ENV"
       # One Gradle invocation: configuration and dependency resolution happen once; the build cache reuses task
       # outputs restored by setup-gradle.
       - name: Compile Android Debug APK, run unit tests and lint
