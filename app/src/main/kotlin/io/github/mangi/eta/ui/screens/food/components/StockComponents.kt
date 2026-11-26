@@ -54,7 +54,12 @@ internal fun OperationResultLines(result: OperationResult, ingredientNames: Map<
         OperationState.FAILED -> R.string.food_failed
         OperationState.UNCERTAIN -> R.string.food_uncertain
     }))
-    result.lines.filter { it.state != OperationLineState.SUCCEEDED }.forEach { line ->
+    val failures = result.lines.filter { it.state != OperationLineState.SUCCEEDED }
+    val barcodeConflicts = failures.filter { it.code == BarcodeConflictCode || it.message == BarcodeConflictCode }
+    if (result.code == BarcodeConflictCode || barcodeConflicts.isNotEmpty()) {
+        FoodErrorMessage(stringResource(R.string.food_scan_conflict))
+    }
+    (failures - barcodeConflicts.toSet()).forEach { line ->
         line.ingredientId?.let { ingredientNames[it] }?.let { Text(it) }
         val label = when (line.state) {
             OperationLineState.NEEDS_CONVERSION -> R.string.food_needs_conversion

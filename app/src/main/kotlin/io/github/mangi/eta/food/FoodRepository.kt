@@ -153,6 +153,7 @@ internal class FoodRepository(
     }
 
     suspend fun catalog() = remote { _, client -> client.catalog() }
+    suspend fun barcode(code: String): FoodResult<BarcodeLookupResponse> = remote { _, client -> client.barcode(code) }
     suspend fun addStock(request: PantryAddRequest) = remote { _, client -> client.addPantryItem(request) }
     suspend fun consumeStock(id: Long, request: PantryConsumeRequest) = remote { _, client -> client.consumePantryItem(id, request) }
     suspend fun suggest(request: SuggestRequest) = remote { _, client -> client.suggest(request) }

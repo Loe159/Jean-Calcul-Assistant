@@ -1390,4 +1390,27 @@
   <string name="assistant_overlay_settings_follow_primary_hint">Uses the default main conversation model</string>
   <string name="assistant_overlay_settings_reasoning_follow_default">Follow default</string>
   <string name="assistant_overlay_settings_note">Independently configure the model and reasoning level for the floating assistant triggered by the power key or system assistant. For quick everyday tasks, choosing a fast lightweight model with lower or disabled reasoning helps reduce latency and token usage.</string>
+
+    <string name="food_scan">Scanner</string>
+    <string name="food_scan_title">Scanner un code-barres</string>
+    <string name="food_scan_aim">Placez le code-barres dans le cadre</string>
+    <string name="food_scan_type">Saisir le code</string>
+    <string name="food_scan_digits">Saisissez les 8 à 14 chiffres sous le code-barres.</string>
+    <string name="food_scan_code">Code-barres</string>
+    <string name="food_scan_invalid">Utilisez uniquement 8 à 14 chiffres.</string>
+    <string name="food_scan_search">Rechercher le produit</string>
+    <string name="food_scan_permission_denied">Accès à la caméra refusé</string>
+    <string name="food_scan_permission_detail">Autorisez la caméra dans les réglages ou saisissez le code.</string>
+    <string name="food_scan_settings">Ouvrir les réglages</string>
+    <string name="food_scan_camera_unavailable">Caméra indisponible</string>
+    <string name="food_scan_camera_detail">Vous pouvez saisir le code-barres à la main.</string>
+    <string name="food_scan_torch_on">Allumer la torche</string>
+    <string name="food_scan_torch_off">Éteindre la torche</string>
+    <string name="food_scan_torch_error">Impossible de régler la torche</string>
+    <string name="food_scan_lookup">Recherche du code-barres…</string>
+    <string name="food_scan_unknown">Code inconnu : choisissez ou créez le produit, il sera associé à ce code.</string>
+    <string name="food_scan_offline">Hors connexion. Choisissez ou créez le produit à la main. Le code est conservé.</string>
+    <string name="food_scan_lookup_error">Impossible de rechercher le code-barres. Choisissez ou créez le produit à la main. Le code est conservé.</string>
+    <string name="food_scan_suggested_name">Nom du nouveau produit</string>
+    <string name="food_scan_conflict">Ce code-barres est déjà associé à un autre produit.</string>
 </resources>

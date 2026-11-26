@@ -3,6 +3,7 @@ package io.github.mangi.eta.food
 import io.github.mangi.eta.agent.device.notifications.remote.MastraPairing
 import io.github.mangi.eta.agent.device.notifications.remote.MastraSignedTransport
 import java.util.concurrent.TimeUnit
+import kotlinx.serialization.SerializationException
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 
@@ -16,6 +17,13 @@ internal class FoodClient(
     suspend fun health(): FoodHealth = get("/health")
     suspend fun pantry(): PantryResponse = get("/pantry")
     suspend fun catalog(): CatalogResponse = get("/catalog")
+
+    suspend fun barcode(code: String): BarcodeLookupResponse {
+        require(code.isFoodBarcode())
+        val result: BarcodeLookupResponse = get("/barcodes/$code")
+        if (result.barcode != code) throw SerializationException("Unexpected food barcode")
+        return result
+    }
 
     suspend fun addPantryItem(request: PantryAddRequest): OperationResult =
         send("POST", "/pantry/items", request)

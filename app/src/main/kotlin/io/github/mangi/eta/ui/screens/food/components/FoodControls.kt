@@ -152,8 +152,8 @@ internal fun FoodErrorMessage(message: String) {
 }
 
 @Composable
-internal fun FoodLoading() {
-    val label = stringResource(R.string.food_loading)
+internal fun FoodLoading(@StringRes labelRes: Int = R.string.food_loading) {
+    val label = stringResource(labelRes)
     Row(
         Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
         horizontalArrangement = Arrangement.spacedBy(12.dp),

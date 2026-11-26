@@ -197,6 +197,10 @@ dependencies {
     implementation(libs.androidx.car.app.core)
     implementation(libs.androidx.car.app.projected)
     implementation(libs.activity.compose)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.mlkit.barcode.scanning)
     // 只使用 GFM 解析器；聊天渲染层由 ui/markdown 自建，按块冻结并接入逐字显现。
     implementation(libs.intellij.markdown)
     implementation(libs.hidden.api.bypass)

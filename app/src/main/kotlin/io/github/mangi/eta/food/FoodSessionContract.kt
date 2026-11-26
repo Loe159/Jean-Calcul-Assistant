@@ -62,6 +62,7 @@ internal data class OperationLine(
     val transactionId: String?,
     val state: OperationLineState,
     val message: String?,
+    val code: String? = null,
 )
 
 @Serializable
@@ -72,6 +73,7 @@ internal data class OperationResult(
     val replayed: Boolean,
     val lines: List<OperationLine>,
     val leftoverProductId: Long? = null,
+    val code: String? = null,
 ) : FoodResponse
 
 @Serializable
