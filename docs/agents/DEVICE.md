@@ -38,4 +38,7 @@ The owner sometimes asks for checks on their own phone (Samsung, Android 17) ove
 
 ## 3. Preview APKs
 
+For the owner to see work in progress quickly, push to **Jean-Calcul Preview** instead (`DEV-PREVIEW.md`): a separate app, a local build, no CI wait.
+
+
 Pushes to the foundation branch build a signed ARM64 preview that the owner installs through the in-app updater (`docs/features/PREVIEW-UPDATES.md`). That is the owner's own acceptance test, not your evidence.

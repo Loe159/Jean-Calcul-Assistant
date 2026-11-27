@@ -25,6 +25,7 @@ import io.github.mangi.eta.ui.model.PermissionStatusUi
 import io.github.mangi.eta.ui.preview.CouiComponentPreviews
 import io.github.mangi.eta.ui.preview.CouiPreviewTheme
 import io.github.mangi.eta.ui.preview.FakeAgentUiStates
+import io.github.mangi.eta.ui.preview.previewAction
 import io.github.suqi8.coui.kmp.basic.Card
 import io.github.suqi8.coui.kmp.basic.Icon
 import io.github.suqi8.coui.kmp.basic.Text
@@ -135,6 +136,6 @@ private fun statusLabel(status: PermissionStatusUi): String = stringResource(whe
 @Composable
 private fun PermissionHealthCardPreview() {
     CouiPreviewTheme(fullScreen = false) {
-        PermissionHealthCard(state = FakeAgentUiStates.permissionHealth, onOpenPermissions = {})
+        PermissionHealthCard(state = FakeAgentUiStates.permissionHealth, onOpenPermissions = previewAction("onOpenPermissions"))
     }
 }

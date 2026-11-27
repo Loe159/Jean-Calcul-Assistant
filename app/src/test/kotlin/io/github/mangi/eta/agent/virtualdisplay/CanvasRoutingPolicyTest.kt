@@ -1,5 +1,6 @@
 package io.github.mangi.eta.agent.virtualdisplay
 
+import io.github.mangi.eta.BuildConfig
 import android.view.Display
 import io.github.mangi.eta.agent.virtualdisplay.CanvasRoutingPolicy.CanvasTarget
 import io.github.mangi.eta.agent.virtualdisplay.CanvasRoutingPolicy.RequestedDisplay
@@ -38,7 +39,7 @@ class CanvasRoutingPolicyTest {
     @Test
     fun systemUiAndEtaOwnPackageAlwaysStayOnMainDisplay() {
         listOf(
-            "fr.loevan.jeancalcul.v2",
+            BuildConfig.APPLICATION_ID,
             "com.android.systemui",
             "com.miui.home",
             "com.oppo.launcher",
@@ -63,7 +64,7 @@ class CanvasRoutingPolicyTest {
                 backendAvailable = true,
                 requested = RequestedDisplay.MAIN,
                 targetPackage = "com.jingdong.app.mall",
-                foregroundPackageOnMainDisplay = "fr.loevan.jeancalcul.v2",
+                foregroundPackageOnMainDisplay = BuildConfig.APPLICATION_ID,
             ),
         )
         assertEquals(
@@ -73,7 +74,7 @@ class CanvasRoutingPolicyTest {
                 backendAvailable = true,
                 requested = RequestedDisplay.AUTO,
                 targetPackage = "com.jingdong.app.mall",
-                foregroundPackageOnMainDisplay = "fr.loevan.jeancalcul.v2",
+                foregroundPackageOnMainDisplay = BuildConfig.APPLICATION_ID,
             ),
         )
         assertEquals(
@@ -83,7 +84,7 @@ class CanvasRoutingPolicyTest {
                 backendAvailable = false,
                 requested = RequestedDisplay.VIRTUAL,
                 targetPackage = "com.jingdong.app.mall",
-                foregroundPackageOnMainDisplay = "fr.loevan.jeancalcul.v2",
+                foregroundPackageOnMainDisplay = BuildConfig.APPLICATION_ID,
             ),
         )
     }

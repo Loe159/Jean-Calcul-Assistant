@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Enter the project's dev shell when the preview tools need Java or Python.
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if ! command -v java >/dev/null 2>&1 || ! command -v python3 >/dev/null 2>&1; then
+  if [ -n "${JEANCALCUL_JC_PREVIEW_IN_SHELL:-}" ]; then
+    echo "scripts/jc-preview: java/python3 missing even inside nix develop" >&2
+    exit 1
+  fi
+  export JEANCALCUL_JC_PREVIEW_IN_SHELL=1
+  exec nix develop "$root" --quiet -c "$0" "$@"
+fi
+exec python3 -I "$root/scripts/devhub/cli.py" "$@"

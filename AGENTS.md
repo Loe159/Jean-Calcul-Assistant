@@ -10,6 +10,7 @@ Personal Android assistant (Kotlin, Jetpack Compose, single `app` module) derive
 | **Anything visible on screen** | skill `coui-ui` → `DESIGN.md`, `docs/design/` |
 | Look at a composable | skill `compose-preview` → `docs/agents/PREVIEWS.md` |
 | Emulator / phone checks | skill `device-check` → `docs/agents/DEVICE.md` |
+| Show the owner work in progress, ask them to choose or approve | `docs/agents/DEV-PREVIEW.md` (`scripts/jc-preview push / ask --wait`) |
 | A feature (Brief, food, notifications, car, self-improvement, updates) | `docs/features/` |
 | Scope questions | `docs/eta/SELECTION.md`, `product/JeanCalculProfile.kt` |
 
@@ -24,7 +25,7 @@ Skills live in `.agents/skills/` (`.claude/skills` points there). The design pro
 - **Capabilities:** root/LSPosed optional; check availability and permissions before any action.
 - **Data:** no secrets, personal accounts or real data in tests, previews, screenshots or docs.
 - **Licenses:** keep `LICENSE` and attributions (`docs/eta/UPSTREAM.md`, `docs/design/ATTRIBUTION.md`).
-- **Owner's control:** never merge, and never install on or touch the owner's phone without an explicit request. PRs target `feature/jean-calcul-v2-foundation`, never `main`.
+- **Owner's control:** never merge, and never install on or touch the owner's phone without an explicit request. Publishing to devhub (`scripts/jc-preview`) is allowed: the owner installs from Preview Hub. PRs target `feature/jean-calcul-v2-foundation`, never `main`.
 
 ## Build and verify
 

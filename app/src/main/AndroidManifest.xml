@@ -41,10 +41,10 @@
     <uses-permission android:name="com.google.android.gms.permission.CAR_SPEED" />
 
     <permission
-        android:name="fr.loevan.jeancalcul.v2.permission.CONTROL_ACCESSIBILITY_PROTECTION"
+        android:name="${applicationId}.permission.CONTROL_ACCESSIBILITY_PROTECTION"
         android:protectionLevel="signature" />
 
-    <uses-permission android:name="fr.loevan.jeancalcul.v2.permission.CONTROL_ACCESSIBILITY_PROTECTION" />
+    <uses-permission android:name="${applicationId}.permission.CONTROL_ACCESSIBILITY_PROTECTION" />
 
     <queries>
         <package android:name="com.psa.mym.mypeugeot" />
@@ -73,6 +73,48 @@
         android:localeConfig="@xml/locales_config"
         android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@mipmap/ic_launcher_round">
+
+        <activity
+            android:name=".devpreview.DevHubActivity"
+            android:enabled="${devPreviewEnabled}"
+            android:exported="false"
+            android:label="@string/dev_hub_title"
+            android:launchMode="singleTask"
+            android:taskAffinity="${applicationId}.hub"
+            android:theme="@style/Theme.JeanCalcul"
+            android:windowSoftInputMode="adjustResize" />
+        <activity-alias
+            android:name=".devpreview.DevHubLauncher"
+            android:enabled="${devPreviewEnabled}"
+            android:exported="true"
+            android:label="@string/dev_hub_title"
+            android:targetActivity=".devpreview.DevHubActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <service
+            android:name=".devpreview.DevLinkService"
+            android:enabled="${devPreviewEnabled}"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-enabled live link for development build and review notifications" />
+        </service>
+        <receiver
+            android:name=".devpreview.DevInstallStatusReceiver"
+            android:enabled="${devPreviewEnabled}"
+            android:exported="false" />
+        <receiver
+            android:name=".devpreview.DevPackageReplacedReceiver"
+            android:enabled="${devPreviewEnabled}"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <meta-data
             android:name="androidx.car.app.minCarApiLevel"
@@ -237,7 +279,7 @@
 
         <provider
             android:name=".agent.accessibility.AgentAccessibilityHealthProvider"
-            android:authorities="fr.loevan.jeancalcul.v2.accessibility.health"
+            android:authorities="${applicationId}.accessibility.health"
             android:exported="true"
             android:grantUriPermissions="false"
             android:permission="android.permission.MANAGE_ACCESSIBILITY" />

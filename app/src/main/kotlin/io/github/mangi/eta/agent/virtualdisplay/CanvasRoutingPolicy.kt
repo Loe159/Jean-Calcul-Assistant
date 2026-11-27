@@ -1,5 +1,6 @@
 package io.github.mangi.eta.agent.virtualdisplay
 
+import io.github.mangi.eta.BuildConfig
 import android.view.Display
 import java.util.Locale
 
@@ -186,7 +187,7 @@ internal object CanvasRoutingPolicy {
         requested: RequestedDisplay = RequestedDisplay.AUTO,
         targetPackage: String? = null,
         foregroundPackageOnMainDisplay: String? = null,
-        ownPackage: String = "fr.loevan.jeancalcul.v2",
+        ownPackage: String = BuildConfig.APPLICATION_ID,
     ): CanvasTarget = decideLaunchPlan(
         virtualDisplayEnabled = virtualDisplayEnabled,
         backendAvailable = backendAvailable,
@@ -202,7 +203,7 @@ internal object CanvasRoutingPolicy {
         requested: RequestedDisplay = RequestedDisplay.AUTO,
         targetPackage: String? = null,
         foregroundPackageOnMainDisplay: String? = null,
-        ownPackage: String = "fr.loevan.jeancalcul.v2",
+        ownPackage: String = BuildConfig.APPLICATION_ID,
     ): CanvasLaunchPlan {
         if (!virtualDisplayEnabled) return CanvasLaunchPlan(CanvasTarget.MAIN_DISPLAY, "virtual_disabled")
         if (!backendAvailable) return CanvasLaunchPlan(CanvasTarget.MAIN_DISPLAY, "backend_unavailable")

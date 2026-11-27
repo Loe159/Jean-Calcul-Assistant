@@ -1,3 +1,6 @@
+import org.gradle.process.ExecOperations
+import javax.inject.Inject
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -5,8 +8,16 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+val devPreview = providers.gradleProperty("jeancalcul.devPreview").orNull == "true"
+val devHubUrl = providers.gradleProperty("jeancalcul.devHubUrl").orNull.orEmpty()
+require(devHubUrl.isEmpty() || devHubUrl.matches(Regex("https?://[A-Za-z0-9.:-]+"))) { "Invalid dev hub URL" }
+val syntheticEmulator = providers.gradleProperty("jeancalcul.emulator").orNull == "true"
+if (devPreview) layout.buildDirectory.set(layout.projectDirectory.dir("build-devpreview"))
+
 val previewVersionCode = providers.gradleProperty("jeancalcul.versionCode").orNull?.toInt() ?: 2030000000
+val devVersionCode = 2099000000
 require(previewVersionCode in 2030000000..2100000000) { "Preview versionCode is out of range" }
+require(devVersionCode in 2030000000..2100000000) { "Dev preview versionCode is out of range" }
 val updateChannel = providers.gradleProperty("jeancalcul.updateChannel").orNull ?: "preview-pr-62"
 require(updateChannel.matches(Regex("[a-z0-9-]+"))) { "Invalid update channel" }
 
@@ -52,12 +63,15 @@ android {
         versionName = "2.0.0-preview.$previewVersionCode"
         buildConfigField("String", "UPDATE_CHANNEL", "\"$updateChannel\"")
         buildConfigField("String", "SOURCE_COMMIT", "\"$sourceCommit\"")
+        buildConfigField("boolean", "DEV_PREVIEW", "false")
+        buildConfigField("String", "DEV_HUB_URL", "\"\"")
+        manifestPlaceholders["devPreviewEnabled"] = "false"
         // Synthetic AVD runs must not download a public preview or display its installer dialog.
-        buildConfigField("boolean", "SYNTHETIC_EMULATOR", (providers.gradleProperty("jeancalcul.emulator").orNull == "true").toString())
+        buildConfigField("boolean", "SYNTHETIC_EMULATOR", syntheticEmulator.toString())
 
         ndk {
             // 同时过滤本地与依赖 AAR 的原生库，确保 APK 仅包含 ARM64。
-            abiFilters += if (providers.gradleProperty("jeancalcul.emulator").orNull == "true") "x86_64" else "arm64-v8a"
+            abiFilters += if (syntheticEmulator) "x86_64" else "arm64-v8a"
         }
     }
 
@@ -84,6 +98,15 @@ android {
             versionNameSuffix = "-debug" + buildMetadataSuffix
             isMinifyEnabled = false
             isPseudoLocalesEnabled = true
+            if (devPreview) {
+                applicationIdSuffix = ".preview"
+                versionNameSuffix = "-dev"
+                buildConfigField("String", "UPDATE_CHANNEL", "\"\"")
+                buildConfigField("String", "SOURCE_COMMIT", "\"\"")
+                buildConfigField("boolean", "DEV_PREVIEW", "true")
+                buildConfigField("String", "DEV_HUB_URL", "\"$devHubUrl\"")
+                manifestPlaceholders["devPreviewEnabled"] = "true"
+            }
         }
         release {
             buildConfigField("String", "UPDATE_CHANNEL", "\"\"")
@@ -95,6 +118,12 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+    }
+    if (devPreview) {
+        sourceSets.getByName("debug") {
+            res.directories.add("src/devPreview/res")
+            manifest.srcFile("src/devPreview/AndroidManifest.xml")
         }
     }
 
@@ -163,11 +192,75 @@ android {
     }
 }
 
+@CacheableTask
+abstract class GenerateDevPreviewCatalog : DefaultTask() {
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val kotlinDirectory: DirectoryProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val scanner: RegularFileProperty
+
+    @get:Classpath
+    abstract val compilerClasspath: ConfigurableFileCollection
+
+    @get:Nested
+    abstract val javaLauncher: Property<JavaLauncher>
+
+    @get:OutputDirectory
+    abstract val assetsDirectory: DirectoryProperty
+
+    @get:Inject
+    abstract val execOperations: ExecOperations
+
+    @TaskAction
+    fun generate() {
+        val output = assetsDirectory.file("dev-previews.json").get().asFile
+        output.parentFile.mkdirs()
+        execOperations.exec {
+            executable = javaLauncher.get().executablePath.asFile.absolutePath
+            args("-cp", compilerClasspath.asPath, scanner.get().asFile.absolutePath,
+                kotlinDirectory.get().asFile.absolutePath, output.absolutePath)
+        }
+    }
+}
+
+val catalogCompiler = if (devPreview) {
+    configurations.create("devPreviewCatalogCompiler") {
+        isCanBeConsumed = false
+    }.also {
+        dependencies.add(it.name, "org.jetbrains.kotlin:kotlin-compiler-embeddable:${libs.versions.kotlin.get()}")
+        dependencies.add(it.name, "com.google.code.gson:gson:2.13.2")
+    }
+} else null
+
 androidComponents {
     onVariants { variant ->
+        val emulatorApk = syntheticEmulator
+        val previewDebug = devPreview && variant.buildType == "debug"
+        if (previewDebug) {
+            val assets = layout.buildDirectory.dir("dev-build-assets").get().asFile
+            check(assets.isDirectory || assets.mkdirs()) { "Could not create $assets" }
+            val catalog = tasks.register<GenerateDevPreviewCatalog>("generateDevPreviewCatalog") {
+                kotlinDirectory.set(layout.projectDirectory.dir("src/main/kotlin"))
+                scanner.set(rootProject.layout.projectDirectory.file("gradle/dev-preview/PreviewCatalog.java"))
+                compilerClasspath.from(catalogCompiler)
+                javaLauncher.set(javaToolchains.launcherFor(java.toolchain))
+                assetsDirectory.set(layout.buildDirectory.dir("generated/dev-preview-assets"))
+            }
+            variant.sources.assets?.addStaticSourceDirectory(assets.absolutePath)
+            variant.sources.assets?.addGeneratedSourceDirectory(catalog, GenerateDevPreviewCatalog::assetsDirectory)
+        }
         // 文件名只取 versionName：构建类型标记与 CI 构建元数据都由 versionNameSuffix 带出
         variant.outputs.forEach { output ->
-            output.outputFileName.set(output.versionName.map { if (providers.gradleProperty("jeancalcul.emulator").orNull == "true") "app-debug.apk" else "JeanCalcul-v$it.apk" })
+            if (previewDebug) {
+                output.versionCode.set(devVersionCode)
+                output.versionName.set("2.0.0-preview.$devVersionCode-dev")
+                output.outputFileName.set("JeanCalculPreview.apk")
+            } else {
+                output.outputFileName.set(output.versionName.map { if (emulatorApk) "app-debug.apk" else "JeanCalcul-v$it.apk" })
+            }
         }
     }
 }

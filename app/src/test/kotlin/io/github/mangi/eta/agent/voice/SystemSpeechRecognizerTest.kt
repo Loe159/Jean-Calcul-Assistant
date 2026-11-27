@@ -1,5 +1,6 @@
 package io.github.mangi.eta.agent.voice
 
+import io.github.mangi.eta.BuildConfig
 import android.app.Application
 import android.content.ComponentName
 import android.content.pm.ApplicationInfo
@@ -37,7 +38,7 @@ class SystemSpeechRecognizerTest {
             configured,
             SystemSpeechRecognizer.selectExternalService(
                 listOf(service(configured.packageName, configured.className)),
-                "fr.loevan.jeancalcul.v2",
+                BuildConfig.APPLICATION_ID,
                 configured,
             ),
         )
@@ -47,7 +48,7 @@ class SystemSpeechRecognizerTest {
         assertNull(
             SystemSpeechRecognizer.selectExternalService(
                 listOf(service("third.party", "Recognizer")),
-                "fr.loevan.jeancalcul.v2",
+                BuildConfig.APPLICATION_ID,
                 null,
             ),
         )
@@ -59,9 +60,9 @@ class SystemSpeechRecognizerTest {
             SystemSpeechRecognizer.selectExternalService(
                 listOf(
                     service("third.party", "Hidden", exported = false),
-                    service("fr.loevan.jeancalcul.v2", "EtaRecognitionService", permission = "android.permission.BIND_SPEECH_RECOGNITION_SERVICE"),
+                    service(BuildConfig.APPLICATION_ID, "EtaRecognitionService", permission = "android.permission.BIND_SPEECH_RECOGNITION_SERVICE"),
                 ),
-                "fr.loevan.jeancalcul.v2",
+                BuildConfig.APPLICATION_ID,
                 configured,
             ),
         )

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
+    <uses-permission android:name="android.permission.ENFORCE_UPDATE_OWNERSHIP" />
+    <application>
+        <activity
+            android:name="androidx.compose.ui.tooling.PreviewActivity"
+            android:exported="false"
+            android:taskAffinity="${applicationId}.hub"
+            tools:replace="android:exported" />
+    </application>
+</manifest>
