@@ -1,5 +1,8 @@
 package io.github.mangi.eta.agent.majordome
 
+import io.github.mangi.eta.agent.confirm.ActionRisk
+import io.github.mangi.eta.agent.confirm.ConfirmationDecision
+import io.github.mangi.eta.agent.confirm.ConfirmationRequest
 import io.github.mangi.eta.agent.device.notifications.remote.MastraHttpException
 import io.github.mangi.eta.agent.device.notifications.remote.MastraPairing
 import io.github.mangi.eta.agent.device.notifications.remote.MastraSignedTransport
@@ -33,13 +36,12 @@ class MajordomeToolTest {
     }
 
     @Test
-    fun schemaTakesABoundedRequestOrAnApprovalDecision() {
+    fun schemaTakesOnlyABoundedRequest() {
         val function = MajordomeTool.schema().getJSONObject("function")
         assertEquals("ask_majordome", function.getString("name"))
         val properties = function.getJSONObject("parameters").getJSONObject("properties")
         assertEquals(4_000, properties.getJSONObject("request").getInt("maxLength"))
-        val decisions = properties.getJSONObject("decision").getJSONArray("enum")
-        assertEquals(listOf("approve", "decline"), (0 until decisions.length()).map(decisions::getString))
+        assertFalse(properties.has("decision"))
     }
 
     @Test
@@ -59,7 +61,7 @@ class MajordomeToolTest {
             )
             chain.respond(200, """{"schemaVersion":1,"threadId":"x","status":"COMPLETED","text":"Lasagnes prévues jeudi soir.","extra":true}""")
         }.build()
-        val executor = MajordomeToolExecutor("conversation-42", { pairing }) { MastraSignedTransport(it, http) }
+        val executor = MajordomeToolExecutor("conversation-42", { pairing }, { ConfirmationDecision.DECLINED }) { MastraSignedTransport(it, http) }
 
         val result = executor.execute(call("""{"request":"  Planifie des lasagnes jeudi soir pour 4  "}"""))
 
@@ -73,81 +75,70 @@ class MajordomeToolTest {
         assertTrue(result.sensitive)
     }
 
-    @Test
-    fun approvalRequiredIsReportedAsNotDoneYet() {
-        val json = MajordomeTool.result(
-            """{"status":"APPROVAL_REQUIRED","text":"En attente","approval":{"id":"apr_1","toolName":"createCalendarEvent","summary":"Dentiste, jeudi 10:00–10:30"}}""",
-        )
-        assertTrue(json.getBoolean("ok"))
-        assertEquals("APPROVAL_REQUIRED", json.getString("status"))
-        assertEquals("Dentiste, jeudi 10:00–10:30", json.getString("pending_action"))
-        assertTrue(json.getString("message").contains("Nothing has been done yet"))
-        assertFalse(json.toString().contains("apr_1"))
-    }
-
-    @Test
-    fun anApprovalIsSentOnlyAfterTheUserRepliedInALaterTurn() {
-        val bodies = mutableListOf<Pair<String, JSONObject>>()
-        val http = OkHttpClient.Builder().addInterceptor { chain ->
+    private fun approvalHttp(bodies: MutableList<Pair<String, JSONObject>>, approval: String) =
+        OkHttpClient.Builder().addInterceptor { chain ->
             val request = chain.request()
-            val body = JSONObject(Buffer().also { request.body?.writeTo(it) }.readUtf8())
-            bodies += request.url.encodedPath to body
+            bodies += request.url.encodedPath to JSONObject(Buffer().also { request.body?.writeTo(it) }.readUtf8())
             if (request.url.encodedPath == MajordomeTool.PATH) {
-                chain.respond(200, """{"schemaVersion":1,"threadId":"x","status":"APPROVAL_REQUIRED","text":"En attente","approval":{"id":"apr_42","toolName":"deleteRecipe","summary":"Supprimer la recette « Pâtes » de la bibliothèque."}}""")
+                chain.respond(200, """{"schemaVersion":1,"threadId":"x","status":"APPROVAL_REQUIRED","text":"En attente","approval":$approval}""")
             } else {
-                chain.respond(200, """{"schemaVersion":1,"threadId":"x","status":"COMPLETED","text":"Recette supprimée."}""")
+                chain.respond(200, """{"schemaVersion":1,"threadId":"x","status":"COMPLETED","text":"Fait."}""")
             }
         }.build()
-        val conversation = "conversation-approval"
-        val requestTurn = MajordomeToolExecutor(conversation, { pairing }) { MastraSignedTransport(it, http) }
 
-        val pending = JSONObject(requestTurn.execute(call("""{"request":"Supprime la recette Pâtes"}""")).content)
-        assertEquals("APPROVAL_REQUIRED", pending.getString("status"))
-        val sameTurn = JSONObject(requestTurn.execute(call("""{"decision":"approve"}""")).content)
-        assertEquals("USER_CONFIRMATION_REQUIRED", sameTurn.getString("code"))
-        assertEquals(1, bodies.size)
+    private fun executor(http: OkHttpClient, decision: ConfirmationDecision, asked: MutableList<ConfirmationRequest> = mutableListOf()) =
+        MajordomeToolExecutor("conversation-approval", { pairing }, { asked += it; decision }) { MastraSignedTransport(it, http) }
 
-        val replyTurn = MajordomeToolExecutor(conversation, { pairing }) { MastraSignedTransport(it, http) }
-        val approved = JSONObject(replyTurn.execute(call("""{"decision":"approve"}""")).content)
-        assertEquals("COMPLETED", approved.getString("status"))
-        assertEquals("Recette supprimée.", approved.getString("answer"))
+    @Test
+    fun anApprovedActionIsSentAfterThePopupAndTheModelNeverSeesTheApprovalId() {
+        val bodies = mutableListOf<Pair<String, JSONObject>>()
+        val asked = mutableListOf<ConfirmationRequest>()
+        val http = approvalHttp(bodies, """{"id":"apr_42","toolName":"deleteRecipe","summary":"Supprimer la recette « Pâtes »."}""")
+        val result = executor(http, ConfirmationDecision.APPROVED, asked).execute(call("""{"request":"Supprime la recette Pâtes"}"""))
+
+        assertEquals(1, asked.size)
+        assertEquals(ActionRisk.HIGH, asked.single().risk)
+        val json = JSONObject(result.content)
+        assertEquals("COMPLETED", json.getString("status"))
+        assertFalse(result.content.contains("apr_42"))
         val (path, body) = bodies.last()
         assertEquals(MajordomeTool.APPROVALS_PATH, path)
-        assertEquals(MajordomeTool.threadId(conversation), body.getString("threadId"))
+        assertEquals(MajordomeTool.threadId("conversation-approval"), body.getString("threadId"))
         assertEquals("apr_42", body.getString("approvalId"))
         assertEquals("APPROVE", body.getString("decision"))
-
-        val again = JSONObject(replyTurn.execute(call("""{"decision":"approve"}""")).content)
-        assertEquals("NO_PENDING_ACTION", again.getString("code"))
-        assertEquals(2, bodies.size)
     }
 
     @Test
-    fun aDeclineCanBeSentInTheSameTurnAndANewRequestForgetsThePendingAction() {
-        val bodies = mutableListOf<JSONObject>()
-        val http = OkHttpClient.Builder().addInterceptor { chain ->
-            val request = chain.request()
-            bodies += JSONObject(Buffer().also { request.body?.writeTo(it) }.readUtf8())
-            if (request.url.encodedPath == MajordomeTool.PATH) {
-                chain.respond(200, """{"status":"APPROVAL_REQUIRED","text":"","approval":{"id":"apr_7","summary":"Créer « Dentiste »"}}""")
-            } else {
-                chain.respond(200, """{"status":"COMPLETED","text":"Rendez-vous non créé."}""")
-            }
-        }.build()
-        val executor = MajordomeToolExecutor("conversation-decline", { pairing }) { MastraSignedTransport(it, http) }
-        executor.execute(call("""{"request":"Ajoute le dentiste jeudi"}"""))
-        val declined = JSONObject(executor.execute(call("""{"decision":"decline"}""")).content)
-        assertEquals("COMPLETED", declined.getString("status"))
-        assertEquals("DECLINE", bodies.last().getString("decision"))
+    fun aServerRiskFieldRaisesTheConfirmationLevel() {
+        val asked = mutableListOf<ConfirmationRequest>()
+        val http = approvalHttp(mutableListOf(), """{"id":"apr_1","summary":"Créer « Dentiste »","risk":"high"}""")
+        executor(http, ConfirmationDecision.APPROVED, asked).execute(call("""{"request":"Ajoute le dentiste"}"""))
+        assertEquals(ActionRisk.HIGH, asked.single().risk)
+    }
 
-        executor.execute(call("""{"request":"Ajoute le dentiste jeudi"}"""))
-        executor.execute(call("""{"request":"Finalement, liste mes recettes"}"""))
-        val later = MajordomeToolExecutor("conversation-decline", { pairing }) { MastraSignedTransport(it, http) }
-        // The second request also returned APPROVAL_REQUIRED in this stub: only that newest action is pending.
-        later.execute(call("""{"decision":"approve"}"""))
-        assertEquals("apr_7", bodies.last().getString("approvalId"))
-        assertEquals("INVALID_ARGUMENT", JSONObject(later.execute(call("""{"request":"x","decision":"approve"}""")).content).getString("code"))
-        assertEquals("INVALID_ARGUMENT", JSONObject(later.execute(call("""{"decision":"maybe"}""")).content).getString("code"))
+    @Test
+    fun aRefusedTimedOutOrUnshownConfirmationDeclinesTheActionOnTheHomelab() {
+        listOf(
+            ConfirmationDecision.DECLINED to "USER_DECLINED",
+            ConfirmationDecision.TIMED_OUT to "CONFIRMATION_TIMED_OUT",
+            ConfirmationDecision.UNAVAILABLE to "CONFIRMATION_UNAVAILABLE",
+        ).forEach { (decision, code) ->
+            val bodies = mutableListOf<Pair<String, JSONObject>>()
+            val http = approvalHttp(bodies, """{"id":"apr_7","summary":"Créer « Dentiste »"}""")
+            val json = JSONObject(executor(http, decision).execute(call("""{"request":"Ajoute le dentiste"}""")).content)
+            assertFalse(json.getBoolean("ok"))
+            assertEquals(code, json.getString("code"))
+            assertEquals("DECLINE", bodies.last().second.getString("decision"))
+        }
+    }
+
+    @Test
+    fun anApprovalRequiredReplyWithoutUsableIdIsRejectedWithoutPopup() {
+        val asked = mutableListOf<ConfirmationRequest>()
+        val http = approvalHttp(mutableListOf(), """{"summary":"x"}""")
+        val json = JSONObject(executor(http, ConfirmationDecision.APPROVED, asked).execute(call("""{"request":"x"}""")).content)
+        assertEquals("INVALID_RESPONSE", json.getString("code"))
+        assertTrue(asked.isEmpty())
     }
 
     @Test
@@ -166,10 +157,10 @@ class MajordomeToolTest {
     @Test
     fun missingPairingOrRequestNeverCallsTheHomelab() {
         val http = OkHttpClient.Builder().addInterceptor { error("no network call expected") }.build()
-        val unpaired = MajordomeToolExecutor("c", { null }) { MastraSignedTransport(it, http) }
+        val unpaired = MajordomeToolExecutor("c", { null }, { ConfirmationDecision.DECLINED }) { MastraSignedTransport(it, http) }
         assertFalse(unpaired.available())
         assertEquals("NOT_PAIRED", JSONObject(unpaired.execute(call("""{"request":"Qu'y a-t-il au frigo ?"}""")).content).getString("code"))
-        val paired = MajordomeToolExecutor("c", { pairing }) { MastraSignedTransport(it, http) }
+        val paired = MajordomeToolExecutor("c", { pairing }, { ConfirmationDecision.DECLINED }) { MastraSignedTransport(it, http) }
         assertEquals("INVALID_ARGUMENT", JSONObject(paired.execute(call("""{"request":"   "}""")).content).getString("code"))
         assertEquals("INVALID_ARGUMENT", JSONObject(paired.execute(call(JSONObject().put("request", "a".repeat(4_001)).toString())).content).getString("code"))
     }

@@ -99,6 +99,9 @@ internal class AgentLocalTools(
     private val beforeToolExecution: (String) -> ToolExecutionDecision = {
         ToolExecutionDecision.Allow
     },
+    private val confirmSensitiveAction: (String, JSONObject) -> ToolExecutionDecision = { _, _ ->
+        ToolExecutionDecision.Allow
+    },
     private val skillIndexService: SkillIndexService? = null,
     private val skillLoader: SkillLoader? = null,
     private val skillResourceReader: SkillResourceReader? = null,
@@ -212,6 +215,12 @@ internal class AgentLocalTools(
             }
             deviceToolPermissionError(toolCall.name)?.let { return@runCatching it }
             memoryToolPermissionError(toolCall.name)?.let { return@runCatching it }
+            (confirmSensitiveAction(toolCall.name, args) as? ToolExecutionDecision.Reject)?.let { refusal ->
+                return@runCatching AgentModelClient.ToolResult(
+                    content = errorResult(refusal.code, refusal.message),
+                    sensitive = AgentSensitiveToolPolicy.isSensitive(toolCall.name),
+                )
+            }
             if (guiGeneration != null && publishedObservation.get().generation != guiGeneration) {
                 publishedObservation.set(PublishedObservation())
                 if (AgentToolRequirements.requiresFreshObservation(toolCall.name)) {

@@ -228,6 +228,28 @@ internal class AgentRuntimeRunExecutor(
                         }
                     }
                 },
+                confirmSensitiveAction = { toolName, args ->
+                    val confirmation = io.github.mangi.eta.agent.confirm.SensitiveActionPolicy.requestFor(toolName, args)
+                    when (confirmation?.let { io.github.mangi.eta.agent.confirm.ActionConfirmation.broker(appContext).confirm(it) }) {
+                        null, io.github.mangi.eta.agent.confirm.ConfirmationDecision.APPROVED ->
+                            ToolExecutionDecision.Allow
+                        io.github.mangi.eta.agent.confirm.ConfirmationDecision.DECLINED ->
+                            ToolExecutionDecision.Reject(
+                                code = "USER_DECLINED",
+                                message = "The user refused this action. It was not performed; do not retry it unless they ask again.",
+                            )
+                        io.github.mangi.eta.agent.confirm.ConfirmationDecision.TIMED_OUT ->
+                            ToolExecutionDecision.Reject(
+                                code = "CONFIRMATION_TIMED_OUT",
+                                message = "The user did not answer the confirmation in time. The action was not performed.",
+                            )
+                        io.github.mangi.eta.agent.confirm.ConfirmationDecision.UNAVAILABLE ->
+                            ToolExecutionDecision.Reject(
+                                code = "CONFIRMATION_UNAVAILABLE",
+                                message = "The confirmation popup could not be shown. The action was not performed.",
+                            )
+                    }
+                },
                 skillIndexService = skillIndexService,
                 skillLoader = skillLoader,
                 skillResourceReader = skillResourceReader,
@@ -310,7 +332,11 @@ internal class AgentRuntimeRunExecutor(
                 developmentStore.context()?.optString("screen").orEmpty().ifBlank { request.appDevelopmentScreen }, developmentAllowed,
                 ensureActive = { runController.throwIfCancelled() },
             ) else null
-            val majordome = MajordomeToolExecutor(browserKey, pairing = { io.github.mangi.eta.agent.device.notifications.remote.MastraConnection.loadEnabled(appContext) })
+            val majordome = MajordomeToolExecutor(
+                browserKey,
+                pairing = { io.github.mangi.eta.agent.device.notifications.remote.MastraConnection.loadEnabled(appContext) },
+                confirmer = io.github.mangi.eta.agent.confirm.ActionConfirmer { io.github.mangi.eta.agent.confirm.ActionConfirmation.broker(appContext).confirm(it) },
+            )
             val majordomeAllowed = {
                 request.operation == AgentRuntimeWire.OP_CHAT && Prefs.isToolEnabled(MajordomeTool.NAME) && majordome.available()
             }

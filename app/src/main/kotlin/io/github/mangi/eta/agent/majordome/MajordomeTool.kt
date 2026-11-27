@@ -1,5 +1,8 @@
 package io.github.mangi.eta.agent.majordome
 
+import io.github.mangi.eta.agent.confirm.ActionConfirmer
+import io.github.mangi.eta.agent.confirm.ConfirmationDecision
+import io.github.mangi.eta.agent.confirm.SensitiveActionPolicy
 import io.github.mangi.eta.agent.device.notifications.remote.MastraHttpException
 import io.github.mangi.eta.agent.device.notifications.remote.MastraPairing
 import io.github.mangi.eta.agent.device.notifications.remote.MastraSignedTransport
@@ -8,7 +11,6 @@ import io.github.mangi.eta.agent.model.AgentToolSchema
 import java.io.IOException
 import java.io.InterruptedIOException
 import java.security.MessageDigest
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
 import org.json.JSONArray
@@ -36,10 +38,9 @@ internal object MajordomeTool {
             "access to them. Send one complete request in French with every detail the user gave (dates, meals, servings, " +
             "quantities). The Majordome keeps a thread per Jean-Calcul conversation, so follow-up requests can be short. Relay " +
             "its answer faithfully; never claim an action it did not confirm. " +
-            "Some writes (deleting a recipe, creating an agenda event) return APPROVAL_REQUIRED: nothing is done yet. Tell the " +
-            "user exactly what pending_action will do and ask them to confirm, then end your turn. Only when the user explicitly " +
-            "agrees in a later message, call this tool with decision=approve (no request); if they refuse, decision=decline. " +
-            "Never approve on your own or in the same turn as the request.",
+            "Some writes (deleting a recipe, creating an agenda event) need the user's approval: Jean-Calcul then shows the user " +
+            "a secure confirmation popup by itself and sends their answer to the Majordome. Do not ask for confirmation in the " +
+            "chat; relay the outcome, and if the user refused, do not retry unless they ask again.",
         parameters = JSONObject()
             .put("type", "object")
             .put(
@@ -51,20 +52,10 @@ internal object MajordomeTool {
                             .put("type", "string")
                             .put("minLength", 1)
                             .put("maxLength", MAX_REQUEST_CHARS)
-                            .put("description", "The complete request for the Majordome, in French. Omit when sending a decision."),
-                    )
-                    .put(
-                        "decision",
-                        JSONObject()
-                            .put("type", "string")
-                            .put("enum", JSONArray().put("approve").put("decline"))
-                            .put(
-                                "description",
-                                "The user's answer to the pending APPROVAL_REQUIRED action of this conversation. Use only after " +
-                                    "the user explicitly answered; omit for a normal request.",
-                            ),
+                            .put("description", "The complete request for the Majordome, in French."),
                     ),
-            ),
+            )
+            .put("required", JSONArray().put("request")),
     )
 
     /** Mastra thread ids are bounded to `[A-Za-z0-9_-]{1,64}`; a digest keeps conversation keys private. */
@@ -89,24 +80,20 @@ internal object MajordomeTool {
         val text = json.optString("text").trim()
         return when (status) {
             "COMPLETED" -> ok(status).put("answer", text)
-            "APPROVAL_REQUIRED" -> ok(status)
-                .put("pending_action", json.optJSONObject("approval")?.optString("summary").orEmpty().ifBlank { text })
-                .put(
-                    "message",
-                    "Nothing has been done yet. Ask the user to confirm this exact action and end your turn. Call " +
-                        "ask_majordome with decision=approve only after they explicitly agree, or decision=decline if they refuse.",
-                )
             else -> error("INVALID_RESPONSE", "The Majordome returned an unknown status")
         }
     }
 
+    class PendingApproval(val id: String, val summary: String, val risk: String?)
+
     /** The pending approval carried by an APPROVAL_REQUIRED reply, if the server sent a usable one. */
-    fun pendingApproval(raw: String): Pair<String, String>? {
+    fun pendingApproval(raw: String): PendingApproval? {
         val json = runCatching { JSONObject(raw) }.getOrNull() ?: return null
         if (json.optString("status") != "APPROVAL_REQUIRED") return null
         val approval = json.optJSONObject("approval") ?: return null
         val id = approval.optString("id").takeIf { it.startsWith("apr_") } ?: return null
-        return id to approval.optString("summary")
+        val summary = approval.optString("summary").ifBlank { json.optString("text") }.trim()
+        return PendingApproval(id, summary, approval.optString("risk").takeIf { it.isNotBlank() })
     }
 
     fun failure(throwable: Throwable): JSONObject = when (throwable) {
@@ -154,29 +141,13 @@ internal object MajordomeTool {
 }
 
 /**
- * Approvals the Majordome is waiting for, per Majordome thread. Kept on the phone because Majordome results are
- * sensitive and never reach the saved transcript: the next turn cannot read the approval id. [issuedBy] is the run
- * executor that received it, so a model cannot approve in the turn that triggered the action, only after the user
- * replied. Lost when the app process dies (the homelab then expires the action).
+ * Run-scoped executor: one Majordome thread per Jean-Calcul conversation. A write the Majordome wants approved is
+ * shown to the user in the confirmation popup ([confirmer]); the model never sees the approval nor answers it.
  */
-internal object MajordomePendingApprovals {
-    data class Pending(val id: String, val summary: String, val issuedBy: Any)
-
-    private val byThread = ConcurrentHashMap<String, Pending>()
-
-    fun put(threadId: String, pending: Pending) { byThread[threadId] = pending }
-
-    fun get(threadId: String): Pending? = byThread[threadId]
-
-    fun remove(threadId: String, pending: Pending) { byThread.remove(threadId, pending) }
-
-    fun clear(threadId: String) { byThread.remove(threadId) }
-}
-
-/** Run-scoped executor: one Majordome thread per Jean-Calcul conversation. */
 internal class MajordomeToolExecutor(
     conversationKey: String,
     private val pairing: () -> MastraPairing?,
+    private val confirmer: ActionConfirmer = ActionConfirmer { ConfirmationDecision.UNAVAILABLE },
     private val transport: (MastraPairing) -> MastraSignedTransport = { MastraSignedTransport(it, MajordomeTool.http) },
 ) {
     private val threadId = MajordomeTool.threadId(conversationKey)
@@ -187,19 +158,15 @@ internal class MajordomeToolExecutor(
         val content = runCatching {
             val args = JSONObject(call.argumentsJson.ifBlank { "{}" })
             val request = args.optString("request").trim()
-            val decision = args.optString("decision").trim().lowercase()
             when {
-                decision.isNotEmpty() && request.isNotEmpty() ->
-                    MajordomeTool.error("INVALID_ARGUMENT", "Send either request or decision, not both")
-                decision.isNotEmpty() -> decide(decision)
                 request.isEmpty() -> MajordomeTool.error("INVALID_ARGUMENT", "request is required")
                 request.length > MajordomeTool.MAX_REQUEST_CHARS ->
                     MajordomeTool.error("INVALID_ARGUMENT", "request exceeds ${MajordomeTool.MAX_REQUEST_CHARS} characters")
                 else -> {
                     val paired = pairing() ?: return@runCatching MajordomeTool.notPaired()
-                    // The homelab declines an unanswered approval when the thread moves on; forget it here too.
-                    MajordomePendingApprovals.clear(threadId)
-                    reply(transport(paired).execute("POST", MajordomeTool.PATH, MajordomeTool.requestBody(threadId, request)))
+                    val raw = transport(paired).execute("POST", MajordomeTool.PATH, MajordomeTool.requestBody(threadId, request))
+                    val approval = MajordomeTool.pendingApproval(raw)
+                    if (approval == null) MajordomeTool.result(raw) else askUser(paired, approval)
                 }
             }
         }.getOrElse(MajordomeTool::failure)
@@ -207,30 +174,19 @@ internal class MajordomeToolExecutor(
         return AgentModelClient.ToolResult(content.toString(), sensitive = true)
     }
 
-    private fun decide(decision: String): JSONObject {
-        val approve = when (decision) {
-            "approve" -> true
-            "decline" -> false
-            else -> return MajordomeTool.error("INVALID_ARGUMENT", "decision must be approve or decline")
+    /** Shows the pending write in the popup, then sends the user's decision to the homelab. */
+    private fun askUser(paired: MastraPairing, approval: MajordomeTool.PendingApproval): JSONObject {
+        val decision = confirmer.confirm(SensitiveActionPolicy.forMajordome(approval.summary, approval.risk))
+        val approve = decision == ConfirmationDecision.APPROVED
+        val raw = transport(paired).execute("POST", MajordomeTool.APPROVALS_PATH, MajordomeTool.decisionBody(threadId, approval.id, approve))
+        return when (decision) {
+            ConfirmationDecision.APPROVED -> MajordomeTool.result(raw)
+            ConfirmationDecision.DECLINED ->
+                MajordomeTool.error("USER_DECLINED", "The user refused this action. Nothing was done; do not retry unless they ask again.")
+            ConfirmationDecision.TIMED_OUT ->
+                MajordomeTool.error("CONFIRMATION_TIMED_OUT", "The user did not answer in time. Nothing was done.")
+            ConfirmationDecision.UNAVAILABLE ->
+                MajordomeTool.error("CONFIRMATION_UNAVAILABLE", "The confirmation popup could not be shown. Nothing was done.")
         }
-        val pending = MajordomePendingApprovals.get(threadId)
-            ?: return MajordomeTool.error("NO_PENDING_ACTION", "No Majordome action is waiting for approval in this conversation")
-        if (approve && pending.issuedBy === this) {
-            return MajordomeTool.error(
-                "USER_CONFIRMATION_REQUIRED",
-                "The user has not answered yet. Ask them to confirm « ${pending.summary} » and end your turn; approve only after their reply.",
-            )
-        }
-        val paired = pairing() ?: return MajordomeTool.notPaired()
-        MajordomePendingApprovals.remove(threadId, pending)
-        return reply(transport(paired).execute("POST", MajordomeTool.APPROVALS_PATH,
-            MajordomeTool.decisionBody(threadId, pending.id, approve)))
-    }
-
-    private fun reply(raw: String): JSONObject {
-        MajordomeTool.pendingApproval(raw)?.let { (id, summary) ->
-            MajordomePendingApprovals.put(threadId, MajordomePendingApprovals.Pending(id, summary, issuedBy = this))
-        }
-        return MajordomeTool.result(raw)
     }
 }
