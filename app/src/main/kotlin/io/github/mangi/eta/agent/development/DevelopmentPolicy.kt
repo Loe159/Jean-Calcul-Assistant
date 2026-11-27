@@ -5,7 +5,7 @@ import org.json.JSONObject
 
 internal object DevelopmentPolicy {
     const val REPOSITORY = "Loe159/Jean-Calcul-Assistant"
-    const val BASE = "feature/jean-calcul-v2-foundation"
+    const val BASE = "main"
     const val TOOL = "develop_jean_calcul"
     const val MAX_FILE_BYTES = 512 * 1024
     private val sha = Regex("[0-9a-f]{40}")

@@ -1,9 +1,9 @@
 name: Jean-Calcul V2 - APK and Android E2E
 on:
   push:
-    branches: [feature/jean-calcul-v2-foundation, feat/eta-selected-features, self-improve/**]
+    branches: [main, feat/eta-selected-features, self-improve/**]
   pull_request:
-    branches: [feature/jean-calcul-v2-foundation]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -108,7 +108,7 @@ jobs:
   publish:
     name: Publish verified in-app update
     needs: [build, emulator]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/feature/jean-calcul-v2-foundation' || github.ref == 'refs/heads/feat/eta-selected-features' || startsWith(github.ref, 'refs/heads/self-improve/'))
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/eta-selected-features' || startsWith(github.ref, 'refs/heads/self-improve/'))
     runs-on: ubuntu-latest
     permissions:
       contents: write

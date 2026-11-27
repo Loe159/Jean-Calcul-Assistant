@@ -25,7 +25,7 @@ Skills live in `.agents/skills/` (`.claude/skills` points there). The design pro
 - **Capabilities:** root/LSPosed optional; check availability and permissions before any action.
 - **Data:** no secrets, personal accounts or real data in tests, previews, screenshots or docs.
 - **Licenses:** keep `LICENSE` and attributions (`docs/eta/UPSTREAM.md`, `docs/design/ATTRIBUTION.md`).
-- **Owner's control:** never merge, and never install on or touch the owner's phone without an explicit request. Publishing to devhub (`scripts/jc-preview`) is allowed: the owner installs from Preview Hub. PRs target `feature/jean-calcul-v2-foundation`, never `main`.
+- **Owner's control:** never merge, and never install on or touch the owner's phone without an explicit request. Publishing to devhub (`scripts/jc-preview`) is allowed: the owner installs from Preview Hub. Work lands on `main` (the v2 branch is gone); feature branches and PRs target `main`.
 
 ## Build and verify
 

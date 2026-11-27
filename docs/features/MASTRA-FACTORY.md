@@ -7,7 +7,7 @@ Factory est un service indépendant de l'APK. Brancher le dépôt
 - Prendre uniquement les issues portant [V2], initialement #53-#57.
 - Faire lire `AGENTS.md` (qui renvoie vers `PRODUCT.md`, `DESIGN.md` et les skills).
 - Coder sur branche de fonctionnalité puis créer une PR vers
-  `feature/jean-calcul-v2-foundation`.
+  `main`.
 - Exiger APK, résultats E2E et captures avant revue humaine.
 
 Connexion réelle du service Factory NON CONFIGURÉE depuis ce dépôt.
