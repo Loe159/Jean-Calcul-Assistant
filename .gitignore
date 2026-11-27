@@ -1,6 +1,7 @@
 # Gradle / IDE
 .gradle/
 **/build/
+build-devpreview/
 build/
 local.properties
 .idea/

@@ -2,6 +2,7 @@ package io.github.mangi.eta.agent.accessibility
 
 import android.net.Uri
 import android.os.Bundle
+import io.github.mangi.eta.BuildConfig
 
 /**
  * Eta App 与 system_server 无障碍保护后端之间的最小协议。
@@ -13,11 +14,11 @@ internal object AccessibilityProtectionProtocol {
     const val VERSION = 1
 
     const val ACTION_SET =
-        "fr.loevan.jeancalcul.v2.action.SET_ACCESSIBILITY_PROTECTION"
+        "${BuildConfig.APPLICATION_ID}.action.SET_ACCESSIBILITY_PROTECTION"
     const val ACTION_RECOVER =
-        "fr.loevan.jeancalcul.v2.action.RECOVER_ACCESSIBILITY_SERVICE"
+        "${BuildConfig.APPLICATION_ID}.action.RECOVER_ACCESSIBILITY_SERVICE"
     const val PERMISSION =
-        "fr.loevan.jeancalcul.v2.permission.CONTROL_ACCESSIBILITY_PROTECTION"
+        "${BuildConfig.APPLICATION_ID}.permission.CONTROL_ACCESSIBILITY_PROTECTION"
     const val RECEIVER_PACKAGE = "android"
 
     const val EXTRA_PROTOCOL_VERSION = "protocol_version"
@@ -27,10 +28,14 @@ internal object AccessibilityProtectionProtocol {
     const val RESULT_APPLIED = 1
     const val RESULT_REJECTED = 2
 
-    const val SETTING_NAME = "eta_accessibility_protection_enabled"
+    val SETTING_NAME = if (BuildConfig.DEV_PREVIEW) {
+        "${BuildConfig.APPLICATION_ID}.accessibility_protection_enabled"
+    } else {
+        "eta_accessibility_protection_enabled"
+    }
     const val DEFAULT_ENABLED = false
 
-    const val HEALTH_AUTHORITY = "fr.loevan.jeancalcul.v2.accessibility.health"
+    const val HEALTH_AUTHORITY = "${BuildConfig.APPLICATION_ID}.accessibility.health"
     const val HEALTH_METHOD = "accessibility_health"
     const val VIRTUAL_DISPLAY_SURFACE_METHOD = "virtual_display_surface"
     const val EXTRA_SURFACE_TOKEN = "surface_token"

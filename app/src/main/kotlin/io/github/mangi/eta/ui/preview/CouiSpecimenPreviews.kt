@@ -11,6 +11,10 @@ import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.mangi.eta.ui.components.coui.CouiButton
@@ -39,8 +43,9 @@ import io.github.suqi8.coui.kmp.theme.COUITheme
 @CouiStressPreviews
 @Composable
 private fun SettingsPageSpecimenPreview() {
+    var deepThinking by remember { mutableStateOf(true) }
     CouiPreviewTheme {
-        CouiScaffoldPage(title = "Réglages", onBack = {}) {
+        CouiScaffoldPage(title = "Réglages", onBack = previewAction("onBack")) {
             PreferenceCategory(title = "Modèles")
             Card(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
                 CardListGroup {
@@ -49,15 +54,15 @@ private fun SettingsPageSpecimenPreview() {
                             title = "Fournisseurs de modèles",
                             summary = "ChatGPT / Codex, vLLM",
                             startAction = { SpecimenIcon(Icons.Rounded.Cloud) },
-                            onClick = {},
+                            onClick = previewAction("Fournisseurs de modèles"),
                         )
                     }
                     item {
                         SwitchPreference(
                             title = "Réflexion approfondie par défaut",
                             startAction = { SpecimenIcon(Icons.Rounded.Psychology) },
-                            checked = true,
-                            onCheckedChange = {},
+                            checked = deepThinking,
+                            onCheckedChange = { deepThinking = it },
                         )
                     }
                     item {
@@ -86,8 +91,8 @@ private fun ButtonsSpecimenPreview() {
             Text(text = "Boutons", style = COUITheme.textStyles.headlineXS, color = COUITheme.colorScheme.labelPrimary)
             CouiButtonRole.entries.forEach { role ->
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    CouiButton(text = role.name, onClick = {}, role = role)
-                    CouiButton(text = "Désactivé", onClick = {}, role = role, enabled = false)
+                    CouiButton(text = role.name, onClick = previewAction(role.name), role = role)
+                    CouiButton(text = "Désactivé", onClick = { }, role = role, enabled = false)
                 }
             }
         }

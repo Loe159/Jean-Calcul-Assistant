@@ -1,5 +1,6 @@
 package io.github.mangi.eta.food.timer
 
+import io.github.mangi.eta.BuildConfig
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -21,9 +22,9 @@ class CookingTimerReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        internal const val ALARM = "fr.loevan.jeancalcul.v2.food.TIMER_ALARM"
-        internal const val ADD_MINUTE = "fr.loevan.jeancalcul.v2.food.TIMER_ADD_MINUTE"
-        internal const val STOP = "fr.loevan.jeancalcul.v2.food.TIMER_STOP"
+        internal const val ALARM = "${BuildConfig.APPLICATION_ID}.food.TIMER_ALARM"
+        internal const val ADD_MINUTE = "${BuildConfig.APPLICATION_ID}.food.TIMER_ADD_MINUTE"
+        internal const val STOP = "${BuildConfig.APPLICATION_ID}.food.TIMER_STOP"
 
         internal fun pendingIntent(context: Context, action: String, id: String): PendingIntent {
             val intent = Intent(context, CookingTimerReceiver::class.java)

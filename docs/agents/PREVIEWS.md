@@ -64,6 +64,7 @@ Rules:
 - Only stateless composables: pass state and lambdas. If a screen reads stores, `Context` singletons, DataStore, Room or the network, split it: `XScreen(state, on…)` renders, the route/wiring composable collects state and calls it. Preview `XScreen`.
 - Synthetic data only: `FakeAgentUiStates`, `BriefDemoData`, a `<Feature>PreviewData` object next to the screen. No real names, accounts, messages or secrets.
 - Cover the states that matter: empty, loading, populated, long text, error, disabled. One preview function per state (`…EmptyPreview`, `…ErrorPreview`), each with the phone multipreview.
+- Previews are also opened **live on the owner's phone** (Preview Hub → Components, `DEV-PREVIEW.md`), so make them playable: interactions that stay inside the composable (tabs, selection, switches, text fields) hold `remember` state in the preview; callbacks that leave it (back, navigation, submit, install) use `previewAction("onX")` / `previewActionOf<T>("onX")`, which show a toast on the phone and do nothing in headless renders. A silent `{}` reads as a broken button.
 - Overlays (`OverlayDialog`, sheets, menus) need a COUI `Scaffold`: preview them inside the page that hosts them (e.g. a `CouiScaffoldPage` with the dialog `visible = true` in its `overlay` slot).
 
 ## What previews cannot show

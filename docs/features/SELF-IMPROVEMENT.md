@@ -1,6 +1,6 @@
 # Improve Jean-Calcul from Jean-Calcul
 
-PR 62 is merged into `feature/jean-calcul-v2-foundation`. This feature keeps that branch as the review target.
+Self-improvement PRs target `main`.
 
 ## One-time setup
 

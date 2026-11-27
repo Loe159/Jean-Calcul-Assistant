@@ -106,6 +106,21 @@ internal class ChatImagePreviewer {
         targetOpen = false
     }
 
+    fun openBitmap(bitmap: ImageBitmap) {
+        sessionId += 1
+        activePage = 0
+        request = ChatImagePreviewRequest(
+            id = sessionId,
+            images = emptyList(),
+            initialIndex = 0,
+            groupKey = null,
+            sourceBoundsProvider = null,
+            sourceCornerRadius = 0.dp,
+            bitmap = bitmap,
+        )
+        targetOpen = true
+    }
+
     /** 绘制阶段读取：当前正在飞行或全屏展示的缩略图隐藏原位，避免开合过渡出现重影。 */
     fun isPresenting(groupKey: Any?, index: Int): Boolean {
         val current = request ?: return false
@@ -126,6 +141,7 @@ internal class ChatImagePreviewRequest(
     val groupKey: Any?,
     val sourceBoundsProvider: ((Int) -> Rect?)?,
     val sourceCornerRadius: Dp,
+    val bitmap: ImageBitmap? = null,
 )
 
 internal val LocalChatImagePreviewer = compositionLocalOf<ChatImagePreviewer?> { null }
@@ -216,8 +232,8 @@ private fun ChatImageViewerOverlay(
                 drawRect(Color.Black.copy(alpha = 0.94f * progress.value.coerceIn(0f, 1f)))
             },
     ) {
-        if (request.images.size == 1) {
-            val bitmap = rememberDataUrlBitmap(request.images[0])
+        if (request.images.size <= 1) {
+            val bitmap = request.bitmap ?: request.images.firstOrNull()?.let { rememberDataUrlBitmap(it) }
             val sourceRect = request.sourceBoundsProvider?.invoke(0)?.translate(
                 translateX = -hostWindowOffset.x,
                 translateY = -hostWindowOffset.y,

@@ -635,7 +635,7 @@ fun AgentAppRoot(
                                                     it.execute(
                                                         "am start --user current -n " +
                                                             "com.oplus.battery/com.oplus.powermanager.fuelgaue.PowerControlActivity " +
-                                                            "--es title Jean-Calcul --es pkgName fr.loevan.jeancalcul.v2 --es drainType APP",
+                                                            "--es title Jean-Calcul --es pkgName ${context.packageName} --es drainType APP",
                                                     )
                                                 }
                                             }

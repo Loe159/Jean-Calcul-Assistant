@@ -100,7 +100,7 @@ Le rapport lie commit, modifications locales, APK et empreintes des captures.
    `--attempt 4 --extra-validation-authorized`. Ce drapeau n'est pas une
    autorisation en soi ; ne jamais l'ajouter automatiquement.
 5. Fournir rapport, APK et preuves dans une PR vers
-   `feature/jean-calcul-v2-foundation`. Aucune fusion ni approbation automatique.
+   `main`. Aucune fusion ni approbation automatique.
 
 ## Références Eta sélectionnées par l’utilisateur
 

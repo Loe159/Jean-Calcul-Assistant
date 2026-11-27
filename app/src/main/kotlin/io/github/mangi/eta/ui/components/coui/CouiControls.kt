@@ -63,6 +63,7 @@ internal fun CouiButton(
     role: CouiButtonRole = CouiButtonRole.Secondary,
     minHeight: Dp = ButtonDefaults.MinHeight,
     contentPadding: PaddingValues = ButtonDefaults.InsideMargin,
+    maxLines: Int = 1,
 ) {
     val scheme = COUITheme.colorScheme
     val colors = when (role) {
@@ -91,7 +92,7 @@ internal fun CouiButton(
         Text(
             text = text,
             style = COUITheme.textStyles.buttonL,
-            maxLines = 1,
+            maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
         )
     }
