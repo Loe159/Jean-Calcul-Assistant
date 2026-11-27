@@ -14,6 +14,13 @@
         <item name="android:colorAccent">@android:color/transparent</item>
     </style>
 
+    <style name="Theme.JeanCalculConfirmation" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+
     <style name="Theme.JeanCalculVoiceInteractionSession" parent="@android:style/Theme.Material.Light.NoActionBar.TranslucentDecor">
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowIsTranslucent">true</item>

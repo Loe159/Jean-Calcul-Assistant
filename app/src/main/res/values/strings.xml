@@ -1413,4 +1413,9 @@
     <string name="food_scan_lookup_error">Impossible de rechercher le code-barres. Choisissez ou créez le produit à la main. Le code est conservé.</string>
     <string name="food_scan_suggested_name">Nom du nouveau produit</string>
     <string name="food_scan_conflict">Ce code-barres est déjà associé à un autre produit.</string>
+    <string name="action_confirmation_title">Confirmer l\'action</string>
+    <string name="action_confirmation_accept">Accepter</string>
+    <string name="action_confirmation_decline">Refuser</string>
+    <string name="action_confirmation_cancel">Annuler</string>
+    <string name="action_confirmation_fingerprint">Empreinte requise</string>
 </resources>

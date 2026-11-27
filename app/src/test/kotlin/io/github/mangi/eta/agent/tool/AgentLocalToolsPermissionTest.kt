@@ -455,7 +455,29 @@ class AgentLocalToolsPermissionTest {
         tools.close()
     }
 
+    @Test
+    fun refusedConfirmationStopsTheToolBeforeItRuns() {
+        val asked = mutableListOf<String>()
+        val tools = tools(
+            rootAvailable = { true },
+            sensitiveReadEnabled = { true },
+            confirmSensitiveAction = { name, _ ->
+                asked += name
+                ToolExecutionDecision.Reject("USER_DECLINED", "The user refused this action.")
+            },
+        )
+        val result = tools.execute(AgentModelClient.ToolCall("c1", "delete_alarm", """{"alarm_id":"3"}"""))
+        val json = JSONObject(result.content)
+        assertFalse(json.getBoolean("ok"))
+        assertEquals("USER_DECLINED", json.getString("code"))
+        assertEquals(listOf("delete_alarm"), asked)
+        tools.close()
+    }
+
     private fun tools(
+        confirmSensitiveAction: (String, JSONObject) -> ToolExecutionDecision = { _, _ ->
+            ToolExecutionDecision.Allow
+        },
         terminalEnabled: () -> Boolean = { false },
         browserEnabled: () -> Boolean = { false },
         memoryEnabled: () -> Boolean = { false },
@@ -482,6 +504,7 @@ class AgentLocalToolsPermissionTest {
             deviceSensitiveReadToolsEnabled = sensitiveReadEnabled,
             screenObservationProvider = screenObservationProvider,
             beforeToolExecution = beforeToolExecution,
+            confirmSensitiveAction = confirmSensitiveAction,
             guiControl = guiControl,
         )
 
